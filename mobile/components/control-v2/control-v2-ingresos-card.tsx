@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -9,7 +10,7 @@ import { getStateTokens } from '@/theme/state-tokens'
 import type { IngresosCiclo } from '@/features/insights/use-control-v2-data'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
-import { MONTH_SHORT } from '@/utils/date-format'
+import { monthShort } from '@/utils/date-format'
 
 interface ControlV2IngresosCardProps {
   ingresos: IngresosCiclo
@@ -19,12 +20,12 @@ interface ControlV2IngresosCardProps {
 
 const KIND_META: Record<
   IncomeEventKind,
-  { label: string; icon: 'swap-horiz' | 'workspace-premium' | 'card-giftcard' | 'attach-money' }
+  { labelKey: string; icon: 'swap-horiz' | 'workspace-premium' | 'card-giftcard' | 'attach-money' }
 > = {
-  transfer: { label: 'Transferencia', icon: 'swap-horiz' },
-  bonus: { label: 'Bono', icon: 'workspace-premium' },
-  gift: { label: 'Regalo', icon: 'card-giftcard' },
-  other: { label: 'Ingreso', icon: 'attach-money' },
+  transfer: { labelKey: 'control:ingresos.kindTransfer', icon: 'swap-horiz' },
+  bonus: { labelKey: 'control:ingresos.kindBonus', icon: 'workspace-premium' },
+  gift: { labelKey: 'control:ingresos.kindGift', icon: 'card-giftcard' },
+  other: { labelKey: 'control:ingresos.kindOther', icon: 'attach-money' },
 }
 
 const MAX_VISIBLE = 3
@@ -32,8 +33,11 @@ const MAX_VISIBLE = 3
 /** "2026-06-04" → "4 jun" sin pasar por Date (evita el corrimiento
  *  timezone de `new Date('YYYY-MM-DD')`, que parsea como UTC). */
 function formatFechaCorta(isoDate: string): string {
-  const [, m, d] = isoDate.split('-')
-  const month = MONTH_SHORT[Number(m) - 1] ?? ''
+  const [y, m, d] = isoDate.split('-')
+  // Date local anclada a mediodía para evitar el corrimiento timezone de
+  // `new Date('YYYY-MM-DD')` (que parsea como UTC); solo se usa para el mes.
+  const date = new Date(Number(y), Number(m) - 1, 1, 12, 0, 0, 0)
+  const month = Number.isFinite(date.getTime()) ? monthShort(date) : ''
   return `${Number(d)} ${month}`
 }
 
@@ -60,6 +64,7 @@ function ControlV2IngresosCardImpl({
   diasMes,
 }: ControlV2IngresosCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { total, movimientos } = ingresos
   if (total <= 0 || movimientos.length === 0) return null
 
@@ -84,7 +89,7 @@ function ControlV2IngresosCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={tokens.fg} glow={tokens.fg} />
           <Text style={[styles.eyebrow, { color: tokens.fg }]} numberOfLines={1}>
-            ENTRÓ ESTE CICLO
+            {t('control:ingresos.eyebrow')}
           </Text>
           <View
             style={[
@@ -104,15 +109,10 @@ function ControlV2IngresosCardImpl({
         </View>
 
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          Además de tu sueldo entraron{' '}
-          <Text style={[styles.headlineStrong, { color: tokens.fg }]}>
-            {formatMoney(total)}
-          </Text>{' '}
-          este ciclo — suman{' '}
-          <Text style={styles.headlineStrong}>
-            +{formatMoneyShort(cupoExtraDiario)}/día
-          </Text>{' '}
-          a tu cupo.
+          {t('control:ingresos.headline', {
+            total: formatMoney(total),
+            perDia: formatMoneyShort(cupoExtraDiario),
+          })}
         </Text>
 
         <View
@@ -145,14 +145,14 @@ function ControlV2IngresosCardImpl({
                     style={[styles.rowTitle, { color: theme.colors.text }]}
                     numberOfLines={1}
                   >
-                    {mov.descripcion?.trim() || meta.label}
+                    {mov.descripcion?.trim() || t(meta.labelKey)}
                   </Text>
                   <Text
                     style={[styles.rowSub, { color: theme.colors.textMuted }]}
                     numberOfLines={1}
                   >
                     {formatFechaCorta(mov.fecha)}
-                    {mov.descripcion?.trim() ? ` · ${meta.label}` : ''}
+                    {mov.descripcion?.trim() ? ` · ${t(meta.labelKey)}` : ''}
                   </Text>
                 </View>
                 <Text
@@ -175,7 +175,7 @@ function ControlV2IngresosCardImpl({
               ]}
             >
               <Text style={[styles.moreText, { color: theme.colors.textMuted }]}>
-                +{ocultos} {ocultos === 1 ? 'movimiento más' : 'movimientos más'}
+                {t('control:ingresos.more', { count: ocultos })}
               </Text>
             </View>
           ) : null}

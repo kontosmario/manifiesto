@@ -1,11 +1,12 @@
 import { memo, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -32,6 +33,12 @@ interface FijoRowProps {
   item?: FijoItem
   categoryColor?: string
   categoryName?: string
+  /**
+   * Nombre CRUDO (no localizado) de la categoría para resolver el ícono
+   * (el matcher es ES). El display sigue usando `categoryName`. Cae a
+   * `categoryName` cuando falta.
+   */
+  categoryRawName?: string
   /** Current UTC day-of-month. Histórico — el row ahora computa los
    *  días al vencimiento desde `item.next_due_on` directo (cálculo
    *  proper con UTC midnight), así que esta prop ya no se usa para
@@ -78,6 +85,7 @@ function FijoRowReal({
   item,
   categoryColor = '#888888',
   categoryName = '',
+  categoryRawName,
   // todayDay sigue aceptándose como prop pero ya no se desestructura —
   // el cálculo del detail label usa `next_due_on` directo (proper UTC
   // midnight diff), no day-of-month math.
@@ -88,12 +96,15 @@ function FijoRowReal({
   isPending = false,
 }: FijoRowProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   // Gateado: el primer attach del tab no debe disparar la layout
   // transition de la fila (warp). Tras el idle se habilita para expandir/
   // colapsar y para add/delete de fijos.
   const rowLayout = useGatedLayout(LinearTransition.duration(240))
-  const emoji = pickIconForFixedExpenseCategory(categoryName)
+  // Ícono por nombre CRUDO (matcher ES); el display sigue en `categoryName`.
+  // CategoryIcon rendea el sticker si hay slug mapeado, sino cae al emoji.
+  const iconName = categoryRawName ?? categoryName
   // FijoRowReal is only rendered for non-placeholder rows, where `item`
   // is always supplied by the parent. The non-null assertion keeps the
   // downstream code unchanged while letting the prop be optional for the
@@ -164,7 +175,7 @@ function FijoRowReal({
   const actions: SwipeAction[] = []
   if (onDelete) {
     actions.push({
-      label: 'Eliminar',
+      label: t('fijos:row.delete'),
       tone: 'danger',
       icon: 'delete',
       onPress: () => onDelete(fijo.id),
@@ -173,7 +184,7 @@ function FijoRowReal({
 
   return (
     <SwipeRow
-      accessibilityHint="Desliza para eliminar"
+      accessibilityHint={t('fijos:row.swipeDeleteHint')}
       rightActions={actions}
       isProcessing={isPending}
       // Matchea el borderRadius del card interno para que el clip y los
@@ -224,7 +235,12 @@ function FijoRowReal({
                     },
                   ]}
                 >
-                  <Text style={styles.iconText}>{emoji}</Text>
+                  <CategoryIcon
+                    name={iconName}
+                    scope="fixed_expense"
+                    size={24}
+                    emojiStyle={styles.iconText}
+                  />
                 </View>
                 {/* Status overlay (slot del WhoPaidAvatar en GastoRow). */}
                 <View
@@ -355,7 +371,7 @@ function FijoRowReal({
                     {
                       color: accent.solid,
                       fontWeight:
-                        status === 'overdue' || detail.label === 'Hoy' ? '800' : '700',
+                        status === 'overdue' || detail.isToday ? '800' : '700',
                     },
                   ]}
                   numberOfLines={1}

@@ -16,8 +16,10 @@ import Animated, {
   interpolateColor,
   useReducedMotion,
 } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import type { Category } from '@/features/categories/use-categories'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
+import type { CategoryIconScope } from '@/components/category/category-icon-map'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
@@ -31,10 +33,9 @@ interface CategoryHorizontalRailProps {
   /** Number of rows to stack vertically. Columns flow horizontally
    *  with overflow scroll. Defaults to 3 (gastos). */
   rows?: number
-  /** Override how an icon is picked from a category name. Defaults to
-   *  the variable-expense icon set. Use this from fijos to pass the
-   *  fixed-expense icon resolver. */
-  iconResolver?: (name: string) => string
+  /** Scope para resolver el ícono de categoría (sticker/emoji). 'expense'
+   *  por defecto; los pickers de fijos pasan 'fixed_expense'. */
+  iconScope?: CategoryIconScope
   /** Override which label is shown above the rail. */
   label?: string
   /** Per-tile width in points. Defaults to 60. Increase from screens
@@ -78,14 +79,15 @@ export function CategoryHorizontalRail({
   selectedCategoryId,
   onSelect,
   rows = 3,
-  iconResolver = pickIconForCategory,
-  label = 'Categoría',
+  iconScope = 'expense',
+  label,
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
   staticGrid = false,
   warning = false,
 }: CategoryHorizontalRailProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
   // Smooth label tint transition when `warning` toggles. iOS-cubic at
   // standard duration so the color glides in instead of snapping.
@@ -103,7 +105,9 @@ export function CategoryHorizontalRail({
       [theme.colors.textMuted, theme.colors.warning],
     ),
   }))
-  const labelText = warning ? 'Elige una categoría' : label
+  const labelText = warning
+    ? t('home:categoryRail.warningLabel')
+    : (label ?? t('home:categoryRail.label'))
 
   const columns = useMemo(() => {
     const chunked: Category[][] = []
@@ -155,7 +159,7 @@ export function CategoryHorizontalRail({
               key={category.id}
               category={category}
               selected={category.id === selectedCategoryId}
-              iconResolver={iconResolver}
+              iconScope={iconScope}
               width={tileWidth}
               height={tileHeight}
               onPress={() => {
@@ -188,7 +192,7 @@ export function CategoryHorizontalRail({
                   key={category.id}
                   category={category}
                   selected={category.id === selectedCategoryId}
-                  iconResolver={iconResolver}
+                  iconScope={iconScope}
                   width={staticTileWidth}
                   height={tileHeight}
                   onPress={() => {
@@ -220,14 +224,15 @@ export function CategoryHorizontalRail({
 interface CategoryTileProps {
   category: Category
   selected: boolean
-  iconResolver: (name: string) => string
+  iconScope: CategoryIconScope
   width: number
   height: number
   onPress: () => void
 }
 
-function CategoryTile({ category, selected, iconResolver, width, height, onPress }: CategoryTileProps) {
+function CategoryTile({ category, selected, iconScope, width, height, onPress }: CategoryTileProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
@@ -260,7 +265,9 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected }}
-        accessibilityLabel={`Seleccionar ${category.name}`}
+        accessibilityLabel={t('home:categoryRail.selectAccessibility', {
+          name: category.displayName || category.name,
+        })}
         hitSlop={4}
         onPressIn={() => {
           if (reduceMotion) return
@@ -284,9 +291,12 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
           ]}
         >
           <View style={[styles.badge, { backgroundColor: hue.surface }]}>
-            <Text allowFontScaling={false} style={styles.emoji}>
-              {iconResolver(category.name)}
-            </Text>
+            <CategoryIcon
+              name={category.name}
+              scope={iconScope}
+              size={28}
+              emojiStyle={styles.emoji}
+            />
           </View>
           <Text
             style={[styles.label, { color: theme.colors.text }]}
@@ -294,7 +304,9 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
-            {category.name}
+            {/* fallback al name crudo: defensa contra un seed del cache
+                que no haya derivado displayName (nunca debe quedar vacío) */}
+            {category.displayName || category.name}
           </Text>
         </Animated.View>
       </Pressable>

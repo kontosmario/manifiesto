@@ -5,6 +5,7 @@ import {
   type CommitmentSummary,
   type ControlHeroState,
 } from '@/features/insights/control-types'
+import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
 
 export function buildHeroState({
@@ -24,85 +25,85 @@ export function buildHeroState({
 }): ControlHeroState {
   if (!hasDailyBudgetBase) {
     return {
-      detail: 'Defini ingreso, ahorro y dia de cobro para que la app pueda guiarte.',
-      eyebrow: 'Base faltante',
-      title: 'Falta el marco financiero',
+      detail: i18n.t('insights:controlActions.hero.noBase.detail'),
+      eyebrow: i18n.t('insights:controlActions.hero.noBase.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.noBase.title'),
       variant: 'accent',
     }
   }
 
   if (isSalaryPendingConfirmation) {
     return {
-      detail: 'Confirma tu ultimo cobro y pongo al dia tus numeros del mes.',
-      eyebrow: 'Nuevo mes',
-      title: 'Confirma tu cobro para ponerte al dia',
+      detail: i18n.t('insights:controlActions.hero.salaryPending.detail'),
+      eyebrow: i18n.t('insights:controlActions.hero.salaryPending.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.salaryPending.title'),
       variant: 'accent',
     }
   }
 
   if (dailyBudgetSummary.remainingToday < 0) {
     return {
-      detail: `Hoy gastaste mas de lo que tenias para hoy, y faltan ${formatRemainingDays(
-        remainingUntilPayday,
-      )} para el proximo cobro.`,
-      eyebrow: 'Ojo hoy',
-      title: 'Hoy gastaste de mas',
+      detail: i18n.t('insights:controlActions.hero.overToday.detail', {
+        remaining: formatRemainingDays(remainingUntilPayday),
+      }),
+      eyebrow: i18n.t('insights:controlActions.hero.overToday.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.overToday.title'),
       variant: 'accent',
     }
   }
 
   if (commitmentSummary.overdueCount > 0) {
     return {
-      detail: `Tenes ${commitmentSummary.overdueCount} pago${
-        commitmentSummary.overdueCount === 1 ? '' : 's'
-      } fijo${commitmentSummary.overdueCount === 1 ? '' : 's'} vencido${
-        commitmentSummary.overdueCount === 1 ? '' : 's'
-      } y ${currencyFormatter.format(commitmentSummary.reservedTotal)} todavia sin pagar.`,
-      eyebrow: 'Ojo del mes',
-      title: 'Tenes pagos fijos vencidos',
+      detail: i18n.t('insights:controlActions.hero.overdue.detail', {
+        count: commitmentSummary.overdueCount,
+        amount: currencyFormatter.format(commitmentSummary.reservedTotal),
+      }),
+      eyebrow: i18n.t('insights:controlActions.hero.overdue.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.overdue.title'),
       variant: 'accent',
     }
   }
 
   if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
     return {
-      detail: `Bajando como ${currencyFormatter.format(
-        expenseAnalytics.adjustmentNeededPerDay,
-      )} por dia, llegas bien a fin de mes.`,
-      eyebrow: 'Ajuste chico',
-      title: 'Con un ajuste chico llegas bien',
+      detail: i18n.t('insights:controlActions.hero.adjustDaily.detail', {
+        amount: currencyFormatter.format(expenseAnalytics.adjustmentNeededPerDay),
+      }),
+      eyebrow: i18n.t('insights:controlActions.hero.adjustDaily.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.adjustDaily.title'),
       variant: 'accent',
     }
   }
 
   if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
     return {
-      detail: `Se vienen ${commitmentSummary.dueSoonCount} pago${
-        commitmentSummary.dueSoonCount === 1 ? '' : 's'
-      } fijo${commitmentSummary.dueSoonCount === 1 ? '' : 's'} y conviene apartar ${currencyFormatter.format(
-        commitmentSummary.reservedTotal,
-      )} para no quedar corto a fin de mes.`,
-      eyebrow: 'Proximos dias',
-      title: 'Se vienen gastos fijos: conviene apartar plata',
+      detail: i18n.t('insights:controlActions.hero.dueSoon.detail', {
+        count: commitmentSummary.dueSoonCount,
+        amount: currencyFormatter.format(commitmentSummary.reservedTotal),
+      }),
+      eyebrow: i18n.t('insights:controlActions.hero.dueSoon.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.dueSoon.title'),
       variant: 'hero',
     }
   }
 
   if (dailyBudgetSummary.zeroSpendStreak >= 2) {
     return {
-      detail: `Llevas ${dailyBudgetSummary.zeroSpendStreak} dias seguidos sin gastar — asi te queda mas plata para el resto del mes.`,
-      eyebrow: 'Buena noticia',
-      title: 'Venis sumando plata sin gastar',
+      detail: i18n.t('insights:controlActions.hero.zeroStreak.detail', {
+        count: dailyBudgetSummary.zeroSpendStreak,
+      }),
+      eyebrow: i18n.t('insights:controlActions.hero.zeroStreak.eyebrow'),
+      title: i18n.t('insights:controlActions.hero.zeroStreak.title'),
       variant: 'hero',
     }
   }
 
   return {
-    detail: `Quedan ${formatRemainingDays(
-      remainingUntilPayday,
-    )} para el cobro y hoy todavia estas dentro del rango previsto.`,
-    eyebrow: 'Lectura rapida',
-    title: 'El ciclo viene controlado',
+    detail: i18n.t('insights:controlActions.hero.steady.detail', {
+      remaining: formatRemainingDays(remainingUntilPayday),
+    }),
+    eyebrow: i18n.t('insights:controlActions.hero.steady.eyebrow'),
+    title: i18n.t('insights:controlActions.hero.steady.title'),
     variant: 'hero',
   }
 }

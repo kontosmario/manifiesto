@@ -14,6 +14,7 @@ import { useMemo } from 'react'
 import { useEffect, useState } from 'react'
 import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
@@ -110,7 +111,7 @@ function coerceSignalsToReadOnly(
 ): ControlAdvisorTask[] {
   return tasks.map((task) => ({
     ...task,
-    cta: 'Entendido',
+    cta: i18n.t('insights:cta.entendido'),
     action: { kind: 'dismiss', dismissId: task.id },
   }))
 }
@@ -621,7 +622,9 @@ export function useControlV2Data(
     const latest = summaries[0]
     if (!latest || (latest.expenses_count ?? 0) === 0) return null
     const categoryNameById = new Map(
-      categoriesExpense.map((c) => [c.id, c.name] as const),
+      // Display localizado: el Wrapped muestra la categoría top al usuario,
+      // así que el mapa debe llevar `displayName` (no el `name` crudo ES).
+      categoriesExpense.map((c) => [c.id, c.displayName] as const),
     )
     return buildWrappedPayloadFromSummary({
       summary: latest,

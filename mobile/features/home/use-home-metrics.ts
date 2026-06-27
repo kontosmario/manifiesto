@@ -21,15 +21,15 @@ import {
   isHikeDismissed,
   useDismissedHikes,
 } from '@/features/fijos/use-hike-dismiss-store'
+import i18n from '@/lib/i18n'
+import { getDateTimeFormat, getIntlLocale } from '@/lib/i18n/active-locale'
 
-const MONTH_SHORT_ES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
+const MONTH_SHORT_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short' }
 
 function formatCycleLabel(start: Date, end: Date): string {
-  const s = `${start.getDate()} ${MONTH_SHORT_ES[start.getMonth()]}`
-  const e = `${end.getDate()} ${MONTH_SHORT_ES[end.getMonth()]}`
+  const fmt = getDateTimeFormat(MONTH_SHORT_OPTIONS)
+  const s = `${start.getDate()} ${fmt.format(start)}`
+  const e = `${end.getDate()} ${fmt.format(end)}`
   return `${s} → ${e}`
 }
 
@@ -217,7 +217,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   const categoriesById = useMemo(() => {
     const m = new Map<string, { id: string; name: string; color: string }>()
     for (const c of categoriesQuery.data ?? []) {
-      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+      // Display localizado NO destructivo (== name crudo si renombrada).
+      m.set(c.id, { id: c.id, name: c.displayName, color: c.color })
     }
     return m
   }, [categoriesQuery.data])
@@ -432,13 +433,18 @@ function buildAlerts(input: {
   const next = input.upcoming[0]
   if (next && next.daysUntilDue <= 3) {
     const days = next.daysUntilDue
-    const when = days === 0 ? 'hoy' : days === 1 ? 'mañana' : `en ${days}d`
+    const when =
+      days === 0
+        ? i18n.t('home:alerts.dueWhen.today')
+        : days === 1
+          ? i18n.t('home:alerts.dueWhen.tomorrow')
+          : i18n.t('home:alerts.dueWhen.inDays', { days })
     alerts.push({
       id: `upcoming-${next.id}`,
       type: 'upcoming_fixed',
-      title: `${next.name} vence ${when}`,
-      subtitle: `$${Math.round(Number(next.amount ?? 0)).toLocaleString('es-AR')}`,
-      actionLabel: 'Marcar pagado',
+      title: i18n.t('home:alerts.upcomingTitle', { name: next.name, when }),
+      subtitle: `$${Math.round(Number(next.amount ?? 0)).toLocaleString(getIntlLocale())}`,
+      actionLabel: i18n.t('home:alerts.markPaid'),
       actionRoute: `/(app)/(tabs)/fixed-expenses`,
       urgency: days <= 1 ? 'high' : 'medium',
     })
@@ -450,9 +456,9 @@ function buildAlerts(input: {
     alerts.push({
       id: 'zombies',
       type: 'zombie_subscription',
-      title: `${n} ${n === 1 ? 'suscripción zombi' : 'suscripciones zombi'}`,
-      subtitle: 'sin uso hace más de 45 días',
-      actionLabel: 'Revisar',
+      title: i18n.t('home:alerts.zombieTitle', { count: n }),
+      subtitle: i18n.t('home:alerts.zombieSubtitle'),
+      actionLabel: i18n.t('home:alerts.review'),
       actionRoute: '/(app)/(tabs)/fixed-expenses',
       urgency: 'medium',
     })
@@ -464,9 +470,12 @@ function buildAlerts(input: {
     alerts.push({
       id: `hike-${topHike.fixedExpenseId}`,
       type: 'price_hike',
-      title: `${topHike.name} subió +${topHike.deltaPct}%`,
-      subtitle: 'vs mes pasado',
-      actionLabel: 'Ver',
+      title: i18n.t('home:alerts.hikeTitle', {
+        name: topHike.name,
+        pct: topHike.deltaPct,
+      }),
+      subtitle: i18n.t('home:alerts.hikeSubtitle'),
+      actionLabel: i18n.t('home:alerts.view'),
       actionRoute: '/(app)/(tabs)/fixed-expenses',
       urgency: 'low',
     })

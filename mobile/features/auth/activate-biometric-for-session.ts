@@ -4,6 +4,7 @@ import {
   saveBiometricCredentials,
 } from '@/lib/biometric-auth'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 
 export type ActivateBiometricResult =
   | 'activated'
@@ -52,7 +53,7 @@ export async function activateBiometricForSession(
   }
 
   const result = await authenticateBiometricAccess({
-    promptMessage: `Activa ${state.label} para entrar más rápido la próxima vez.`,
+    promptMessage: i18n.t('auth:biometric.activatePrompt', { label: state.label }),
   })
 
   if (!result.success) {

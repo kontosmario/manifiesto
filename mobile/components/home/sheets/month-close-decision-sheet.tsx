@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ComponentProps } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -38,11 +39,12 @@ export function MonthCloseDecisionSheet({
   isApplying,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [selected, setSelected] = useState<OptionId | null>(null)
 
   // `period_label` viene formateado por el backend ("Mayo 2026" o
   // "20 may → 19 jun" según cycle_type). Lo usamos tal cual.
-  const subtitle = `Cerraste ${pending.periodLabel} con un saldo a favor. ¿Qué haces con esa plata?`
+  const subtitle = t('home:monthClose.subtitle', { period: pending.periodLabel })
 
   const handlePickOption = (id: OptionId) => {
     void triggerHaptic('selection')
@@ -83,14 +85,22 @@ export function MonthCloseDecisionSheet({
     <ModalCard
       onClose={onClose}
       subtitle={subtitle}
-      title={`Te sobraron ${formatMoney(pending.sobrante)}`}
+      title={t('home:monthClose.title', { amount: formatMoney(pending.sobrante) })}
       visible={visible}
     >
       <View style={styles.stack}>
         <OptionCard
           icon="track-changes"
-          title={activeGoal ? `Sumar a ${activeGoal.title}` : 'A una meta'}
-          subtitle={activeGoal ? 'Aporte al goal activo' : 'Primero crea una meta en Home'}
+          title={
+            activeGoal
+              ? t('home:monthClose.metaTitleWithGoal', { goal: activeGoal.title })
+              : t('home:monthClose.metaTitle')
+          }
+          subtitle={
+            activeGoal
+              ? t('home:monthClose.metaSubtitleActive')
+              : t('home:monthClose.metaSubtitleEmpty')
+          }
           selected={selected === 'meta'}
           disabled={!activeGoal}
           onPress={() => activeGoal && handlePickOption('meta')}
@@ -98,22 +108,22 @@ export function MonthCloseDecisionSheet({
         />
         <OptionCard
           icon="trending-up"
-          title="Sumar al mes actual"
-          subtitle="Queda como disponible extra este mes"
+          title={t('home:monthClose.accumulateTitle')}
+          subtitle={t('home:monthClose.accumulateSubtitle')}
           selected={selected === 'acumular'}
           onPress={() => handlePickOption('acumular')}
           accent={theme.colors.primary}
         />
         <OptionCard
           icon="savings"
-          title="Guardar como reserva"
-          subtitle="Plata aparte, sin destino concreto"
+          title={t('home:monthClose.reserveTitle')}
+          subtitle={t('home:monthClose.reserveSubtitle')}
           selected={selected === 'reserva'}
           onPress={() => handlePickOption('reserva')}
           accent={theme.colors.primary}
         />
         <AppButton
-          label="Confirmar"
+          label={t('home:monthClose.confirm')}
           disabled={!canConfirm}
           loading={isApplying}
           onPress={() => void handleConfirm()}
@@ -124,7 +134,7 @@ export function MonthCloseDecisionSheet({
           style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.5 }]}
         >
           <Text style={[styles.skipText, { color: theme.colors.textMuted }]}>
-            Decidir más tarde
+            {t('home:monthClose.decideLater')}
           </Text>
         </Pressable>
       </View>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   HouseholdSetupProgressCard,
@@ -34,13 +35,14 @@ import {
   buildHouseholdSetupDraftState,
   buildHouseholdSetupFieldValues,
   buildHouseholdSetupSubmitState,
-  HOUSEHOLD_SAVINGS_RESEARCH_NOTE,
-  HOUSEHOLD_SAVINGS_RESEARCH_STATS,
+  buildHouseholdSavingsResearchNote,
+  buildHouseholdSavingsResearchStats,
   parseHouseholdSetupMoneyInput,
   resolveEmergencyFundTarget,
   resolveFlexibleTargetPercent,
 } from '@/features/settings/household-setup-wizard.model'
 import { triggerHaptic } from '@/lib/haptics'
+import { getNumberFormat } from '@/lib/i18n/active-locale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 import { typography } from '@/theme/typography'
@@ -55,10 +57,12 @@ interface HouseholdSetupWizardContentProps extends HouseholdSetupScreenProps {
 }
 
 const TOTAL_STEPS = 3
-const CURRENCY_FORMATTER = new Intl.NumberFormat('es-AR', {
+const CURRENCY_FORMAT_OPTIONS: Intl.NumberFormatOptions = {
   currency: 'ARS',
   style: 'currency',
-})
+}
+const formatCurrency = (value: number) =>
+  getNumberFormat(CURRENCY_FORMAT_OPTIONS).format(value)
 
 function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputSnapshot {
   return {
@@ -81,6 +85,7 @@ function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputS
 }
 
 export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
+  const { t } = useTranslation()
   const { initial } = useLocalSearchParams<{ initial?: string }>()
   const isInitialFlow = initial === '1'
   const financeQuery = useFamilyFinance(familyId)
@@ -91,18 +96,18 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
 
   if (financeQuery.isLoading && !financeSnapshot) {
     return (
-      <Screen canGoBack={!isInitialFlow} title="Configuracion del hogar">
-        <LoadingBlock label="Preparando asistente..." />
+      <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
+        <LoadingBlock label={t('settings:householdSetup.loading')} />
       </Screen>
     )
   }
 
   if (!financeSnapshot) {
     return (
-      <Screen canGoBack={!isInitialFlow} title="Configuracion del hogar">
+      <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
         <ErrorState
-          description="No pudimos preparar la configuracion inicial del hogar."
-          title="No se pudo abrir el wizard"
+          description={t('settings:householdSetup.errorDescription')}
+          title={t('settings:householdSetup.errorTitle')}
           onAction={() => {
             void financeQuery.refetch()
           }}
@@ -127,6 +132,7 @@ function HouseholdSetupWizardContent({
   isInitialFlow,
 }: HouseholdSetupWizardContentProps) {
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   // userId hace falta para que `useUpsertFamilyFinance` pueda invalidar
   // home_snapshot (root key) tras el upsert. Sin esto, los users veían
@@ -156,9 +162,9 @@ function HouseholdSetupWizardContent({
     monthlyIncome,
   })
   const formattedBenchmarkFund =
-    benchmarkFund > 0 ? CURRENCY_FORMATTER.format(benchmarkFund) : 'pendiente'
+    benchmarkFund > 0 ? formatCurrency(benchmarkFund) : t('settings:householdSetup.pending')
   const formattedMonthlySavingsGoal =
-    monthlySavingsGoal > 0 ? CURRENCY_FORMATTER.format(monthlySavingsGoal) : '$ 0'
+    monthlySavingsGoal > 0 ? formatCurrency(monthlySavingsGoal) : '$ 0'
   const savingsPresets = buildHouseholdSavingsPresets({
     monthlyIncome,
   })
@@ -184,9 +190,9 @@ function HouseholdSetupWizardContent({
   const primaryActionLabel =
     currentStep === TOTAL_STEPS - 1
       ? isInitialFlow
-        ? 'Guardar y empezar'
-        : 'Guardar configuracion'
-      : 'Continuar'
+        ? t('settings:householdSetup.saveAndStart')
+        : t('settings:householdSetup.saveConfig')
+      : t('common:actions.continue')
 
   const handleSave = () => {
     if (!submitState.input) {
@@ -197,8 +203,8 @@ function HouseholdSetupWizardContent({
       onError: async (error: unknown) => {
         await triggerHaptic('error')
         Alert.alert(
-          'Algo salio mal',
-          getErrorMessage(error, 'No se pudo guardar la configuracion del hogar.'),
+          t('settings:householdSetup.saveErrorTitle'),
+          getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')),
         )
       },
       onSuccess: async () => {
@@ -214,10 +220,10 @@ function HouseholdSetupWizardContent({
       contentContainerStyle={styles.screenContent}
       subtitle={
         isInitialFlow
-          ? 'Deja listo ingreso, distribucion objetivo, resguardo diario y recordatorios del hogar.'
-          : 'Vuelve a pasar por la configuracion guiada para recalibrar el hogar.'
+          ? t('settings:householdSetup.subtitleInitial')
+          : t('settings:householdSetup.subtitleRecalibrate')
       }
-      title={isInitialFlow ? 'Configura tu hogar' : 'Reconfigurar hogar'}
+      title={isInitialFlow ? t('settings:householdSetup.titleInitial') : t('settings:householdSetup.titleRecalibrate')}
     >
       <View style={styles.sectionStack}>
         {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
@@ -226,17 +232,17 @@ function HouseholdSetupWizardContent({
           currentStep={currentStep + 1}
           subtitle={
             currentStep === 0
-              ? 'Primero definimos la base economica del hogar.'
+              ? t('settings:householdSetup.progressSubtitle0')
               : currentStep === 1
-                ? 'Despues fijamos la distribucion porcentual del ingreso.'
-                : 'Por ultimo protegemos el dia a dia con colchones y nudges.'
+                ? t('settings:householdSetup.progressSubtitle1')
+                : t('settings:householdSetup.progressSubtitle2')
           }
           title={
             currentStep === 0
-              ? 'Base del hogar'
+              ? t('settings:householdSetup.progressTitle0')
               : currentStep === 1
-                ? 'Distribucion objetivo'
-                : 'Proteccion diaria'
+                ? t('settings:householdSetup.progressTitle1')
+                : t('settings:householdSetup.progressTitle2')
           }
           totalSteps={TOTAL_STEPS}
         />
@@ -244,11 +250,11 @@ function HouseholdSetupWizardContent({
         {currentStep === 0 ? (
           <BrandedPanel style={styles.card}>
             <SectionHeader
-              subtitle="Estos datos ordenan el ciclo de cobro y las referencias principales del hogar."
-              title="Ingresos y ciclo"
+              subtitle={t('settings:householdSetup.step0Subtitle')}
+              title={t('settings:householdSetup.step0Title')}
             />
             <NumpadField
-              label="Ingreso mensual del hogar"
+              label={t('settings:householdSetup.incomeLabel')}
               value={drafts.incomeDraft}
               onChangeRawValue={(value) =>
                 setDrafts((current) => ({ ...current, incomeDraft: value }))
@@ -257,8 +263,8 @@ function HouseholdSetupWizardContent({
               placeholder="$ 0"
             />
             <NumpadField
-              helper="Dia del mes en que entra el ingreso principal."
-              label="Dia de cobro"
+              helper={t('settings:householdSetup.salaryDayHelper')}
+              label={t('settings:householdSetup.salaryDayLabel')}
               value={drafts.salaryDayDraft}
               onChangeRawValue={(value) =>
                 setDrafts((current) => ({ ...current, salaryDayDraft: value }))
@@ -268,7 +274,7 @@ function HouseholdSetupWizardContent({
               maxDecimalDigits={0}
             />
             <NumpadField
-              label="Cotizacion USD"
+              label={t('settings:householdSetup.usdRateLabel')}
               value={drafts.usdRateDraft}
               onChangeRawValue={(value) =>
                 setDrafts((current) => ({ ...current, usdRateDraft: value }))
@@ -277,8 +283,8 @@ function HouseholdSetupWizardContent({
               placeholder="$ 0"
             />
             <SettingsSwitchRow
-              description="Si ya entro el ingreso principal, marcamos este ciclo como abierto y evitamos friccion inicial."
-              label="Este mes ya entro el ingreso"
+              description={t('settings:householdSetup.incomeConfirmedDescription')}
+              label={t('settings:householdSetup.incomeConfirmedLabel')}
               onValueChange={(value) =>
                 setDrafts((current) => ({ ...current, currentIncomeConfirmed: value }))
               }
@@ -291,18 +297,18 @@ function HouseholdSetupWizardContent({
           <>
             <HouseholdSavingsResearchPanel
               benchmarkFund={benchmarkFund}
-              note={HOUSEHOLD_SAVINGS_RESEARCH_NOTE}
-              stats={HOUSEHOLD_SAVINGS_RESEARCH_STATS}
+              note={buildHouseholdSavingsResearchNote()}
+              stats={buildHouseholdSavingsResearchStats()}
             />
             <BrandedPanel style={styles.card}>
               <SectionHeader
-                subtitle="Usamos 50% para necesidades como baseline y desplazamos el resto entre ahorro y gasto flexible."
-                title="Distribucion del ingreso"
+                subtitle={t('settings:householdSetup.step1Subtitle')}
+                title={t('settings:householdSetup.step1Title')}
               />
               <View style={styles.summaryStats}>
                 <HeroStat
                   compact
-                  label="Base recomendada"
+                  label={t('settings:householdSetup.recommendedBase')}
                   value={`${TARGET_ESSENTIALS_PERCENT}%`}
                 />
               </View>
@@ -321,8 +327,11 @@ function HouseholdSetupWizardContent({
                 ))}
               </View>
               <NumpadField
-                helper={`Equivale a ${formattedMonthlySavingsGoal} por mes. Gasto flexible objetivo: ${flexibleTargetPercent}%.`}
-                label="Ahorro objetivo (%)"
+                helper={t('settings:householdSetup.savingsHelper', {
+                  amount: formattedMonthlySavingsGoal,
+                  flexible: flexibleTargetPercent,
+                })}
+                label={t('settings:householdSetup.savingsLabel')}
                 value={drafts.savingsDraft}
                 onChangeRawValue={(value) =>
                   setDrafts((current) => ({
@@ -344,16 +353,16 @@ function HouseholdSetupWizardContent({
           <>
             <BrandedPanel style={styles.card}>
               <SectionHeader
-                subtitle="Define cuanto margen quieres proteger antes de repartir el gasto por dia."
-                title="Resguardo diario"
+                subtitle={t('settings:householdSetup.step2Subtitle')}
+                title={t('settings:householdSetup.step2Title')}
               />
               <SegmentedControl
                 onChange={(value) =>
                   setDrafts((current) => ({ ...current, bufferModeDraft: value }))
                 }
                 options={[
-                  { label: 'Sin colchon', value: 'none' },
-                  { label: '$ Fijo', value: 'fixed' },
+                  { label: t('settings:householdSetup.bufferNone'), value: 'none' },
+                  { label: t('settings:householdSetup.bufferFixed'), value: 'fixed' },
                   { label: '%', value: 'percent' },
                 ]}
                 value={drafts.bufferModeDraft}
@@ -362,12 +371,12 @@ function HouseholdSetupWizardContent({
                 key={drafts.bufferModeDraft}
                 helper={
                   drafts.bufferModeDraft === 'none'
-                    ? 'Todo el disponible se reparte dentro del ciclo.'
+                    ? t('settings:householdSetup.bufferHelperNone')
                     : drafts.bufferModeDraft === 'percent'
-                      ? 'Porcentaje reservado del presupuesto variable.'
-                      : 'Monto fijo reservado por fuera del operativo diario.'
+                      ? t('settings:householdSetup.bufferHelperPercent')
+                      : t('settings:householdSetup.bufferHelperFixed')
                 }
-                label={drafts.bufferModeDraft === 'percent' ? 'Colchon (%)' : 'Colchon'}
+                label={drafts.bufferModeDraft === 'percent' ? t('settings:householdSetup.bufferLabelPercent') : t('settings:householdSetup.bufferLabel')}
                 value={drafts.bufferDraft}
                 onChangeRawValue={(value) =>
                   setDrafts((current) => ({ ...current, bufferDraft: value }))
@@ -383,16 +392,16 @@ function HouseholdSetupWizardContent({
                 maxDecimalDigits={drafts.bufferModeDraft === 'percent' ? 0 : undefined}
               />
               <SettingsSwitchRow
-                description="Activa recordatorios de apertura diaria y avisos cuando el dia se empieza a apretar."
-                label="Nudges inteligentes"
+                description={t('settings:householdSetup.nudgesDescription')}
+                label={t('settings:householdSetup.nudgesLabel')}
                 onValueChange={(value) =>
                   setDrafts((current) => ({ ...current, nudgesEnabledDraft: value }))
                 }
                 value={drafts.nudgesEnabledDraft}
               />
               <NumpadField
-                helper="Hora de referencia para el check-in diario. Usa formato 0 a 23."
-                label="Hora del check-in"
+                helper={t('settings:householdSetup.checkinHourHelper')}
+                label={t('settings:householdSetup.checkinHourLabel')}
                 value={drafts.checkinHourDraft}
                 onChangeRawValue={(value) =>
                   setDrafts((current) => ({ ...current, checkinHourDraft: value }))
@@ -405,31 +414,34 @@ function HouseholdSetupWizardContent({
 
             <BrandedPanel style={styles.summaryCard} variant="accent">
               <SectionHeader
-                subtitle="Resumen del setup antes de guardar."
-                title="Asi queda el hogar"
+                subtitle={t('settings:householdSetup.summarySubtitle')}
+                title={t('settings:householdSetup.summaryTitle')}
               />
               <View style={styles.summaryStats}>
-                <HeroStat label="Ingreso" value={fieldValues.income || 'Definir'} />
+                <HeroStat label={t('settings:householdSetup.summaryIncome')} value={fieldValues.income || t('settings:rowValue.define')} />
                 <HeroStat
-                  label="Ahorro target"
+                  label={t('settings:householdSetup.summarySavings')}
                   value={
                     fieldValues.savings
                       ? `${fieldValues.savings}% · ${formattedMonthlySavingsGoal}`
-                      : 'Definir'
+                      : t('settings:rowValue.define')
                   }
                 />
               </View>
               <View style={styles.summaryStats}>
                 <HeroStat
                   compact
-                  label="Necesidades"
-                  value={`${TARGET_ESSENTIALS_PERCENT}% objetivo`}
+                  label={t('settings:householdSetup.summaryNeeds')}
+                  value={t('settings:householdSetup.summaryNeedsValue', { percent: TARGET_ESSENTIALS_PERCENT })}
                 />
-                <HeroStat compact label="Flexible" value={`${flexibleTargetPercent}%`} />
-                <HeroStat compact label="Check-in" value={`${checkinHourNumber || 9} hs`} />
+                <HeroStat compact label={t('settings:householdSetup.summaryFlexible')} value={`${flexibleTargetPercent}%`} />
+                <HeroStat compact label={t('settings:householdSetup.summaryCheckin')} value={t('settings:householdSetup.summaryCheckinValue', { hour: checkinHourNumber || 9 })} />
               </View>
               <Text style={[styles.summaryNote, { color: theme.colors.textMuted }]}>
-                Fondo base de {formattedBenchmarkFund} y ahorro mensual derivado de {fieldValues.savings || '0'}% del ingreso.
+                {t('settings:householdSetup.summaryNote', {
+                  fund: formattedBenchmarkFund,
+                  percent: fieldValues.savings || '0',
+                })}
               </Text>
             </BrandedPanel>
           </>
@@ -439,7 +451,7 @@ function HouseholdSetupWizardContent({
           {currentStep > 0 ? (
             <AppButton
               fullWidth={false}
-              label="Volver"
+              label={t('common:actions.back')}
               onPress={() => setCurrentStep((value) => Math.max(0, value - 1))}
               variant="ghost"
             />

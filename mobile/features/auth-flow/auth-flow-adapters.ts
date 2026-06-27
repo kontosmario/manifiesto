@@ -6,6 +6,7 @@
 import { router } from 'expo-router'
 import { isExpoGo } from '@/lib/runtime-environment'
 import { authFlowLog } from '@/lib/auth-flow-logger'
+import i18n from '@/lib/i18n'
 import { queryClient } from '@/lib/query-client'
 import { supabase } from '@/lib/supabase'
 import { triggerHaptic } from '@/lib/haptics'
@@ -62,7 +63,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
   async promptBiometric() {
     authFlowLog('adapter', 'promptBiometric → mostrando prompt')
     const result = await authenticateBiometricAccess({
-      promptMessage: 'Desbloquea Manifiesto',
+      promptMessage: i18n.t('auth:biometric.unlockPrompt'),
       disableDeviceFallback: true,
     })
     authFlowLog('adapter', 'promptBiometric resolvió', {

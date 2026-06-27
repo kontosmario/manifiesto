@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import type { CommitmentSummary } from '@/features/insights/control-model'
 import { formatRemainingDays } from '@/features/insights/control-model'
 import { formatFixedExpenseDateInput } from '@/features/fixed-expenses/commitment-utils'
@@ -6,11 +7,12 @@ import { fixedExpenseKindLabel } from '@/features/fixed-expenses/fixed-expense-t
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
 export function CommitmentPreviewRow({
   item,
@@ -18,18 +20,25 @@ export function CommitmentPreviewRow({
   item: CommitmentSummary['upcomingItems'][number]
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const nextDueDate = new Date(`${item.next_due_on}T00:00:00`)
   const dueText = item.isOverdue
-    ? `Vencio ${formatFixedExpenseDateInput(item.next_due_on)}`
+    ? t('home:commitmentRow.overdue', {
+        date: formatFixedExpenseDateInput(item.next_due_on),
+      })
     : item.daysUntilDue === 0
-      ? 'Vence hoy'
+      ? t('home:commitmentRow.dueToday')
       : item.daysUntilDue === 1
-        ? 'Vence manana'
+        ? t('home:commitmentRow.dueTomorrow')
         : item.daysUntilDue != null && Number.isFinite(item.daysUntilDue)
-          ? `Vence en ${formatRemainingDays(item.daysUntilDue)}`
+          ? t('home:commitmentRow.dueIn', {
+              days: formatRemainingDays(item.daysUntilDue),
+            })
           : Number.isNaN(nextDueDate.getTime())
-            ? 'Sin vencimiento'
-            : `Vence ${shortDateFormatter.format(nextDueDate)}`
+            ? t('home:commitmentRow.noDueDate')
+            : t('home:commitmentRow.dueOn', {
+                date: getDateTimeFormat(shortDateOptions).format(nextDueDate),
+              })
   const metaBits = [fixedExpenseKindLabel(item.kind), dueText]
 
   return (

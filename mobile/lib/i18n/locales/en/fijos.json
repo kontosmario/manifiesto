@@ -1,0 +1,312 @@
+{
+  "header": {
+    "title": "Fixed expenses",
+    "subtitle": "Everything recurring in one place",
+    "addButton": "Add fixed expense"
+  },
+  "screen": {
+    "loadError": "We couldn't load your fixed expenses"
+  },
+  "toast": {
+    "paymentReverted": "Payment reverted.",
+    "undoNotReadyYet": "We couldn't undo it yet — try again in 1s.",
+    "paymentRecorded": "{{name}} payment recorded",
+    "fallbackName": "your fixed expense",
+    "undo": "Undo"
+  },
+  "alerts": {
+    "revertFailedTitle": "We couldn't revert the payment",
+    "recordFailedTitle": "We couldn't record the payment",
+    "deleteTitle": "Delete fixed expense",
+    "deleteMessage": "Are you sure you want to delete this fixed expense?",
+    "deleteFailedTitle": "We couldn't delete it"
+  },
+  "empty": {
+    "introTitle": "You don't have any fixed expenses yet",
+    "introBody": "Here you log what you pay no matter what each month: rent, utilities, installments and subscriptions. Add the first one and we'll build your month summary.",
+    "addFirst": "Add my first fixed expense",
+    "previewEyebrow": "HERE'S HOW IT'LL LOOK",
+    "preview": {
+      "summaryTitle": "Month summary",
+      "summaryDescription": "How much you've paid and how much you have available this month.",
+      "upcomingTitle": "Coming up",
+      "upcomingDescription": "The fixed expenses due soon, sorted by date.",
+      "categoryTitle": "By category",
+      "categoryDescription": "Your fixed expenses grouped by category, with their status."
+    }
+  },
+  "scheduledBanner": {
+    "count_one": "1 scheduled fixed expense",
+    "count_other": "{{count}} scheduled fixed expenses",
+    "unpaidYet": "Not paid yet",
+    "toggleHint": "{{label}}. Tap to {{action}} details.",
+    "toggleShow": "show",
+    "toggleHide": "hide",
+    "noDate": "No date",
+    "due": "Due {{date}}"
+  },
+  "proximos": {
+    "eyebrow": "TO PAY · THIS MONTH",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "calm": "Nothing pending. Check back in a few days.",
+    "alertsLabel": "ALERTS",
+    "hikeAccessibility": "{{name}} went up {{deltaPct}}%",
+    "dismissHike": "Got it"
+  },
+  "marquee": {
+    "today": "TODAY",
+    "tomorrow": "TOMORROW",
+    "inDays": "IN {{days}}D"
+  },
+  "tabs": {
+    "vencidos": "Overdue",
+    "pendientes": "Pending",
+    "pagados": "Paid"
+  },
+  "categoryGroups": {
+    "empty": "No fixed expenses for this filter.",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "categoryAccessibility": "Category {{label}}"
+  },
+  "hero": {
+    "emptyEyebrow": "YOUR FIXED EXPENSE CYCLE",
+    "overdueBadge_one": "{{count}} OVERDUE",
+    "overdueBadge_other": "{{count}} OVERDUE",
+    "overdueAccessibility_one": "{{count}} overdue",
+    "overdueAccessibility_other": "{{count}} overdue",
+    "allPaidBadge": "ALL CAUGHT UP",
+    "allPaidAccessibility": "All caught up",
+    "alreadyPaid": "Already paid",
+    "stillToPay": "Still to pay",
+    "paidCount_one": "{{count}} paid",
+    "paidCount_other": "{{count}} paid",
+    "pendingCount_one": "{{count}} pending",
+    "pendingCount_other": "{{count}} pending",
+    "pctPaid": "{{pct}}% paid",
+    "total": "Total {{amount}}",
+    "freeMoney": "AVAILABLE",
+    "ofYourSalary": "of your salary",
+    "goesToFixed": "goes to fixed expenses",
+    "today": "TODAY · DAY {{day}}"
+  },
+  "row": {
+    "swipeDeleteHint": "Swipe to delete",
+    "delete": "Delete",
+    "pay": "Pay",
+    "payOverdue": "Pay — overdue fixed expense",
+    "payHint": "Opens the sheet to confirm the amount paid",
+    "status": {
+      "paid": "Status: paid",
+      "overdue": "Status: overdue",
+      "future": "Status: up to date, next payment in the future",
+      "pending": "Status: pending"
+    },
+    "detail": {
+      "paid": "Paid",
+      "overdueDays": "{{days}}d overdue",
+      "inArrears": "Overdue",
+      "next": "Upcoming",
+      "pending": "Pending",
+      "today": "Today",
+      "inDays": "In {{days}}d"
+    }
+  },
+  "trendBadge": {
+    "labelArrears": "{{value}}% int.",
+    "label": "{{value}}%",
+    "arrearsAccessibility": "Increase with interest {{deltaPct}} percent over the last payment",
+    "trendUpAccessibility": "Trend up {{pct}} percent",
+    "trendDownAccessibility": "Trend down {{pct}} percent"
+  },
+  "detailPanel": {
+    "totalDebtEyebrow": "TOTAL DEBT",
+    "remainingDebtEyebrow": "REMAINING DEBT",
+    "annualEyebrow": "COSTS PER YEAR",
+    "pctOfSalary": "{{pct}}% of your monthly salary",
+    "trendEyebrow": "TREND",
+    "thisPaymentEyebrow": "THIS PAYMENT",
+    "installmentLabel": "Installment {{current}} of {{total}}",
+    "recurringLabel": "{{frequency}} · day {{day}}",
+    "noCategory": "No category",
+    "historyEyebrow": "HISTORY",
+    "installmentsRecorded_one": "{{count}} installment recorded",
+    "installmentsRecorded_other": "{{count}} installments recorded",
+    "totalPaid": "You've paid {{amount}} in total",
+    "revertPayment": "Revert payment",
+    "revertPaymentHint": "Undoes the payment: removes the expense and sets the fixed expense back to pending.",
+    "editFijo": "Edit fixed expense",
+    "edit": "Edit"
+  },
+  "trendCopy": {
+    "keepsPrice": "Holds its price",
+    "wentUp": "Up {{pct}}% since the last payment",
+    "wentDown": "Down {{pct}}% since the last payment",
+    "deltaOverPayments": "{{delta}}% over {{count}} payments",
+    "comparisonPrevious": "Compared with the previous payment"
+  },
+  "dueLabel": {
+    "noDate": "No date scheduled",
+    "dueToday": "Due TODAY ({{day}} {{month}}{{yearSuffix}})",
+    "dueIn_one": "Due on {{day}} {{month}}{{yearSuffix}} (in {{count}} day)",
+    "dueIn_other": "Due on {{day}} {{month}}{{yearSuffix}} (in {{count}} days)",
+    "overdueSince_one": "Was due on {{day}} {{month}}{{yearSuffix}} ({{count}} day ago)",
+    "overdueSince_other": "Was due on {{day}} {{month}}{{yearSuffix}} ({{count}} days ago)",
+    "yearSuffix": " {{year}}"
+  },
+  "months": {
+    "0": "January",
+    "1": "February",
+    "2": "March",
+    "3": "April",
+    "4": "May",
+    "5": "June",
+    "6": "July",
+    "7": "August",
+    "8": "September",
+    "9": "October",
+    "10": "November",
+    "11": "December"
+  },
+  "frequency": {
+    "weekly": "Weekly",
+    "biweekly": "Biweekly",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "semiannual": "Semiannual",
+    "annual": "Annual"
+  },
+  "kind": {
+    "periodic": "Periodic",
+    "installment": "Installments",
+    "debt": "Debt",
+    "recurring": "Recurring"
+  },
+  "kindStatus": {
+    "paused": "Paused",
+    "completed": "Completed",
+    "archived": "Archived",
+    "active": "Active"
+  },
+  "groups": {
+    "noCategory": "No category"
+  },
+  "wizard": {
+    "stepNew": "New fixed expense",
+    "stepEdit": "Edit fixed expense",
+    "stepReview": "Review the impact",
+    "backToPrevious": "Back to previous step",
+    "close": "Close",
+    "cta": {
+      "seeImpact": "See impact →",
+      "completeData": "Fill in the details",
+      "seeImpactA11y": "See impact",
+      "completeDataA11y": "Fill in the details",
+      "pickDay": "Choose the day of the month",
+      "updating": "Updating…",
+      "creating": "Creating…",
+      "update": "Update ✓",
+      "confirmCreate": "Confirm and create ✓",
+      "updateFijoA11y": "Update fixed expense",
+      "confirmFijoA11y": "Confirm fixed expense"
+    },
+    "errors": {
+      "updateFailed": "We couldn't update the fixed expense",
+      "createFailed": "We couldn't create the fixed expense",
+      "createdNotPaidTitle": "Fixed expense created, but we couldn't mark it as paid",
+      "createdNotPaidBody": "{{error}}\n\nYou can tap \"Record payment\" from the list."
+    },
+    "step1": {
+      "nameLabel": "NAME",
+      "namePlaceholder": "E.g. Rent, Netflix, iPhone installment",
+      "frequencyLabel": "FREQUENCY",
+      "installmentSummary": "{{count}} installments of {{amount}} · Total {{total}}",
+      "howManyInstallments": "HOW MANY INSTALLMENTS?",
+      "installmentsA11y": "{{count}} installments"
+    },
+    "step2": {
+      "noCategory": "No category",
+      "metaInstallment": " ({{count}})",
+      "metaDay": " · day {{day}}",
+      "installmentMeta": "× {{count}} · {{total}} total",
+      "impactEyebrow": "BUDGET IMPACT",
+      "currentFixed": "YOUR CURRENT FIXED EXPENSES",
+      "afterAdding": "AFTER ADDING",
+      "pctOfSalary": "{{pct}}% of your salary",
+      "freeLeftEyebrow": "YOU'LL HAVE AVAILABLE",
+      "freePhraseTight": "Careful: very little left available",
+      "freePhraseSnug": "It'll be a bit tight",
+      "freePhraseComfortable": "You'll have plenty of room this month",
+      "scheduledOn": "WILL BE SCHEDULED ON",
+      "reminderEyebrow": "REMINDER",
+      "reminderA11y": "Reminder",
+      "reminderOn": "Notify 2 days before",
+      "reminderOff": "No notification",
+      "currentStateEyebrow": "CURRENT STATUS",
+      "alreadyPaidA11y": "I already paid the most recent installment",
+      "alreadyPaidHint": "Turn on if you already paid this month's installment. The fixed expense starts with the payment recorded and the next installment pointing to next month.",
+      "alreadyPaidOn": "I already paid the most recent installment",
+      "alreadyPaidOff": "I haven't paid the current installment yet"
+    },
+    "calendar": {
+      "dayA11y": "Day {{day}}",
+      "daySelectedA11y": "Day {{day}}, selected",
+      "footSelected": "Tap a day to change · day {{day}} of each month",
+      "footPrompt": "Choose the day of the month"
+    },
+    "healthBadge": {
+      "high": "High",
+      "mid": "Medium",
+      "healthy": "Healthy"
+    },
+    "summaryFallbackIcon": "📁"
+  },
+  "confirmPayment": {
+    "title": "Confirm payment",
+    "subtitle": "Note the actual amount you paid. If it changed, we'll update it for the coming months.",
+    "lastAmount": "Last recorded amount",
+    "overdueNote": "Charged as overdue · the amount may include interest",
+    "sameAmount": "Same amount",
+    "same": "Same · {{amount}}",
+    "changed": "Changed",
+    "amountPaid": "Amount paid",
+    "amountPaidA11y": "Amount actually paid",
+    "confirm": "Confirm payment"
+  },
+  "feed": {
+    "created": "{actor} added a fixed expense",
+    "edited": "{actor} edited a fixed expense",
+    "deleted": "{actor} deleted a fixed expense"
+  },
+  "errors": {
+    "createFailed": "We couldn't create the fixed expense.",
+    "updateFailed": "We couldn't update the fixed expense.",
+    "statusUpdateFailed": "We couldn't update the fixed expense status.",
+    "recordPaymentFailed": "We couldn't record the payment.",
+    "revertPaymentFailed": "We couldn't revert the payment.",
+    "deleteFailed": "We couldn't delete the fixed expense.",
+    "noFamilyCreate": "No active household to create a fixed expense.",
+    "noFamilyEdit": "No active household to edit a fixed expense.",
+    "noFamilyUpdate": "No active household to update the fixed expense.",
+    "noFamilyRecord": "No active household to record the payment.",
+    "noFamilyRevert": "No active household to revert the payment.",
+    "noFamilyDelete": "No active household to delete a fixed expense.",
+    "sessionExpiredPayment": "Your session expired. Sign in again before recording a payment.",
+    "sessionExpiredRevert": "Your session expired. Sign in again before reverting a payment.",
+    "paymentAmountPositive": "The payment amount must be greater than 0.",
+    "missingMigration": "The SQL migration to enable Fixed expenses still needs to run.",
+    "unexpectedSupabase": "An unexpected error occurred in Supabase.",
+    "nameEmpty": "The fixed expense name can't be empty.",
+    "amountInvalid": "The fixed expense amount must be valid (> 0).",
+    "categoryRequired": "Choose a category so the payment can be added to your history.",
+    "kindInvalid": "Invalid fixed expense type.",
+    "statusInvalid": "Invalid fixed expense status.",
+    "frequencyInvalid": "Invalid frequency.",
+    "nextDueInvalid": "Set a valid next due date.",
+    "endsOnInvalid": "The end date isn't valid.",
+    "dayOfMonthInvalid": "The day of the month must be between 1 and 31.",
+    "installmentsTotalRequired": "Set the total number of installments.",
+    "debtBalanceRequired": "Set a valid outstanding balance for the debt."
+  }
+}

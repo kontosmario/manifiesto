@@ -6,6 +6,7 @@ import Animated, {
   SlideOutDown,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
 import { motionEasings } from '@/lib/motion/tokens'
 import { radii } from '@/theme/palette'
@@ -47,6 +48,7 @@ export function Step3Months({
   onCustomDone,
 }: Step3MonthsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const customDigits = customMonthsText.replace(/[^\d]/g, '')
   const customMonthsParsed = customDigits === '' ? 0 : parseInt(customDigits, 10)
   const customPlaceholder = customMonthsParsed <= 0
@@ -58,20 +60,20 @@ export function Step3Months({
           return (
             <MonthChip
               key={m}
-              label={`${m} meses`}
+              label={t('settings:savingsWizard.monthsLabel', { count: m })}
               isActive={isActive}
               onPress={() => onSelectPreset(m)}
-              accessibilityLabel={`${m} meses`}
+              accessibilityLabel={t('settings:savingsWizard.monthsLabel', { count: m })}
               theme={theme}
               style={styles.monthsGridItem}
             />
           )
         })}
         <MonthChip
-          label="Personalizado"
+          label={t('settings:savingsWizard.custom')}
           isActive={customMonthsActive}
           onPress={onToggleCustom}
-          accessibilityLabel="Plazo personalizado"
+          accessibilityLabel={t('settings:savingsWizard.customA11y')}
           theme={theme}
           style={styles.monthsGridFullRow}
         />
@@ -86,8 +88,8 @@ export function Step3Months({
             accessibilityRole="button"
             accessibilityLabel={
               customMonthsNumpadExpanded
-                ? `Plazo personalizado. Valor actual ${customMonthsParsed} meses`
-                : `Toca para editar plazo personalizado. Valor actual ${customMonthsParsed} meses`
+                ? t('settings:savingsWizard.customExpandedA11y', { count: customMonthsParsed })
+                : t('settings:savingsWizard.customTapA11y', { count: customMonthsParsed })
             }
             accessibilityState={{ expanded: customMonthsNumpadExpanded }}
             onPress={() => {
@@ -111,7 +113,7 @@ export function Step3Months({
                 { color: theme.colors.textMuted },
               ]}
             >
-              PLAZO PERSONALIZADO
+              {t('settings:savingsWizard.customEyebrow')}
             </Text>
             <View style={styles.displayValueRow}>
               <Text
@@ -127,8 +129,8 @@ export function Step3Months({
                 ]}
               >
                 {customPlaceholder
-                  ? 'Toca para tipear'
-                  : `${customMonthsParsed} ${customMonthsParsed === 1 ? 'mes' : 'meses'}`}
+                  ? t('settings:savingsWizard.tapToType')
+                  : t('settings:savingsWizard.monthsValue', { count: customMonthsParsed })}
               </Text>
               {!customMonthsNumpadExpanded ? (
                 <View
@@ -151,7 +153,7 @@ export function Step3Months({
                       { color: theme.colors.textMuted },
                     ]}
                   >
-                    Editar
+                    {t('common:actions.edit')}
                   </Text>
                 </View>
               ) : null}
@@ -194,8 +196,8 @@ export function Step3Months({
             ]}
           >
             {customMonthsParsed > MAX_CUSTOM_MONTHS
-              ? `Máximo ${MAX_CUSTOM_MONTHS} meses (20 años) — valor ajustado.`
-              : 'Cuántos meses hasta llegar a la meta.'}
+              ? t('settings:savingsWizard.maxMonthsHelper', { max: MAX_CUSTOM_MONTHS })
+              : t('settings:savingsWizard.monthsHelper')}
           </Text>
         </>
       ) : null}

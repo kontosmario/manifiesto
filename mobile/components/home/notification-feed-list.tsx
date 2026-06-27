@@ -15,6 +15,7 @@ import Animated, {
   ReduceMotion,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { motionDurations, motionStagger } from '@/lib/motion'
 import type { AvatarSlug } from '@/assets/avatars'
 import { Avatar } from '@/components/ui/avatar'
@@ -64,6 +65,7 @@ export function NotificationFeedList({
   ListHeaderComponent,
 }: NotificationFeedListProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const membersQuery = useFamilyMembers(familyId)
 
   const memberById = useMemo(() => {
@@ -111,11 +113,11 @@ export function NotificationFeedList({
             .reduceMotion(ReduceMotion.System)}
         >
           <SwipeRow
-            accessibilityHint="Desliza para marcar como leída"
+            accessibilityHint={t('home:notificationFeed.swipeHint')}
             borderRadius={16}
             rightActions={[
               {
-                label: 'Listo',
+                label: t('home:notificationFeed.done'),
                 tone: 'neutral',
                 icon: 'done',
                 onPress: () => onMarkRead(item),
@@ -132,14 +134,14 @@ export function NotificationFeedList({
         </Animated.View>
       )
     },
-    [memberById, cardBg, onMarkRead],
+    [memberById, cardBg, onMarkRead, t],
   )
 
   if (isLoading && notifications.length === 0) {
     return (
       <View style={styles.container}>
         {ListHeaderComponent}
-        <LoadingBlock label="Cargando notificaciones..." />
+        <LoadingBlock label={t('home:notificationFeed.loading')} />
       </View>
     )
   }
@@ -150,7 +152,7 @@ export function NotificationFeedList({
         {ListHeaderComponent}
         <ErrorState
           description={errorMessage}
-          title="No pudimos cargar las notificaciones"
+          title={t('home:notificationFeed.loadError')}
           onAction={onRetry}
         />
       </View>
@@ -174,8 +176,8 @@ export function NotificationFeedList({
         <View style={styles.emptyWrapper}>
           <EmptyState
             icon="notifications-none"
-            title="Todo al día"
-            subtitle="No tienes notificaciones pendientes."
+            title={t('home:notificationFeed.emptyTitle')}
+            subtitle={t('home:notificationFeed.emptySubtitle')}
           />
         </View>
       }
@@ -209,6 +211,7 @@ function NotificationRow({
   onMarkRead,
 }: NotificationRowProps) {
   const theme = useThemeTokens()
+  const { t } = useTranslation()
   const pill = pillForSeverity(notification.severity, theme.isDark)
   const relativeTime = formatRelativeNotificationTime(notification.created_at)
 
@@ -279,7 +282,7 @@ function NotificationRow({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Marcar leída"
+        accessibilityLabel={t('home:notificationFeed.markRead')}
         hitSlop={8}
         onPress={onMarkRead}
         style={({ pressed }) => [

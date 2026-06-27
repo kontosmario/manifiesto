@@ -4,6 +4,7 @@ import {
   saveBiometricCredentials,
 } from '@/lib/biometric-auth'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 
 // Una cuenta recién creada por social tiene `created_at` ~ ahora; una
 // existente (aunque recién vincule Google/Apple) conserva su created_at
@@ -48,7 +49,7 @@ export async function offerBiometricEnrollmentAfterSocial(): Promise<void> {
     // guardamos nada y salimos sin ruido.
     if (!state.hasSavedCredentials) {
       const result = await authenticateBiometricAccess({
-        promptMessage: `Activa ${state.label} para entrar más rápido la próxima vez.`,
+        promptMessage: i18n.t('auth:biometric.activatePrompt', { label: state.label }),
       })
       if (!result.success) return
     }

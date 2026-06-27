@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { ScrollView, StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { GastosFilterPill } from '@/components/gastos/gastos-filter-pill'
 import { triggerHaptic } from '@/lib/haptics'
@@ -27,10 +28,12 @@ const TAB_COLORS: Record<FijosTab, string | undefined> = {
   pagados: '#A6EF8F', // lime: cerrado
 }
 
-const TAB_LABELS: Record<FijosTab, string> = {
-  vencidos: 'Vencidos',
-  pendientes: 'Pendientes',
-  pagados: 'Pagados',
+// i18n key suffixes per tab — labels resolved at render via t('fijos:tabs.*')
+// so they stay translatable (the tab ids are stable identifiers).
+const TAB_LABEL_KEYS: Record<FijosTab, string> = {
+  vencidos: 'fijos:tabs.vencidos',
+  pendientes: 'fijos:tabs.pendientes',
+  pagados: 'fijos:tabs.pagados',
 }
 
 /**
@@ -54,6 +57,7 @@ const TAB_LABELS: Record<FijosTab, string> = {
  * siguiente visible.
  */
 export function FijosTabs({ tab, setTab, visibleTabs, counts }: FijosTabsProps) {
+  const { t } = useTranslation()
   const handleSelect = useCallback(
     (id: string | null) => {
       if (!id) return
@@ -74,7 +78,7 @@ export function FijosTabs({ tab, setTab, visibleTabs, counts }: FijosTabsProps) 
           <GastosFilterPill
             key={id}
             active={tab === id}
-            label={TAB_LABELS[id]}
+            label={t(TAB_LABEL_KEYS[id])}
             count={counts[id]}
             color={TAB_COLORS[id]}
             selectId={id}

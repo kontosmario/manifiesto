@@ -22,6 +22,7 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useTranslation } from 'react-i18next'
 import { AppSymbol } from './app-symbol'
 import { AppButton } from './button'
 import { appendComma, appendDigit, backspace, clearAll } from './in-app-numpad-model'
@@ -67,10 +68,12 @@ export function InAppNumpad({
   onDismiss,
   maxIntegerDigits = 8,
   maxDecimalDigits = 2,
-  doneLabel = 'Listo',
+  doneLabel,
   integerOnly = false,
   embedded = false,
 }: InAppNumpadProps) {
+  const { t } = useTranslation()
+  const resolvedDoneLabel = doneLabel ?? t('common:actions.done')
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
@@ -269,7 +272,7 @@ export function InAppNumpad({
               <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
             </View>
             <View style={styles.content}>
-              <AppButton variant="primary" label={doneLabel} onPress={handleDone} />
+              <AppButton variant="primary" label={resolvedDoneLabel} onPress={handleDone} />
               <View style={styles.grid}>
                 {ROWS.map((row, rowIndex) => (
                   <View key={rowIndex} style={styles.row}>
@@ -287,14 +290,14 @@ export function InAppNumpad({
                         iconFallback={key === 'backspace' ? 'backspace' : undefined}
                         accessibilityLabel={
                           key === 'backspace'
-                            ? 'Borrar último dígito'
+                            ? t('states:numpad.backspaceLabel')
                             : key === ','
-                              ? 'Coma'
+                              ? t('states:numpad.commaLabel')
                               : key
                         }
                         accessibilityHint={
                           key === 'backspace'
-                            ? 'Mantén presionado para limpiar todo'
+                            ? t('states:numpad.backspaceHint')
                             : undefined
                         }
                         onPress={() => handleKeyPress(key)}
@@ -334,7 +337,7 @@ export function InAppNumpad({
       <GestureHandlerRootView style={styles.root}>
         {/* Tap-to-dismiss transparente; el sheet subiendo es el cue de foco. */}
         <Pressable
-          accessibilityLabel="Cerrar numpad"
+          accessibilityLabel={t('states:numpad.closeLabel')}
           accessibilityRole="button"
           onPress={onDismiss}
           style={StyleSheet.absoluteFill}

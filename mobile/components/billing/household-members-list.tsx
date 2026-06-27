@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
@@ -20,6 +21,7 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
   familyId,
 }: HouseholdMembersListProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { data: members } = useFamilyMembersDetail(familyId)
   if (!members || members.length === 0) return null
 
@@ -49,7 +51,7 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
           { color: theme.colors.textMuted },
         ]}
       >
-        Integrantes del hogar
+        {t('billing:members.heading')}
       </Text>
       {sorted.map((m, i) => (
         <View
@@ -81,10 +83,12 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
               style={[styles.name, { color: theme.colors.text }]}
               numberOfLines={1}
             >
-              {m.displayName || 'Integrante'}
+              {m.displayName || t('billing:members.fallbackName')}
             </Text>
             <Text style={[styles.sub, { color: theme.colors.textMuted }]}>
-              {m.joinedAt ? `Se unió el ${formatDate(m.joinedAt)}` : 'En el hogar'}
+              {m.joinedAt
+                ? t('billing:members.joinedOn', { date: formatDate(m.joinedAt) })
+                : t('billing:members.inHousehold')}
             </Text>
           </View>
           {m.isOwner ? (
@@ -94,7 +98,9 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
                 { backgroundColor: ownerPill.bg, borderColor: ownerPill.border },
               ]}
             >
-              <Text style={[styles.pillText, { color: ownerPill.fg }]}>Dueño</Text>
+              <Text style={[styles.pillText, { color: ownerPill.fg }]}>
+                {t('billing:members.owner')}
+              </Text>
             </View>
           ) : null}
         </View>

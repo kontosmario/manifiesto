@@ -68,6 +68,11 @@ const config: ExpoConfig = {
     'expo-asset',
     'expo-secure-store',
     'expo-updates',
+    // i18n (2026-06-26): expo-localization expone el idioma del sistema
+    // (getLocales) para que el LanguageProvider arranque en el idioma del
+    // teléfono y caiga a 'es' si no es ES/EN. El override manual (ES/EN/
+    // Sistema) vive en Ajustes y se persiste en persistent-kv.
+    'expo-localization',
     // Google sign-in (2026-06-21): el flujo OAuth web (signInWithOAuth +
     // PKCE → WebBrowser.openAuthSessionAsync) usa expo-web-browser. NO se
     // registra como plugin acá a propósito: el módulo nativo lo cablea

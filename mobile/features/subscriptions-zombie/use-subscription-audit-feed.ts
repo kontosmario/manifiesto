@@ -168,6 +168,10 @@ export function useSubscriptionAuditFeed(familyId?: string): FeedResult {
               status: r.status,
               frequency: r.frequency,
               categoryId: r.category_id,
+              // RAW name (no localizar): este campo SOLO alimenta el gate
+              // del engine (categoryName === 'Suscripciones'), nunca se
+              // muestra. Localizarlo rompía la feature en EN (en inglés el
+              // display es 'Subscriptions' y el gate nunca matcheaba).
               categoryName: cat?.name ?? null,
               categoryScope: cat?.scope ?? null,
               nextDueOn: r.next_due_on,

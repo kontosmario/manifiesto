@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Transaction } from '@/features/activity-ocr/types'
 import type { IncomeKind, ReviewRow, ReviewRowKind, ReviewRowWarning } from './types'
 
@@ -69,7 +70,7 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     id: ctx.generateRowId(),
     kind,
     amount,
-    description: hasMerchant ? merchant : '(sin descripción)',
+    description: hasMerchant ? merchant : i18n.t('gastos:import.noDescription'),
     date,
     notes: null,
     // Category intentionally left unset. Pre-selecting "first available"

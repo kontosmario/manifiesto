@@ -5,6 +5,7 @@ import {
   isAvatarSlug,
   type AvatarSlug,
 } from '@/assets/avatars'
+import { useTranslation } from 'react-i18next'
 import { StepAvatar } from '@/components/home/onboarding/step-avatar'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -31,6 +32,7 @@ export function EditAvatarSheet({
   onClose,
   onSave,
 }: EditAvatarSheetProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState<AvatarSlug>(() => coerceSlug(currentSlug))
 
   useEffect(() => {
@@ -45,13 +47,13 @@ export function EditAvatarSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle="Elige el animal que te represente en la familia."
-      title="Avatar"
+      subtitle={t('settings:editAvatar.subtitle')}
+      title={t('settings:editAvatar.title')}
       visible={visible}
       footer={
         <AppButton
           disabled={!hasChanged}
-          label="Guardar avatar"
+          label={t('settings:editAvatar.save')}
           loading={isSaving}
           onPress={() => {
             if (!hasChanged) return

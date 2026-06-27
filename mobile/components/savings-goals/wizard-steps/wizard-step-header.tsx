@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -26,12 +27,13 @@ export function WizardStepHeader({
   onGoBack,
 }: WizardStepHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.row}>
       {step > 1 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Volver al paso ${step - 1} de ${stepCount}`}
+          accessibilityLabel={t('settings:savingsWizard.backA11y', { prev: step - 1, total: stepCount })}
           onPress={onGoBack}
           disabled={busy}
           hitSlop={10}
@@ -62,7 +64,7 @@ export function WizardStepHeader({
             },
           ]}
           accessibilityRole="image"
-          accessibilityLabel="Crear meta de ahorro"
+          accessibilityLabel={t('settings:savingsWizard.createGoalA11yImage')}
         >
           <MaterialIcons
             name="flag"

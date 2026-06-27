@@ -11,6 +11,7 @@ import { familyAdminMemberStatsQueryKey } from '@/features/family/use-family-adm
 import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 import { entitlementQueryKey } from '@/features/billing/use-entitlement'
 import type { AccountKind } from '@/features/family/account-kind'
+import i18n from '@/lib/i18n'
 
 interface FamilyRpcResult {
   family_id: string
@@ -18,7 +19,7 @@ interface FamilyRpcResult {
 
 function pickRpcResult(data: unknown): FamilyRpcResult {
   if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('No se pudo obtener la familia desde Supabase.')
+    throw new Error(i18n.t('settings:familyActions.noFamilyFromSupabase'))
   }
 
   return data[0] as FamilyRpcResult
@@ -30,7 +31,7 @@ export function useBootstrapFamily(userId?: string) {
   return useMutation({
     mutationFn: async () => {
       if (!userId) {
-        throw new Error('No hay sesión activa para crear la familia.')
+        throw new Error(i18n.t('settings:familyActions.noSessionCreate'))
       }
 
       const { data, error } = await supabase.rpc('bootstrap_family')
@@ -82,7 +83,7 @@ export function useCreateFamilyInvite() {
       if (error) throw error
       const row = Array.isArray(data) ? data[0] : data
       if (!row || typeof row.code !== 'string') {
-        throw new Error('No se pudo generar el código de invitación.')
+        throw new Error(i18n.t('settings:familyActions.couldNotGenerateCode'))
       }
       return {
         code: row.code as string,
@@ -100,13 +101,13 @@ export function usePeekFamilyInvite() {
     mutationFn: async (rawCode: string) => {
       const normalized = rawCode.trim().toUpperCase()
       if (!normalized) {
-        throw new Error('Ingresa un código de invitación válido.')
+        throw new Error(i18n.t('settings:familyActions.invalidInviteCode'))
       }
       const { data, error } = await supabase.rpc('peek_family_invite', {
         p_code: normalized,
       })
       if (error) throw error
-      if (!data) throw new Error('No se pudo consultar la familia.')
+      if (!data) throw new Error(i18n.t('settings:familyActions.couldNotPeekFamily'))
       return data as FamilyPeek
     },
   })
@@ -129,11 +130,11 @@ export function useConsumeFamilyInvite(userId?: string) {
   return useMutation({
     mutationFn: async (input: ConsumeFamilyInviteInput) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para unirse a la familia.')
+        throw new Error(i18n.t('settings:familyActions.noSessionJoin'))
       }
       const normalized = input.code.trim().toUpperCase()
       if (!normalized) {
-        throw new Error('Ingresa un código de invitación válido.')
+        throw new Error(i18n.t('settings:familyActions.invalidInviteCode'))
       }
       const { data, error } = await supabase.rpc('consume_family_invite', {
         p_code: normalized,
@@ -142,7 +143,7 @@ export function useConsumeFamilyInvite(userId?: string) {
       if (error) throw error
       const row = Array.isArray(data) ? data[0] : data
       if (!row || typeof row.family_id !== 'string') {
-        throw new Error('No se pudo unir a la familia.')
+        throw new Error(i18n.t('settings:familyActions.couldNotJoin'))
       }
       return { family_id: row.family_id as string }
     },
@@ -196,7 +197,7 @@ export function useUpdateMyIncomeContribution(
   return useMutation({
     mutationFn: async (amount: number) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para actualizar tu aporte.')
+        throw new Error(i18n.t('settings:familyActions.noSessionUpdateContribution'))
       }
       const safe = Math.max(0, Number.isFinite(amount) ? amount : 0)
       const { data, error } = await supabase.rpc('update_my_income_contribution', {
@@ -222,7 +223,7 @@ export function useLeaveCurrentFamily(userId?: string) {
   return useMutation({
     mutationFn: async () => {
       if (!userId) {
-        throw new Error('No hay sesión activa para salir de la familia.')
+        throw new Error(i18n.t('settings:familyActions.noSessionLeave'))
       }
 
       const { data, error } = await supabase.rpc('leave_current_family')

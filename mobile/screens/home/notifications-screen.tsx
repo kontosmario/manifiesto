@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -27,6 +28,7 @@ interface NotificationsScreenProps {
 
 export function NotificationsScreen({ userId, familyId }: NotificationsScreenProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const router = useRouter()
   const isNavSettled = useIsNavigationSettled()
   const notificationsQuery = useFamilyNotifications(familyId, userId, 80)
@@ -89,7 +91,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
                 <Pressable
                   onPress={handleBack}
                   accessibilityRole="button"
-                  accessibilityLabel="Volver"
+                  accessibilityLabel={t('home:notificationsScreen.back')}
                   hitSlop={10}
                   style={[
                     styles.backPill,
@@ -99,7 +101,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
                   <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
                 </Pressable>
                 <Text style={[styles.topTitle, { color: theme.colors.text }]}>
-                  Notificaciones
+                  {t('home:notificationsScreen.title')}
                 </Text>
               </View>
 
@@ -109,17 +111,17 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
               {count > 0 ? (
                 <View style={styles.subRow}>
                   <Text style={[styles.subLine, { color: theme.colors.textMuted }]}>
-                    {`${count} pendiente${count === 1 ? '' : 's'}`}
+                    {t('home:notificationsScreen.pendingCount', { count })}
                   </Text>
                   <Pressable
                     onPress={handleMarkAll}
                     accessibilityRole="button"
-                    accessibilityLabel="Marcar todas como leídas"
+                    accessibilityLabel={t('home:notificationsScreen.markAllAccessibility')}
                     hitSlop={8}
                     style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1 }]}
                   >
                     <Text style={[styles.markAll, { color: theme.colors.primary }]}>
-                      Marcar todas
+                      {t('home:notificationsScreen.markAll')}
                     </Text>
                   </Pressable>
                 </View>
@@ -134,7 +136,7 @@ export function NotificationsScreen({ userId, familyId }: NotificationsScreenPro
                 notificationsQuery.isError
                   ? getErrorMessage(
                       notificationsQuery.error,
-                      'No pudimos cargar las notificaciones.',
+                      t('home:notificationsScreen.loadError'),
                     )
                   : undefined
               }

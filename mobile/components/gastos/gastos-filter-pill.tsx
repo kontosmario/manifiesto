@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   cancelAnimation,
@@ -18,7 +19,12 @@ interface GastosFilterPillProps {
   active: boolean
   label: string
   count?: number
+  /** Emoji string (back-compat) renderizado en un `<Text>` a la izquierda
+   *  del label. Si se pasa `iconNode`, este se ignora. */
   emoji?: string
+  /** Ícono ya construido (p.ej. `<CategoryIcon>` que rendea el sticker PNG
+   *  con fallback al emoji). Tiene prioridad sobre `emoji`. */
+  iconNode?: ReactNode
   color?: string
   small?: boolean
   /**
@@ -39,12 +45,14 @@ function GastosFilterPillImpl({
   label,
   count,
   emoji,
+  iconNode,
   color,
   small = false,
   selectId = null,
   onSelect,
 }: GastosFilterPillProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const pillLayout = useGatedLayout(LinearTransition.duration(220))
   // Estabilidad: useCallback baked sobre selectId (primitivo string|null)
   // + onSelect (stable useCallback'd upstream). Reemplaza la arrow
@@ -178,11 +186,20 @@ function GastosFilterPillImpl({
         accessibilityState={{ selected: active }}
         accessibilityLabel={
           count != null
-            ? `${label}, ${count} ${count === 1 ? 'movimiento' : 'movimientos'}${active ? ', filtro activo' : ''}`
-            : `${label}${active ? ', filtro activo' : ''}`
+            ? t('gastos:filterPill.a11yWithCount', {
+                label,
+                count,
+                context: active ? 'active' : undefined,
+              })
+            : t('gastos:filterPill.a11yNoCount', {
+                label,
+                context: active ? 'active' : undefined,
+              })
         }
         accessibilityHint={
-          active ? 'Doble tap para quitar el filtro' : 'Doble tap para filtrar por esta categoría'
+          active
+            ? t('gastos:filterPill.hintRemove')
+            : t('gastos:filterPill.hintApply')
         }
       >
         <Animated.View
@@ -207,7 +224,7 @@ function GastosFilterPillImpl({
               : null,
           ]}
         >
-          {emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null}
+          {iconNode ?? (emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null)}
           <Animated.Text style={[styles.label, { fontSize: small ? 11 : 12 }, labelStyle]}>
             {label}
           </Animated.Text>

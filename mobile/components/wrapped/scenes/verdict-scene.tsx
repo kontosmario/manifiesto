@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { CountUpText } from '@/components/home/animated/count-up-text'
+import i18n from '@/lib/i18n'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
 import { SCREEN_WIDTH } from '../wrapped-constants'
@@ -33,8 +34,8 @@ export function resolveVerdictTone(savingsDelta: number, isDark: boolean): Verdi
       progressFill: isDark ? '#A6EF8F' : '#1F590D',
       ctaBg: isDark ? '#A6EF8F' : '#1F590D',
       ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
-      eyebrow: 'CERRASTE CON MARGEN',
-      copyPositive: 'Te queda margen para el siguiente.',
+      eyebrow: i18n.t('control:wrapped.verdict.eyebrowMargen'),
+      copyPositive: i18n.t('control:wrapped.verdict.copyMargen'),
     }
   }
   if (savingsDelta < 0) {
@@ -48,8 +49,8 @@ export function resolveVerdictTone(savingsDelta: number, isDark: boolean): Verdi
       progressFill: isDark ? '#F2A78C' : '#B84014',
       ctaBg: isDark ? '#F2A78C' : '#B84014',
       ctaFg: isDark ? '#3B1107' : '#FFFBF2',
-      eyebrow: 'CERRASTE EXCEDIDO',
-      copyPositive: 'Empiezas el siguiente con menos colchón.',
+      eyebrow: i18n.t('control:wrapped.verdict.eyebrowExcedido'),
+      copyPositive: i18n.t('control:wrapped.verdict.copyExcedido'),
     }
   }
   return {
@@ -61,8 +62,8 @@ export function resolveVerdictTone(savingsDelta: number, isDark: boolean): Verdi
     progressFill: isDark ? '#A6EF8F' : '#1F590D',
     ctaBg: isDark ? '#A6EF8F' : '#1F590D',
     ctaFg: isDark ? '#0F2E1F' : '#FFFBF2',
-    eyebrow: 'CERRASTE EMPATADO',
-    copyPositive: 'Justo lo que tenías, ni más ni menos.',
+    eyebrow: i18n.t('control:wrapped.verdict.eyebrowEmpatado'),
+    copyPositive: i18n.t('control:wrapped.verdict.copyEmpatado'),
   }
 }
 
@@ -149,8 +150,13 @@ export function buildVerdictScene(
               <Text
                 style={[verdictStyles.deltaText, { color: tone.foreground }]}
               >
-                Gastaste {Math.abs(deltaRounded)}%{' '}
-                {deltaRounded < 0 ? 'menos' : 'más'} que el mes pasado
+                {deltaRounded < 0
+                  ? i18n.t('control:wrapped.verdict.deltaMenos', {
+                      pct: Math.abs(deltaRounded),
+                    })
+                  : i18n.t('control:wrapped.verdict.deltaMas', {
+                      pct: Math.abs(deltaRounded),
+                    })}
               </Text>
             </View>
           ) : null}

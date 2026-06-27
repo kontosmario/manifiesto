@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import { useTranslation } from 'react-i18next'
 import { PinPad } from '@/components/auth/pin-pad'
 import { isPinComplete } from '@/components/auth/pin-pad-model'
 import {
@@ -43,6 +44,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
   // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture while
   // the user is typing / confirming their PIN.
   useScreenCaptureProtection()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const [phase, setPhase] = useState<Phase>('enter')
   const [first, setFirst] = useState('')
@@ -62,10 +64,8 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
         // error here saves the user from typing it twice and then being
         // told to start over.
         if (isWeakPin(next)) {
-          setErrorMessage(
-            'Ese PIN es muy fácil de adivinar. Evita repeticiones (1111) o secuencias (1234).',
-          )
-          setErrorToken((t) => t + 1)
+          setErrorMessage(t('auth:pinSetup.weakPin'))
+          setErrorToken((prev) => prev + 1)
           setValue('')
           return
         }
@@ -78,8 +78,8 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
       }
       // confirm phase
       if (next !== first) {
-        setErrorMessage('Los PINs no coinciden. Prueba de nuevo.')
-        setErrorToken((t) => t + 1)
+        setErrorMessage(t('auth:pinSetup.mismatch'))
+        setErrorToken((prev) => prev + 1)
         setValue('')
         setPhase('enter')
         setFirst('')
@@ -98,16 +98,16 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
           const message =
             err instanceof Error && err.message
               ? err.message
-              : 'No pudimos guardar tu PIN. Prueba de nuevo.'
+              : t('auth:pinSetup.saveFailed')
           setErrorMessage(message)
-          setErrorToken((t) => t + 1)
+          setErrorToken((prev) => prev + 1)
           setValue('')
           setPhase('enter')
           setFirst('')
           setSaving(false)
         })
     },
-    [phase, first, onDone, pinLength],
+    [phase, first, onDone, pinLength, t],
   )
 
   const handlePickLength = useCallback(
@@ -128,12 +128,12 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
     <View style={[styles.root, { backgroundColor: theme.colors.background }]}>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       <Text style={[styles.title, { color: theme.colors.text }]}>
-        {phase === 'enter' ? 'Crea tu PIN' : 'Confirma tu PIN'}
+        {phase === 'enter' ? t('auth:pinSetup.enterTitle') : t('auth:pinSetup.confirmTitle')}
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {phase === 'enter'
-          ? `Elige un PIN de ${pinLength} dígitos para entrar a la app. Evita secuencias y repeticiones.`
-          : 'Ingresalo de nuevo para confirmar.'}
+          ? t('auth:pinSetup.enterSubtitle', { length: pinLength })
+          : t('auth:pinSetup.confirmSubtitle')}
       </Text>
 
       {phase === 'enter' ? (
@@ -144,7 +144,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
               <Pressable
                 key={opt}
                 accessibilityRole="button"
-                accessibilityLabel={`Usar PIN de ${opt} dígitos`}
+                accessibilityLabel={t('auth:pinSetup.lengthOptionA11y', { count: opt })}
                 accessibilityState={{ selected: active }}
                 hitSlop={DEFAULT_HIT_SLOP}
                 onPress={() => handlePickLength(opt)}
@@ -170,7 +170,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
                     },
                   ]}
                 >
-                  {opt} dígitos
+                  {t('auth:pinSetup.lengthOption', { count: opt })}
                 </Text>
               </Pressable>
             )
@@ -197,14 +197,14 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cancelar"
+        accessibilityLabel={t('auth:pinSetup.cancel')}
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={onCancel}
         disabled={saving}
         style={({ pressed }) => [styles.cancel, { opacity: pressed ? 0.6 : 1 }]}
       >
         <Text style={[styles.cancelText, { color: theme.colors.textMuted }]}>
-          Cancelar
+          {t('auth:pinSetup.cancel')}
         </Text>
       </Pressable>
     </View>

@@ -1,5 +1,6 @@
 import { memo, useMemo, type RefObject } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import type { HomeMonthSummary } from '@/features/home/use-home-metrics'
@@ -118,6 +119,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   fixedRef,
 }: MonthSummaryCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const allPaid = data.fixedCount > 0 && data.fixedPaid === data.fixedCount
 
   // Tone for variables card. The label color is peach; the band's
@@ -157,7 +159,10 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
   const trendUp = (data.variableTrend ?? 0) > 0
   const variablesTrendPct =
     data.variableTrend != null
-      ? `${trendUp ? '+' : data.variableTrend < 0 ? '−' : ''}${Math.abs(Math.round(data.variableTrend * 100))}% vs prev`
+      ? t('home:monthSummary.trendVsPrev', {
+          sign: trendUp ? '+' : data.variableTrend < 0 ? '−' : '',
+          pct: Math.abs(Math.round(data.variableTrend * 100)),
+        })
       : null
   const variablesPillTone: PillTone | null =
     !variablesChip && variablesTrendPct
@@ -191,7 +196,9 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
     data.fixedCount === 0
       ? null
       : !fijosChip && !showAllPaidBand
-        ? `${data.fixedCount - data.fixedPaid} pendientes`
+        ? t('home:monthSummary.pendingCount', {
+            count: data.fixedCount - data.fixedPaid,
+          })
         : null
   const fijosPillTone: PillTone | null = fijosPillText
     ? {
@@ -221,11 +228,11 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
         <View ref={variableRef} collapsable={false} style={styles.gridCol}>
         <SummaryPanel
           tone={variablesTone}
-          label="VARIABLES"
+          label={t('home:monthSummary.variablesLabel')}
           value={formatMoneyShort(data.variableTotal)}
-          sub={`${data.variableCount} ${data.variableCount === 1 ? 'mov' : 'movs'}`}
+          sub={t('home:monthSummary.movements', { count: data.variableCount })}
           onPressHead={onPressVariable}
-          headA11yLabel="Ver gastos variables"
+          headA11yLabel={t('home:monthSummary.viewVariables')}
           pillText={!variablesChip ? variablesTrendPct : null}
           pillTone={variablesPillTone}
           pillIcon={
@@ -239,14 +246,18 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
           band={
             variablesChip
               ? {
-                  iconName: pickMaterialIconForCategory(variablesChip.name),
+                  iconName: pickMaterialIconForCategory(variablesChip.rawName),
                   bandBg: variablesTone.bandBg,
                   iconBg: variablesTone.bandIconBg,
                   iconFg: variablesTone.bandIconFg,
                   primary: variablesChip.name,
                   secondary: `${formatTopCategoryShare(variablesChip.share)} · ${formatMoneyShort(variablesChip.total)}`,
-                  a11yLabel: `${variablesChip.name} lidera el ciclo: ${formatTopCategoryShare(variablesChip.share)} del gasto, ${formatMoneyShort(variablesChip.total)}.`,
-                  a11yHint: 'Abre los gastos filtrados por esta categoría',
+                  a11yLabel: t('home:monthSummary.topCategoryA11y', {
+                    name: variablesChip.name,
+                    share: formatTopCategoryShare(variablesChip.share),
+                    total: formatMoneyShort(variablesChip.total),
+                  }),
+                  a11yHint: t('home:monthSummary.topCategoryHint'),
                   onPress: () => onPressTopCategory(variablesChip.categoryId),
                 }
               : topCategoryFallback
@@ -266,7 +277,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                     a11yLabel: `${topCategoryFallback.primary}. ${topCategoryFallback.secondary}`,
                     a11yHint:
                       topCategoryFallback.kind === 'empty'
-                        ? 'Abre la pantalla para registrar un gasto'
+                        ? t('home:monthSummary.addExpenseHint')
                         : undefined,
                     onPress:
                       topCategoryFallback.kind === 'empty'
@@ -281,15 +292,18 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
         <View ref={fixedRef} collapsable={false} style={styles.gridCol}>
         <SummaryPanel
           tone={fijosTone}
-          label="FIJOS"
+          label={t('home:monthSummary.fixedLabel')}
           value={formatMoneyShort(data.fixedTotal)}
           sub={
             data.fixedCount === 0
-              ? 'Sin fijos cargados'
-              : `${data.fixedPaid} de ${data.fixedCount} pagados`
+              ? t('home:monthSummary.noFixedLoaded')
+              : t('home:monthSummary.fixedPaidOf', {
+                  paid: data.fixedPaid,
+                  count: data.fixedCount,
+                })
           }
           onPressHead={onPressFixed}
-          headA11yLabel="Ver gastos fijos"
+          headA11yLabel={t('home:monthSummary.viewFixed')}
           pillText={fijosPillText}
           pillTone={fijosPillTone}
           pillIcon={null}
@@ -303,8 +317,12 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                   iconFg: fijosBandTone.iconFg,
                   primary: fijosChip.name,
                   secondary: `${formatDaysUntilDue(fijosChip.daysUntil).toLowerCase()} · ${formatMoneyShort(fijosChip.amount)}`,
-                  a11yLabel: `Próximo fijo: ${fijosChip.name}, ${formatMoneyShort(fijosChip.amount)}, ${formatDaysUntilDue(fijosChip.daysUntil).toLowerCase()}.`,
-                  a11yHint: 'Abre la pantalla de gastos fijos',
+                  a11yLabel: t('home:monthSummary.nextFixedA11y', {
+                    name: fijosChip.name,
+                    amount: formatMoneyShort(fijosChip.amount),
+                    due: formatDaysUntilDue(fijosChip.daysUntil).toLowerCase(),
+                  }),
+                  a11yHint: t('home:monthSummary.nextFixedHint'),
                   onPress: () => onPressNextFixed(fijosChip.id),
                 }
               : showAllPaidBand
@@ -313,8 +331,10 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                     bandBg: fijosTone.bandBg,
                     iconBg: fijosTone.bandIconBg,
                     iconFg: fijosTone.bandIconFg,
-                    primary: 'Todos pagados',
-                    a11yLabel: `Los ${data.fixedCount} gastos fijos del mes están pagados.`,
+                    primary: t('home:monthSummary.allPaid'),
+                    a11yLabel: t('home:monthSummary.allPaidA11y', {
+                      count: data.fixedCount,
+                    }),
                     onPress: null,
                   }
                 : nextFixedFallback
@@ -326,7 +346,7 @@ export const MonthSummaryCard = memo(function MonthSummaryCard({
                       primary: nextFixedFallback.primary,
                       secondary: nextFixedFallback.secondary,
                       a11yLabel: `${nextFixedFallback.primary}. ${nextFixedFallback.secondary}`,
-                      a11yHint: 'Abre la pantalla para registrar un gasto fijo',
+                      a11yHint: t('home:monthSummary.addFixedHint'),
                       onPress: onPressNextFixedFallback,
                     }
                   : null
@@ -385,6 +405,7 @@ function SummaryPanel({
   band,
 }: SummaryPanelProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View
       style={[
@@ -436,7 +457,7 @@ function SummaryPanel({
               ]}
               numberOfLines={1}
             >
-              Sin cobrar
+              {t('home:monthSummary.notPaidYet')}
             </Text>
           </View>
         ) : null}

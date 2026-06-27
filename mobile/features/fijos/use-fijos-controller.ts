@@ -128,7 +128,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   const categoriesById = useMemo(() => {
     const m = new Map<string, { id: string; name: string; color: string }>()
     for (const c of categoriesQuery.data ?? []) {
-      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+      // Display localizado NO destructivo (== name crudo si renombrada).
+      m.set(c.id, { id: c.id, name: c.displayName, color: c.color })
     }
     return m
   }, [categoriesQuery.data])
@@ -230,7 +231,10 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     () =>
       (categoriesQuery.data ?? []).map((c) => ({
         id: c.id,
-        name: c.name,
+        // Display localizado NO destructivo (== name crudo si renombrada).
+        name: c.displayName,
+        // Crudo de la DB → fuente para el ícono del grupo (matcher ES).
+        rawName: c.name,
         color: c.color,
       })),
     [categoriesQuery.data],

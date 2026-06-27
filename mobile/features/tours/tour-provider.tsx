@@ -6,19 +6,13 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { TourCtx, type TourContextValue } from './tour-context'
 import { TourHost } from './tour-host'
 import type { RegisteredStep, TourDefaults, TourEvents } from './types'
 import type { TourKey } from './tour-keys'
 
-const DEFAULT_LABELS = {
-  next: 'Siguiente',
-  previous: 'Anterior',
-  finish: 'Finalizar',
-  skip: 'Saltar',
-} as const
-
-const FALLBACK_DEFAULTS: Required<TourDefaults> = {
+const FALLBACK_DEFAULTS: Omit<Required<TourDefaults>, 'labels'> = {
   scrimOpacity: 0.78,
   scrimColor: '#06120C',
   highlightPadding: 6,
@@ -34,7 +28,6 @@ const FALLBACK_DEFAULTS: Required<TourDefaults> = {
   scrollDurationMs: 280,
   scrollOffsetRatio: 0.3,
   pulseDurationMs: 1100,
-  labels: DEFAULT_LABELS,
 }
 
 interface TourProviderProps extends TourEvents {
@@ -60,14 +53,21 @@ export function TourProvider({
   onStepChange,
   onStop,
 }: PropsWithChildren<TourProviderProps>) {
+  const { t } = useTranslation()
   const defaults = useMemo<Required<TourDefaults>>(() => {
-    if (!overrideDefaults) return FALLBACK_DEFAULTS
+    const defaultLabels = {
+      next: t('states:tour.labels.next'),
+      previous: t('states:tour.labels.previous'),
+      finish: t('states:tour.labels.finish'),
+      skip: t('states:tour.labels.skip'),
+    }
+    if (!overrideDefaults) return { ...FALLBACK_DEFAULTS, labels: defaultLabels }
     return {
       ...FALLBACK_DEFAULTS,
       ...overrideDefaults,
-      labels: { ...DEFAULT_LABELS, ...overrideDefaults.labels },
+      labels: { ...defaultLabels, ...overrideDefaults.labels },
     }
-  }, [overrideDefaults])
+  }, [overrideDefaults, t])
 
   const stepsRef = useRef(new Map<TourKey, RegisteredStep[]>())
   const [measureToken, setMeasureToken] = useState(0)

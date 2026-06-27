@@ -1,5 +1,7 @@
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
 import { sendFamilyPush } from '@/lib/send-family-push'
@@ -84,11 +86,12 @@ export function useConfirmImport(ctx: ConfirmContext) {
       if (insertedIncomes >= 1) {
         void sendFamilyPush({
           familyId: ctx.familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title:
             insertedIncomes === 1
               ? '{actor} registró un ingreso'
               : `{actor} registró ${insertedIncomes} ingresos`,
-          body: `+$${insertedIncomeTotal.toLocaleString('es-AR')}`,
+          body: `+$${insertedIncomeTotal.toLocaleString(getIntlLocale())}`,
           kind: 'income_logged',
           url: '/home',
         }).catch(() => {})
@@ -106,7 +109,7 @@ async function insertOne(
   createIncome: ReturnType<typeof useCreateIncomeEvent>['mutateAsync'],
 ): Promise<void> {
   if (row.kind === 'expense') {
-    if (!row.categoryId) throw new Error('Falta categoría para el gasto.')
+    if (!row.categoryId) throw new Error(i18n.t('gastos:import.error.missingCategory'))
     await createExpense(ctx.familyId, ctx.userId, {
       categoryId: row.categoryId,
       description: row.description,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { Redirect, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { Ionicons } from '@expo/vector-icons'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -43,13 +44,14 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  * which is exactly the user landing here, so it would loop.
  */
 export function BiometricSetupScreen() {
+  const { t } = useTranslation()
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
   const userId = session?.user.id
   const email = session?.user.email ?? ''
 
   if (sessionQuery.isLoading) {
-    return <BlockingScreenView message="Preparando tu cuenta..." />
+    return <BlockingScreenView message={t('auth:biometricSetup.preparing')} />
   }
 
   if (!session || !userId) {
@@ -66,6 +68,7 @@ function BiometricSetupBody({
   userId: string
   email: string
 }) {
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useAppTheme()
 
@@ -177,19 +180,19 @@ function BiometricSetupBody({
       isAvailable
         ? {
             iconName: 'scan-circle-outline' as keyof typeof Ionicons.glyphMap,
-            title: `Activa ${label}`,
-            body: 'Entra más rápido y con más seguridad.',
-            primaryLabel: `Activar ${label}`,
-            secondaryLabel: 'Ahora no' as string | null,
+            title: t('auth:biometricSetup.availableTitle', { label }),
+            body: t('auth:biometricSetup.availableBody'),
+            primaryLabel: t('auth:biometricSetup.availablePrimary', { label }),
+            secondaryLabel: t('auth:biometricSetup.availableSecondary') as string | null,
           }
         : {
             iconName: 'lock-closed-outline' as keyof typeof Ionicons.glyphMap,
-            title: 'Actívalo cuando quieras',
-            body: `Tu dispositivo no tiene ${label} configurado. Puedes activarlo más adelante desde Ajustes → Seguridad.`,
-            primaryLabel: 'Continuar',
+            title: t('auth:biometricSetup.unavailableTitle'),
+            body: t('auth:biometricSetup.unavailableBody', { label }),
+            primaryLabel: t('auth:biometricSetup.unavailablePrimary'),
             secondaryLabel: null as string | null,
           },
-    [isAvailable, label],
+    [isAvailable, label, t],
   )
 
   return (
@@ -235,7 +238,7 @@ function BiometricSetupBody({
               ]}
             >
               <Text style={[styles.primaryLabel, { color: authTokens.surfaceCream }]}>
-                {isAvailable ? copy.primaryLabel : 'Crear un PIN'}
+                {isAvailable ? copy.primaryLabel : t('auth:biometricSetup.createPin')}
               </Text>
             </Pressable>
 
@@ -253,7 +256,7 @@ function BiometricSetupBody({
                 ]}
               >
                 <Text style={[styles.ghostLabel, { color: theme.colors.textMuted }]}>
-                  Usar un PIN
+                  {t('auth:biometricSetup.usePin')}
                 </Text>
               </Pressable>
             )}
@@ -291,7 +294,7 @@ function BiometricSetupBody({
                 ]}
               >
                 <Text style={[styles.ghostLabel, { color: theme.colors.textMuted }]}>
-                  Ahora no
+                  {t('auth:biometricSetup.later')}
                 </Text>
               </Pressable>
             )}

@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -32,6 +33,7 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
   priceLabel,
 }: SubscriptionDetailRowsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View
@@ -48,13 +50,20 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
       ]}
     >
       {/* (1) Próxima renovación */}
-      <Row icon="event" label="Próxima renovación" value={renewValue} />
+      <Row
+        icon="event"
+        label={t('billing:detailRows.nextRenewal')}
+        value={renewValue}
+      />
 
       {/* (2) Miembros del hogar — con avatares a la derecha */}
       <Row
         icon="group"
-        label="Miembros del hogar"
-        value={`${memberCount} de ${memberCap} personas`}
+        label={t('billing:detailRows.householdMembers')}
+        value={t('billing:detailRows.membersValue', {
+          current: memberCount,
+          cap: memberCap,
+        })}
         trailing={
           <MemberAvatars
             initials={initials}
@@ -69,14 +78,23 @@ export const SubscriptionDetailRows = memo(function SubscriptionDetailRows({
       {/* (3) Renovación automática */}
       <Row
         icon="autorenew"
-        label="Renovación automática"
-        value={autoRenew ? 'Activada' : 'Desactivada'}
+        label={t('billing:detailRows.autoRenew')}
+        value={
+          autoRenew
+            ? t('billing:detailRows.autoRenewOn')
+            : t('billing:detailRows.autoRenewOff')
+        }
         divider
       />
 
       {/* (4) Precio — solo para quien paga (omitido al miembro cubierto). */}
       {priceLabel ? (
-        <Row icon="sell" label="Precio" value={priceLabel} divider />
+        <Row
+          icon="sell"
+          label={t('billing:detailRows.price')}
+          value={priceLabel}
+          divider
+        />
       ) : null}
     </View>
   )

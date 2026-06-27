@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Category } from '@/features/categories/use-categories'
 import type {
   ExpenseAnalyticsCategoryFocus,
@@ -21,7 +22,9 @@ export function buildTopCategoryFocus({
   spentInCurrentCycle: number
 }): ExpenseAnalyticsCategoryFocus | null {
   const cycleCategoryTotals = new Map<string, number>()
-  const categoryNameById = new Map(categories.map((category) => [category.id, category.name] as const))
+  const categoryNameById = new Map(
+    categories.map((category) => [category.id, category.displayName ?? category.name] as const),
+  )
 
   expenses.forEach((expense) => {
     const expenseDate = normalizeToStartOfDay(new Date(expense.created_at))
@@ -46,7 +49,7 @@ export function buildTopCategoryFocus({
       ? topCategoryTotal / spentInCurrentCycle
       : 0
   const topCategoryLabel =
-    typeof topCategoryId === 'string' ? categoryNameById.get(topCategoryId) ?? 'Sin categoría' : null
+    typeof topCategoryId === 'string' ? categoryNameById.get(topCategoryId) ?? i18n.t('gastos:movementRow.noCategory') : null
 
   if (!topCategoryLabel || typeof topCategoryTotal !== 'number') {
     return null

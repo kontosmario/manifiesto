@@ -1,71 +1,49 @@
 /**
- * Canonical copy templates for UI states. Components (`<EmptyState>`,
- * `<LoadingBlock>`, `<ErrorState>`) accept keys from these maps. Hardcoded
- * state strings are banned by CI.
+ * Canonical KEY registry for UI states. The actual copy lives in the
+ * `states` i18n namespace (`states.json`, es+en) under `empty.<key>`,
+ * `loading.<key>` and `error.<key>`. The state components
+ * (`<EmptyState>`, `<LoadingBlock>`, `<ErrorState>`) resolve the copy
+ * at render time via `t('states:...')` using the KEY the consumer passes.
+ *
+ * These maps are KEY-ONLY now: they exist purely to keep the set of
+ * valid keys in one typed place (for `EmptyStateKey`, autocomplete and
+ * the i18n lint). Each value is its own key string, so a consumer that
+ * needs the key as data (not a rendered component) can reference it
+ * without hardcoding the literal. Hardcoded state copy is banned by CI —
+ * resolve through `t('states:...')` instead.
  */
 
-interface EmptyStateCopy {
-  title: string
-  description: string
-  action?: string
-}
-
 export const emptyStates = {
-  expensesThisCycle: {
-    title: 'Todavía no hay gastos este mes',
-    description: 'Cuando registres tu primer gasto, vas a ver aquí cómo va tu presupuesto.',
-    action: 'Registrar primer gasto',
-  },
-  debt: {
-    title: 'Registra deudas',
-    description: 'Para ver qué debes y cuándo pagas, suma una deuda aquí.',
-    action: 'Sumar deuda',
-  },
-  fixedRecurring: {
-    title: 'Sin recurrentes',
-    description: 'Suma alquiler, servicios o pagos periódicos para ver la base estable del hogar.',
-    action: 'Sumar gasto fijo',
-  },
-  fixedInstallments: {
-    title: 'Sin cuotas',
-    description: 'Registra compras financiadas para seguir cuánto falta pagar.',
-    action: 'Sumar cuota',
-  },
-  cycleInOrder: {
-    title: 'Mes en orden',
-    description: 'No hay gastos fijos urgentes o pendientes para este mes.',
-  },
-  categories: {
-    title: 'Todavía no hay categorías',
-    description: 'Crea tu primera categoría para ordenar mejor el historial y el alta de movimientos.',
-    action: 'Crear categoría',
-  },
-  notifications: {
-    title: 'Todo tranquilo',
-    description: 'Cuando haya novedades de tu familia, las vas a ver aquí.',
-  },
-  noData: {
-    title: 'Sin datos', // @copy-allow — canonical definition in states.ts
-    description: 'Todavía no hay información disponible para este período.',
-  },
-} as const satisfies Record<string, EmptyStateCopy>
+  expensesThisCycle: 'expensesThisCycle',
+  debt: 'debt',
+  fixedRecurring: 'fixedRecurring',
+  fixedInstallments: 'fixedInstallments',
+  cycleInOrder: 'cycleInOrder',
+  categories: 'categories',
+  notifications: 'notifications',
+  noData: 'noData',
+} as const
 
 export type EmptyStateKey = keyof typeof emptyStates
 
 export const loadingLabels = {
-  expenses:      'Cargando tus gastos',
-  fixedExpenses: 'Cargando gastos fijos',
-  control:       'Leyendo tu ciclo',
-  home:          'Leyendo tu hogar',
-  categories:    'Cargando categorías',
-  notifications: 'Cargando novedades',
-  settings:      'Cargando tus preferencias',
-  import:        'Cargando importación',
+  expenses: 'expenses',
+  fixedExpenses: 'fixedExpenses',
+  control: 'control',
+  home: 'home',
+  categories: 'categories',
+  notifications: 'notifications',
+  settings: 'settings',
+  import: 'import',
 } as const
 
+export type LoadingKey = keyof typeof loadingLabels
+
 export const errorMessages = {
-  network: 'No pudimos conectarnos. Revisa tu conexión.',
-  server:  'Algo falló del lado del servidor. Prueba de nuevo.',
-  data:    'Los datos llegaron incompletos. Actualiza para reintentar.',
-  auth:    'Tu sesión venció. Vuelve a iniciar sesión.',
+  network: 'network',
+  server: 'server',
+  data: 'data',
+  auth: 'auth',
 } as const
+
+export type ErrorMessageKey = keyof typeof errorMessages

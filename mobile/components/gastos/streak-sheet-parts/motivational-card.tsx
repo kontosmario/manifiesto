@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AtRiskIntensity, StreakData, StreakDerived } from '@/features/streaks/use-streak'
@@ -24,6 +25,7 @@ interface ShieldNoticeProps {
 
 export function ShieldNotice({ tokens, intensity }: ShieldNoticeProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const tone = getAtRiskTone(intensity ?? 'urgent', theme.isDark)
   return (
     <RiseView delay={180}>
@@ -39,12 +41,10 @@ export function ShieldNotice({ tokens, intensity }: ShieldNoticeProps) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.cardTitle, { color: tone.fg }]}>
-              Tienes {tokens}{' '}
-              {tokens === 1 ? 'escudo disponible' : 'escudos disponibles'}
+              {t('gastos:streakSheet.shieldNotice.title', { count: tokens })}
             </Text>
             <Text style={[styles.cardBody, { color: tone.soft }]}>
-              Si no registras hoy, el escudo protege tu racha automáticamente a
-              las 23:59.
+              {t('gastos:streakSheet.shieldNotice.body')}
             </Text>
           </View>
         </View>
@@ -60,14 +60,21 @@ interface ConsequenceCardProps {
 
 export function ConsequenceCard({ data, derived }: ConsequenceCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const danger = theme.isDark
     ? { fg: '#E88A70', bg: 'rgba(224,85,85,0.12)', border: 'rgba(224,85,85,0.32)' }
     : { fg: '#C03A2A', bg: 'rgba(224,85,85,0.08)', border: 'rgba(224,85,85,0.24)' }
   const lost = Math.max(0, data.currentStreak - derived.regressionDay)
   const rows = [
-    `Vuelves al día ${derived.regressionDay} (inicio de ${derived.levelLabel})`,
-    `Pierdes ${lost} ${lost === 1 ? 'día' : 'días'} de progreso ganados`,
-    `Necesitarías ${derived.daysToNextLevel + lost} días más para llegar a ${derived.nextLevelLabel}`,
+    t('gastos:streakSheet.consequence.regress', {
+      day: derived.regressionDay,
+      level: derived.levelLabel,
+    }),
+    t('gastos:streakSheet.consequence.lose', { count: lost }),
+    t('gastos:streakSheet.consequence.needMore', {
+      days: derived.daysToNextLevel + lost,
+      nextLevel: derived.nextLevelLabel,
+    }),
   ]
   return (
     <RiseView delay={180}>
@@ -80,7 +87,7 @@ export function ConsequenceCard({ data, derived }: ConsequenceCardProps) {
         <Text
           style={[styles.cardTitle, { color: danger.fg, marginBottom: 10 }]}
         >
-          Si no registras hoy
+          {t('gastos:streakSheet.consequence.title')}
         </Text>
         {rows.map((text, i) => (
           <View key={i} style={styles.consequenceRow}>
@@ -101,6 +108,7 @@ interface RecoveryCardProps {
 
 export function RecoveryCard({ derived }: RecoveryCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <RiseView delay={180}>
       <View
@@ -118,7 +126,7 @@ export function RecoveryCard({ derived }: RecoveryCardProps) {
             { color: theme.colors.text, marginBottom: 6 },
           ]}
         >
-          Puedes volver
+          {t('gastos:streakSheet.recovery.title')}
         </Text>
         <Text style={[styles.cardBody, { color: theme.colors.textMuted }]}>
           {derived.copyMessage}
@@ -135,6 +143,7 @@ interface MotivationalCardProps {
 
 export function MotivationalCard({ data, derived }: MotivationalCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const tone = getStatusTone('active', null, theme.isDark)
   return (
     <RiseView delay={180}>
@@ -150,8 +159,10 @@ export function MotivationalCard({ data, derived }: MotivationalCardProps) {
         {data.currentStreak > data.longestStreak - 5 &&
         data.currentStreak < data.longestStreak ? (
           <Text style={[styles.cardBody, { color: tone.fg, marginTop: 8 }]}>
-            A {data.longestStreak - data.currentStreak} días de tu récord personal de{' '}
-            {data.longestStreak} días.
+            {t('gastos:streakSheet.motivational.nearRecord', {
+              away: data.longestStreak - data.currentStreak,
+              record: data.longestStreak,
+            })}
           </Text>
         ) : null}
         {data.currentStreak >= data.longestStreak && data.longestStreak > 0 ? (
@@ -161,7 +172,7 @@ export function MotivationalCard({ data, derived }: MotivationalCardProps) {
               { color: tone.fg, fontWeight: '800', marginTop: 8 },
             ]}
           >
-            🏆 Estás en tu récord personal. ¡Sigue!
+            {t('gastos:streakSheet.motivational.atRecord')}
           </Text>
         ) : null}
       </View>
@@ -175,6 +186,7 @@ interface PersonalStatsProps {
 
 export function PersonalStats({ data }: PersonalStatsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <RiseView delay={240}>
       <View style={styles.statsGrid}>
@@ -188,10 +200,10 @@ export function PersonalStats({ data }: PersonalStatsProps) {
           ]}
         >
           <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>
-            Récord personal
+            {t('gastos:streakSheet.stats.personalRecord')}
           </Text>
           <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {data.longestStreak} {data.longestStreak === 1 ? 'día' : 'días'}
+            {t('gastos:streakSheet.stats.days', { count: data.longestStreak })}
           </Text>
         </View>
         <View
@@ -204,10 +216,10 @@ export function PersonalStats({ data }: PersonalStatsProps) {
           ]}
         >
           <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>
-            Total registrado
+            {t('gastos:streakSheet.stats.totalLogged')}
           </Text>
           <Text style={[styles.statValue, { color: theme.colors.text }]}>
-            {data.totalDaysLogged} {data.totalDaysLogged === 1 ? 'día' : 'días'}
+            {t('gastos:streakSheet.stats.days', { count: data.totalDaysLogged })}
           </Text>
         </View>
       </View>
@@ -221,10 +233,11 @@ interface FreezeInfoProps {
 
 export function FreezeInfo({ tokens }: FreezeInfoProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <Text style={[styles.freezeInfo, { color: theme.colors.textMuted }]}>
-      Ganas un escudo cada 7 días seguidos de racha.{'\n'}
-      Tienes {tokens} · Puedes acumular hasta 2.
+      {t('gastos:streakSheet.freezeInfo.line1')}{'\n'}
+      {t('gastos:streakSheet.freezeInfo.line2', { tokens })}
     </Text>
   )
 }

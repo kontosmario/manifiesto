@@ -13,6 +13,13 @@
 //
 // If you find yourself reading the values below in a UI test for a
 // brand-new user, that is a regression — file a bug.
+//
+// @i18n-ignore (dev fixture): la copy de `CONTROL_MOCK` (títulos de
+// `tareas`, `topExpense.description`, etc.) es SOLO de Storybook /
+// iteración de UI y NUNCA se sirve a usuarios reales en runtime (el
+// gate `resolveControlSignals` deja `signals` vacío para cuentas
+// reales). No se extrae al namespace de i18n por la misma razón que el
+// resto de fixtures dev del repo. Los montos/números son mock.
 
 import type {
   MonthlyByMemberEntry,
@@ -201,6 +208,7 @@ export const CONTROL_MOCK: ControlMockData = {
     },
     mood: 'yellow',
     savingsDelta: 220_000,
+    // @i18n-ignore (dev fixture)
     topExpense: { description: 'Cena cumpleaños', price: 38_500 },
     currentTopCatSpent: 92_400,
     trend: [1_540_000, 1_687_000, 1_240_000],
@@ -229,6 +237,7 @@ export const CONTROL_MOCK: ControlMockData = {
       id: 't1',
       emoji: '🎬',
       cat: 'Ocio',
+      // @i18n-ignore (dev fixture)
       title: 'Baja un poco el Ocio esta semana',
       body: 'Ya gastaste $28.400 en ocio. Te pusiste un tope de $20.000.',
       impact: '+$8.400 por mes',
@@ -255,6 +264,7 @@ export const CONTROL_MOCK: ControlMockData = {
       id: 't3',
       emoji: '⚡',
       cat: 'Servicios',
+      // @i18n-ignore (dev fixture)
       title: 'La luz subió 14%',
       body: 'Edenor pasó de $28.000 a $32.500. Hay planes más baratos.',
       impact: '−$3.200 por mes',

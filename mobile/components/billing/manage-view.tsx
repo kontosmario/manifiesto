@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -43,6 +44,7 @@ export const ManageView = memo(function ManageView({
   onRestore,
 }: ManageViewProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const variant = membershipVariant(snap)
   // MVP (super cuenta) no tiene sub: ocultamos renovación/precio/auto-renovación.
   const isMvp = snap.source === 'mvp'
@@ -51,7 +53,13 @@ export const ManageView = memo(function ManageView({
     snap.plan === 'yearly'
       ? BILLING_PLANS['hogar-anual']
       : BILLING_PLANS['hogar-mensual']
-  const priceLabel = `$${plan.priceUsd.toFixed(2)} / ${plan.cycle === 'yearly' ? 'año' : 'mes'}`
+  const priceLabel = t('billing:priceLabel', {
+    amount: plan.priceUsd.toFixed(2),
+    period:
+      plan.cycle === 'yearly'
+        ? t('billing:period.year')
+        : t('billing:period.month'),
+  })
 
   // Cambio de plan agendado para la próxima renovación (StoreKit difiere los
   // downgrades). El server lo registra en pending_product_id vía el webhook;
@@ -111,8 +119,13 @@ export const ManageView = memo(function ManageView({
               ]}
             >
               {renewDateLabel === '—'
-                ? `Cambia a ${pendingPlanName} en tu próxima renovación`
-                : `Cambia a ${pendingPlanName} el ${renewDateLabel}`}
+                ? t('billing:manage.pendingChangeNextRenewal', {
+                    plan: pendingPlanName,
+                  })
+                : t('billing:manage.pendingChangeOnDate', {
+                    plan: pendingPlanName,
+                    date: renewDateLabel,
+                  })}
             </Text>
           </View>
         </RiseView>
@@ -143,20 +156,20 @@ export const ManageView = memo(function ManageView({
         <View style={styles.footer}>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Términos de uso"
+            accessibilityLabel={t('billing:manage.termsA11y')}
             hitSlop={8}
             onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
           >
-            <Text style={linkStyle}>Términos de uso</Text>
+            <Text style={linkStyle}>{t('billing:manage.terms')}</Text>
           </Pressable>
           <Text style={linkStyle}> · </Text>
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel="Política de privacidad"
+            accessibilityLabel={t('billing:manage.privacyA11y')}
             hitSlop={8}
             onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
           >
-            <Text style={linkStyle}>Privacidad</Text>
+            <Text style={linkStyle}>{t('billing:manage.privacy')}</Text>
           </Pressable>
         </View>
       </RiseView>

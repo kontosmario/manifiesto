@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,6 +10,7 @@ import Animated, {
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
+import { weekdayShort } from '@/utils/date-format'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
 
 const TILE_WIDTH = 48
@@ -16,7 +18,11 @@ const TILE_HEIGHT = 58
 const TILE_GAP = 6
 const TILE_TOTAL_WIDTH = TILE_WIDTH + TILE_GAP
 
-const WEEKDAY_LABELS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'] as const
+// Abreviatura del día indexada por Date.getDay() (0=Domingo … 6=Sábado),
+// derivada del idioma activo (NO un array ES fijo). 2024-01-07 fue domingo,
+// así que sumar el índice da el día correcto.
+const weekdayLabel = (dowSunday0: number): string =>
+  weekdayShort(new Date(2024, 0, 7 + dowSunday0))
 
 interface Props {
   /** Selected day ISO (YYYY-MM-DD). */
@@ -36,6 +42,7 @@ export function CycleDateSlider({
   onChange,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
 
   const days = useMemo(
@@ -66,7 +73,7 @@ export function CycleDateSlider({
     <View
       style={styles.container}
       accessibilityRole="adjustable"
-      accessibilityLabel="Fecha del movimiento"
+      accessibilityLabel={t('gastos:import.dateSlider.a11yLabel')}
     >
       <ScrollView
         ref={scrollRef}
@@ -127,6 +134,7 @@ function DayTile({
   mutedColor,
   onPrimary,
 }: TileProps) {
+  const { t } = useTranslation()
   const press = useSharedValue(1)
   // Días futuros: no seleccionables (un gasto no puede ser de mañana).
   const disabled = day.isFuture
@@ -155,7 +163,11 @@ function DayTile({
           })
         }}
         accessibilityRole="button"
-        accessibilityLabel={`día ${day.day}${disabled ? ', fecha futura no disponible' : ''}`}
+        accessibilityLabel={
+          disabled
+            ? t('gastos:import.dateSlider.dayA11yFuture', { day: day.day })
+            : t('gastos:import.dateSlider.dayA11y', { day: day.day })
+        }
         accessibilityState={{ selected: isSelected, disabled }}
         hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
         style={[styles.tile, disabled ? styles.tileDisabled : null]}
@@ -166,7 +178,7 @@ function DayTile({
             { color: isSelected ? primary : mutedColor },
           ]}
         >
-          {WEEKDAY_LABELS[day.weekday]}
+          {weekdayLabel(day.weekday)}
         </Text>
         <View
           style={[

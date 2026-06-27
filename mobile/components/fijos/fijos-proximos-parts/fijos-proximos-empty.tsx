@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
@@ -9,6 +10,7 @@ import { useAppTheme } from '@/theme/theme-provider'
  */
 export function FijosProximosCardEmpty() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const ph = theme.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(15,42,30,0.07)'
   return (
     <View
@@ -25,7 +27,7 @@ export function FijosProximosCardEmpty() {
     >
       <View style={styles.headerRow}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          POR PAGAR · ESTE MES
+          {t('fijos:proximos.eyebrow')}
         </Text>
       </View>
       {/* Rule estático (sin scaleX animation) — preview inerte. */}

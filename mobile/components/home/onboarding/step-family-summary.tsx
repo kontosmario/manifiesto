@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -31,6 +32,7 @@ export function StepFamilySummary({
   pendingAvatarSlug,
 }: StepFamilySummaryProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const householdIncome = pendingFamily.monthly_income
   const parsedContribution = parsePrice(monthlyIncomeRaw)
@@ -47,10 +49,10 @@ export function StepFamilySummary({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          La familia
+          {t('onboarding:familySummary.title')}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Esto es lo que vas a encontrar al unirte. Confirma si todo se ve bien.
+          {t('onboarding:familySummary.subcopy')}
         </Text>
       </RiseView>
 
@@ -65,7 +67,7 @@ export function StepFamilySummary({
           ]}
         >
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            INGRESO MENSUAL DEL HOGAR
+            {t('onboarding:familySummary.householdIncomeEyebrow')}
           </Text>
           <CountUpText
             value={householdIncome}
@@ -75,12 +77,14 @@ export function StepFamilySummary({
           />
           {pendingContribution > 0 ? (
             <Text style={[styles.heroDelta, { color: theme.colors.primary }]}>
-              + {formatMoneyShort(pendingContribution)} tu aporte ={' '}
-              {formatMoneyShort(projectedTotal)}
+              {t('onboarding:familySummary.contributionDelta', {
+                contribution: formatMoneyShort(pendingContribution),
+                total: formatMoneyShort(projectedTotal),
+              })}
             </Text>
           ) : contributesIncome === false ? (
             <Text style={[styles.heroDelta, { color: theme.colors.textMuted }]}>
-              No vas a aportar al ingreso del hogar.
+              {t('onboarding:familySummary.noContribution')}
             </Text>
           ) : null}
         </View>
@@ -88,7 +92,7 @@ export function StepFamilySummary({
 
       <RiseView delay={140}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          {`MIEMBROS · ${pendingFamily.member_count}`}
+          {t('onboarding:familySummary.membersEyebrow', { count: pendingFamily.member_count })}
         </Text>
         <View style={styles.membersList}>
           {pendingFamily.members.map((m, idx) => {
@@ -121,8 +125,8 @@ export function StepFamilySummary({
                     style={[styles.memberName, { color: theme.colors.text }]}
                     numberOfLines={1}
                   >
-                    {m.display_name || 'Sin nombre'}
-                    {m.role === 'owner' ? '  · dueño' : ''}
+                    {m.display_name || t('onboarding:familySummary.noName')}
+                    {m.role === 'owner' ? t('onboarding:familySummary.ownerSuffix') : ''}
                   </Text>
                 </View>
               </View>
@@ -153,7 +157,8 @@ export function StepFamilySummary({
                 style={[styles.memberName, { color: theme.colors.text }]}
                 numberOfLines={1}
               >
-                {pendingDisplayName || 'Tú'} · tú
+                {(pendingDisplayName || t('onboarding:familySummary.youName')) +
+                  t('onboarding:familySummary.youSuffix')}
               </Text>
               <Text
                 style={[
@@ -162,8 +167,10 @@ export function StepFamilySummary({
                 ]}
               >
                 {pendingContribution > 0
-                  ? `Vas a aportar ${formatMoneyShort(pendingContribution)} /mes`
-                  : 'No vas a aportar'}
+                  ? t('onboarding:familySummary.willContribute', {
+                      amount: formatMoneyShort(pendingContribution),
+                    })
+                  : t('onboarding:familySummary.wontContribute')}
               </Text>
             </View>
           </View>
@@ -182,13 +189,13 @@ export function StepFamilySummary({
             ]}
           >
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              META ACTIVA
+              {t('onboarding:familySummary.activeGoalEyebrow')}
             </Text>
             <Text style={[styles.goalTitle, { color: theme.colors.text }]}>
               {activeGoalTitle}
             </Text>
             <Text style={[styles.goalProgress, { color: theme.colors.textMuted }]}>
-              Verás el avance al unirte.
+              {t('onboarding:familySummary.goalProgress')}
             </Text>
           </View>
         </RiseView>

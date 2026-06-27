@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -25,6 +26,7 @@ export const SavingsRibbon = memo(function SavingsRibbon({
   savingsPercent,
 }: SavingsRibbonProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   // Sin ahorro → sin banda. La vista no debe insinuar un beneficio inexistente.
   if (savingsUsd <= 0) return null
@@ -38,7 +40,10 @@ export const SavingsRibbon = memo(function SavingsRibbon({
   return (
     <View style={[styles.ribbon, { backgroundColor: fill, borderColor: border }]}>
       <Text style={[styles.text, { color: fg }]}>
-        {`Ahorrás $${formatUsd(savingsUsd)} al año · −${savingsPercent}%`}
+        {t('billing:savingsRibbon.text', {
+          amount: formatUsd(savingsUsd),
+          percent: savingsPercent,
+        })}
       </Text>
     </View>
   )

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
 import { SectionHeader } from '@/components/ui/section-header'
@@ -12,7 +13,7 @@ import {
   useUpdateNotificationPreferences,
   type NotificationPreferences,
 } from '@/features/notifications/use-notification-preferences'
-import { NOTIFICATION_GROUP_LABELS, type NotificationGroup } from '@/utils/notifications'
+import { type NotificationGroup } from '@/utils/notifications'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
@@ -21,31 +22,14 @@ type CheckinSlot = 'morning' | 'midday' | 'evening'
 
 const CHECKIN_SLOTS: Array<{
   slot: CheckinSlot
-  label: string
   field: keyof Pick<
     NotificationPreferences,
     'checkinMorningHour' | 'checkinMiddayHour' | 'checkinEveningHour'
   >
-  subtitle: string
 }> = [
-  {
-    slot: 'morning',
-    label: 'Mañana',
-    field: 'checkinMorningHour',
-    subtitle: 'Tu arranque del día.',
-  },
-  {
-    slot: 'midday',
-    label: 'Mediodía',
-    field: 'checkinMiddayHour',
-    subtitle: 'Una revisión rápida del ritmo.',
-  },
-  {
-    slot: 'evening',
-    label: 'Noche',
-    field: 'checkinEveningHour',
-    subtitle: 'Cierre del día y racha.',
-  },
+  { slot: 'morning', field: 'checkinMorningHour' },
+  { slot: 'midday', field: 'checkinMiddayHour' },
+  { slot: 'evening', field: 'checkinEveningHour' },
 ]
 
 const GROUP_ORDER: NotificationGroup[] = [
@@ -57,15 +41,6 @@ const GROUP_ORDER: NotificationGroup[] = [
   'otros',
 ]
 
-const GROUP_DESCRIPTIONS: Record<NotificationGroup, string> = {
-  gastos: 'Gastos cargados por ti o tu familia.',
-  ingresos: 'Ingresos extra (transferencias, bonos, regalos) registrados en la cuenta.',
-  fijos: 'Compromisos que vencen o se actualizan.',
-  racha: 'Check-ins diarios, rachas y escudos.',
-  meta: 'Hitos y aportes a tu meta.',
-  otros: 'Avisos generales y limpieza de suscripciones.',
-}
-
 function formatHour(hour: number): string {
   const safe = Math.max(0, Math.min(23, hour))
   return `${safe.toString().padStart(2, '0')}:00`
@@ -73,6 +48,7 @@ function formatHour(hour: number): string {
 
 export function NotificationsPreferencesScreen() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const preferencesQuery = useNotificationPreferences()
   const updateMutation = useUpdateNotificationPreferences()
   const preferences = preferencesQuery.data
@@ -84,11 +60,11 @@ export function NotificationsPreferencesScreen() {
       updateMutation.mutate(patch, {
         onError: () => {
           void triggerHaptic('error')
-          Alert.alert('No pudimos guardar', 'Revisa tu conexión e intenta de nuevo.')
+          Alert.alert(t('settings:notif.saveErrorTitle'), t('settings:notif.saveErrorMessage'))
         },
       })
     },
-    [updateMutation],
+    [updateMutation, t],
   )
 
   const kindsMutedRaw = preferences?.kindsMuted
@@ -158,7 +134,9 @@ export function NotificationsPreferencesScreen() {
 
   const pickerTitle = (() => {
     if (!pickerSlot) return ''
-    return `Check-in de ${CHECKIN_SLOTS.find((s) => s.slot === pickerSlot)?.label.toLowerCase() ?? ''}`
+    return t('settings:notif.checkinPickerTitle', {
+      slot: t(`settings:notif.checkinSlot.${pickerSlot}.labelLower`),
+    })
   })()
 
   return (
@@ -166,26 +144,26 @@ export function NotificationsPreferencesScreen() {
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack
       contentContainerStyle={styles.screenContent}
-      title="Notificaciones"
-      subtitle="Elige qué te llega, cuándo y por dónde."
+      title={t('settings:notif.title')}
+      subtitle={t('settings:notif.subtitle')}
     >
       <View style={styles.stack}>
         <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <RiseView>
           <View style={styles.section}>
             <SectionHeader
-              title="Canales"
-              subtitle="Elige por qué vías queremos avisarte."
+              title={t('settings:notif.channelsTitle')}
+              subtitle={t('settings:notif.channelsSubtitle')}
             />
             <SettingsSwitchRow
-              label="Push"
-              description="Notificaciones que llegan a tu teléfono aunque la app esté cerrada."
+              label={t('settings:notif.pushLabel')}
+              description={t('settings:notif.pushDescription')}
               value={preferences?.channelPush ?? true}
               onValueChange={(value) => submitPatch({ channelPush: value })}
             />
             <SettingsSwitchRow
-              label="In-app"
-              description="El buzón dentro de Manifiesto con la actividad reciente."
+              label={t('settings:notif.inappLabel')}
+              description={t('settings:notif.inappDescription')}
               value={preferences?.channelInapp ?? true}
               onValueChange={(value) => submitPatch({ channelInapp: value })}
             />
@@ -195,8 +173,8 @@ export function NotificationsPreferencesScreen() {
         <RiseView delay={120}>
           <View style={styles.section}>
             <SectionHeader
-              title="Horarios de check-in"
-              subtitle="A qué hora quieres que te escribamos."
+              title={t('settings:notif.checkinTitle')}
+              subtitle={t('settings:notif.checkinSubtitle')}
             />
             {CHECKIN_SLOTS.map((slot) => {
               const value = preferences
@@ -211,8 +189,8 @@ export function NotificationsPreferencesScreen() {
                   key={slot.slot}
                   iconFallback="schedule"
                   iconName="clock"
-                  title={slot.label}
-                  subtitle={slot.subtitle}
+                  title={t(`settings:notif.checkinSlot.${slot.slot}.label`)}
+                  subtitle={t(`settings:notif.checkinSlot.${slot.slot}.subtitle`)}
                   value={formatHour(value)}
                   onPress={() => openPicker(slot.slot)}
                 />
@@ -224,12 +202,12 @@ export function NotificationsPreferencesScreen() {
         <RiseView delay={220}>
           <View style={styles.section}>
             <SectionHeader
-              title="Sugerencias inteligentes"
-              subtitle="Avisos que te empujan cuando tu racha o tu ritmo corren peligro."
+              title={t('settings:notif.smartTitle')}
+              subtitle={t('settings:notif.smartSubtitle')}
             />
             <SettingsSwitchRow
-              label="Recordatorios y nudges"
-              description="Te avisamos si tu racha está en riesgo o si pasaste el margen del día."
+              label={t('settings:notif.nudgesLabel')}
+              description={t('settings:notif.nudgesDescription')}
               value={preferences?.nudgesEnabled ?? true}
               onValueChange={(value) => submitPatch({ nudgesEnabled: value })}
             />
@@ -239,8 +217,8 @@ export function NotificationsPreferencesScreen() {
         <RiseView delay={300}>
           <View style={styles.section}>
             <SectionHeader
-              title="Silenciar por tipo"
-              subtitle="Deja encendidos los grupos que sí te interesan."
+              title={t('settings:notif.muteTitle')}
+              subtitle={t('settings:notif.muteSubtitle')}
             />
             {GROUP_ORDER.map((group) => {
               const kinds = NOTIFICATION_KIND_GROUPS[group]
@@ -249,8 +227,8 @@ export function NotificationsPreferencesScreen() {
               return (
                 <SettingsSwitchRow
                   key={group}
-                  label={NOTIFICATION_GROUP_LABELS[group]}
-                  description={GROUP_DESCRIPTIONS[group]}
+                  label={t(`settings:notif.groupLabel.${group}`)}
+                  description={t(`settings:notif.groupDescription.${group}`)}
                   value={!isMuted}
                   onValueChange={(enabled) => handleToggleGroupMuted(group, enabled)}
                 />
@@ -267,7 +245,7 @@ export function NotificationsPreferencesScreen() {
         instanceKey={pickerSlot ?? 'closed'}
         onChange={handleSetCheckinHour}
         onClose={closePicker}
-        accessibilityLabel={pickerTitle || 'Hora del check-in'}
+        accessibilityLabel={pickerTitle || t('settings:notif.checkinPickerA11y')}
       />
     </Screen>
   )

@@ -6,6 +6,7 @@
  * NEUTRO ("Acceso completo", nunca "Prueba"/"trial" — regla de
  * compliance del spec §7).
  */
+import i18n from '@/lib/i18n'
 
 export const TRIAL_NUDGE_THRESHOLDS = [7, 3, 1] as const
 
@@ -25,5 +26,5 @@ export function shouldShowFreeAccessBanner(
 
 /** Copy neutro del badge pasivo. NUNCA "Prueba"/"trial". */
 export function freeAccessBadgeLabel(daysLeft: number): string {
-  return `Acceso completo: ${daysLeft} ${daysLeft === 1 ? 'día restante' : 'días restantes'}`
+  return i18n.t('billing:freeAccessBadge', { count: daysLeft })
 }

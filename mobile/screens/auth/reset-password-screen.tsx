@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { PasswordField } from '@/components/ui/password-field'
 import { BlockingScreen } from '@/screens/shared/blocking-screen'
@@ -42,6 +43,7 @@ export function ResetPasswordScreen() {
   // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture so the
   // half-typed new password never lands in a screenshot/recording.
   useScreenCaptureProtection()
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useAppTheme()
   const params = useLocalSearchParams<{
@@ -88,7 +90,7 @@ export function ResetPasswordScreen() {
     | 'timeout'
   >(code || hasOtp ? 'exchanging' : 'error')
   const [exchangeError, setExchangeError] = useState<string | null>(
-    code || hasOtp ? null : 'El link es inválido o ya expiró. Pídenos uno nuevo.',
+    code || hasOtp ? null : t('auth:resetPassword.linkInvalid'),
   )
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -157,8 +159,8 @@ export function ResetPasswordScreen() {
           getErrorMessage(
             error,
             code
-              ? 'No pudimos validar el link.'
-              : 'Código inválido o vencido. Pide uno nuevo.',
+              ? t('auth:resetPassword.errorExchangeFailed')
+              : t('auth:resetPassword.errorOtpInvalid'),
           ),
         )
         setStage('error')
@@ -170,7 +172,7 @@ export function ResetPasswordScreen() {
       cancelledRef.current = true
       clearTimeout(timeoutId)
     }
-  }, [code, otp, email, hasOtp])
+  }, [code, otp, email, hasOtp, t])
 
   // Sprint H · H1: enforce full policy on password reset (new password
   // is treated as if the user were signing up — we don't want a recovery
@@ -193,12 +195,12 @@ export function ResetPasswordScreen() {
     if (!passwordValid || updatePassword.isPending) return
     const policy = checkPasswordPolicy(password)
     if (!policy.ok) {
-      setFormError(policy.error ?? 'La contraseña no cumple los requisitos.')
+      setFormError(policy.error ?? t('auth:resetPassword.errorPasswordPolicy'))
       await triggerHaptic('warning')
       return
     }
     if (password !== confirm) {
-      setFormError('Las contraseñas no coinciden.')
+      setFormError(t('auth:resetPassword.errorPasswordsMismatch'))
       await triggerHaptic('warning')
       return
     }
@@ -213,9 +215,9 @@ export function ResetPasswordScreen() {
       setStage('success')
     } catch (error) {
       await triggerHaptic('error')
-      setFormError(getErrorMessage(error, 'No pudimos actualizar tu contraseña.'))
+      setFormError(getErrorMessage(error, t('auth:resetPassword.errorUpdateFailed')))
     }
-  }, [confirm, password, passwordValid, updatePassword])
+  }, [confirm, password, passwordValid, updatePassword, t])
 
   const handleReauthConfirmed = useCallback(() => {
     setReauthVisible(false)
@@ -225,10 +227,8 @@ export function ResetPasswordScreen() {
   const handleReauthCancel = useCallback(() => {
     setReauthVisible(false)
     setStage('error')
-    setExchangeError(
-      'Cancelaste la verificación. Por seguridad, no podemos actualizar tu contraseña sin confirmar tu identidad en este dispositivo.',
-    )
-  }, [])
+    setExchangeError(t('auth:resetPassword.reauthCancelled'))
+  }, [t])
 
   // J-Auth3 — fresh-install friction handlers.
   const handleFrictionContinue = useCallback(() => {
@@ -237,31 +237,28 @@ export function ResetPasswordScreen() {
 
   const handleFrictionCancel = useCallback(() => {
     setStage('error')
-    setExchangeError(
-      'Saliste sin cambiar la contraseña. Si tú no pediste este cambio, escríbenos a soporte@manifiestoapp.com.',
-    )
-  }, [])
+    setExchangeError(t('auth:resetPassword.frictionCancelled'))
+  }, [t])
 
   const goToLogin = () => router.replace('/(auth)/login')
 
   if (stage === 'exchanging') {
-    return <BlockingScreen message="Validando tu link..." />
+    return <BlockingScreen message={t('auth:resetPassword.validatingLink')} />
   }
 
   if (stage === 'reauth') {
     return (
       <AuthShell
-        eyebrow="Un paso más"
+        eyebrow={t('auth:resetPassword.reauthEyebrow')}
         onBack={goToLogin}
-        subtitle="Antes de cambiar la contraseña pedimos tu PIN o biometría en este dispositivo."
-        title="Confirma tu identidad"
+        subtitle={t('auth:resetPassword.reauthSubtitle')}
+        title={t('auth:resetPassword.reauthTitle')}
       >
         <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-          Esto evita que alguien con acceso temporal a tu email pueda bloquearte
-          la cuenta.
+          {t('auth:resetPassword.reauthBody')}
         </Text>
         <RequireReauthSheet
-          actionLabel="cambiar tu contraseña"
+          actionLabel={t('auth:resetPassword.reauthActionLabel')}
           onCancel={handleReauthCancel}
           onConfirmed={handleReauthConfirmed}
           visible={reauthVisible}
@@ -277,10 +274,10 @@ export function ResetPasswordScreen() {
     // while we work on a proper backend out-of-band confirmation flow.
     return (
       <AuthShell
-        eyebrow="Importante"
+        eyebrow={t('auth:resetPassword.frictionEyebrow')}
         onBack={goToLogin}
-        subtitle="Lee esto con atención. Sin PIN ni biometría guardada en este dispositivo, este es el único momento en el que podemos avisarte."
-        title="Antes de continuar"
+        subtitle={t('auth:resetPassword.frictionSubtitle')}
+        title={t('auth:resetPassword.frictionTitle')}
       >
         <FreshInstallResetFriction
           // Sprint L · Audit #5 L-Med3: el `code` (o el `otp`) es único por
@@ -298,19 +295,19 @@ export function ResetPasswordScreen() {
   if (stage === 'timeout') {
     return (
       <AuthShell
-        eyebrow="Un momento"
+        eyebrow={t('auth:resetPassword.timeoutEyebrow')}
         onBack={goToLogin}
-        subtitle="No pudimos validar el link en 30 segundos."
-        title="Está tardando más de lo normal"
+        subtitle={t('auth:resetPassword.timeoutSubtitle')}
+        title={t('auth:resetPassword.timeoutTitle')}
       >
         <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-          Prueba pedir otro link de recuperación o volver al login.
+          {t('auth:resetPassword.timeoutBody')}
         </Text>
         <AppButton
-          label="Pedir nuevo link"
+          label={t('auth:common.requestNewLink')}
           onPress={() => router.replace('/(auth)/forgot-password')}
         />
-        <AppButton label="Volver a login" onPress={goToLogin} variant="ghost" />
+        <AppButton label={t('auth:common.backToLogin')} onPress={goToLogin} variant="ghost" />
       </AuthShell>
     )
   }
@@ -318,16 +315,16 @@ export function ResetPasswordScreen() {
   if (stage === 'error') {
     return (
       <AuthShell
-        eyebrow="Algo pasó"
+        eyebrow={t('auth:resetPassword.errorEyebrow')}
         onBack={goToLogin}
         subtitle={exchangeError ?? undefined}
-        title="Link inválido"
+        title={t('auth:resetPassword.errorTitle')}
       >
         <AppButton
-          label="Pedir nuevo link"
+          label={t('auth:common.requestNewLink')}
           onPress={() => router.replace('/(auth)/forgot-password')}
         />
-        <AppButton label="Volver a login" onPress={goToLogin} variant="ghost" />
+        <AppButton label={t('auth:common.backToLogin')} onPress={goToLogin} variant="ghost" />
       </AuthShell>
     )
   }
@@ -335,22 +332,22 @@ export function ResetPasswordScreen() {
   if (stage === 'success') {
     return (
       <AuthShell
-        eyebrow="Listo"
+        eyebrow={t('auth:resetPassword.successEyebrow')}
         onBack={() => router.replace('/')}
-        subtitle="Ya puedes entrar con tu nueva contraseña."
-        title="Contraseña actualizada"
+        subtitle={t('auth:resetPassword.successSubtitle')}
+        title={t('auth:resetPassword.successTitle')}
       >
-        <AppButton label="Ir al inicio" onPress={() => router.replace('/')} />
+        <AppButton label={t('auth:resetPassword.goHome')} onPress={() => router.replace('/')} />
       </AuthShell>
     )
   }
 
   return (
     <AuthShell
-      eyebrow="Casi listo"
+      eyebrow={t('auth:resetPassword.formEyebrow')}
       onBack={goToLogin}
-      subtitle={`Elige una contraseña de al menos ${PASSWORD_POLICY.MIN_LENGTH} caracteres, con letras y números.`}
-      title="Nueva contraseña"
+      subtitle={t('auth:resetPassword.formSubtitle', { count: PASSWORD_POLICY.MIN_LENGTH })}
+      title={t('auth:resetPassword.formTitle')}
     >
       <View
         style={[
@@ -360,25 +357,24 @@ export function ResetPasswordScreen() {
       >
         <MaterialIcons name="lock" size={18} color={theme.colors.primary} />
         <Text style={[styles.disclaimerText, { color: theme.colors.textSoft }]}>
-          Importante: esta será tu contraseña para iniciar sesión en Manifiesto.
-          Elige una segura y que recuerdes.
+          {t('auth:resetPassword.disclaimer')}
         </Text>
       </View>
       <PasswordField
-        accessibilityLabel="Nueva contraseña"
-        label="Nueva contraseña"
+        accessibilityLabel={t('auth:resetPassword.newPasswordLabel')}
+        label={t('auth:resetPassword.newPasswordLabel')}
         onChangeText={setPassword}
-        placeholder="••••••••"
+        placeholder={t('auth:common.passwordPlaceholder')}
         returnKeyType="next"
         textContentType="newPassword"
         value={password}
       />
       <PasswordField
-        accessibilityLabel="Confirmar contraseña"
-        label="Confirmar contraseña"
+        accessibilityLabel={t('auth:resetPassword.confirmPasswordLabel')}
+        label={t('auth:resetPassword.confirmPasswordLabel')}
         onChangeText={setConfirm}
         onSubmitEditing={() => void handleSubmit()}
-        placeholder="••••••••"
+        placeholder={t('auth:common.passwordPlaceholder')}
         returnKeyType="go"
         textContentType="password"
         value={confirm}
@@ -400,15 +396,15 @@ export function ResetPasswordScreen() {
             ]}
           >
             {matchState === 'match'
-              ? 'Las contraseñas coinciden'
-              : 'Las contraseñas no coinciden'}
+              ? t('auth:resetPassword.passwordsMatch')
+              : t('auth:resetPassword.passwordsMismatch')}
           </Text>
         </View>
       ) : null}
       {formError ? <FeedbackPill intent="error" message={formError} /> : null}
       <AppButton
         disabled={!passwordValid}
-        label={updatePassword.isPending ? 'Guardando…' : 'Guardar contraseña'}
+        label={updatePassword.isPending ? t('auth:resetPassword.saving') : t('auth:resetPassword.save')}
         loading={updatePassword.isPending}
         onPress={() => void handleSubmit()}
       />

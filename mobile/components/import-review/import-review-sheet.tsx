@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   FadeInLeft,
@@ -66,6 +67,7 @@ export function ImportReviewSheet({
   previewMode = false,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const controller = useImportReviewController(initialState ?? undefined)
   const categoriesQuery = useCategories(familyId, 'expense')
   const categories = categoriesQuery.data ?? []
@@ -131,7 +133,7 @@ export function ImportReviewSheet({
     // entry points (e.g. gestures, keyboard handlers).
     if (currentRow && invalidIdSet.has(currentRow.id)) {
       void triggerHaptic('warning')
-      setHighlightToken((t) => t + 1)
+      setHighlightToken((prev) => prev + 1)
       return
     }
     directionRef.current = 'forward'
@@ -154,7 +156,7 @@ export function ImportReviewSheet({
     }
     if (currentRow && invalidIdSet.has(currentRow.id)) {
       void triggerHaptic('warning')
-      setHighlightToken((t) => t + 1)
+      setHighlightToken((prev) => prev + 1)
       return
     }
     goNext()
@@ -212,9 +214,7 @@ export function ImportReviewSheet({
         if (idx >= 0) jumpTo(idx)
       }
       void triggerHaptic('warning')
-      toast.error(
-        'Hay un movimiento sin completar — revisalo antes de confirmar.',
-      )
+      toast.error(t('gastos:import.toast.incomplete'))
       return
     }
     void handleConfirm()
@@ -255,25 +255,26 @@ export function ImportReviewSheet({
       if (total > 0) {
         const parts: string[] = []
         if (result.insertedExpenses > 0) {
-          parts.push(
-            `${result.insertedExpenses} gasto${result.insertedExpenses === 1 ? '' : 's'}`,
-          )
+          parts.push(t('gastos:import.summary.expensesCount', { count: result.insertedExpenses }))
         }
         if (result.insertedIncomes > 0) {
-          parts.push(
-            `${result.insertedIncomes} ingreso${result.insertedIncomes === 1 ? '' : 's'}`,
-          )
+          parts.push(t('gastos:import.summary.incomesCount', { count: result.insertedIncomes }))
         }
+        const joined = parts.join(t('gastos:import.summary.and'))
         const baseMsg = previewMode
-          ? `Vista previa: ${parts.join(' y ')} (no se cargó nada).`
-          : `Cargué ${parts.join(' y ')}.`
+          ? t('gastos:import.toast.previewLoaded', { parts: joined })
+          : t('gastos:import.toast.loaded', { parts: joined })
         if (result.failed.length > 0) {
           const firstReason = result.failed[0]?.reason ?? ''
           const reasonSuffix = firstReason
-            ? ` Motivo: ${firstReason.slice(0, 120)}`
+            ? t('gastos:import.toast.reasonSuffix', { reason: firstReason.slice(0, 120) })
             : ''
           toast.error(
-            `${baseMsg} ${result.failed.length} no se pudieron cargar.${reasonSuffix}`,
+            t('gastos:import.toast.partialFailure', {
+              baseMsg,
+              count: result.failed.length,
+              reasonSuffix,
+            }),
             { durationMs: 9000 },
           )
         } else {
@@ -285,10 +286,13 @@ export function ImportReviewSheet({
         // 2026-06-12: import falló completo y la causa era invisible.
         const firstReason = result.failed[0]?.reason ?? ''
         const reasonSuffix = firstReason
-          ? ` Motivo: ${firstReason.slice(0, 120)}`
+          ? t('gastos:import.toast.reasonSuffix', { reason: firstReason.slice(0, 120) })
           : ''
         toast.error(
-          `No se pudo cargar ningún movimiento (${result.failed.length} ${result.failed.length === 1 ? 'error' : 'errores'}).${reasonSuffix}`,
+          t('gastos:import.toast.allFailed', {
+            count: result.failed.length,
+            reasonSuffix,
+          }),
           { durationMs: 9000 },
         )
       }
@@ -419,7 +423,7 @@ export function ImportReviewSheet({
 
           {controller.state.unmatched > 0 && !isSummary ? (
             <Text style={[styles.unmatched, { color: theme.colors.textMuted }]}>
-              {`${controller.state.unmatched} ${controller.state.unmatched === 1 ? 'línea' : 'líneas'} de la captura no parecían movimientos; las omitimos.`}
+              {t('gastos:import.unmatched', { count: controller.state.unmatched })}
             </Text>
           ) : null}
         </View>

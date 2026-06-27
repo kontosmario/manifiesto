@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import Animated, {
   cancelAnimation,
   Easing,
@@ -131,7 +132,7 @@ function ClosingSceneRender({
     <View style={closingStyles.stage}>
       {/* ── Sección histórica (siempre presente) ────────── */}
       <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-        EL PRÓXIMO ARRANCA HOY
+        {i18n.t('control:wrapped.closing.eyebrow')}
       </Text>
       <Text
         style={[
@@ -140,7 +141,9 @@ function ClosingSceneRender({
         ]}
         accessibilityRole="header"
       >
-        Tienes{'\n'}{formatMoney(Math.round(payload.monthlyIncome))}{'\n'}para administrar.
+        {i18n.t('control:wrapped.closing.title', {
+          amount: formatMoney(Math.round(payload.monthlyIncome)),
+        })}
       </Text>
       {payload.achievementsEarnedInCycle > 0 ? (
         <View
@@ -151,22 +154,22 @@ function ClosingSceneRender({
         >
           <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
           <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
-            {payload.achievementsEarnedInCycle === 1
-              ? '1 logro desbloqueado este mes'
-              : `${payload.achievementsEarnedInCycle} logros desbloqueados este mes`}
+            {i18n.t('control:wrapped.closing.achievements', {
+              count: payload.achievementsEarnedInCycle,
+            })}
           </Text>
         </View>
       ) : null}
       <View style={closingStyles.summaryRow}>
         <SummaryStat
-          label="Gastaste"
+          label={i18n.t('control:wrapped.closing.summaryGastaste')}
           value={formatMoney(Math.round(payload.totalSpent))}
           color="#F4FDF2"
           mutedColor="rgba(244,253,242,0.82)"
         />
         <View style={closingStyles.summaryDivider} />
         <SummaryStat
-          label="Movimientos"
+          label={i18n.t('control:wrapped.closing.summaryMovimientos')}
           value={String(payload.expensesCount)}
           color="#F4FDF2"
           mutedColor="rgba(244,253,242,0.82)"
@@ -178,7 +181,9 @@ function ClosingSceneRender({
         <>
           <View style={closingStyles.sectionDivider} />
           <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-            {past ? 'YA DECIDISTE' : 'Y TE SOBRARON'}
+            {past
+              ? i18n.t('control:wrapped.closing.leftoverEyebrowDecidido')
+              : i18n.t('control:wrapped.closing.leftoverEyebrowSobraron')}
           </Text>
           {hasPending ? (
             <Animated.Text
@@ -197,7 +202,7 @@ function ClosingSceneRender({
           )}
           {!past ? (
             <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
-              ¿Qué haces con esto?
+              {i18n.t('control:wrapped.closing.leftoverQueHaces')}
             </Text>
           ) : null}
           <View style={closingStyles.optionsStack}>
@@ -205,17 +210,21 @@ function ClosingSceneRender({
               icon="track-changes"
               title={
                 past?.decision === 'meta' && past?.metaGoalTitle
-                  ? `Aportaste a ${past.metaGoalTitle}`
+                  ? i18n.t('control:wrapped.closing.optionMetaAportaste', {
+                      title: past.metaGoalTitle,
+                    })
                   : goalTitle
-                    ? `Sumar a ${goalTitle}`
-                    : 'A una meta'
+                    ? i18n.t('control:wrapped.closing.optionMetaSumar', {
+                        title: goalTitle,
+                      })
+                    : i18n.t('control:wrapped.closing.optionMetaTitulo')
               }
               subtitle={
                 past?.decision === 'meta'
-                  ? 'Aporte realizado'
+                  ? i18n.t('control:wrapped.closing.optionMetaSubAporteRealizado')
                   : goalTitle
-                    ? 'Aporte directo'
-                    : 'Primero crea una meta'
+                    ? i18n.t('control:wrapped.closing.optionMetaSubAporteDirecto')
+                    : i18n.t('control:wrapped.closing.optionMetaSubCrearPrimero')
               }
               selected={past ? past.decision === 'meta' : leftoverSelected === 'meta'}
               disabled={Boolean(past) || !payload.activeGoal}
@@ -226,9 +235,11 @@ function ClosingSceneRender({
             />
             <LeftoverOptionCard
               icon="trending-up"
-              title="Sumar al mes actual"
+              title={i18n.t('control:wrapped.closing.optionAcumularTitle')}
               subtitle={
-                past?.decision === 'acumular' ? 'Hecho' : 'Queda como disponible extra'
+                past?.decision === 'acumular'
+                  ? i18n.t('control:wrapped.closing.optionAcumularSubHecho')
+                  : i18n.t('control:wrapped.closing.optionAcumularSub')
               }
               selected={past ? past.decision === 'acumular' : leftoverSelected === 'acumular'}
               disabled={Boolean(past)}
@@ -239,9 +250,11 @@ function ClosingSceneRender({
             />
             <LeftoverOptionCard
               icon="savings"
-              title="Guardar como reserva"
+              title={i18n.t('control:wrapped.closing.optionReservaTitle')}
               subtitle={
-                past?.decision === 'reserva' ? 'Guardado' : 'Plata aparte, sin destino'
+                past?.decision === 'reserva'
+                  ? i18n.t('control:wrapped.closing.optionReservaSubGuardado')
+                  : i18n.t('control:wrapped.closing.optionReservaSub')
               }
               selected={past ? past.decision === 'reserva' : leftoverSelected === 'reserva'}
               disabled={Boolean(past)}
@@ -253,7 +266,9 @@ function ClosingSceneRender({
           </View>
           {past ? (
             <Text style={closingStyles.pastDecisionHint}>
-              Decidiste el {formatPastDate(past.decidedAt)}
+              {i18n.t('control:wrapped.closing.pastDecisionHint', {
+                date: formatPastDate(past.decidedAt),
+              })}
             </Text>
           ) : null}
         </>
@@ -285,17 +300,13 @@ function SummaryStat({
 
 /** Formato compacto para "Decidiste el ..." en replay read-only.
  *  Parsea timestamptz/ISO completo (no solo YYYY-MM-DD) — `decided_at`
- *  es timestamptz en la DB. */
+ *  es timestamptz en la DB. El nombre del mes viene de i18n; el patrón
+ *  (orden día/mes/año + conector) vive en `wrapped.closing.dateFormat`. */
 function formatPastDate(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  const dd = d.getDate()
-  const mm = MONTH_NAMES[d.getMonth()]
-  const yy = d.getFullYear()
-  return `${dd} de ${mm} ${yy}`
+  const day = d.getDate()
+  const month = i18n.t(`control:months.long.${d.getMonth()}`)
+  const year = d.getFullYear()
+  return i18n.t('control:wrapped.closing.dateFormat', { day, month, year })
 }
-
-const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-] as const

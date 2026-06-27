@@ -1,0 +1,962 @@
+{
+  "language": {
+    "title": "Language",
+    "system": "System",
+    "footer": "Current language: {{lang}}."
+  },
+  "settingsScreen": {
+    "disabledHint": "Only the owner can edit"
+  },
+  "protectionDismiss": {
+    "a11y": "Postpone the protection reminder for 24 hours",
+    "label": "Remind me tomorrow"
+  },
+  "screen": {
+    "title": "Settings",
+    "subtitleSolo": "Your profile and your account's base setup.",
+    "subtitleFamily": "Household preferences, your profile and the family's base setup."
+  },
+  "loadError": {
+    "title": "We couldn't open settings",
+    "descriptionSolo": "We couldn't load your account's settings, metrics and preferences.",
+    "descriptionFamily": "We couldn't load the household's settings, metrics and preferences."
+  },
+  "rowValue": {
+    "define": "Set",
+    "choose": "Choose",
+    "enabled": "On",
+    "disabled": "Off",
+    "unavailable": "Unavailable"
+  },
+  "errors": {
+    "genericTitle": "Something went wrong",
+    "updateName": "We couldn't update your name.",
+    "updateNameAlt": "We couldn't update your name.",
+    "updateAvatar": "We couldn't update your avatar.",
+    "saveHouseholdMetrics": "We couldn't save the household metrics.",
+    "updateContribution": "We couldn't update your contribution.",
+    "enablePush": "We couldn't enable push.",
+    "leaveFamily": "We couldn't unlink your account from the group.",
+    "resetAccount": "We couldn't reset your account.",
+    "changeAccountType": "We couldn't change the account type.",
+    "logout": "We couldn't sign out."
+  },
+  "biometric": {
+    "unavailableTitle": "Fast access unavailable",
+    "unavailableMessage": "Set up {{method}} in your system settings and try again.",
+    "invalidSessionTitle": "Invalid session",
+    "invalidSessionMessage": "Sign in again to enable fast access.",
+    "activatePrompt": "Turn on {{method}} to sign in faster next time.",
+    "noSessionTitle": "We couldn't finish",
+    "noSessionMessage": "We couldn't find an active session. Sign in manually and try again.",
+    "saveFailedTitle": "We couldn't save",
+    "saveFailedMessage": "There was a problem enabling fast access. Please try again."
+  },
+  "pin": {
+    "title": "Access PIN",
+    "prompt": "What would you like to do?",
+    "change": "Change PIN",
+    "remove": "Remove PIN"
+  },
+  "push": {
+    "devBuildTitle": "Requires a development build",
+    "devBuildMessage": "Expo Go no longer supports remote push notifications since SDK 53. Open the app in a development build to enable them.",
+    "devBuildValue": "Dev build",
+    "active": "On",
+    "activate": "Enable"
+  },
+  "leaveHousehold": {
+    "title": "Leave household",
+    "leave": "Leave",
+    "baseMessage": "You're about to leave the current family group. Your expenses and shared settings stay with the household — only your account is unlinked.",
+    "lostAccessNote": "Also, your full access has already ended: once you leave you'll have no plan and will need to subscribe to keep using the app."
+  },
+  "resetAccount": {
+    "title": "Reset my account",
+    "groupTitle": "Reset",
+    "rowLabel": "Reset my account",
+    "footer": "Deletes your expenses, fixed expenses, goals and settings, and restarts onboarding from scratch. This can't be undone."
+  },
+  "convertToSolo": {
+    "title": "Switch to an individual account",
+    "message": "The other members will be removed and will have to set up their account again. The expenses and shared settings stay with you. This action can't be undone.",
+    "confirm": "Switch to individual"
+  },
+  "convertToFamily": {
+    "title": "Share with your family",
+    "message": "Your account switches to family mode. You'll be able to invite other people and share expenses.",
+    "confirm": "Enable"
+  },
+  "logout": {
+    "title": "Sign out",
+    "message": "You're about to sign out of the app on this device."
+  },
+  "household": {
+    "total": "Household total: {{amount}}",
+    "ownerOnlyFooter": "These values are configured by the household owner.",
+    "title": "Household",
+    "titleSolo": "Your account",
+    "monthlyIncome": "Monthly income",
+    "myContribution": "My monthly contribution",
+    "payCycle": "Pay cycle",
+    "usdRate": "USD rate",
+    "usdRateHelper": "Shows your balance converted to dollars based on your currency.",
+    "savingsPercent": "Savings goal %",
+    "dailyBuffer": "Daily buffer"
+  },
+  "conversion": {
+    "rowDisabled": "Off",
+    "chooseCurrency": "Choose your currency",
+    "sheetTitle": "USD rate",
+    "sheetSubtitle": "Shows your balance converted to dollars based on your currency. It updates on its own.",
+    "toggleLabel": "Show dollar equivalent",
+    "toggleHelper": "On the home screen, below your balance.",
+    "yourCurrency": "Your currency",
+    "rateInUse": "Rate in use: US$ 1 = {{rate}}{{suffix}}"
+  },
+  "currency": {
+    "ARS": "Argentina · Peso",
+    "CLP": "Chile · Peso",
+    "COP": "Colombia · Peso",
+    "MXN": "Mexico · Peso",
+    "UYU": "Uruguay · Peso",
+    "PEN": "Peru · Sol",
+    "BRL": "Brazil · Real",
+    "USD": "US Dollar"
+  },
+  "buffer": {
+    "none": "No buffer",
+    "percentDaily": "{{value}}% daily",
+    "perDay": "{{amount}}/day",
+    "sheetTitle": "Daily buffer",
+    "sheetSubtitle": "Money you want to set aside before projecting your variable budget.",
+    "eyebrowNone": "NO BUFFER",
+    "eyebrowPercent": "DAILY %",
+    "eyebrowFixed": "DAILY AMOUNT",
+    "saveLabel": "Save buffer",
+    "helperNone": "No money will be set aside for unexpected expenses.",
+    "helperInvalidPercent": "Enter a percentage between 0 and 100.",
+    "helperInvalidAmount": "Enter a valid amount.",
+    "helperPercent": "We'll set aside {{percent}}% of your daily budget.",
+    "helperFixed": "We'll set aside {{amount}} per day.",
+    "errorPercent": "It must be between 0 and 100.",
+    "errorAmount": "Invalid amount.",
+    "mode": {
+      "none": {
+        "label": "No buffer",
+        "hint": "Don't reserve"
+      },
+      "fixed": {
+        "label": "Fixed amount",
+        "hint": "In ARS per day"
+      },
+      "percent": {
+        "label": "Percentage",
+        "hint": "% of the budget"
+      }
+    }
+  },
+  "savingsGoal": {
+    "groupTitle": "Savings goals",
+    "rowLabel": "Goal",
+    "inactiveSubtitle": "Inactive · {{emoji}} {{title}}",
+    "noGoal": "No goal set"
+  },
+  "reserve": {
+    "title": "Accumulated reserve",
+    "subtitle": "Money saved from closing previous months."
+  },
+  "plan": {
+    "groupTitle": "Your plan",
+    "rowLabel": "Household plan",
+    "rowValue": "View plans",
+    "helper": "Your subscription, the people included and billing."
+  },
+  "progress": {
+    "groupTitle": "Your progress",
+    "achievements": "Achievements",
+    "achievementsValue": "View gallery",
+    "achievementsHelper": "Milestones you unlock with every action inside Manifiesto.",
+    "editions": "Editions",
+    "editionsValue": "View archive",
+    "editionsHelper": "Your archive of Manifiestos. Each closed cycle becomes an edition you can revisit."
+  },
+  "assistant": {
+    "groupTitle": "Assistant",
+    "preferences": "Assistant preferences"
+  },
+  "notifications": {
+    "groupTitle": "Notifications",
+    "manage": "Manage notifications",
+    "enablePush": "Enable push"
+  },
+  "fastAccess": {
+    "groupTitle": "Fast access",
+    "unprotectedFooter": "Your account isn't protected. Turn on Face ID or create a PIN so only you can get in.",
+    "availableFooter": "Use {{method}} to sign in faster next time.",
+    "unavailableFooter": "Set up {{method}} in your system settings to enable it.",
+    "enterWith": "Sign in with {{method}}",
+    "pinLabel": "Access PIN"
+  },
+  "theme": {
+    "groupTitle": "Appearance",
+    "footer": "Current theme: {{theme}}.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "motion": {
+    "groupTitle": "Animations",
+    "footerAlways": "Decorative animations are always off.",
+    "footerNever": "Decorative animations run even if your device is slower.",
+    "footerAuto": "They turn off automatically on older devices to keep things smooth.",
+    "reduce": "Reduce",
+    "auto": "Auto",
+    "all": "All"
+  },
+  "help": {
+    "groupTitle": "Help",
+    "footer": "Replay any tutorial whenever you want.",
+    "tutorialHome": "Watch the Home tutorial",
+    "tutorialExpenses": "Watch the Expenses tutorial",
+    "tutorialFixed": "Watch the Fixed expenses tutorial",
+    "tutorialControl": "Watch the Control tutorial",
+    "rewatchAll": "Replay all tutorials",
+    "rewatchAllHelper": "Resets all 4 tutorials — the next time you enter each screen they'll show again."
+  },
+  "info": {
+    "groupTitle": "Information",
+    "about": "About",
+    "aboutHelper": "Version, privacy policy, terms and support."
+  },
+  "family": {
+    "groupTitle": "Family",
+    "invite": "Invite someone",
+    "inviteHelper": "Generates a single-use code, valid for 7 days.",
+    "manageMembers": "Manage members",
+    "ownerLeaveHelper": "Since you're the owner, leaving closes the household for everyone.",
+    "deleteHousehold": "Delete the household",
+    "leaveHousehold": "Leave household"
+  },
+  "accountType": {
+    "groupTitle": "Account type",
+    "toSolo": "Switch to an individual account",
+    "toSoloHelper": "Removes the other members and keeps the account just for you.",
+    "toFamily": "Share with my family or partner",
+    "toFamilyHelper": "Turn on family mode to invite and share expenses."
+  },
+  "superAdmin": {
+    "groupTitle": "Super admin",
+    "rowLabel": "MVP accounts",
+    "helper": "Grant MVP access (full, lifetime) by email."
+  },
+  "account": {
+    "groupTitle": "Account",
+    "logout": "Sign out",
+    "delete": "Delete account",
+    "deleteHelper": "Deletes your data in 30 days. You can cancel before then."
+  },
+  "asistente": {
+    "title": "Assistant",
+    "subtitle": "How it alerts you and what it looks at first",
+    "valueEyebrow": "WHAT I SAVED YOU",
+    "thisQuarter": "this quarter",
+    "savedThisMonth": "{{amount}} this month",
+    "actionsCount_one": "{{count}} action",
+    "actionsCount_other": "{{count}} actions",
+    "signalTypesCount_one": "{{count}} alert type",
+    "signalTypesCount_other": "{{count}} alert types",
+    "alertsGroup": "Alerts",
+    "alertsFooter": "During your \"do not disturb\" hours, nothing reaches your phone.",
+    "advisorLabel": "Financial assistant",
+    "advisorHelper": "If you turn it off, it stops giving you alerts and advice.",
+    "pushLabel": "Phone notifications",
+    "pushHelper": "If you turn it off, alerts only show up when you open the app.",
+    "whenLabel": "When should I alert you?",
+    "quietFrom": "Do not disturb from",
+    "quietUntil": "Alert again at",
+    "quietFromA11y": "Do not disturb start time",
+    "quietUntilA11y": "Time to alert again",
+    "urgencyModalTitle": "When should I alert your phone?",
+    "styleGroup": "Your style",
+    "styleAutoLabel": "Pick the style for me",
+    "styleAutoHelper": "If you turn it off, you pick it below.",
+    "styleFooterLearning": "I'm just getting to know you. As you use it, I adapt to how you handle your money.",
+    "styleFooterAuto": "I pick it based on how you've been using the app. Change it yourself if you want.",
+    "styleFooterManual": "You chose it. Tap another to change it, or switch back to automatic above.",
+    "yourAlertsGroup": "Your alerts",
+    "yourAlertsFooter": "How much you follow each type.",
+    "hiddenGroup": "Alerts you hid",
+    "hiddenFooterSome": "Tap one to make that alert show up again.",
+    "hiddenFooterNone": "If you hide a type of alert, it shows up here.",
+    "noneHidden": "You haven't hidden any alerts",
+    "privacyGroup": "Privacy",
+    "privacyFooter": "What you do in the app is only used to help the assistant know you better. We don't share it.",
+    "clearRowLabel": "Delete what it learned about me",
+    "unblockTitle": "Show this alert again",
+    "unblockMessage": "\"{{label}}\" will show up again when needed.",
+    "unblockConfirm": "Show again",
+    "unblockErrorTitle": "We couldn't show it",
+    "unblockErrorMessage": "Try again in a few seconds.",
+    "clearTitle": "Delete what the assistant learned",
+    "clearMessage": "Deletes everything the assistant has learned about how you use the app. It'll start from scratch and treat you like someone new until it gets to know you again. This can't be undone.",
+    "clearConfirm": "Delete",
+    "clearedTitle": "Done",
+    "clearedMessage": "The assistant starts from scratch.",
+    "clearErrorTitle": "We couldn't delete it",
+    "clearErrorMessage": "Try again. If it keeps happening, reach out to us."
+  },
+  "about": {
+    "title": "About",
+    "subtitle": "Version, legal information and support contact.",
+    "legalGroup": "Legal information",
+    "privacyPolicy": "Privacy policy",
+    "termsOfUse": "Terms of use",
+    "open": "Open",
+    "supportGroup": "Support",
+    "supportFooter": "We reply by email at {{email}}.",
+    "contactSupport": "Contact support",
+    "contactHelper": "Include your version + platform so we can triage faster.",
+    "write": "Write",
+    "madeWithLove": "Made with ♥ for Latin America",
+    "browserErrorTitle": "We couldn't open the browser",
+    "browserErrorMessage": "Try copying the link manually: {{url}}",
+    "mailErrorTitle": "We couldn't open your mail",
+    "mailErrorMessage": "Email us at {{email}} from whichever mail app you prefer.",
+    "supportMailto": {
+      "subject": "Manifiesto Support",
+      "intro": "Tell us what happened:",
+      "doNotDelete": "— Don't delete ↓ —",
+      "version": "Version: {{value}}",
+      "platform": "Platform: {{value}}",
+      "user": "User: {{value}}"
+    }
+  },
+  "deleteAccount": {
+    "title": "Delete account",
+    "confirmPhrase": "DELETE",
+    "blockedSubtitle": "Before deleting your account, close your household or wait for the others to leave.",
+    "blockedTitle": "You can't delete your account yet",
+    "blockedBody": "You own a household with other active members. To delete your account, first delete the household (it closes for everyone) or ask the others to leave, then come back here.",
+    "subtitleReview": "You're about to schedule your account's deletion.",
+    "subtitleConfirm": "Type {{phrase}} to confirm.",
+    "subtitlePin": "Enter your PIN to confirm.",
+    "subtitlePassword": "Enter your account password.",
+    "subtitleBiometric": "Confirm with biometrics to schedule the deletion.",
+    "disclaimerTitle": "This action isn't immediate, but it's serious",
+    "disclaimerBody": "Your account is scheduled to be deleted in 30 days. During that window you can cancel the deletion by signing in again. After 30 days, all your personal data is deleted permanently.",
+    "deletedTitle": "What gets deleted",
+    "deletedProfile": "Your profile, avatar and personal settings.",
+    "deletedPush": "Your push notification subscriptions.",
+    "deletedSubscription": "Your plan subscription (if you have one active).",
+    "preservedTitle": "What's preserved",
+    "preservedHistory": "The household's expense history (with author 'Anonymous').",
+    "preservedFamily": "The family if other active members remain.",
+    "preservedGrace": "30 days of grace to change your mind.",
+    "confirmHelperPrefix": "To unlock the button, type",
+    "confirmHelperSuffix": "in uppercase, exactly as it appears.",
+    "inputA11y": "Type {{phrase}} to confirm",
+    "phraseMismatch": "It must match {{phrase}} exactly (uppercase).",
+    "willAskPin": "When you continue, we'll ask for your PIN to confirm.",
+    "willAskBiometric": "When you continue, we'll ask for {{method}} to confirm.",
+    "willAskPassword": "When you continue, we'll ask for your account password to confirm.",
+    "deleteCta": "Delete my account",
+    "pinTitle": "Enter your PIN",
+    "pinHelper": "We ask for your PIN as a final check before scheduling the deletion.",
+    "pinLockout": "Locked {{seconds}}s",
+    "cancelDeletion": "Cancel deletion",
+    "passwordTitle": "Confirm your password",
+    "passwordHelper": "Since you don't have a PIN or biometrics set up, we ask for your account password as a final check before scheduling the deletion.",
+    "accountLabel": "Account: {{email}}",
+    "passwordA11y": "Your account password",
+    "passwordPlaceholder": "Your password",
+    "passwordRequired": "Enter your password to confirm.",
+    "emailUnknown": "We couldn't identify your email. Try again in a moment.",
+    "passwordMismatch": "The password doesn't match. Please try again.",
+    "passwordVerifyError": "We couldn't verify the password.",
+    "biometricTitle": "Confirm with {{method}}",
+    "biometricFallback": "biometrics",
+    "biometricRetryHelper": "If the prompt didn't show up, tap \"Retry\".",
+    "biometricUnavailableTitle": "Biometrics unavailable",
+    "biometricUnavailableMessage": "Set up Face ID / fingerprint in your system settings to confirm the deletion.",
+    "biometricPrompt": "Confirm your account deletion",
+    "confirmErrorTitle": "We couldn't confirm",
+    "tryAgain": "Please try again.",
+    "logoutErrorTitle": "We couldn't sign out",
+    "logoutErrorMessage": "Your account was scheduled for deletion but there was a problem signing out.",
+    "scheduleErrorTitle": "We couldn't schedule the deletion",
+    "scheduleErrorMessage": "Try again in a moment. If the problem persists, reach out to support."
+  },
+  "householdSetup": {
+    "screenTitle": "Household setup",
+    "loading": "Preparing the wizard...",
+    "errorDescription": "We couldn't prepare your household's initial setup.",
+    "errorTitle": "We couldn't open the wizard",
+    "pending": "pending",
+    "saveAndStart": "Save and start",
+    "saveConfig": "Save setup",
+    "saveErrorTitle": "Something went wrong",
+    "saveErrorMessage": "We couldn't save your household setup.",
+    "subtitleInitial": "Set up income, target distribution, daily buffer and household reminders.",
+    "subtitleRecalibrate": "Go through the guided setup again to recalibrate your household.",
+    "titleInitial": "Set up your household",
+    "titleRecalibrate": "Reconfigure household",
+    "progressSubtitle0": "First we define your household's financial base.",
+    "progressSubtitle1": "Then we set the percentage distribution of your income.",
+    "progressSubtitle2": "Finally we protect day-to-day with buffers and nudges.",
+    "progressTitle0": "Household base",
+    "progressTitle1": "Target distribution",
+    "progressTitle2": "Daily protection",
+    "step0Subtitle": "This data organizes your pay cycle and your household's main references.",
+    "step0Title": "Income and cycle",
+    "incomeLabel": "Household monthly income",
+    "salaryDayHelper": "Day of the month your main income comes in.",
+    "salaryDayLabel": "Payday",
+    "usdRateLabel": "USD rate",
+    "incomeConfirmedDescription": "If your main income already came in, we mark this cycle as open and avoid initial friction.",
+    "incomeConfirmedLabel": "This month's income already came in",
+    "step1Subtitle": "We use 50% for needs as a baseline and shift the rest between savings and flexible spending.",
+    "step1Title": "Income distribution",
+    "recommendedBase": "Recommended base",
+    "savingsHelper": "That's {{amount}} per month. Target flexible spending: {{flexible}}%.",
+    "savingsLabel": "Savings target (%)",
+    "step2Subtitle": "Define how much margin you want to protect before splitting spending by day.",
+    "step2Title": "Daily buffer",
+    "bufferNone": "No buffer",
+    "bufferFixed": "$ Fixed",
+    "bufferHelperNone": "All available money is split within the cycle.",
+    "bufferHelperPercent": "Percentage reserved from your variable budget.",
+    "bufferHelperFixed": "Fixed amount reserved outside daily operations.",
+    "bufferLabel": "Buffer",
+    "bufferLabelPercent": "Buffer (%)",
+    "nudgesDescription": "Turns on daily opening reminders and alerts when the day starts getting tight.",
+    "nudgesLabel": "Smart nudges",
+    "checkinHourHelper": "Reference time for the daily check-in. Use a 0 to 23 format.",
+    "checkinHourLabel": "Check-in time",
+    "summarySubtitle": "Setup summary before saving.",
+    "summaryTitle": "Here's your household",
+    "summaryIncome": "Income",
+    "summarySavings": "Savings target",
+    "summaryNeeds": "Needs",
+    "summaryNeedsValue": "{{percent}}% target",
+    "summaryFlexible": "Flexible",
+    "summaryCheckin": "Check-in",
+    "summaryCheckinValue": "{{hour}}:00",
+    "summaryNote": "Base fund of {{fund}} and monthly savings derived from {{percent}}% of income.",
+    "stepOf": "Step {{current}} of {{total}}",
+    "researchTitle": "References used by Manifiesto",
+    "researchSubtitle": "We use 3 months of expenses as a household buffer benchmark.",
+    "benchmarkText": "Suggested reference fund: {{amount}}",
+    "usePresetA11y": "Use the {{title}} profile",
+    "researchStat1Detail": "had savings to cover three months of expenses",
+    "researchStat1Label": "3-month fund",
+    "researchStat2Detail": "of those who always end the month with money left over",
+    "researchStat2Label": "Month with leftover",
+    "researchNote": "We take the CFPB's 50/20/30 rule as a starting point and suggest raising savings to 25%-30% by trimming flexible spending. The CFPB and FDIC also recommend automating savings on payday.",
+    "presetHelper": "{{needs}}% needs, {{flexible}}% flexible and {{savings}}% savings. The {{months}}-month fund is built in ~{{toBenchmark}} months.",
+    "presetHelperEmpty": "Set an income to suggest a target distribution.",
+    "presetSteadySubtitle": "CFPB baseline: you need order, but without choking flexible spending.",
+    "presetSteadyTitle": "50/30/20 base",
+    "presetBalancedSubtitle": "Trim part of your flexible spending to strengthen your monthly reserve.",
+    "presetBalancedTitle": "Boosted savings",
+    "presetResilientSubtitle": "Prioritizes building cash fast and protects your household's flow more.",
+    "presetResilientTitle": "Accelerated reserve"
+  },
+  "notif": {
+    "title": "Notifications",
+    "subtitle": "Choose what reaches you, when and where.",
+    "saveErrorTitle": "We couldn't save",
+    "saveErrorMessage": "Check your connection and try again.",
+    "channelsTitle": "Channels",
+    "channelsSubtitle": "Choose which ways we can reach you.",
+    "pushLabel": "Push",
+    "pushDescription": "Notifications that reach your phone even when the app is closed.",
+    "inappLabel": "In-app",
+    "inappDescription": "The inbox inside Manifiesto with recent activity.",
+    "checkinTitle": "Check-in times",
+    "checkinSubtitle": "What time you'd like us to message you.",
+    "checkinSlot": {
+      "morning": {
+        "label": "Morning",
+        "labelLower": "morning",
+        "subtitle": "Your start to the day."
+      },
+      "midday": {
+        "label": "Midday",
+        "labelLower": "midday",
+        "subtitle": "A quick check on your pace."
+      },
+      "evening": {
+        "label": "Evening",
+        "labelLower": "evening",
+        "subtitle": "End of day and streak."
+      }
+    },
+    "checkinPickerTitle": "{{slot}} check-in",
+    "checkinPickerA11y": "Check-in time",
+    "smartTitle": "Smart suggestions",
+    "smartSubtitle": "Alerts that nudge you when your streak or your pace are at risk.",
+    "nudgesLabel": "Reminders and nudges",
+    "nudgesDescription": "We let you know if your streak is at risk or if you went over the day's margin.",
+    "muteTitle": "Mute by type",
+    "muteSubtitle": "Keep on the groups you actually care about.",
+    "groupDescription": {
+      "gastos": "Expenses logged by you or your family.",
+      "ingresos": "Extra income (transfers, bonuses, gifts) recorded in the account.",
+      "fijos": "Commitments that are due or get updated.",
+      "racha": "Daily check-ins, streaks and shields.",
+      "meta": "Milestones and contributions to your goal.",
+      "otros": "General alerts and subscription cleanup."
+    },
+    "groupLabel": {
+      "gastos": "Expenses",
+      "ingresos": "Income",
+      "fijos": "Fixed expenses",
+      "racha": "Streak & check-ins",
+      "meta": "Goals",
+      "otros": "Other"
+    }
+  },
+  "member": {
+    "retryError": "Try again in a moment.",
+    "youSuffix": "(you)",
+    "statExpenses": "Expenses this month",
+    "statShare": "Share",
+    "statGarden": "Garden",
+    "statBest": "Best: {{count}}",
+    "statFixed": "Fixed expenses",
+    "statThisMonth": "this month",
+    "ownerNote": "You're the household owner. From here you manage the rest of the members.",
+    "unblock": "Unblock",
+    "unblockTitle": "Unblock member",
+    "unblockBody": "{{name}} will be able to log expenses again.",
+    "block": "Block",
+    "blockLabel": "Block member",
+    "blockTitle": "Block member",
+    "blockBody": "{{name}} won't be able to log new expenses. Their data stays visible.",
+    "removeLabel": "Remove from the family",
+    "removeTitle": "Remove from the family",
+    "removeBody": "You're about to remove {{name}} from the family. Their past expenses stay."
+  },
+  "admin": {
+    "title": "Super admin",
+    "subtitle": "Search a user by email and grant their MVP access (full, lifetime).",
+    "noAccess": "You don't have access to this section.",
+    "searchPlaceholder": "Search by email…",
+    "searchA11y": "Search user by email",
+    "updateError": "We couldn't update. Try again.",
+    "minChars": "Type at least 2 characters.",
+    "searching": "Searching…",
+    "noResults": "No results for \"{{query}}\".",
+    "paidBy": "Paid by {{email}}"
+  },
+  "adminChip": {
+    "mvp": "MVP · lifetime",
+    "purchaser": "Holder · pays the plan",
+    "covered": "Covered by the household",
+    "comped": "Courtesy",
+    "trial": "Full access",
+    "none": "No plan"
+  },
+  "familyAdmin": {
+    "title": "Family management",
+    "subtitle": "Roles, blocks and transfers",
+    "subtitleError": "Roles and blocks",
+    "errorTitle": "We couldn't load the family",
+    "errorDescription": "Try again in a moment.",
+    "heroEyebrow": "FAMILY",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "activeCount_one": "{{count}} active",
+    "activeCount_other": "{{count}} active",
+    "blockedCount_one": "{{count}} blocked",
+    "blockedCount_other": "{{count}} blocked",
+    "membersGroup": "Members",
+    "loadingMembers": "Loading members…",
+    "noMembers": "No members yet.",
+    "blockedGroup": "Blocked",
+    "memberActionsA11y": "Actions for {{name}}"
+  },
+  "destroyFamily": {
+    "phraseFamily": "DELETE",
+    "phraseAccount": "RESET",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "subtitleAccount": "You're about to start setup from scratch.",
+    "subtitleFamily": "There are still {{members}} in your household.",
+    "subtitleConfirm": "Confirm by typing the exact word.",
+    "titleAccount": "Reset your account?",
+    "titleFamily": "Delete your household?",
+    "titleConfirm": "Final confirmation",
+    "warningTitleAccount": "You're about to delete all your data",
+    "warningTitleFamily": "You're about to delete the whole household",
+    "warningBodyAccount": "Your expenses, fixed expenses, goals and all your settings get deleted. Your account goes back to onboarding from scratch. Your subscription stays.",
+    "warningBodyFamily": "Since you're the owner, leaving closes the household for everyone. Your family, expenses, fixed expenses, goals and settings get deleted. The {{members}} lose access and start over.",
+    "accountBullet1": "Your expenses, fixed expenses, goals and all your settings get deleted.",
+    "accountBullet2": "You start onboarding again from scratch.",
+    "accountBullet3": "Your subscription isn't touched: you keep your plan.",
+    "familyBullet1": "Your expenses, fixed expenses, goals and the household's settings get deleted.",
+    "familyBullet2": "The {{members}} lose shared access.",
+    "familyBullet3": "If you want to come back, you'll have to set up a household from scratch.",
+    "confirmHelperPrefix": "Type",
+    "confirmHelperSuffix": "to enable the button.",
+    "inputA11y": "Type {{phrase}} to confirm",
+    "mismatch": "It must match {{phrase}} exactly.",
+    "ctaAccount": "Reset my account",
+    "ctaFamily": "Delete forever"
+  },
+  "profileErrors": {
+    "noSessionAvatar": "There's no active session to update the avatar.",
+    "noSessionName": "There's no active session to update the name.",
+    "emptyName": "The display name can't be empty."
+  },
+  "savingsGoalValidation": {
+    "titleRequired": "The goal title is required",
+    "titleTooLong": "The title can't be longer than 40 characters",
+    "goalAmountPositive": "The target amount must be greater than zero",
+    "currentAmountNonNegative": "The current amount can't be negative",
+    "monthsPositiveInteger": "The target months must be a positive integer",
+    "contributionFailed": "We couldn't record the contribution",
+    "saveFailed": "We couldn't save the goal."
+  },
+  "financeValidation": {
+    "reviewFields": "Check your income, savings, buffer, nudges, USD rate and payday before saving.",
+    "invalidConfirmDate": "The payday confirmation date is invalid.",
+    "invalidAvailable": "This cycle's available amount is invalid.",
+    "invalidCycleStart": "The cycle start date is invalid.",
+    "invalidCycleType": "Invalid cycle type.",
+    "monthlyNoAnchor": "A monthly setup shouldn't have an anchor or length.",
+    "missingCycleStart": "The cycle start date is missing.",
+    "invalidCycleLength": "Invalid cycle length.",
+    "biweekly14": "Biweekly must be every 14 days.",
+    "weekly7": "Weekly must be every 7 days.",
+    "unsupportedCurrency": "Unsupported currency.",
+    "noActiveFamily": "There's no active family to save financial metrics."
+  },
+  "memberAdmin": {
+    "blockError": "We couldn't block the member.",
+    "unblockError": "We couldn't unblock the member.",
+    "removeError": "We couldn't remove the member."
+  },
+  "join": {
+    "joinError": "We couldn't join the family with that code.",
+    "createError": "We couldn't create the family."
+  },
+  "familyActions": {
+    "noFamilyFromSupabase": "We couldn't get the family from Supabase.",
+    "noSessionCreate": "There's no active session to create the family.",
+    "couldNotGenerateCode": "We couldn't generate the invite code.",
+    "invalidInviteCode": "Enter a valid invite code.",
+    "couldNotPeekFamily": "We couldn't look up the family.",
+    "noSessionJoin": "There's no active session to join the family.",
+    "couldNotJoin": "We couldn't join the family.",
+    "noSessionUpdateContribution": "There's no active session to update your contribution.",
+    "noSessionLeave": "There's no active session to leave the family."
+  },
+  "role": {
+    "owner": "Owner",
+    "blocked": "Blocked",
+    "member": "Member"
+  },
+  "memberSince": {
+    "fallback": "Member",
+    "label": "Member since {{date}}"
+  },
+  "relative": {
+    "noActivity": "No activity",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "monthsAgo_one": "{{count}} month ago",
+    "monthsAgo_other": "{{count}} months ago",
+    "yearsAgo_one": "{{count}} year ago",
+    "yearsAgo_other": "{{count}} years ago"
+  },
+  "engagement": {
+    "never": "not yet",
+    "often": "often",
+    "sometimes": "sometimes",
+    "rarely": "rarely"
+  },
+  "urgency": {
+    "high": {
+      "label": "Urgent only",
+      "helper": "Only what can't wait."
+    },
+    "medium": {
+      "label": "Important",
+      "helper": "Urgent things and changes worth knowing."
+    },
+    "low": {
+      "label": "Everything",
+      "helper": "Any alert, as soon as it happens."
+    }
+  },
+  "signalFamily": {
+    "velocity": "You're spending faster",
+    "recoveryHard": "Get the month back on track",
+    "recoverySoft": "A small tweak to the month",
+    "fijosRatio": "Your fixed expenses weigh a lot",
+    "smallLeaks": "Small expenses that add up",
+    "nightImpulse": "Late-night purchases",
+    "weeklyPattern": "A day you spend more",
+    "zombie": "Services you pay for and don't use",
+    "hike": "A price that went up",
+    "undetectedSub": "Payments that repeat every month",
+    "cap": "Limits you set yourself",
+    "catDominance": "Where almost all your money goes",
+    "catAccel": "A category that spiked",
+    "catWin": "Where you spent less",
+    "memberImbalance": "Who spends more at home",
+    "savingsFeasibility": "Will you reach your savings goal?",
+    "savingsOver": "You're ahead on savings",
+    "streakOk": "You've been logging every day",
+    "positiveForecast": "You'll have money left over",
+    "highSingleExpense": "A big one-off purchase",
+    "duplicate": "You were charged twice",
+    "dataGapWarning": "Days you didn't log anything",
+    "savingsMilestone": "Your savings milestones",
+    "cycleStartProjection": "How your month starts",
+    "forecastTomorrowRisk": "Watch out for tomorrow",
+    "forecastStormWeek": "A week with several payments",
+    "forecastPaydayGap": "Money until your next payday",
+    "incomeMissing": "An income you still need to confirm",
+    "causal": "Habits that make you spend",
+    "superPerfectStorm": "Several things to watch at once",
+    "superSavingsMomentum": "You've been saving well",
+    "superHiddenDrain": "Money slipping away without you noticing"
+  },
+  "categoryEditor": {
+    "introLabel": "Display name",
+    "introText": "Use a short, clear name so you can recognize the category quickly in filters and forms.",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Transport"
+  },
+  "fixedEditor": {
+    "kindLabel": "Type",
+    "categoryLabel": "Category",
+    "frequencyLabel": "Frequency",
+    "statusLabel": "Status",
+    "amount": "Amount",
+    "plannedPayment": "Planned payment",
+    "dateHelper": "Format: DD/MM/YYYY",
+    "nextDue": "Next due date",
+    "installmentsTotal": "Total installments",
+    "installmentsPaid": "Installments paid",
+    "remainingBalance": "Remaining balance",
+    "lender": "Lender",
+    "lenderPlaceholder": "e.g. Bank / Relative"
+  },
+  "cycleConfig": {
+    "type": {
+      "monthly": {
+        "title": "Monthly",
+        "subtitle": "Once a month"
+      },
+      "biweekly": {
+        "title": "Biweekly",
+        "subtitle": "Every 14 days"
+      },
+      "weekly": {
+        "title": "Weekly",
+        "subtitle": "Every 7 days"
+      },
+      "custom": {
+        "title": "Custom",
+        "subtitle": "Every N days"
+      }
+    },
+    "helper": {
+      "monthly": "The cycle lasts 28-31 days depending on the month.",
+      "biweekly": "Starting from this date, every 14 days.",
+      "weekly": "Starting from this date, every 7 days.",
+      "custom": "Indicate your next payday and how many days the cycle lasts."
+    },
+    "transitionNotice": "You're changing your cycle from {{from}} to {{to}}. The change applies to the next payday you set.",
+    "monthDayLabel": "DAY OF THE MONTH YOU GET PAID",
+    "nextPaydayLabel": "WHEN IS YOUR NEXT PAYDAY?",
+    "everyNDaysLabel": "HOW OFTEN YOU GET PAID (DAYS)",
+    "minusDay": "Subtract a day",
+    "plusDay": "Add a day",
+    "days_one": "day",
+    "days_other": "days"
+  },
+  "savingsGoalScreen": {
+    "title": "Savings goal",
+    "loading": "Loading goal...",
+    "emptyTitle": "You haven't set up a savings goal yet",
+    "emptyBody": "Define how much you want to save and over how long. The goal shows up on Home and adds up your contributions.",
+    "createGoal": "Create goal",
+    "deleteErrorTitle": "We couldn't delete it",
+    "tryAgain": "Try again.",
+    "deleteTitle": "Delete goal",
+    "deleteMessage": "You're about to delete your \"{{title}}\" goal. The amount you'd saved stays in your history but will no longer show as an active goal. Continue?",
+    "deleteReauth": "Delete goal",
+    "noTarget": "Your goal doesn't have a defined target yet.",
+    "reached": "🎉 You've reached your goal!",
+    "remainingPrefix": "You still need",
+    "monthlyPlan_one": "Saving {{amount}} per month, you'll get there in {{count}} month.",
+    "monthlyPlan_other": "Saving {{amount}} per month, you'll get there in {{count}} months.",
+    "noDeadline": "No deadline set for this goal.",
+    "statusGroup": "Status",
+    "statusFooterActive": "The goal shows on Home and counts toward your contributions.",
+    "statusFooterInactive": "Inactive — it doesn't show on Home but the data is kept.",
+    "metaLabel": "Goal",
+    "actionsGroup": "Actions",
+    "deleteRow": "Delete goal"
+  },
+  "savingsWizard": {
+    "eyebrow": {
+      "1": "STEP 1 OF 4",
+      "2": "STEP 2 OF 4",
+      "3": "STEP 3 OF 4",
+      "4": "SUMMARY"
+    },
+    "title": {
+      "1": "What's your goal called?",
+      "2": "How much do you need to save?",
+      "3": "How long do you want to take?",
+      "4": "Review the details"
+    },
+    "createGoal": "Create goal",
+    "createAndContribute": "Create and contribute {{amount}}",
+    "createErrorTitle": "We couldn't create the goal",
+    "retry": "Try again in a moment.",
+    "closeA11y": "Close wizard",
+    "continueA11y": "Continue to step {{next}} of {{total}}",
+    "createAndContributeA11y": "Create goal and contribute {{amount}}",
+    "createGoalA11y": "Create goal {{title}}",
+    "createGoalA11yImage": "Create savings goal",
+    "backA11y": "Go back to step {{prev}} of {{total}}",
+    "nameLabel": "Goal name",
+    "namePlaceholder": "e.g. Trip to Bariloche",
+    "chooseIcon": "CHOOSE AN ICON",
+    "iconScrollA11y": "Select an icon — swipe to see more",
+    "iconA11y": "Icon {{glyph}}",
+    "undefined": "not set",
+    "editAmountA11y": "Edit amount. Current value {{amount}}",
+    "tapEditAmountA11y": "Tap to edit the amount. Current value {{amount}}",
+    "targetAmountEyebrow": "TARGET AMOUNT",
+    "amountHelper": "Tap the amount to edit it. Whole numbers only — no cents.",
+    "monthsLabel_one": "{{count}} month",
+    "monthsLabel_other": "{{count}} months",
+    "monthsValue_one": "{{count}} month",
+    "monthsValue_other": "{{count}} months",
+    "custom": "Custom",
+    "customA11y": "Custom term",
+    "customExpandedA11y": "Custom term. Current value {{count}} months",
+    "customTapA11y": "Tap to edit the custom term. Current value {{count}} months",
+    "customEyebrow": "CUSTOM TERM",
+    "tapToType": "Tap to type",
+    "maxMonthsHelper": "Maximum {{max}} months (20 years) — value adjusted.",
+    "monthsHelper": "How many months until you reach the goal.",
+    "defaultTitle": "My savings goal",
+    "summarySub": "Monthly contributions of ~{{amount}} · {{months}}",
+    "applyNote": "We'll contribute {{amount}} as soon as it's created."
+  },
+  "invite": {
+    "title": "Invite someone",
+    "subtitle": "Share it with the person you want to join.",
+    "generateErrorTitle": "We couldn't generate the code",
+    "retry": "Try again in a moment.",
+    "copiedTitle": "Copied",
+    "copiedMessage": "The code \"{{code}}\" is on your clipboard.",
+    "shareMessage": "I'm inviting you to my household on Manifiesto. Enter this code in the app: {{code}}",
+    "shareDisclaimer": "The code works for one person and expires in 7 days.",
+    "codeA11y": "Invite code {{code}}",
+    "tapToCopy": "Tap to copy",
+    "generating": "Generating…",
+    "meta": "Single use · expires in 7 days.",
+    "share": "Share",
+    "regenerate": "Generate another"
+  },
+  "editName": {
+    "title": "Display name",
+    "subtitle": "How you appear in expenses, activity and shared summaries.",
+    "placeholder": "Your display name",
+    "invalid": "Enter at least one valid character.",
+    "save": "Save name"
+  },
+  "editPayday": {
+    "title": "Payday",
+    "subtitle": "The day of the month you get paid. We use this date to calculate the cycle and let you know when it's time to confirm.",
+    "dayA11y": "Day {{day}}",
+    "saveDay": "Save day {{day}}"
+  },
+  "editUsdRate": {
+    "title": "USD rate",
+    "subtitle": "Reference rate to show USD equivalents inside the app.",
+    "eyebrow": "ARS PER USD",
+    "helperValid": "1 USD ≈ {{amount}}.",
+    "helperInvalid": "Enter the current rate in ARS.",
+    "error": "The rate must be greater than zero.",
+    "save": "Save rate"
+  },
+  "editSavingsPercent": {
+    "title": "Savings goal",
+    "subtitle": "Percentage of your monthly income you want to set aside for savings. Maximum {{max}}%.",
+    "eyebrow": "% OF INCOME",
+    "helperInvalid": "It must be between 0 and {{max}}%.",
+    "helperNoIncome": "Set a monthly income to project the savings amount.",
+    "helperAmount": "That's {{amount}} per month.",
+    "error": "Enter a percentage between 0 and {{max}}.",
+    "save": "Save goal"
+  },
+  "editCycle": {
+    "title": "Pay cycle",
+    "subtitle": "Choose how you get paid. Changing the type applies to your next payday — the current cycle runs its course."
+  },
+  "editAvatar": {
+    "title": "Avatar",
+    "subtitle": "Choose the animal that represents you in the family.",
+    "save": "Save avatar"
+  },
+  "editContribution": {
+    "title": "My monthly contribution",
+    "titleSolo": "Monthly income",
+    "subtitle": "It's what you contribute to the household income. The household total recalculates automatically with the sum of each member's contributions.",
+    "subtitleSolo": "It's your monthly income. We use it to calculate your budget.",
+    "eyebrow": "MY CONTRIBUTION",
+    "eyebrowSolo": "INCOME",
+    "helperTotal": "Household total: {{amount}}.",
+    "helperInvalid": "Enter a valid amount (it can be 0).",
+    "error": "The contribution can't be negative.",
+    "errorSolo": "Your income can't be negative.",
+    "save": "Save contribution"
+  },
+  "hero": {
+    "eyebrowSolo": "YOUR ACCOUNT",
+    "eyebrowFamily": "YOUR HOUSEHOLD",
+    "unnamedProfile": "Unnamed profile",
+    "personalAccount": "Your personal account",
+    "soloHousehold": "Individual household",
+    "householdOfN_one": "Household of {{count}} person",
+    "householdOfN_other": "Household of {{count}} people",
+    "ownerPill": "You're the household owner",
+    "memberHint": "You're a member. Only the owner can edit the household."
+  },
+  "planChip": {
+    "trial_one": "Full access · {{count}} day",
+    "trial_other": "Full access · {{count}} days",
+    "noPlan": "No plan",
+    "mvp": "MVP",
+    "comped": "Courtesy",
+    "member": "Household member",
+    "paymentIssue": "Payment issue",
+    "noRenew": "Won't renew",
+    "active": "Active"
+  },
+  "profile": {
+    "title": "Profile",
+    "displayName": "Display name",
+    "avatar": "Avatar",
+    "email": "Email",
+    "noEmail": "No email"
+  },
+  "dev": {
+    "animationsFooter": "Only visible in development. Useful for iterating on animations.",
+    "importPreviewLabel": "Preview: import wizard",
+    "demoFilterFooter": "Filter the demo cards by action type to test each bucket separately.",
+    "filterAction": "Action"
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -27,25 +28,13 @@ import {
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { floracionToneForTier } from '@/features/garden/garden-tier'
-import type { AchievementViewItem, AchievementTier } from '@/features/achievements/use-achievements'
+import { achievementBody, achievementTitle } from '@/features/achievements/achievement-tiers'
+import type { AchievementViewItem } from '@/features/achievements/use-achievements'
 
 interface FloracionViewProps {
   /** Logro a celebrar. `null` mantiene la celebración oculta. */
   item: AchievementViewItem | null
   onDismiss: () => void
-}
-
-function tierLabel(tier: AchievementTier): string {
-  switch (tier) {
-    case 'bronze':
-      return 'PRIMER BROTE'
-    case 'silver':
-      return 'EN CRECIMIENTO'
-    case 'gold':
-      return 'GRAN FLORACIÓN'
-    case 'legendary':
-      return 'ESPECIE LEGENDARIA'
-  }
 }
 
 /**
@@ -58,6 +47,7 @@ function tierLabel(tier: AchievementTier): string {
  */
 export function FloracionView({ item, onDismiss }: FloracionViewProps) {
   const reduced = useReducedMotion()
+  const { t: translate } = useTranslation()
   const t = useSharedValue(0)
   const pop = useSharedValue(0.9)
 
@@ -95,7 +85,7 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
     <Animated.View pointerEvents="auto" style={[styles.scrim, scrimStyle]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cerrar celebración"
+        accessibilityLabel={translate('achievements:floracion.closeLabel')}
         onPress={onDismiss}
         style={StyleSheet.absoluteFill}
       />
@@ -140,19 +130,21 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
           )}
         </View>
 
-        <Text style={styles.eyebrow}>HITO ALCANZADO</Text>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.body}>{item.body}</Text>
+        <Text style={styles.eyebrow}>{translate('achievements:floracion.eyebrow')}</Text>
+        <Text style={styles.title}>{achievementTitle(item.code, item.title)}</Text>
+        <Text style={styles.body}>{achievementBody(item.code, item.body)}</Text>
 
         <View style={styles.chip}>
           <FernMark variant="mint" size={16} />
-          <Text style={[styles.chipText, { color: tone.accent }]}>{tierLabel(item.tier)}</Text>
+          <Text style={[styles.chipText, { color: tone.accent }]}>
+            {translate(`achievements:floracion.tier.${item.tier}`)}
+          </Text>
         </View>
 
         <Pressable onPress={onDismiss} style={styles.button} accessibilityRole="button">
-          <Text style={styles.buttonText}>Seguir cultivando</Text>
+          <Text style={styles.buttonText}>{translate('achievements:floracion.continue')}</Text>
         </Pressable>
-        <Text style={styles.hint}>Sin ruido: te avisamos del hito una sola vez.</Text>
+        <Text style={styles.hint}>{translate('achievements:floracion.hint')}</Text>
       </Animated.View>
     </Animated.View>
   )

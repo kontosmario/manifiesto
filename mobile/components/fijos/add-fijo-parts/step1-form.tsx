@@ -3,11 +3,11 @@
 // de `add-fijo-v2-screen.tsx`. La screen pasa todo el form state desde
 // `useAddFijoForm`.
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import {
   CUOTA_OPTIONS,
   FREQ_OPTIONS,
@@ -53,6 +53,7 @@ export interface Step1FormProps {
 
 export function Step1Form(props: Step1FormProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const {
     name,
     onChangeName,
@@ -89,7 +90,7 @@ export function Step1Form(props: Step1FormProps) {
       layout={LinearTransition.duration(260)}
       style={styles.formStack}
     >
-      <Field label="NOMBRE">
+      <Field label={t('fijos:wizard.step1.nameLabel')}>
         <NameInput
           value={name}
           onChange={onChangeName}
@@ -109,14 +110,11 @@ export function Step1Form(props: Step1FormProps) {
 
       {isInstallment && amount > 0 ? (
         <Text style={[styles.cuotaInlineHint, { color: theme.colors.textMuted }]}>
-          {cuotaTot} cuotas de{' '}
-          <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
-            {formatMoney(amount)}
-          </Text>{' '}
-          · Total{' '}
-          <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
-            {formatMoney(totalCuotas)}
-          </Text>
+          {t('fijos:wizard.step1.installmentSummary', {
+            count: cuotaTot,
+            amount: formatMoney(amount),
+            total: formatMoney(totalCuotas),
+          })}
         </Text>
       ) : null}
 
@@ -132,13 +130,13 @@ export function Step1Form(props: Step1FormProps) {
         selectedCategoryId={categoryId ?? ''}
         onSelect={onSelectCategory}
         rows={2}
-        iconResolver={pickIconForFixedExpenseCategory}
+        iconScope="fixed_expense"
         tileWidth={fijosTileWidth}
         tileHeight={fijosTileHeight}
         warning={flagCategory}
       />
 
-      <Field label="FRECUENCIA">
+      <Field label={t('fijos:wizard.step1.frequencyLabel')}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -151,7 +149,7 @@ export function Step1Form(props: Step1FormProps) {
             <FreqTile
               key={f.id}
               icon={f.icon}
-              label={f.label}
+              label={t(f.labelKey)}
               selected={freqChoice === f.id}
               onPress={() => onSelectFreq(f.id)}
               warning={flagFrequency}
@@ -175,7 +173,7 @@ export function Step1Form(props: Step1FormProps) {
             ]}
           >
             <Text style={[styles.cuotaEyebrow, { color: theme.colors.textMuted }]}>
-              ¿CUÁNTAS CUOTAS?
+              {t('fijos:wizard.step1.howManyInstallments')}
             </Text>
             <View style={styles.cuotaRow}>
               {CUOTA_OPTIONS.map((n) => {
@@ -193,7 +191,7 @@ export function Step1Form(props: Step1FormProps) {
                     ]}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={`${n} cuotas`}
+                    accessibilityLabel={t('fijos:wizard.step1.installmentsA11y', { count: n })}
                   >
                     <Text
                       style={[
@@ -209,14 +207,11 @@ export function Step1Form(props: Step1FormProps) {
             </View>
             {amount > 0 ? (
               <Text style={[styles.cuotaFootnote, { color: theme.colors.textMuted }]}>
-                {cuotaTot} cuotas de{' '}
-                <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
-                  {formatMoney(amount)}
-                </Text>{' '}
-                · Total{' '}
-                <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
-                  {formatMoney(totalCuotas)}
-                </Text>
+                {t('fijos:wizard.step1.installmentSummary', {
+                  count: cuotaTot,
+                  amount: formatMoney(amount),
+                  total: formatMoney(totalCuotas),
+                })}
               </Text>
             ) : null}
           </Animated.View>

@@ -9,6 +9,7 @@
 // orquestador.
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
   Easing,
@@ -21,7 +22,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -37,8 +38,10 @@ export function CalendarDropImpact({
   category,
 }: CalendarDropImpactProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
-  const emoji = pickIconForFixedExpenseCategory(category.name)
+  // category.name es el nombre CRUDO de la categoría. CategoryIcon rendea
+  // el sticker si hay slug mapeado, sino cae al emoji.
   const color = category.color
   const TOTAL_DAYS = 31
 
@@ -103,7 +106,7 @@ export function CalendarDropImpact({
                   onPress={() => onChangeDay(n)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: true }}
-                  accessibilityLabel={`Día ${n}, seleccionado`}
+                  accessibilityLabel={t('fijos:wizard.calendar.daySelectedA11y', { day: n })}
                   style={styles.calendarCell}
                 >
                   <LinearGradient
@@ -118,9 +121,12 @@ export function CalendarDropImpact({
                       } as unknown as object,
                     ]}
                   />
-                  <Text allowFontScaling={false} style={styles.calendarCellEmoji}>
-                    {emoji}
-                  </Text>
+                  <CategoryIcon
+                    name={category.name}
+                    scope="fixed_expense"
+                    size={24}
+                    emojiStyle={styles.calendarCellEmoji}
+                  />
                   <View
                     style={[
                       styles.calendarCellDayBadge,
@@ -134,7 +140,7 @@ export function CalendarDropImpact({
                 <Pressable
                   onPress={() => onChangeDay(n)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Día ${n}`}
+                  accessibilityLabel={t('fijos:wizard.calendar.dayA11y', { day: n })}
                   style={({ pressed }) => [
                     styles.calendarCell,
                     {
@@ -158,9 +164,7 @@ export function CalendarDropImpact({
 
       {day != null ? (
         <Text style={[styles.calendarFoot, { color: theme.colors.textMuted }]}>
-          Toca un día para cambiar ·{' '}
-          <Text style={{ color: theme.colors.text, fontWeight: '800' }}>día {day}</Text>{' '}
-          de cada mes
+          {t('fijos:wizard.calendar.footSelected', { day })}
         </Text>
       ) : (
         <Text
@@ -170,7 +174,7 @@ export function CalendarDropImpact({
             { color: theme.colors.primary },
           ]}
         >
-          Elige el día del mes
+          {t('fijos:wizard.calendar.footPrompt')}
         </Text>
       )}
     </Animated.View>

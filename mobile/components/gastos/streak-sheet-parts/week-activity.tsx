@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
+import { weekdayShort } from '@/utils/date-format'
 import type { StatusTone } from './streak-sheet-tone'
 
 interface WeekActivityProps {
@@ -10,7 +12,16 @@ interface WeekActivityProps {
 
 export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
   const { theme } = useAppTheme()
-  const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+  const { t } = useTranslation()
+  // weekActivity es una ventana móvil de 7 días: index 0 = hace 6 días,
+  // index N-1 = hoy (ver use-streak.ts). La inicial del día se deriva de la
+  // fecha real de cada columna y del idioma activo (NO un array ES fijo, que
+  // además solo coincidía si hoy era domingo).
+  const labelForIndex = (i: number): string => {
+    const d = new Date()
+    d.setDate(d.getDate() - (weekActivity.length - 1 - i))
+    return weekdayShort(d).charAt(0).toUpperCase()
+  }
   const emptyDotBg = theme.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(15,42,30,0.04)'
   return (
     <RiseView delay={120}>
@@ -21,7 +32,7 @@ export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
         ]}
       >
         <Text style={[styles.cardLabel, { color: theme.colors.textMuted }]}>
-          Últimos 7 días
+          {t('gastos:streakSheet.last7Days')}
         </Text>
         <View style={styles.weekRow}>
           {weekActivity.map((logged, i) => {
@@ -67,7 +78,7 @@ export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
                     },
                   ]}
                 >
-                  {labels[i]}
+                  {labelForIndex(i)}
                 </Text>
               </View>
             )

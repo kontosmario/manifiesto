@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -30,8 +31,11 @@ export function PrimaryStatusCta({
   onPressAddExpense,
 }: PrimaryStatusCtaProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const label =
-    status === 'broken' ? 'Empezar la racha hoy' : 'Registrar un gasto ahora'
+    status === 'broken'
+      ? t('gastos:streakSheet.startStreakToday')
+      : t('gastos:streakSheet.registerExpenseNow')
   return (
     <Pressable
       style={[styles.cta, { backgroundColor: theme.colors.text }]}

@@ -4,12 +4,15 @@
  * `feedback_reanimated_worklet_globals`). Solo se llaman en el render
  * thread (JS thread), así que técnicamente Intl funcionaría — pero
  * mantener consistencia y velocidad usando mini arrays.
+ *
+ * Estos helpers son puros (no-React) → resuelven copy via `i18n.t`
+ * directamente (las keys de meses viven en el namespace `fijos`).
  */
+import i18n from '@/lib/i18n'
 
-const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-]
+function monthName(monthIdx: number): string {
+  return i18n.t(`fijos:months.${monthIdx}`)
+}
 
 export function capitalize(s: string): string {
   if (!s) return s
@@ -30,7 +33,7 @@ export function monthOfLabel(yyyyMm01: string): string {
     return yyyyMm01
   }
   const currentYear = new Date().getFullYear()
-  const name = MONTH_NAMES[monthIdx]!
+  const name = monthName(monthIdx)
   return year === currentYear ? name : `${name} ${year}`
 }
 
@@ -42,9 +45,10 @@ export function monthOfLabel(yyyyMm01: string): string {
  * de redondeo.
  */
 export function trendCopyLabel(deltaPct: number): string {
-  if (Math.abs(deltaPct) < 1) return 'Mantiene el precio'
-  const sign = deltaPct > 0 ? 'Subió' : 'Bajó'
-  return `${sign} ${Math.abs(deltaPct)}% desde el último pago`
+  if (Math.abs(deltaPct) < 1) return i18n.t('fijos:trendCopy.keepsPrice')
+  return deltaPct > 0
+    ? i18n.t('fijos:trendCopy.wentUp', { pct: Math.abs(deltaPct) })
+    : i18n.t('fijos:trendCopy.wentDown', { pct: Math.abs(deltaPct) })
 }
 
 export function trendCopySubLabel(history: number[]): string {
@@ -56,11 +60,14 @@ export function trendCopySubLabel(history: number[]): string {
     if (oldest > 0 && current > 0) {
       const totalDelta = Math.round(((current - oldest) / oldest) * 100)
       if (Math.abs(totalDelta) >= 1) {
-        return `${totalDelta > 0 ? '+' : ''}${totalDelta}% en ${history.length} pagos`
+        return i18n.t('fijos:trendCopy.deltaOverPayments', {
+          delta: `${totalDelta > 0 ? '+' : ''}${totalDelta}`,
+          count: history.length,
+        })
       }
     }
   }
-  return `Comparación con el pago anterior`
+  return i18n.t('fijos:trendCopy.comparisonPrevious')
 }
 
 export function trendCopyColor(deltaPct: number, isDark: boolean): string {
@@ -78,7 +85,7 @@ export function trendCopyColor(deltaPct: number, isDark: boolean): string {
  * Null/inválido devuelve "Sin fecha programada".
  */
 export function nextDueLabel(nextDueOn: string | null): string {
-  if (!nextDueOn) return 'Sin fecha programada'
+  if (!nextDueOn) return i18n.t('fijos:dueLabel.noDate')
   const parts = nextDueOn.split('-')
   if (parts.length < 3) return nextDueOn
   const year = parseInt(parts[0]!, 10)
@@ -87,37 +94,43 @@ export function nextDueLabel(nextDueOn: string | null): string {
   if (Number.isNaN(year) || Number.isNaN(monthIdx) || Number.isNaN(day)) {
     return nextDueOn
   }
-  const monthName = MONTH_NAMES[monthIdx] ?? ''
+  const month = monthName(monthIdx)
   const currentYear = new Date().getFullYear()
-  const yearSuffix = year === currentYear ? '' : ` de ${year}`
+  const yearSuffix =
+    year === currentYear ? '' : i18n.t('fijos:dueLabel.yearSuffix', { year })
   const today = new Date()
   const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   const dueUtc = Date.UTC(year, monthIdx, day)
   const diffDays = Math.round((dueUtc - todayUtc) / 86_400_000)
   if (diffDays === 0) {
-    return `Vence HOY (${day} de ${monthName}${yearSuffix})`
+    return i18n.t('fijos:dueLabel.dueToday', { day, month, yearSuffix })
   }
   if (diffDays > 0) {
-    return `Vence el ${day} de ${monthName}${yearSuffix} (en ${diffDays} ${diffDays === 1 ? 'día' : 'días'})`
+    return i18n.t('fijos:dueLabel.dueIn', { day, month, yearSuffix, count: diffDays })
   }
   const absDays = Math.abs(diffDays)
-  return `Venció el ${day} de ${monthName}${yearSuffix} (hace ${absDays} ${absDays === 1 ? 'día' : 'días'})`
+  return i18n.t('fijos:dueLabel.overdueSince', {
+    day,
+    month,
+    yearSuffix,
+    count: absDays,
+  })
 }
 
 export function frequencyLabel(f: string): string {
   switch (f) {
     case 'weekly':
-      return 'Semanal'
+      return i18n.t('fijos:frequency.weekly')
     case 'biweekly':
-      return 'Quincenal'
+      return i18n.t('fijos:frequency.biweekly')
     case 'monthly':
-      return 'Mensual'
+      return i18n.t('fijos:frequency.monthly')
     case 'quarterly':
-      return 'Trimestral'
+      return i18n.t('fijos:frequency.quarterly')
     case 'semiannual':
-      return 'Semestral'
+      return i18n.t('fijos:frequency.semiannual')
     case 'annual':
-      return 'Anual'
+      return i18n.t('fijos:frequency.annual')
     default:
       return f
   }

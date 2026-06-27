@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import i18n from '@/lib/i18n'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { SCREEN_WIDTH } from '../wrapped-constants'
 import type { Scene } from './types'
@@ -20,10 +21,12 @@ export function buildCoverScene(payload: CycleWrappedPayload): Scene {
     render: () => (
       <View style={coverStyles.stage}>
         <Text style={[coverStyles.eyebrow, { color: 'rgba(15,46,31,0.72)' }]}>
-          EDICIÓN {payload.periodLabel.toUpperCase()}
+          {i18n.t('control:wrapped.cover.eyebrow', {
+            period: payload.periodLabel.toUpperCase(),
+          })}
         </Text>
         <Text style={[coverStyles.title, { color: '#0F2E1F' }]} accessibilityRole="header">
-          Tu mes,{'\n'}en cifras.
+          {i18n.t('control:wrapped.cover.title')}
         </Text>
         {payload.periodRange ? (
           <Text style={[coverStyles.range, { color: 'rgba(15,46,31,0.72)' }]}>
@@ -32,7 +35,7 @@ export function buildCoverScene(payload: CycleWrappedPayload): Scene {
         ) : null}
         <View style={coverStyles.rule} />
         <Text style={[coverStyles.kicker, { color: 'rgba(15,46,31,0.85)' }]}>
-          Una lectura corta de cómo cerraste.
+          {i18n.t('control:wrapped.cover.kicker')}
         </Text>
       </View>
     ),

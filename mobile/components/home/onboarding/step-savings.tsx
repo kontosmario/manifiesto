@@ -1,12 +1,15 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AmountCard } from '@/components/home/amount-card'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 // Reusamos los mismos constantes que el wizard de creación de meta de Settings
 // para que onboarding y Settings queden sincronizados (un solo source of truth).
 import { EMOJI_PALETTE } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
+import { GoalIcon } from '@/components/savings-goals/goal-icon'
+import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 import { MONTH_OPTIONS } from '@/components/savings-goals/wizard-steps/step-3-months'
 import { TextField } from '@/components/ui/text-field'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -58,6 +61,7 @@ export function StepSavings({
   amountCardRef,
 }: StepSavingsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const targetAmount = monthlyIncome * (savingsGoalPercent / 100)
   const parsedGoal = parsePrice(firstGoalTargetRaw)
   const goalAmount = Number.isFinite(parsedGoal) && parsedGoal > 0 ? parsedGoal : 0
@@ -66,10 +70,10 @@ export function StepSavings({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          ¿Quieres arrancar con una meta?
+          {t('onboarding:savings.title')}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Puedes agregarla después si prefieres.
+          {t('onboarding:savings.subcopy')}
         </Text>
       </RiseView>
 
@@ -82,7 +86,7 @@ export function StepSavings({
         >
           <View style={styles.percentHeader}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              % DEL SUELDO A AHORRAR
+              {t('onboarding:savings.percentEyebrow')}
             </Text>
             <Text style={[styles.percentValue, { color: theme.colors.text }]}>
               {savingsGoalPercent}%
@@ -106,7 +110,7 @@ export function StepSavings({
             savingsGoalPercent > 0 ? (
               <View style={styles.hintRow}>
                 <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-                  Ahorrás{' '}
+                  {t('onboarding:savings.savePrefix')}
                 </Text>
                 <CountUpText
                   value={targetAmount}
@@ -115,18 +119,17 @@ export function StepSavings({
                   style={[styles.hintStrong, { color: theme.colors.primary }]}
                 />
                 <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-                  {' '}
-                  por mes
+                  {t('onboarding:savings.savePerMonth')}
                 </Text>
               </View>
             ) : (
               <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-                Sin ahorro automático — lo puedes activar luego.
+                {t('onboarding:savings.noAutoSavings')}
               </Text>
             )
           ) : (
             <Text style={[styles.percentHint, { color: theme.colors.textMuted }]}>
-              Ingresa tu sueldo en el paso anterior para ver el equivalente.
+              {t('onboarding:savings.enterIncomeFirst')}
             </Text>
           )}
         </View>
@@ -151,7 +154,7 @@ export function StepSavings({
           ]}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: createFirstGoal }}
-          accessibilityLabel="Crear mi primera meta ahora"
+          accessibilityLabel={t('onboarding:savings.createGoalA11y')}
         >
           <View
             style={[
@@ -168,10 +171,10 @@ export function StepSavings({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.toggleTitle, { color: theme.colors.text }]}>
-              Crear mi primera meta ahora
+              {t('onboarding:savings.createGoalTitle')}
             </Text>
             <Text style={[styles.toggleMeta, { color: theme.colors.textMuted }]}>
-              Ej: viaje, mudanza, colchón.
+              {t('onboarding:savings.createGoalMeta')}
             </Text>
           </View>
         </Pressable>
@@ -186,38 +189,38 @@ export function StepSavings({
           style={styles.goalForm}
         >
           <TextField
-            label="Título"
+            label={t('onboarding:savings.goalTitleLabel')}
             value={firstGoalTitle}
             onChangeText={onChangeFirstGoalTitle}
-            placeholder="Ej: Vacaciones"
+            placeholder={t('onboarding:savings.goalTitlePlaceholder')}
             maxLength={40}
-            accessibilityLabel="Título de la meta"
+            accessibilityLabel={t('onboarding:savings.goalTitleA11y')}
           />
 
           {/* Emoji — mismo set que el wizard de Settings (EMOJI_PALETTE). */}
           <View style={styles.emojiSection}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              ELIGE UN ÍCONO
+              {t('onboarding:savings.iconEyebrow')}
             </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.emojiScroll}
               contentContainerStyle={styles.emojiScrollContent}
-              accessibilityLabel="Seleccionar ícono — desliza para ver más"
+              accessibilityLabel={t('onboarding:savings.iconScrollA11y')}
             >
-              {EMOJI_PALETTE.map((glyph) => {
-                const on = glyph === firstGoalEmoji
+              {[...GOAL_STICKER_KEYS, ...EMOJI_PALETTE].map((value) => {
+                const on = value === firstGoalEmoji
                 return (
                   <Pressable
-                    key={glyph}
+                    key={value}
                     onPress={() => {
                       void triggerHaptic('selection')
-                      onChangeFirstGoalEmoji(glyph)
+                      onChangeFirstGoalEmoji(value)
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={`Ícono ${glyph}`}
+                    accessibilityLabel={t('onboarding:savings.iconItemA11y', { glyph: value })}
                     style={[
                       styles.emojiCard,
                       {
@@ -229,7 +232,7 @@ export function StepSavings({
                       },
                     ]}
                   >
-                    <Text style={styles.emojiGlyph}>{glyph}</Text>
+                    <GoalIcon value={value} size={28} emojiStyle={styles.emojiGlyph} />
                   </Pressable>
                 )
               })}
@@ -241,14 +244,14 @@ export function StepSavings({
               amount={goalAmount}
               isActive={isGoalNumpadActive}
               onPress={onRequestFirstGoalNumpad}
-              label="Monto objetivo"
+              label={t('onboarding:savings.amountLabel')}
             />
           </View>
 
           {/* Plazo — mismos presets que el wizard de Settings (MONTH_OPTIONS). */}
           <View>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 6 }]}>
-              EN CUÁNTOS MESES
+              {t('onboarding:savings.monthsEyebrow')}
             </Text>
             <View style={styles.monthsChips}>
               {MONTH_OPTIONS.map((m) => (
@@ -280,6 +283,7 @@ interface PercentChipProps {
 
 function PercentChip({ percent, selected, onPress, theme }: PercentChipProps) {
   const press = usePressScale({ pressedScale: 0.98 })
+  const { t } = useTranslation()
   return (
     <Pressable
       onPress={onPress}
@@ -287,7 +291,7 @@ function PercentChip({ percent, selected, onPress, theme }: PercentChipProps) {
       onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${percent} por ciento`}
+      accessibilityLabel={t('onboarding:savings.percentA11y', { percent })}
     >
       <Animated.View
         style={[
@@ -323,6 +327,7 @@ interface MonthChipProps {
 
 function MonthChip({ months, selected, onPress, theme }: MonthChipProps) {
   const press = usePressScale({ pressedScale: 0.98 })
+  const { t } = useTranslation()
   return (
     <Pressable
       onPress={onPress}
@@ -330,7 +335,7 @@ function MonthChip({ months, selected, onPress, theme }: MonthChipProps) {
       onPressOut={press.onPressOut}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      accessibilityLabel={`${months} meses`}
+      accessibilityLabel={t('onboarding:savings.monthsA11y', { count: months })}
       style={styles.monthChipWrap}
     >
       <Animated.View
@@ -351,7 +356,7 @@ function MonthChip({ months, selected, onPress, theme }: MonthChipProps) {
             { color: selected ? theme.colors.primary : theme.colors.text },
           ]}
         >
-          {months} meses
+          {t('onboarding:savings.monthsChip', { count: months })}
         </Text>
       </Animated.View>
     </Pressable>
@@ -417,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiGlyph: { fontSize: 24, lineHeight: 30 },
+  emojiGlyph: { fontSize: 24 },
   monthsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   monthChipWrap: {
     flexGrow: 1,

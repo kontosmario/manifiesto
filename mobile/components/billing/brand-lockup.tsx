@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
 import { FernMark } from '@/components/billing/fern-mark'
@@ -15,6 +16,7 @@ export const BrandLockup = memo(function BrandLockup({
   tone = 'onCream',
 }: BrandLockupProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const onForest = tone === 'onForest'
   const wordColor = onForest ? theme.colors.heroText : theme.colors.text
   const tagColor = onForest ? theme.colors.heroText : theme.colors.textMuted
@@ -23,7 +25,7 @@ export const BrandLockup = memo(function BrandLockup({
       <FernMark variant={onForest ? 'cream' : 'forest'} size={17} />
       <Text style={[styles.word, { color: wordColor }]}>Manifiesto</Text>
       <Text style={[theme.typography.eyebrow, styles.tag, { color: tagColor }]}>
-        Hogar
+        {t('billing:brand.tag')}
       </Text>
     </View>
   )

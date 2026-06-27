@@ -1,5 +1,6 @@
 import { memo, type RefObject } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Svg, { Circle, Path, G } from 'react-native-svg'
 import { GreetingHeader } from '@/components/home/greeting-header'
 import { HomeAssistantButton } from '@/components/home/home-assistant-button'
@@ -51,6 +52,7 @@ function HomeHeaderImpl({
   actionsRef,
 }: HomeHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.row}>
       <View style={styles.greetingSlot}>
@@ -62,7 +64,7 @@ function HomeHeaderImpl({
           pendingCount={assistantPendingCount}
         />
         <HomeCircleButton
-          accessibilityLabel="Ir a notificaciones"
+          accessibilityLabel={t('home:header.notifications')}
           onPress={onPressNotifications}
           badgeCount={unreadNotificationsCount}
         >
@@ -71,8 +73,8 @@ function HomeHeaderImpl({
         <HomeCircleButton
           accessibilityLabel={
             settingsHasNudge
-              ? 'Ir a ajustes. Tu cuenta no tiene protección configurada.'
-              : 'Ir a ajustes'
+              ? t('home:header.settingsNoProtection')
+              : t('home:header.settings')
           }
           onPress={onPressSettings}
           showBadge={settingsHasNudge}

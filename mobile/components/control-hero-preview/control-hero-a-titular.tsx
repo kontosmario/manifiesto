@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -14,6 +15,7 @@ import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { getIntlLocale, getNumberFormat } from '@/lib/i18n/active-locale'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -38,6 +40,7 @@ interface Props {
  */
 export function ControlHeroTitular({ state }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const palette = buildControlHeroPalette()
   const msg = resolveControlMessage(state)
   const tone = statusColor(msg.status, palette)
@@ -92,10 +95,10 @@ export function ControlHeroTitular({ state }: Props) {
           <CountUpText
             value={msg.primaryNumber}
             flourish
-            unit={msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? 'integer' : 'money'}
+            unit={msg.primaryIsDays ? 'integer' : 'money'}
             glowColor={tone}
             duration={900}
-            format={(n) => (msg.primaryLabel === 'DÍAS HASTA AGOTAR' ? String(Math.round(n)) : formatMoney(Math.round(n)))}
+            format={(n) => (msg.primaryIsDays ? String(Math.round(n)) : formatMoney(Math.round(n)))}
             style={[styles.numberValue, { color: tone }]}
           />
         </View>
@@ -104,14 +107,14 @@ export function ControlHeroTitular({ state }: Props) {
       <RiseRow delay={400}>
         <View style={[styles.footerRow, { borderTopColor: 'rgba(255,255,255,0.10)' }]}>
           <FooterStat
-            label="racha"
+            label={t('control:hero.footerRacha')}
             value={state.racha === 0 ? '—' : `${state.racha}d`}
             color={state.racha > 0 ? palette.positive : theme.colors.heroMuted2}
           />
           <Divider />
           {state.vsMesDeltaPct != null ? (
             <FooterStat
-              label="vs mes"
+              label={t('control:hero.footerVsMes')}
               value={formatDeltaPct(state.vsMesDeltaPct)}
               color={
                 state.vsMesMejor === true
@@ -123,7 +126,7 @@ export function ControlHeroTitular({ state }: Props) {
             />
           ) : (
             <FooterStat
-              label="del cupo"
+              label={t('control:hero.footerDelCupo')}
               value={`${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`}
               color={
                 state.gastoHoy > state.cupoDiario ? palette.urgent : theme.colors.heroAccent
@@ -134,7 +137,7 @@ export function ControlHeroTitular({ state }: Props) {
             <>
               <Divider />
               <FooterStat
-                label="sin gastos"
+                label={t('control:hero.footerSinGastos')}
                 value={`🌱 ${state.noSpendDaysCount}`}
                 color={palette.positive}
               />
@@ -142,7 +145,7 @@ export function ControlHeroTitular({ state }: Props) {
           ) : null}
           <Divider />
           <FooterStat
-            label="al cobro"
+            label={t('control:hero.footerAlCobro')}
             value={`${state.proximoSueldoEnDias}d`}
             color={theme.colors.heroText}
           />
@@ -161,9 +164,12 @@ function formatDeltaPct(pct: number): string {
 
 function formatMoneyShort(n: number): string {
   const abs = Math.abs(n)
-  if (abs >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000_000) {
+    const m = getNumberFormat({ minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    return `$${m.format(n / 1_000_000)}M`
+  }
   if (abs >= 10_000) return `$${Math.round(n / 1_000)}k`
-  return `$${Math.round(n).toLocaleString('es-AR')}`
+  return `$${Math.round(n).toLocaleString(getIntlLocale())}`
 }
 
 /**
@@ -180,6 +186,7 @@ function MetaChip({
   gastoHoy: number
   palette: ReturnType<typeof buildControlHeroPalette>
 }) {
+  const { t } = useTranslation()
   const over = gastoHoy > goal
   const tint = over ? palette.urgent : palette.positive
   return (
@@ -192,7 +199,7 @@ function MetaChip({
         },
       ]}
     >
-      <Text style={[styles.metaChipLabel, { color: tint }]}>META</Text>
+      <Text style={[styles.metaChipLabel, { color: tint }]}>{t('control:hero.metaChipLabel')}</Text>
       <Text style={[styles.metaChipValue, { color: tint }]}>{formatMoneyShort(goal)}</Text>
     </View>
   )

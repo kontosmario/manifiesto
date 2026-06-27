@@ -1,0 +1,114 @@
+{
+  "gallery": {
+    "title": "Achievements",
+    "subtitle": "Your collection of milestones — they unlock on their own as you use Manifiesto.",
+    "errorTitle": "We couldn't load your achievements",
+    "errorDescription": "Try again in a moment.",
+    "empty": "You'll be able to unlock achievements soon.",
+    "hero": {
+      "eyebrow": "YOUR COLLECTION",
+      "of": "of {{count}}",
+      "subEmpty": "Start using Manifiesto and they'll unlock on their own.",
+      "subComplete": "You've got them all! You're a legend.",
+      "subHalf": "You're past the halfway mark. Unstoppable.",
+      "subStart": "Great start. Keep them coming."
+    }
+  },
+  "tierShort": {
+    "bronze": "BRONZE",
+    "silver": "SILVER",
+    "gold": "GOLD",
+    "legendary": "LEGEND"
+  },
+  "badgeDetail": {
+    "locked": "TO UNLOCK",
+    "unlockedOn": "Unlocked · {{date}}",
+    "lockedHint": "It unlocks on its own once you earn it."
+  },
+  "floracion": {
+    "closeLabel": "Close celebration",
+    "eyebrow": "MILESTONE REACHED",
+    "continue": "Keep growing",
+    "hint": "No noise: we'll tell you about the milestone just once.",
+    "tier": {
+      "bronze": "FIRST SPROUT",
+      "silver": "GROWING",
+      "gold": "FULL BLOOM",
+      "legendary": "LEGENDARY SPECIES"
+    }
+  },
+  "catalog": {
+    "first_cycle_under_budget": {
+      "title": "Month to spare",
+      "body": "You closed your first cycle spending less. Real margin, in your pocket."
+    },
+    "first_expense": {
+      "title": "The first sprout",
+      "body": "You logged your first expense. From today on, nothing slips by."
+    },
+    "first_fixed": {
+      "title": "The month's frame",
+      "body": "Your first fixed expense logged: now you know what goes out no matter what."
+    },
+    "first_goal": {
+      "title": "You gave it a name",
+      "body": "Your first goal has a direction. Saving toward something changes everything."
+    },
+    "first_paid_fixed": {
+      "title": "Bill settled",
+      "body": "You paid your first fixed expense and logged it. Mind at ease."
+    },
+    "goal_25": {
+      "title": "First quarter",
+      "body": "A quarter of your goal, saved up. Getting started was the hard part."
+    },
+    "goal_50": {
+      "title": "Halfway and climbing",
+      "body": "Half is already yours. From here you can see the top."
+    },
+    "goal_75": {
+      "title": "Almost in hand",
+      "body": "Three quarters. The goal stopped being just an idea."
+    },
+    "goal_completed": {
+      "title": "Goal in bloom",
+      "body": "You made it all the way. What you planned turned into money."
+    },
+    "no_spend_cycle_15": {
+      "title": "Half-cycle zen",
+      "body": "Fifteen quiet days. Half the month, at peace."
+    },
+    "no_spend_cycle_3": {
+      "title": "Three calm days",
+      "body": "Three no-spend days in a cycle. Holding back is a skill too."
+    },
+    "no_spend_cycle_7": {
+      "title": "Serene week",
+      "body": "Seven no-spend days in the cycle. It's a rhythm now."
+    },
+    "no_spend_lifetime_50": {
+      "title": "Fifty without spending",
+      "body": "50 no-spend days since you started. A no-spend veteran."
+    },
+    "streak_14": {
+      "title": "Two weeks standing",
+      "body": "Fourteen steady days. It's no longer effort, it's habit."
+    },
+    "streak_30": {
+      "title": "A month without missing",
+      "body": "30 days in a row. This has taken root."
+    },
+    "streak_60": {
+      "title": "Two months deep-rooted",
+      "body": "60 days. Consistency now has a trunk of its own."
+    },
+    "streak_7": {
+      "title": "Seven in a row",
+      "body": "A week without skipping one. The habit is showing."
+    },
+    "streak_90": {
+      "title": "Living legend",
+      "body": "90 days without missing one. This is just who you are now."
+    }
+  }
+}

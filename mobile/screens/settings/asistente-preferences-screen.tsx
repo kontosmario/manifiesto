@@ -21,6 +21,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/lib/i18n'
 
 import { Screen } from '@/components/ui/screen'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -66,52 +68,54 @@ interface Props {
 // Etiquetas en lenguaje llano (auditoría de comprensibilidad 2026-06-15):
 // el nombre interno NO se filtra a la UI. Cada label se entiende sin saber
 // finanzas. Ver docs/superpowers/specs/2026-06-15-asistente-voz-comprensible-design.md
-const FAMILY_LABELS: Record<string, string> = {
-  velocity: 'Estás gastando más rápido',
-  'recovery-hard': 'Volver a encarrilar el mes',
-  'recovery-soft': 'Un ajuste chico del mes',
-  'fijos-ratio': 'Tus pagos fijos pesan mucho',
-  'small-leaks': 'Gastos chicos que suman',
-  'night-impulse': 'Compras de noche',
-  'weekly-pattern': 'Un día que gastas más',
-  zombie: 'Servicios que pagas y no usas',
-  hike: 'Algo que te aumentó',
-  'undetected-sub': 'Pagos que se repiten cada mes',
-  cap: 'Límites que te pusiste',
-  'cat-dominance': 'Dónde se va casi toda tu plata',
-  'cat-accel': 'Una categoría que se disparó',
-  'cat-win': 'Dónde gastaste menos',
-  'member-imbalance': 'Quién gasta más en casa',
-  'savings-feasibility': '¿Llegas a tu meta de ahorro?',
-  'savings-over': 'Vas adelantado con el ahorro',
-  'streak-ok': 'Vienes anotando todos los días',
-  'positive-forecast': 'Te va a sobrar plata',
-  'high-single-expense': 'Una compra grande puntual',
-  duplicate: 'Te cobraron dos veces',
-  'data-gap-warning': 'Días que no anotaste nada',
-  'savings-milestone': 'Logros de tu ahorro',
-  'cycle-start-projection': 'Cómo arranca tu mes',
-  'forecast-tomorrow-risk': 'Cuidado con mañana',
-  'forecast-storm-week': 'Semana con varios pagos',
-  'forecast-payday-gap': 'Plata hasta el próximo cobro',
-  'income-missing': 'Un cobro que falta confirmar',
-  causal: 'Costumbres que te hacen gastar',
-  'super-perfect-storm': 'Varias cosas juntas para cuidar',
-  'super-savings-momentum': 'Vienes ahorrando bien',
-  'super-hidden-drain': 'Plata que se te va sin notarlo',
+// El family-name interno (con guiones) se mapea a una key camelCase del JSON.
+const FAMILY_I18N_KEYS: Record<string, string> = {
+  velocity: 'velocity',
+  'recovery-hard': 'recoveryHard',
+  'recovery-soft': 'recoverySoft',
+  'fijos-ratio': 'fijosRatio',
+  'small-leaks': 'smallLeaks',
+  'night-impulse': 'nightImpulse',
+  'weekly-pattern': 'weeklyPattern',
+  zombie: 'zombie',
+  hike: 'hike',
+  'undetected-sub': 'undetectedSub',
+  cap: 'cap',
+  'cat-dominance': 'catDominance',
+  'cat-accel': 'catAccel',
+  'cat-win': 'catWin',
+  'member-imbalance': 'memberImbalance',
+  'savings-feasibility': 'savingsFeasibility',
+  'savings-over': 'savingsOver',
+  'streak-ok': 'streakOk',
+  'positive-forecast': 'positiveForecast',
+  'high-single-expense': 'highSingleExpense',
+  duplicate: 'duplicate',
+  'data-gap-warning': 'dataGapWarning',
+  'savings-milestone': 'savingsMilestone',
+  'cycle-start-projection': 'cycleStartProjection',
+  'forecast-tomorrow-risk': 'forecastTomorrowRisk',
+  'forecast-storm-week': 'forecastStormWeek',
+  'forecast-payday-gap': 'forecastPaydayGap',
+  'income-missing': 'incomeMissing',
+  causal: 'causal',
+  'super-perfect-storm': 'superPerfectStorm',
+  'super-savings-momentum': 'superSavingsMomentum',
+  'super-hidden-drain': 'superHiddenDrain',
 }
 
 function familyLabel(family: string): string {
-  return FAMILY_LABELS[family] ?? family
+  const key = FAMILY_I18N_KEYS[family]
+  return key ? i18n.t(`settings:signalFamily.${key}`) : family
 }
 
 // CTR → frase en lenguaje natural (decisión owner 2026-06-15: nada de
 // porcentajes crudos, que se sienten fríos / invitan a "gamear" el número).
 function engagementPhrase(ctr: number, acted: number): string {
-  if (acted === 0) return 'todavía no'
-  if (ctr >= 0.5) return 'seguido'
-  if (ctr >= 0.2) return 'a veces'
-  return 'rara vez'
+  if (acted === 0) return i18n.t('settings:engagement.never')
+  if (ctr >= 0.5) return i18n.t('settings:engagement.often')
+  if (ctr >= 0.2) return i18n.t('settings:engagement.sometimes')
+  return i18n.t('settings:engagement.rarely')
 }
 
 // El mismo dato como ícono de tendencia: refuerza "le haces caso / no" de un
@@ -143,14 +147,15 @@ const PERSONA_ICON: Record<UserPersona, IconName> = {
 }
 
 // Umbral de urgencia que dispara push (orden baja<media<alta) → frase llana.
-const URGENCY_OPTIONS: { value: AdvisorPushUrgency; label: string; helper: string }[] = [
-  { value: 'alta', label: 'Solo urgencias', helper: 'Solo lo que no puede esperar.' },
-  { value: 'media', label: 'Importantes', helper: 'Las urgencias y los cambios que conviene saber.' },
-  { value: 'baja', label: 'Todo', helper: 'Cualquier aviso, apenas pasa.' },
-]
+const URGENCY_VALUES: AdvisorPushUrgency[] = ['alta', 'media', 'baja']
+const URGENCY_KEY: Record<AdvisorPushUrgency, string> = {
+  alta: 'high',
+  media: 'medium',
+  baja: 'low',
+}
 
 function urgencyLabel(value: AdvisorPushUrgency): string {
-  return URGENCY_OPTIONS.find((o) => o.value === value)?.label ?? 'Todo'
+  return i18n.t(`settings:urgency.${URGENCY_KEY[value]}.label`)
 }
 
 function formatHour(h: number): string {
@@ -159,6 +164,7 @@ function formatHour(h: number): string {
 
 export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const statsQuery = useInteractionStats(userId)
   const blocklistQuery = useSignalBlocklistEntries(userId)
@@ -255,12 +261,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const handleUnblock = useCallback(
     (family: string) => {
       Alert.alert(
-        'Volver a mostrar este aviso',
-        `"${familyLabel(family)}" va a volver a aparecer cuando haga falta.`,
+        t('settings:asistente.unblockTitle'),
+        t('settings:asistente.unblockMessage', { label: familyLabel(family) }),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common:actions.cancel'), style: 'cancel' },
           {
-            text: 'Mostrar de nuevo',
+            text: t('settings:asistente.unblockConfirm'),
             onPress: () => {
               void triggerHaptic('selection')
               unblockMutation.mutate(
@@ -268,7 +274,10 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 {
                   onError: () => {
                     void triggerHaptic('error')
-                    Alert.alert('No pudimos mostrarlo', 'Prueba de nuevo en unos segundos.')
+                    Alert.alert(
+                      t('settings:asistente.unblockErrorTitle'),
+                      t('settings:asistente.unblockErrorMessage'),
+                    )
                   },
                 },
               )
@@ -278,17 +287,17 @@ export function AsistentePreferencesScreen({ userId }: Props) {
         { cancelable: true },
       )
     },
-    [userId, unblockMutation],
+    [userId, unblockMutation, t],
   )
 
   const handleClearHistory = useCallback(() => {
     Alert.alert(
-      'Borrar lo que el asistente aprendió',
-      'Borra todo lo que el asistente fue aprendiendo de cómo usas la app. Va a arrancar de cero y tratarte como a alguien nuevo hasta volver a conocerte. No se puede deshacer.',
+      t('settings:asistente.clearTitle'),
+      t('settings:asistente.clearMessage'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Borrar',
+          text: t('settings:asistente.clearConfirm'),
           style: 'destructive',
           onPress: async () => {
             void triggerHaptic('warning')
@@ -304,36 +313,36 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               queryClient.invalidateQueries({
                 queryKey: ['advisor-interaction-stats', userId ?? null],
               })
-              Alert.alert('Listo', 'El asistente arranca de cero.')
+              Alert.alert(t('settings:asistente.clearedTitle'), t('settings:asistente.clearedMessage'))
             } catch {
-              Alert.alert('No pudimos borrar', 'Prueba de nuevo. Si sigue igual, escríbenos.')
+              Alert.alert(t('settings:asistente.clearErrorTitle'), t('settings:asistente.clearErrorMessage'))
             }
           },
         },
       ],
       { cancelable: true },
     )
-  }, [userId, queryClient])
+  }, [userId, queryClient, t])
 
   // Footnote de "Tu estilo" según el modo.
   const styleFooter = prefs.useInferredPersona
     ? totalShown < 10
-      ? 'Recién te empiezo a conocer. Con el uso me ajusto a cómo manejas tu plata.'
-      : 'Lo elige mirando cómo vienes usando la app. Si quieres, cámbialo tú.'
-    : 'Lo elegiste tú. Toca otro para cambiarlo, o vuelve a automático arriba.'
+      ? t('settings:asistente.styleFooterLearning')
+      : t('settings:asistente.styleFooterAuto')
+    : t('settings:asistente.styleFooterManual')
 
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Asistente"
-      subtitle="Cómo te avisa y qué mira primero"
+      title={t('settings:asistente.title')}
+      subtitle={t('settings:asistente.subtitle')}
       canGoBack
     >
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
       {showValueCard && value ? (
         <RiseView delay={40} style={styles.block}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>LO QUE TE AHORRÉ</Text>
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>{t('settings:asistente.valueEyebrow')}</Text>
           <View style={[styles.heroCard, { backgroundColor: theme.colors.primarySurface }]}>
             <View style={styles.heroRow}>
               <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]}>
@@ -344,12 +353,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                   {formatMoney(value.savedQuarter)}
                 </Text>
                 <Text style={[styles.heroCaption, { color: theme.colors.textSoft }]}>
-                  este trimestre
+                  {t('settings:asistente.thisQuarter')}
                 </Text>
               </View>
             </View>
             <Text style={[styles.heroFootnote, { color: theme.colors.textSoft }]}>
-              {`${formatMoney(value.savedMonth)} este mes · ${value.totalActions} ${value.totalActions === 1 ? 'acción' : 'acciones'} · ${value.distinctFamilies} ${value.distinctFamilies === 1 ? 'tipo' : 'tipos'} de aviso`}
+              {`${t('settings:asistente.savedThisMonth', { amount: formatMoney(value.savedMonth) })} · ${t('settings:asistente.actionsCount', { count: value.totalActions })} · ${t('settings:asistente.signalTypesCount', { count: value.distinctFamilies })}`}
             </Text>
           </View>
         </RiseView>
@@ -358,17 +367,17 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       {/* 1. Controles: encender el asistente y sus notificaciones. */}
       <RiseView delay={80} style={styles.block}>
         <SettingsGroup
-          title="Avisos"
+          title={t('settings:asistente.alertsGroup')}
           footer={
             advisorEnabled && pushEnabled
-              ? 'Entre las horas de "no molestar" no te llega nada al celular.'
+              ? t('settings:asistente.alertsFooter')
               : undefined
           }
         >
           <SettingsSwitchRow
             icon="auto-awesome"
-            label="Asistente financiero"
-            helper="Si lo apagas, deja de darte avisos y consejos."
+            label={t('settings:asistente.advisorLabel')}
+            helper={t('settings:asistente.advisorHelper')}
             value={advisorEnabled}
             onValueChange={(v) => updatePrefs.mutate({ advisorEnabled: v })}
             isLast={!advisorEnabled}
@@ -377,8 +386,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
             <>
               <SettingsSwitchRow
                 icon="notifications"
-                label="Notificaciones en el celular"
-                helper="Si lo apagas, los avisos aparecen solo cuando abres la app."
+                label={t('settings:asistente.pushLabel')}
+                helper={t('settings:asistente.pushHelper')}
                 value={pushEnabled}
                 onValueChange={(v) => updateNotifPrefs.mutate({ advisorPushEnabled: v })}
                 isLast={!pushEnabled}
@@ -387,19 +396,19 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 <>
                   <SettingsRow
                     icon="tune"
-                    label="¿Cuándo te aviso?"
+                    label={t('settings:asistente.whenLabel')}
                     value={urgencyLabel(minUrgency)}
                     onPress={() => setUrgencyOpen(true)}
                   />
                   <SettingsRow
                     icon="bedtime"
-                    label="No molestar desde"
+                    label={t('settings:asistente.quietFrom')}
                     value={formatHour(quietStart)}
                     onPress={() => setQuietPicker('start')}
                   />
                   <SettingsRow
                     icon="wb-twilight"
-                    label="Volver a avisar a las"
+                    label={t('settings:asistente.quietUntil')}
                     value={formatHour(quietEnd)}
                     onPress={() => setQuietPicker('end')}
                     isLast
@@ -413,11 +422,11 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       {/* 2. Tu estilo: automático (resumen) o elegido a mano (checklist). */}
       <RiseView delay={140} style={styles.block}>
-        <SettingsGroup title="Tu estilo" footer={styleFooter}>
+        <SettingsGroup title={t('settings:asistente.styleGroup')} footer={styleFooter}>
           <SettingsSwitchRow
             icon="auto-fix-high"
-            label="Elegir el estilo por mí"
-            helper="Si lo apagas, lo eliges tú abajo."
+            label={t('settings:asistente.styleAutoLabel')}
+            helper={t('settings:asistente.styleAutoHelper')}
             value={prefs.useInferredPersona}
             onValueChange={handleToggleInferred}
           />
@@ -456,7 +465,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       {/* 3. Tus avisos: solo lectura, a cuáles les haces caso. */}
       {showStats ? (
         <RiseView delay={200} style={styles.block}>
-          <SettingsGroup title="Tus avisos" footer="Cuánto le haces caso a cada tipo.">
+          <SettingsGroup title={t('settings:asistente.yourAlertsGroup')} footer={t('settings:asistente.yourAlertsFooter')}>
             {topFamilies.map(([family, s], i) => (
               <SettingsRow
                 key={family}
@@ -473,11 +482,11 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       {/* 4. Avisos ocultados. */}
       <RiseView delay={260} style={styles.block}>
         <SettingsGroup
-          title="Avisos que ocultaste"
+          title={t('settings:asistente.hiddenGroup')}
           footer={
             blocklist.length > 0
-              ? 'Toca uno para que ese aviso vuelva a aparecer.'
-              : 'Si ocultas un tipo de aviso, aparece aquí.'
+              ? t('settings:asistente.hiddenFooterSome')
+              : t('settings:asistente.hiddenFooterNone')
           }
         >
           {blocklist.length > 0 ? (
@@ -492,7 +501,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               />
             ))
           ) : (
-            <SettingsRow icon="visibility" label="No ocultaste ningún aviso" isLast />
+            <SettingsRow icon="visibility" label={t('settings:asistente.noneHidden')} isLast />
           )}
         </SettingsGroup>
       </RiseView>
@@ -500,12 +509,12 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       {/* 5. Privacidad. */}
       <RiseView delay={320} style={styles.block}>
         <SettingsGroup
-          title="Privacidad"
-          footer="Lo que haces en la app se usa solo para que el asistente te conozca mejor. No lo compartimos."
+          title={t('settings:asistente.privacyGroup')}
+          footer={t('settings:asistente.privacyFooter')}
         >
           <SettingsRow
             icon="delete-outline"
-            label="Borrar lo que aprendió de mí"
+            label={t('settings:asistente.clearRowLabel')}
             destructive
             onPress={handleClearHistory}
             isLast
@@ -515,28 +524,29 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       <HourPickerSheet
         visible={quietPicker !== null}
-        title={quietPicker === 'start' ? 'No molestar desde' : 'Volver a avisar a las'}
+        title={quietPicker === 'start' ? t('settings:asistente.quietFrom') : t('settings:asistente.quietUntil')}
         value={quietPicker === 'start' ? quietStart : quietEnd}
         instanceKey={quietPicker ?? 'closed'}
         onChange={handleSetQuietHour}
         onClose={() => setQuietPicker(null)}
         accessibilityLabel={
-          quietPicker === 'start' ? 'Hora de inicio del no molestar' : 'Hora de volver a avisar'
+          quietPicker === 'start' ? t('settings:asistente.quietFromA11y') : t('settings:asistente.quietUntilA11y')
         }
       />
 
       <ModalCard
         visible={urgencyOpen}
-        title="¿Cuándo te aviso al celular?"
+        title={t('settings:asistente.urgencyModalTitle')}
         onClose={() => setUrgencyOpen(false)}
       >
         <View style={styles.optionList}>
-          {URGENCY_OPTIONS.map((opt) => {
-            const selected = opt.value === minUrgency
+          {URGENCY_VALUES.map((urgencyValue) => {
+            const selected = urgencyValue === minUrgency
+            const optKey = URGENCY_KEY[urgencyValue]
             return (
               <Pressable
-                key={opt.value}
-                onPress={() => handlePickUrgency(opt.value)}
+                key={urgencyValue}
+                onPress={() => handlePickUrgency(urgencyValue)}
                 style={({ pressed }) => [
                   styles.urgencyOption,
                   {
@@ -548,10 +558,10 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               >
                 <View style={styles.urgencyCopy}>
                   <Text style={[styles.optionLabel, { color: theme.colors.text }]}>
-                    {opt.label}
+                    {t(`settings:urgency.${optKey}.label`)}
                   </Text>
                   <Text style={[styles.urgencyHelper, { color: theme.colors.textMuted }]}>
-                    {opt.helper}
+                    {t(`settings:urgency.${optKey}.helper`)}
                   </Text>
                 </View>
                 {selected ? (

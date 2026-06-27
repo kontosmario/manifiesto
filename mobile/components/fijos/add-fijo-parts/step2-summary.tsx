@@ -3,10 +3,11 @@
 // "ya pagué la cuota más reciente" toggle (sólo en create + no
 // installment). Extraído de `add-fijo-v2-screen.tsx`.
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import {
   FREQ_OPTIONS,
   hexAlpha,
@@ -48,6 +49,7 @@ export interface Step2SummaryProps {
 
 export function Step2Summary(props: Step2SummaryProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const {
     name,
     amount,
@@ -80,18 +82,18 @@ export function Step2Summary(props: Step2SummaryProps) {
       ? {
           color: theme.colors.danger,
           glow: theme.colors.danger,
-          phrase: 'Cuidado: queda muy poco libre',
+          phrase: t('fijos:wizard.step2.freePhraseTight'),
         }
       : pctDespues > 50
         ? {
             color: theme.colors.peach,
             glow: theme.colors.peach,
-            phrase: 'Va a quedar algo ajustado',
+            phrase: t('fijos:wizard.step2.freePhraseSnug'),
           }
         : {
             color: theme.colors.primary,
             glow: theme.colors.heroAccent,
-            phrase: 'Te queda holgado este mes',
+            phrase: t('fijos:wizard.step2.freePhraseComfortable'),
           }
 
   return (
@@ -122,17 +124,31 @@ export function Step2Summary(props: Step2SummaryProps) {
               },
             ]}
           >
-            <Text style={styles.summaryIconText}>
-              {selectedCategory ? pickIconForFixedExpenseCategory(selectedCategory.name) : '📁'}
-            </Text>
+            {selectedCategory ? (
+              // selectedCategory.name es el nombre CRUDO de la categoría.
+              // CategoryIcon rendea el sticker si hay slug mapeado, sino el emoji.
+              <CategoryIcon
+                name={selectedCategory.name}
+                scope="fixed_expense"
+                size={30}
+                emojiStyle={styles.summaryIconText}
+              />
+            ) : (
+              <Text style={styles.summaryIconText}>
+                {t('fijos:wizard.summaryFallbackIcon')}
+              </Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.summaryName, { color: theme.colors.text }]}>{name}</Text>
             <Text style={[styles.summaryMeta, { color: theme.colors.textMuted }]}>
-              {selectedCategory?.name ?? 'Sin categoría'} ·{' '}
-              {FREQ_OPTIONS.find((f) => f.id === freqChoice)?.label}
-              {isInstallment ? ` (${cuotaTot})` : ''}
-              {day != null ? ` · día ${day}` : ''}
+              {selectedCategory?.displayName ?? t('fijos:wizard.step2.noCategory')} ·{' '}
+              {(() => {
+                const freqKey = FREQ_OPTIONS.find((f) => f.id === freqChoice)?.labelKey
+                return freqKey ? t(freqKey) : ''
+              })()}
+              {isInstallment ? t('fijos:wizard.step2.metaInstallment', { count: cuotaTot }) : ''}
+              {day != null ? t('fijos:wizard.step2.metaDay', { day }) : ''}
             </Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -141,7 +157,10 @@ export function Step2Summary(props: Step2SummaryProps) {
             </Text>
             {isInstallment ? (
               <Text style={[styles.summaryCuotaMeta, { color: theme.colors.textMuted }]}>
-                × {cuotaTot} · {formatMoney(totalCuotas)} total
+                {t('fijos:wizard.step2.installmentMeta', {
+                  count: cuotaTot,
+                  total: formatMoney(totalCuotas),
+                })}
               </Text>
             ) : null}
           </View>
@@ -151,7 +170,7 @@ export function Step2Summary(props: Step2SummaryProps) {
       <RiseView delay={80}>
         <View>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 8 }]}>
-            IMPACTO EN EL PRESUPUESTO
+            {t('fijos:wizard.step2.impactEyebrow')}
           </Text>
           <View
             style={[
@@ -160,14 +179,14 @@ export function Step2Summary(props: Step2SummaryProps) {
             ]}
           >
             <ImpactRow
-              label="TUS FIJOS ACTUALES"
+              label={t('fijos:wizard.step2.currentFixed')}
               value={formatMoney(prevTotal)}
-              sub={`${pctAntes}% del sueldo`}
+              sub={t('fijos:wizard.step2.pctOfSalary', { pct: pctAntes })}
             />
             <ImpactRow
-              label="DESPUÉS DE AGREGAR"
+              label={t('fijos:wizard.step2.afterAdding')}
               value={formatMoney(nuevoTotal)}
-              sub={`${pctDespues}% del sueldo`}
+              sub={t('fijos:wizard.step2.pctOfSalary', { pct: pctDespues })}
               emphasis
               deltaPct={deltaPct}
             />
@@ -183,7 +202,7 @@ export function Step2Summary(props: Step2SummaryProps) {
               >
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.libreEyebrow, { color: theme.colors.textMuted }]}>
-                    TE QUEDA LIBRE
+                    {t('fijos:wizard.step2.freeLeftEyebrow')}
                   </Text>
                   <Text style={[styles.librePhrase, { color: theme.colors.textMuted }]}>
                     {libreTone.phrase}
@@ -209,7 +228,7 @@ export function Step2Summary(props: Step2SummaryProps) {
         <RiseView delay={160}>
           <View>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 8 }]}>
-              SE AGENDARÁ EN
+              {t('fijos:wizard.step2.scheduledOn')}
             </Text>
             <CalendarDropImpact
               day={day}
@@ -240,7 +259,7 @@ export function Step2Summary(props: Step2SummaryProps) {
           ]}
           accessibilityRole="switch"
           accessibilityState={{ checked: notify }}
-          accessibilityLabel="Recordatorio"
+          accessibilityLabel={t('fijos:wizard.step2.reminderA11y')}
         >
           <View style={styles.reminderLeft}>
             <Text allowFontScaling={false} style={styles.reminderEmoji}>
@@ -248,10 +267,12 @@ export function Step2Summary(props: Step2SummaryProps) {
             </Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-                RECORDATORIO
+                {t('fijos:wizard.step2.reminderEyebrow')}
               </Text>
               <Text style={[styles.reminderText, { color: theme.colors.text }]}>
-                {notify ? 'Avisar 2 días antes' : 'Sin aviso'}
+                {notify
+                  ? t('fijos:wizard.step2.reminderOn')
+                  : t('fijos:wizard.step2.reminderOff')}
               </Text>
             </View>
           </View>
@@ -322,8 +343,8 @@ export function Step2Summary(props: Step2SummaryProps) {
             ]}
             accessibilityRole="switch"
             accessibilityState={{ checked: alreadyPaidCurrentCuota }}
-            accessibilityLabel="Ya pagué la cuota más reciente"
-            accessibilityHint="Activa si ya pagaste la cuota del mes en curso. El fijo arranca con el pago registrado y la próxima cuota apuntando al mes siguiente."
+            accessibilityLabel={t('fijos:wizard.step2.alreadyPaidA11y')}
+            accessibilityHint={t('fijos:wizard.step2.alreadyPaidHint')}
           >
             <View style={styles.reminderLeft}>
               <Text allowFontScaling={false} style={styles.reminderEmoji}>
@@ -331,12 +352,12 @@ export function Step2Summary(props: Step2SummaryProps) {
               </Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-                  ESTADO ACTUAL
+                  {t('fijos:wizard.step2.currentStateEyebrow')}
                 </Text>
                 <Text style={[styles.reminderText, { color: theme.colors.text }]}>
                   {alreadyPaidCurrentCuota
-                    ? 'Ya pagué la cuota más reciente'
-                    : 'Aún no pagué la cuota actual'}
+                    ? t('fijos:wizard.step2.alreadyPaidOn')
+                    : t('fijos:wizard.step2.alreadyPaidOff')}
                 </Text>
               </View>
             </View>

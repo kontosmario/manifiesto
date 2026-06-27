@@ -7,6 +7,7 @@ import {
 } from '@/features/family/use-family-actions'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
+import i18n from '@/lib/i18n'
 
 /**
  * Standalone /(auth)/join flow — used when the user has a session
@@ -41,7 +42,7 @@ export function useJoinController() {
         onError: (error: unknown) => {
           void triggerHaptic('error')
           setErrorMessage(
-            getErrorMessage(error, 'No se pudo unir a la familia con ese código.'),
+            getErrorMessage(error, i18n.t('settings:join.joinError')),
           )
         },
         onSuccess: () => {
@@ -57,7 +58,7 @@ export function useJoinController() {
     bootstrapMutation.mutate(undefined, {
       onError: (error: unknown) => {
         void triggerHaptic('error')
-        setErrorMessage(getErrorMessage(error, 'No se pudo crear la familia.'))
+        setErrorMessage(getErrorMessage(error, i18n.t('settings:join.createError')))
       },
       onSuccess: () => {
         void triggerHaptic('success')

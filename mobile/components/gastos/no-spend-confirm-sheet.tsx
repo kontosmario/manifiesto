@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -41,6 +42,7 @@ export function NoSpendConfirmSheet({
   onConfirm,
 }: NoSpendConfirmSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const totalToday = useMemo(
     () => expensesToday.reduce((sum, e) => sum + Math.abs(Number(e.price ?? 0)), 0),
@@ -50,19 +52,19 @@ export function NoSpendConfirmSheet({
   return (
     <ModalCard
       onClose={onCancel}
-      subtitle="Te mostramos qué cargaste hoy para que verifiques antes de marcar el día como sin gasto."
-      title="Hoy ya tienes gastos cargados"
+      subtitle={t('gastos:noSpendConfirm.subtitle')}
+      title={t('gastos:noSpendConfirm.title')}
       visible={visible}
       footer={
         <View style={styles.footerStack}>
           <AppButton
-            label={isSubmitting ? 'Marcando…' : 'Marcar igual'}
+            label={isSubmitting ? t('gastos:noSpendConfirm.marking') : t('gastos:noSpendConfirm.markAnyway')}
             loading={isSubmitting}
             onPress={onConfirm}
             variant="primary"
           />
           <AppButton
-            label="Cancelar"
+            label={t('common:actions.cancel')}
             onPress={onCancel}
             variant="ghost"
             disabled={isSubmitting}
@@ -81,15 +83,13 @@ export function NoSpendConfirmSheet({
           ]}
         >
           <Text style={[styles.summaryLabel, { color: theme.colors.textMuted }]}>
-            TOTAL DE HOY
+            {t('gastos:noSpendConfirm.totalToday')}
           </Text>
           <Text style={[styles.summaryValue, { color: theme.colors.text }]}>
             {formatMoney(totalToday)}
           </Text>
           <Text style={[styles.summaryHint, { color: theme.colors.textSoft }]}>
-            {expensesToday.length === 1
-              ? '1 gasto cargado'
-              : `${expensesToday.length} gastos cargados`}
+            {t('gastos:noSpendConfirm.expensesLogged', { count: expensesToday.length })}
           </Text>
         </View>
 
@@ -102,7 +102,7 @@ export function NoSpendConfirmSheet({
             const cat = expense.category_id
               ? categoryById.get(expense.category_id)
               : null
-            const title = expense.description?.trim() || cat?.name || 'Gasto'
+            const title = expense.description?.trim() || cat?.displayName || t('common:terms.expense')
             return (
               <View
                 key={expense.id}
@@ -132,7 +132,7 @@ export function NoSpendConfirmSheet({
                       style={[styles.rowCategory, { color: theme.colors.textMuted }]}
                       numberOfLines={1}
                     >
-                      {cat?.name ?? 'Sin categoría'}
+                      {cat?.displayName ?? t('gastos:movementRow.noCategory')}
                     </Text>
                   </View>
                 </View>
@@ -158,8 +158,7 @@ export function NoSpendConfirmSheet({
         >
           <MaterialIcons name="info" size={16} color={theme.colors.textMuted} />
           <Text style={[styles.tipText, { color: theme.colors.textSoft }]}>
-            Si te confundes, puedes revertir la marca tocando "Marcado ✓" en el
-            mismo botón del FAB.
+            {t('gastos:noSpendConfirm.tip')}
           </Text>
         </View>
       </View>

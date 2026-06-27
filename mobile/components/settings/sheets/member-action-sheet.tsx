@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
@@ -61,6 +62,7 @@ export function MemberActionSheet({
   onRemove,
 }: MemberActionSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const visible = member != null
   // Cachea el último integrante (en un ref, actualizado en render) para que el
   // body sobreviva la animación de salida del ModalCard, cuando `member` ya
@@ -101,7 +103,7 @@ export function MemberActionSheet({
       onClose()
     } catch (e) {
       void triggerHaptic('error')
-      setError(getErrorMessage(e, 'Inténtalo de nuevo en un momento.'))
+      setError(getErrorMessage(e, t('settings:member.retryError')))
       setSubmitting(false)
     }
   }
@@ -147,7 +149,7 @@ export function MemberActionSheet({
           <View style={styles.buttonRow}>
             <View style={styles.buttonCell}>
               <AppButton
-                label="Cancelar"
+                label={t('common:actions.cancel')}
                 variant="ghost"
                 disabled={submitting}
                 onPress={() => {
@@ -183,7 +185,7 @@ export function MemberActionSheet({
                 numberOfLines={1}
               >
                 {name}
-                {isMe ? ' (tú)' : ''}
+                {isMe ? ` ${t('settings:member.youSuffix')}` : ''}
               </Text>
               <RoleBadge role={m.role} />
             </View>
@@ -201,12 +203,12 @@ export function MemberActionSheet({
           >
             <View style={styles.statsRow}>
               <StatCell
-                label="Gastos del mes"
+                label={t('settings:member.statExpenses')}
                 primary={`${m.expensesCount}`}
                 secondary={formatMoney(m.expensesTotal)}
               />
               <StatCell
-                label="Participación"
+                label={t('settings:member.statShare')}
                 primary={`${Math.round(m.spendSharePct)}%`}
                 secondary={m.lastExpenseAt ? formatRelative(m.lastExpenseAt) : '—'}
               />
@@ -214,14 +216,14 @@ export function MemberActionSheet({
             <View style={[styles.statsDivider, { backgroundColor: theme.colors.line }]} />
             <View style={styles.statsRow}>
               <StatCell
-                label="Jardín"
+                label={t('settings:member.statGarden')}
                 primary={m.currentStreak > 0 ? `${m.currentStreak} 🌱` : '—'}
-                secondary={`Mejor: ${m.longestStreak}`}
+                secondary={t('settings:member.statBest', { count: m.longestStreak })}
               />
               <StatCell
-                label="Pagos fijos"
+                label={t('settings:member.statFixed')}
                 primary={`${m.fixedPaidCount}`}
-                secondary="este mes"
+                secondary={t('settings:member.statThisMonth')}
               />
             </View>
           </View>
@@ -229,8 +231,7 @@ export function MemberActionSheet({
           {/* Acciones — filas centradas (iOS action-sheet feel) */}
           {isMe ? (
             <Text style={[styles.ownerNote, { color: theme.colors.textMuted }]}>
-              Eres el dueño de la familia. Desde aquí gestionas al resto de los
-              integrantes.
+              {t('settings:member.ownerNote')}
             </Text>
           ) : (
             <View
@@ -240,30 +241,30 @@ export function MemberActionSheet({
                 <>
                   <ActionRow
                     icon="lock-open"
-                    label="Desbloquear"
+                    label={t('settings:member.unblock')}
                     onPress={() =>
                       setConfirm({
                         action: 'unblock',
                         icon: 'lock-open',
-                        title: 'Desbloquear integrante',
-                        body: `${name} va a volver a poder cargar gastos.`,
-                        cta: 'Desbloquear',
+                        title: t('settings:member.unblockTitle'),
+                        body: t('settings:member.unblockBody', { name }),
+                        cta: t('settings:member.unblock'),
                         danger: false,
                       })
                     }
                   />
                   <ActionRow
                     icon="person-remove"
-                    label="Eliminar de la familia"
+                    label={t('settings:member.removeLabel')}
                     destructive
                     isLast
                     onPress={() =>
                       setConfirm({
                         action: 'remove',
                         icon: 'person-remove',
-                        title: 'Eliminar de la familia',
-                        body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
-                        cta: 'Eliminar',
+                        title: t('settings:member.removeTitle'),
+                        body: t('settings:member.removeBody', { name }),
+                        cta: t('common:actions.delete'),
                         danger: true,
                       })
                     }
@@ -273,30 +274,30 @@ export function MemberActionSheet({
                 <>
                   <ActionRow
                     icon="block"
-                    label="Bloquear integrante"
+                    label={t('settings:member.blockLabel')}
                     onPress={() =>
                       setConfirm({
                         action: 'block',
                         icon: 'block',
-                        title: 'Bloquear integrante',
-                        body: `${name} no va a poder cargar nuevos gastos. Sus datos quedan visibles.`,
-                        cta: 'Bloquear',
+                        title: t('settings:member.blockTitle'),
+                        body: t('settings:member.blockBody', { name }),
+                        cta: t('settings:member.block'),
                         danger: false,
                       })
                     }
                   />
                   <ActionRow
                     icon="person-remove"
-                    label="Eliminar de la familia"
+                    label={t('settings:member.removeLabel')}
                     destructive
                     isLast
                     onPress={() =>
                       setConfirm({
                         action: 'remove',
                         icon: 'person-remove',
-                        title: 'Eliminar de la familia',
-                        body: `Vas a quitar a ${name} de la familia. Sus gastos anteriores quedan.`,
-                        cta: 'Eliminar',
+                        title: t('settings:member.removeTitle'),
+                        body: t('settings:member.removeBody', { name }),
+                        cta: t('common:actions.delete'),
                         danger: true,
                       })
                     }

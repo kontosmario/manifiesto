@@ -1,6 +1,7 @@
 import type { DailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import type { ExpenseAnalyticsSummary } from '@/features/expenses/expense-analytics'
 import { type CommitmentSummary, type ControlAction } from '@/features/insights/control-types'
+import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
 
 export function buildTodayActions({
@@ -33,8 +34,8 @@ export function buildTodayActions({
   if (!hasDailyBudgetBase) {
     return [
       {
-        detail: 'Sin ingreso, ahorro meta y dia de cobro no hay una referencia confiable para decidir.',
-        title: 'Completa primero la configuracion financiera',
+        detail: i18n.t('insights:controlActions.today.noBase.detail'),
+        title: i18n.t('insights:controlActions.today.noBase.title'),
         tone: 'warning',
       },
     ]
@@ -44,86 +45,91 @@ export function buildTodayActions({
 
   if (isSalaryPendingConfirmation) {
     actions.push({
-      detail: 'Hacerlo ahora evita que el ciclo nuevo quede mezclado con el anterior.',
-      title: 'Confirma el cobro antes de seguir cargando',
+      detail: i18n.t('insights:controlActions.today.salaryPending.detail'),
+      title: i18n.t('insights:controlActions.today.salaryPending.title'),
       tone: 'warning',
     })
   }
 
   if (dailyBudgetSummary.remainingToday < 0) {
     actions.push({
-      detail: `Si frenas aqui, manana abres con ${currencyFormatter.format(
-        dailyBudgetSummary.projectedTomorrowOpening,
-      )}.`,
-      title: 'Hoy conviene cortar el gasto variable',
+      detail: i18n.t('insights:controlActions.today.overToday.detail', {
+        opening: currencyFormatter.format(dailyBudgetSummary.projectedTomorrowOpening),
+      }),
+      title: i18n.t('insights:controlActions.today.overToday.title'),
       tone: 'warning',
     })
   } else {
     actions.push({
-      detail: `Tu tope real para lo que queda del dia es ${currencyFormatter.format(
-        dailyBudgetSummary.remainingToday,
-      )}.`,
-      title: 'Toma como referencia lo que todavia queda hoy',
+      detail: i18n.t('insights:controlActions.today.remainingToday.detail', {
+        remaining: currencyFormatter.format(dailyBudgetSummary.remainingToday),
+      }),
+      title: i18n.t('insights:controlActions.today.remainingToday.title'),
       tone: 'primary',
     })
   }
 
   if (commitmentSummary.overdueCount > 0) {
     actions.push({
-      detail: `Hay ${commitmentSummary.overdueCount} caso${
-        commitmentSummary.overdueCount === 1 ? '' : 's'
-      } vencido${commitmentSummary.overdueCount === 1 ? '' : 's'} y eso ya esta empujando el ciclo.`,
-      title: 'Paga primero los fijos vencidos',
+      detail: i18n.t('insights:controlActions.today.overdue.detail', {
+        count: commitmentSummary.overdueCount,
+      }),
+      title: i18n.t('insights:controlActions.today.overdue.title'),
       tone: 'warning',
     })
   } else if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
     actions.push({
-      detail: `Apartar ${currencyFormatter.format(
-        commitmentSummary.reservedTotal,
-      )} te evita quedar corto cuando venzan los proximos pagos fijos.`,
-      title: 'Aparta plata para los pagos fijos que vienen',
+      detail: i18n.t('insights:controlActions.today.reserve.detail', {
+        amount: currencyFormatter.format(commitmentSummary.reservedTotal),
+      }),
+      title: i18n.t('insights:controlActions.today.reserve.title'),
       tone: 'primary',
     })
   }
 
   if (flexibleTargetAmount > 0 && flexibleDelta > 0) {
     actions.push({
-      detail: `Tu plan (mitad para los pagos fijos, ${targetFlexiblePercent}% para el dia a dia y ${savingsGoalPercent}% para ahorrar) te dejaba ${currencyFormatter.format(
-        flexibleTargetAmount,
-      )} para el dia a dia, y ya llevas ${currencyFormatter.format(variableSpentInCurrentCycle)}.`,
-      title: 'Ya te pasaste de lo del dia a dia',
+      detail: i18n.t('insights:controlActions.today.flexibleOver.detail', {
+        flexiblePct: targetFlexiblePercent,
+        savingsPct: savingsGoalPercent,
+        target: currencyFormatter.format(flexibleTargetAmount),
+        spent: currencyFormatter.format(variableSpentInCurrentCycle),
+      }),
+      title: i18n.t('insights:controlActions.today.flexibleOver.title'),
       tone: 'warning',
     })
   } else if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
     actions.push({
-      detail: `Desde manana intenta bajar alrededor de ${currencyFormatter.format(
-        expenseAnalytics.adjustmentNeededPerDay,
-      )} por dia.`,
-      title: 'Conviene gastar un poco menos por dia',
+      detail: i18n.t('insights:controlActions.today.adjustDaily.detail', {
+        amount: currencyFormatter.format(expenseAnalytics.adjustmentNeededPerDay),
+      }),
+      title: i18n.t('insights:controlActions.today.adjustDaily.title'),
       tone: 'warning',
     })
   } else if (dailyBudgetSummary.zeroSpendStreak > 0) {
     actions.push({
-      detail: `Ya llevas ${dailyBudgetSummary.zeroSpendStreak} dia${
-        dailyBudgetSummary.zeroSpendStreak === 1 ? '' : 's'
-      } seguido${dailyBudgetSummary.zeroSpendStreak === 1 ? '' : 's'} sin gastar.`,
-      title: 'Cuida la plata que ya ahorraste',
+      detail: i18n.t('insights:controlActions.today.zeroStreak.detail', {
+        count: dailyBudgetSummary.zeroSpendStreak,
+      }),
+      title: i18n.t('insights:controlActions.today.zeroStreak.title'),
       tone: 'success',
     })
   } else if (flexibleTargetAmount > 0 && savingsRemaining > 0) {
     actions.push({
-      detail: `Todavia te quedan ${currencyFormatter.format(
-        Math.max(0, flexibleTargetAmount - variableSpentInCurrentCycle),
-      )} para gastos del dia a dia este mes.`,
-      title: 'Vas bien con tu plan del mes',
+      detail: i18n.t('insights:controlActions.today.onPlan.detail', {
+        remaining: currencyFormatter.format(
+          Math.max(0, flexibleTargetAmount - variableSpentInCurrentCycle),
+        ),
+      }),
+      title: i18n.t('insights:controlActions.today.onPlan.title'),
       tone: 'success',
     })
   } else if (savingsGoal > 0 && savingsRemaining > 0) {
     actions.push({
-      detail: `Todavia quedan ${currencyFormatter.format(
-        savingsRemaining,
-      )} del objetivo de ahorro sin tocar.`,
-      title: 'Evita comer ahorro si no hace falta',
+      detail: i18n.t('insights:controlActions.today.protectSavings.detail', {
+        remaining: currencyFormatter.format(savingsRemaining),
+      }),
+      title: i18n.t('insights:controlActions.today.protectSavings.title'),
       tone: 'success',
     })
   }

@@ -1,8 +1,11 @@
+import { getIntlLocale } from '@/lib/i18n/active-locale'
+
 export type AmountPrefix = '+' | '-' | null | undefined
 
 export function formatAnimatedAmount(
   value: number,
-  locale: string = 'es-AR',
+  // Sin locale explícito sigue al idioma activo (es→es-AR, en→en-US).
+  locale: string = getIntlLocale(),
   prefix?: AmountPrefix,
 ): string {
   const rounded = Math.round(value)

@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -29,8 +30,6 @@ interface ControlV2SemanaCardProps {
    *  no alcanza). */
   diasConGasto?: number
 }
-
-const DAY_NAMES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
 
 /**
  * "Cómo vienes esta semana" — auditada y alineada con la familia.
@@ -66,6 +65,7 @@ function ControlV2SemanaCardImpl({
   diasConGasto = 999,
 }: ControlV2SemanaCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
 
   // Hasta tener gasto en suficientes días distintos no hay un "ritmo"
@@ -93,7 +93,7 @@ function ControlV2SemanaCardImpl({
           chipBorder: isDark ? 'rgba(122,216,163,0.34)' : 'rgba(28,126,58,0.26)',
           icon: 'trending-down' as const,
           canonical: 'Saludable',
-          stateLabel: 'Ritmo descendente',
+          stateLabel: t('control:semana.stateDescendente'),
           calloutBg: isDark ? 'rgba(122,216,163,0.10)' : 'rgba(28,126,58,0.06)',
           calloutBorder: isDark
             ? 'rgba(122,216,163,0.26)'
@@ -109,7 +109,7 @@ function ControlV2SemanaCardImpl({
             : 'rgba(194,122,10,0.26)',
           icon: 'trending-up' as const,
           canonical: 'Atención',
-          stateLabel: 'Ritmo acelerado',
+          stateLabel: t('control:semana.stateAcelerado'),
           calloutBg: isDark
             ? 'rgba(243,186,87,0.10)'
             : 'rgba(194,122,10,0.06)',
@@ -127,7 +127,7 @@ function ControlV2SemanaCardImpl({
             : 'rgba(15,42,30,0.12)',
           icon: 'trending-flat' as const,
           canonical: 'Saludable',
-          stateLabel: 'Ritmo estable',
+          stateLabel: t('control:semana.stateEstable'),
           calloutBg: isDark
             ? 'rgba(255,255,255,0.04)'
             : 'rgba(15,42,30,0.04)',
@@ -164,7 +164,9 @@ function ControlV2SemanaCardImpl({
     if (avgU7 > cupoDiario && diasRestantes > 0) {
       return {
         icon: 'trending-down' as const,
-        text: `Reduce ${formatMoneyShort(Math.max(0, dailyDeltaVsCupo))}/día para volver al cupo.`,
+        text: t('control:semana.hintReduce', {
+          amount: formatMoneyShort(Math.max(0, dailyDeltaVsCupo)),
+        }),
       }
     }
     if (avgU7 < cupoDiario) {
@@ -176,20 +178,23 @@ function ControlV2SemanaCardImpl({
         icon: 'savings' as const,
         text:
           projectedSavings > 0
-            ? `${formatMoneyShort(Math.abs(dailyDeltaVsCupo))}/día por debajo del cupo. Suma ~${formatMoneyShort(projectedSavings)} al cierre.`
-            : `Ritmo sostenido en el cupo. Buen pulso.`,
+            ? t('control:semana.hintAhorro', {
+                amount: formatMoneyShort(Math.abs(dailyDeltaVsCupo)),
+                projected: formatMoneyShort(projectedSavings),
+              })
+            : t('control:semana.hintRitmoSostenido'),
       }
     }
     if (mood === 'warn' && hasPriorWeek) {
       return {
         icon: 'priority-high' as const,
-        text: `Aceleración del ${momentumPct}% — cuida los próximos días.`,
+        text: t('control:semana.hintAceleracion', { pct: momentumPct }),
       }
     }
     if (mood === 'good' && hasPriorWeek) {
       return {
         icon: 'savings' as const,
-        text: `Reducción del ${momentumPct}% vs la semana anterior. Camino al ahorro.`,
+        text: t('control:semana.hintReduccion', { pct: momentumPct }),
       }
     }
     if (!hasPriorWeek) {
@@ -198,12 +203,12 @@ function ControlV2SemanaCardImpl({
       // thinking we're comparing against actual prior data.
       return {
         icon: 'trending-flat' as const,
-        text: 'Recién arrancas el ciclo. La comparación vs. tu semana anterior aparece a partir del día 14.',
+        text: t('control:semana.hintRecienArranca'),
       }
     }
     return {
       icon: 'trending-flat' as const,
-      text: 'Tu ritmo está parejo con la semana anterior.',
+      text: t('control:semana.hintParejo'),
     }
   })()
 
@@ -250,7 +255,7 @@ function ControlV2SemanaCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={palette.fg} glow={palette.fg} />
           <Text style={[styles.eyebrow, { color: palette.fg }]} numberOfLines={1}>
-            CÓMO VA · ÚLTIMOS 7 DÍAS
+            {t('control:semana.eyebrow')}
           </Text>
           <View
             style={[
@@ -270,27 +275,31 @@ function ControlV2SemanaCardImpl({
 
         <View style={styles.statsRow}>
           <Stat
-            label="Promedio"
-            value={`${formatMoneyShort(avgU7)}/día`}
-            sub={`prev: ${formatMoneyShort(avgP7)}/día`}
+            label={t('control:semana.statPromedio')}
+            value={t('control:semana.statPromedioValue', {
+              amount: formatMoneyShort(avgU7),
+            })}
+            sub={t('control:semana.statPromedioSub', {
+              amount: formatMoneyShort(avgP7),
+            })}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <Stat
-            label="vs Semana"
+            label={t('control:semana.statVsSemana')}
             value={vsPrevText}
-            sub="ritmo diario"
+            sub={t('control:semana.statVsSemanaSub')}
             text={vsPrevColor}
             muted={theme.colors.textMuted}
             valueWeight="800"
           />
           <Stat
-            label="Bajo cupo"
+            label={t('control:semana.statBajoCupo')}
             value={`${daysUnderCupo}/${closedCount}`}
             sub={
               noSpendDays > 0
-                ? `${noSpendDays} sin gastar`
-                : 'días respetados'
+                ? t('control:semana.statSinGastar', { count: noSpendDays })
+                : t('control:semana.statBajoCupoSub')
             }
             text={theme.colors.text}
             muted={theme.colors.textMuted}
@@ -337,7 +346,7 @@ function ControlV2SemanaCardImpl({
                     {isNoSpend ? (
                       <View
                         style={[styles.noSpendDot, { backgroundColor: barColors.noSpendDot }]}
-                        accessibilityLabel="Día sin gastos"
+                        accessibilityLabel={t('control:semana.dayNoSpendA11y')}
                       />
                     ) : (
                       <View
@@ -373,7 +382,7 @@ function ControlV2SemanaCardImpl({
                   style={[styles.cupoTagLabel, { color: theme.colors.textMuted }]}
                   numberOfLines={1}
                 >
-                  CUPO
+                  {t('control:semana.cupoTag')}
                 </Text>
                 <Text
                   style={[styles.cupoTagValue, { color: theme.colors.text }]}
@@ -387,7 +396,10 @@ function ControlV2SemanaCardImpl({
           <View style={styles.dayLabelsRow}>
             <View style={styles.dayLabels}>
               {last7.map((d, i) => {
-                const dowLetter = DAY_NAMES[d.dow] ?? ''
+                const dowLetter =
+                  d.dow >= 0 && d.dow <= 6
+                    ? t(`control:weekdayInitials.${d.dow}`)
+                    : ''
                 return (
                   <Text
                     key={`${d.dia}-${i}`}
@@ -443,6 +455,7 @@ const EMPTY_BAR_HEIGHTS = [42, 64, 30, 78, 50, 36, 58] as const
  */
 function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
   const progreso = Math.max(0, Math.min(diasConGasto, MIN_SPEND_DAYS))
@@ -452,7 +465,7 @@ function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
     <RiseView delay={220}>
       <View
         accessibilityRole="text"
-        accessibilityLabel="Cómo va esta semana: esperando más días con gasto"
+        accessibilityLabel={t('control:semana.empty.a11y')}
         style={[
           styles.card,
           styles.emptyCard,
@@ -465,18 +478,24 @@ function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
             style={[styles.eyebrow, { color: theme.colors.textMuted }]}
             numberOfLines={1}
           >
-            CÓMO VA · ÚLTIMOS 7 DÍAS
+            {t('control:semana.eyebrow')}
           </Text>
           <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
             <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
-              Pronto
+              {t('control:semana.empty.soon')}
             </Text>
           </View>
         </View>
 
         <View style={styles.statsRow}>
-          {(['Promedio', 'vs Semana', 'Bajo cupo'] as const).map((label) => (
-            <View key={label} style={styles.stat}>
+          {(
+            [
+              ['promedio', t('control:semana.statPromedio')],
+              ['vsSemana', t('control:semana.statVsSemana')],
+              ['bajoCupo', t('control:semana.statBajoCupo')],
+            ] as const
+          ).map(([key, label]) => (
+            <View key={key} style={styles.stat}>
               <Text
                 style={[styles.statLabel, { color: theme.colors.textMuted }]}
                 numberOfLines={1}
@@ -528,11 +547,13 @@ function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
           <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
           <View style={styles.calloutBody}>
             <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para ver
-              tu ritmo de la semana y compararlo con la anterior.
+              {t('control:semana.empty.callout', { days: MIN_SPEND_DAYS })}
             </Text>
             <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
-              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+              {t('control:semana.empty.progress', {
+                progress: progreso,
+                days: MIN_SPEND_DAYS,
+              })}
             </Text>
           </View>
         </View>

@@ -1,0 +1,548 @@
+{
+  "asistente": {
+    "header": {
+      "title": "Asistente",
+      "potentialSuffix": "/mes potencial",
+      "subtitle_one": "{{count}} acción que puede mover la aguja",
+      "subtitle_other": "{{count}} acciones que pueden mover la aguja",
+      "subtitleIdle": "Al día por ahora"
+    },
+    "card": {
+      "longPressHint": "Mantén presionado para opciones.",
+      "seen": "Visto",
+      "seenA11y": "Marcar como visto",
+      "ctaA11y": "{{cta}} para {{title}}",
+      "replyA11y": "{{label}} para {{title}}"
+    },
+    "loading": "Revisando tus señales…",
+    "longPress": {
+      "question": "¿Qué quieres hacer con esta sugerencia?",
+      "why": "¿Por qué veo esto?",
+      "whyDefault": "Esta sugerencia se basa en patrones detectados en tus gastos del mes. La acción del CTA es la palanca más directa para mover el número.",
+      "blockFamily": "No mostrar más esta familia",
+      "blockSuccessTitle": "Listo",
+      "blockSuccessBody": "No vas a ver más señales de tipo \"{{family}}\" hasta que las desbloquees desde Ajustes.",
+      "blockErrorTitle": "No pudimos guardar",
+      "blockErrorBody": "Prueba de nuevo en unos segundos.",
+      "cancel": "Cancelar"
+    },
+    "empty": {
+      "firstTimeTitle": "Listos para empezar",
+      "firstTimeBody": "Carga tu ingreso y un par de gastos para que el asistente pueda mirar tus números.",
+      "reviewedTitle": "Revisaste todas las sugerencias",
+      "reviewedBody": "El asistente sigue mirando tus números. Si los patrones persisten, las sugerencias volverán a aparecer."
+    }
+  },
+  "dispatcher": {
+    "openLinkErrorTitle": "No pudimos abrir el enlace",
+    "openLinkErrorBody": "Prueba de nuevo más tarde.",
+    "saveAnswerErrorTitle": "No pudimos guardar tu respuesta",
+    "saveAnswerErrorBody": "Prueba de nuevo en unos segundos.",
+    "cancelIntentErrorTitle": "No pudimos registrar la cancelación",
+    "cancelIntentErrorBody": "Prueba de nuevo en unos segundos."
+  },
+  "persona": {
+    "planner": {
+      "label": "Planificador",
+      "description": "Te muestro los números y el detalle: te gusta entender antes de moverte."
+    },
+    "firefighter": {
+      "label": "Reactivo",
+      "description": "Te aviso solo cuando hay algo importante; el resto del tiempo, te dejo tranquilo."
+    },
+    "avoider": {
+      "label": "Conservador",
+      "description": "Te hablo con calma y de a poco, con pasos chicos que sí puedes dar."
+    },
+    "optimizer": {
+      "label": "Optimizador",
+      "description": "Te busco oportunidades para ahorrar y aprovechar los meses buenos."
+    }
+  },
+  "preferences": {
+    "noSession": "Sesión no disponible."
+  },
+  "cta": {
+    "verFijos": "Ver fijos",
+    "entendido": "Entendido",
+    "ajustar": "Ajustar",
+    "verGastos": "Ver gastos",
+    "verDetalle": "Ver detalle",
+    "verMeta": "Ver meta",
+    "responder": "Responder",
+    "comparar": "Comparar",
+    "revisar": "Revisar",
+    "cargarGastos": "Cargar gastos",
+    "actualizar": "Actualizar",
+    "ajustarPlan": "Ajustar plan",
+    "planIntegral": "Plan integral",
+    "capitalizar": "Capitalizar"
+  },
+  "reply": {
+    "mucho": "Mucho",
+    "aVeces": "A veces",
+    "casiNunca": "Casi nunca",
+    "cancelar": "Cancelar",
+    "laSigoUsando": "La sigo usando"
+  },
+  "copy": {
+    "recoveryHard_loss": "Si no bajas a {{newCupo}} por día, el mes te va a cerrar {{overspend}} más caro de lo que tenías pensado, y eso te complica el mes que viene.",
+    "recoveryHard_gain": "Gastando menos de {{newCupo}} por día estos {{diasRestantes}} días, llegas a fin de mes sin pasarte.",
+    "recoveryHard_neutral": "Para llegar bien a fin de mes tendrías que gastar menos de {{newCupo}} por día — es muy poco. Mejor baja un poco lo que quieres ahorrar, o corre algún pago grande para más adelante.",
+    "velocitySlowerOver": "Aunque vienes más tranquilo que otras veces, todavía vas {{over}} arriba de lo que tenías pensado. Sigue cuidándote y llegas.",
+    "velocitySlower": "Vienes gastando más tranquilo que de costumbre — así llegas bien a fin de mes.",
+    "velocityFaster_loss_over": "Si sigues gastando así, el mes te va a cerrar {{over}} más caro de lo que tenías pensado. Afloja un poco estos días y llegas bien.",
+    "velocityFaster_loss": "Vas un poco acelerado para esta altura del mes, pero todavía llegas. Ojo con los próximos días.",
+    "velocityFaster_gain_over": "Gastando {{over}} menos en lo que queda del mes, llegas justo a lo que tenías pensado.",
+    "velocityFaster_gain": "Vas bien, dentro de lo que tenías pensado para este mes.",
+    "velocityFaster_neutral_over": "A este paso, el mes te va a cerrar {{over}} más caro de lo que tenías pensado. Baja un poco y llegas.",
+    "velocityFaster_neutral": "Si sigues así, llegas a fin de mes sin pasarte de lo que tenías pensado.",
+    "fijosRatio_loss": "Tus pagos fijos (alquiler, servicios, suscripciones) se comen una parte muy grande del sueldo: si aparece un gasto inesperado, casi no te queda colchón. Bajar el más grande te libera {{excess}} por mes.",
+    "fijosRatio_gain": "Si bajas tus pagos fijos (alquiler, servicios, suscripciones), te quedan {{excess}} más por mes para el día a día o para guardar. El más grande es el que más mueve la aguja.",
+    "fijosRatio_neutral": "Tus pagos fijos (alquiler, servicios, suscripciones) se llevan una parte muy grande del sueldo: te queda poco para comer, salir y ahorrar. Bajar el más grande te libera {{excess}} por mes.",
+    "positiveForecastGoal_loss": "Si no la guardas ahora, esa plata que te va a sobrar ({{sobra}}) se va a ir en gastos del mes que viene. Pasa {{proposed}} a \"{{goalTitle}}\" antes de que desaparezca.",
+    "positiveForecastGoal_gain": "Vas adelantado: a fin de mes te sobran {{sobra}}. Aprovecha y pasa {{proposed}} a \"{{goalTitle}}\".",
+    "positiveForecastGoal_neutral": "Si sigues así, a fin de mes te sobran {{sobra}}. Una buena: pasa {{proposed}} a \"{{goalTitle}}\" y deja el resto guardado por las dudas.",
+    "positiveForecast_loss": "Te van a sobrar {{sobra}} a fin de mes — fáciles de gastar sin querer. Mejor decide ya dónde guardarlos.",
+    "positiveForecast_gain": "Buen mes: te sobran {{sobra}}. Buen momento para arrancar una meta de ahorro.",
+    "positiveForecast_neutral": "Si sigues así, a fin de mes te sobran {{sobra}}. Esa plata puede ir a una meta de ahorro o quedar guardada por las dudas."
+  },
+  "signals": {
+    "superStorm": {
+      "cat": "Confluencia",
+      "title": "Confluencia crítica",
+      "body_two": "Dos factores se alinean: {{factors}}. Plan integral sugerido.",
+      "body_three": "Tres factores se alinean: {{factors}}. Plan integral sugerido.",
+      "impact": "Carga combinada: {{amount}}",
+      "explanation": "Cuando los fijos pesan demasiado y al mismo tiempo gastas más de lo que tienes disponible hoy o aceleraste el gasto en los últimos días, no es un problema aislado: es la suma. El plan integral baja a la vez la presión estructural y el día a día."
+    },
+    "superSavings": {
+      "cat": "Racha",
+      "impact": "+{{amount}} a favor en el ciclo",
+      "title": "Racha positiva",
+      "body": "Llevas racha sostenida, el mes cierra con plata de sobra, y hay categorías a favor. Es el momento de aprovechar: subir la meta o reasignar lo que sobra.",
+      "explanation": "La combinación de tres señales positivas a la vez — racha, plata que sobra y win por categoría — sostiene un cambio real. Buen momento para subir la meta o destinar lo que sobra."
+    },
+    "stressWeek": {
+      "cat": "Fijos",
+      "title": "{{count}} pagos fijos vencen en 7 días",
+      "body": "{{names}} suman {{total}}. Es mejor reservar ese monto para evitar imprevistos.",
+      "bodyMore_one": "{{names}} y {{count}} más suman {{total}}. Es mejor reservar ese monto para evitar imprevistos.",
+      "bodyMore_other": "{{names}} y {{count}} más suman {{total}}. Es mejor reservar ese monto para evitar imprevistos.",
+      "impact": "Reservar {{total}}",
+      "explanation": "Un \"fijo\" es un pago mensual recurrente (alquiler, servicios, suscripciones). Cuando varios caen en la misma semana, quedan menos pesos disponibles para gastos del día a día. Avisamos con anticipación para evitar sorpresas."
+    },
+    "paydayProximity": {
+      "cat": "Hasta el cobro",
+      "title": "Te quedan {{remaining}} y faltan {{days}} días al cobro",
+      "body": "Para llegar bien al próximo cobro, gasta hasta {{perDay}} por día.",
+      "impact": "Hasta {{perDay}} por día",
+      "explanation": "Es lo que te queda dividido por los días hasta el próximo cobro: cuánto puedes gastar por día para no quedar en cero."
+    },
+    "endAcceleration": {
+      "cat": "Cierre",
+      "title": "Vienes gastando {{perDay}}/día, por encima de tu promedio",
+      "body": "Estos últimos 3 días gastaste {{last3Avg}}/día contra {{cycleAvg}}/día del resto del mes. Quedan {{days}} días — a este paso, el mes termina en rojo.",
+      "impact": "Volver al promedio: {{delta}}",
+      "explanation": "Es común aflojar el control al final del mes, justo cuando el gasto se dispara más. Comparar los últimos 3 días contra el promedio del mes ayuda a detectar el cambio a tiempo."
+    },
+    "recoveryHard": {
+      "cat": "Recuperación",
+      "title": "Hoy te pasaste bastante",
+      "impact": "A recuperar: {{overspend}}",
+      "explanation": "Cuando gastas mucho más de lo disponible hoy, bajar mucho lo que puedes gastar el resto del mes no funciona. Mejor reajustar la meta de ahorro o reordenar algún gasto fijo antes que sostener un objetivo imposible."
+    },
+    "recoverySoft": {
+      "cat": "Recuperación",
+      "title": "Ajusté lo que puedes gastar por día",
+      "body": "Hoy te pasaste por {{overspend}}. Si de aquí a fin de mes gastas {{newCupo}}/día, el mes igual cierra bien.",
+      "impact": "Nuevo límite: {{newCupo}}/día",
+      "explanation": "Cuando el exceso es moderado, se reparte entre los días que quedan y queda un límite diario un poco más bajo. Si se mantiene ese límite, el mes cierra dentro del presupuesto."
+    },
+    "velocity": {
+      "cat": "Ritmo",
+      "impactFrenar": "Frenar: {{delta}}",
+      "impactMantener": "Mantener el ritmo de gasto",
+      "explanation": "Compara el ritmo de gasto reciente (últimos 7 días) contra el promedio del mes. Si el gasto se aceleró, estima el monto de cierre para anticipar el resultado del mes.",
+      "stressCritical": "Cierre por encima del presupuesto",
+      "stressWarn": "Ritmo por encima del objetivo",
+      "stressWatch": "Ritmo elevado",
+      "stressStable": "Ritmo estable"
+    },
+    "positiveForecast": {
+      "cat": "Cierre",
+      "title": "Plata que te sobra: {{sobra}}",
+      "impactGoal": "+{{proposed}} a la meta",
+      "impactClose": "+{{sobra}} al cierre",
+      "ctaMover": "Mover {{proposed}}",
+      "ctaVerMeta": "Ver meta",
+      "explanation": "Estima el cierre del mes combinando el ritmo de gasto actual con los días restantes. Cuando el resultado es positivo, ve cuánta plata te sobra para la meta de ahorro o reserva."
+    },
+    "catAccel": {
+      "titleSpikeSuffix": " (gasto puntual)",
+      "bodySpike": "Gastaste {{amount}} en {{category}} este mes, contra {{avg}} de costumbre. Casi todo fue esta última semana — capaz algo puntual (un viaje, un regalo, una compra grande). ¿Fue eso o cambió algo?",
+      "bodyTrend": "Gastaste {{amount}} en {{category}} este mes, contra {{avg}} de costumbre. Vino subiendo de a poco. ¿Quieres frenarlo o ya es parte de tus gastos?",
+      "title": "{{category}} subió fuerte este mes{{suffix}}",
+      "impact": "Volver al promedio: {{delta}}/mes",
+      "explanation": "Compara lo que gastas ahora en una categoría con lo que sueles gastar. Verlo a tiempo te deja decidir si frenar o si es algo puntual.",
+      "fuseShare": " Además, ya se lleva el {{pct}}% de todo lo que gastaste este mes: es donde más puedes ahorrar."
+    },
+    "cap": {
+      "categoryFallback": "Categoría",
+      "titleBreach": "{{name}}: límite superado",
+      "titleWarning": "{{name}} al {{pct}}% del límite",
+      "bodyBreach": "Tu límite era {{cap}} y llevas gastados {{spent}}. Exceso: {{excess}}.",
+      "bodyWarning": "Llevas {{spent}} de los {{cap}} que pusiste como límite. Quedan {{remaining}} para cerrar el mes.",
+      "impactBreach": "Frenar ahora: {{delta}}",
+      "impactWarning": "Mantener bajo {{cap}}",
+      "explanation": "Si pones un tope mensual a una categoría, la app avisa cuando te acercas o lo superas. Funciona como una meta personal: ayuda a frenar el gasto antes de que afecte el cierre del mes."
+    },
+    "catDominance": {
+      "title": "{{category}} se lleva {{amount}} de tu gasto",
+      "body": "De los {{total}} que gastaste este mes, {{amount}} fueron en {{category}}. Si gastas un poco menos ahí, se nota más que recortar en varias categorías chicas.",
+      "impact": "Reducir 10%: +{{save}}/mes",
+      "explanation": "Cuando una categoría concentra casi la mitad del gasto, es donde más puedes ahorrar. Una reducción pequeña en esa categoría libera más dinero que varios ajustes chicos en otras."
+    },
+    "catWin": {
+      "title": "{{category}} −{{pct}}% vs promedio",
+      "body": "Gastaste {{now}} este mes vs {{avg}} de promedio. Si lo mantienes, son {{annual}} al año.",
+      "impact": "+{{delta}}/mes sostenido",
+      "explanation": "Detecta categorías donde el gasto del mes está claramente por debajo del promedio histórico. Mostrar el equivalente anual ayuda a sostener el cambio en el tiempo."
+    },
+    "smallLeaks": {
+      "cat": "Goteo",
+      "title": "{{count}} gastos pequeños suman {{total}}",
+      "body": "Compras menores a $5.000 (kiosco, delivery, café) representan el {{pct}}% del gasto del mes. Suelen pasar desapercibidas una por una.",
+      "impact": "Reducir 30%: {{amount}}/mes",
+      "explanation": "Los gastos menores a $5.000 parecen insignificantes uno por uno, pero juntos suman una porción importante del mes. Verlos juntos ayuda a detectar dónde se concentra el \"goteo\" del presupuesto."
+    },
+    "nightImpulse": {
+      "cat": "Horario",
+      "title": "{{amount}} en compras de noche",
+      "body": "{{count}} de {{total}} compras las hiciste después de las 22hs, sumando {{amount}}. De noche, relajado en casa, es más fácil comprar de más sin pensarlo.",
+      "impact": "Reducir 20%: +{{amount}}/mes",
+      "explanation": "Comprar de noche, relajado en casa, suele llevar a gastar de más. Dejar la compra para el día siguiente ayuda a cortar varias de esas."
+    },
+    "weeklyPattern": {
+      "catDow": "Patrón",
+      "titleDow": "Los {{day}} gastas más",
+      "bodyDow": "Los {{day}} gastas bastante más que un día normal. En todo el mes, eso suma {{extra}} de más.",
+      "impactDow": "+{{extra}}/mes",
+      "explanationDow": "Agrupa el gasto por día de la semana y calcula el promedio de cada uno. Permite identificar el día que concentra el mayor gasto recurrente.",
+      "catWeekend": "Fin de semana",
+      "titleWeekend": "Los findes gastas más",
+      "bodyWeekend": "De lunes a viernes gastas {{weekday}} por día. Sábados y domingos, {{weekend}} por día. Ahí es donde más puedes recortar.",
+      "impactWeekend": "+{{extra}}/mes ajustando",
+      "explanationWeekend": "Los fines de semana concentran salidas, delivery y planes sociales que elevan el gasto promedio. Pequeños ajustes en sábado y domingo suman varios miles al cierre sin afectar el resto de la semana."
+    },
+    "fijosRatio": {
+      "cat": "Fijos",
+      "title": "Tus pagos fijos pesan mucho",
+      "impact": "Bajando alguno: liberas {{excess}}/mes",
+      "explanation": "Cuando tus gastos fijos pasan la mitad del sueldo, te queda muy poco para imprevistos y ahorro."
+    },
+    "incomeVolatility": {
+      "cat": "Ingreso",
+      "titleBetter": "Cobraste {{amount}} este mes — más que de costumbre",
+      "titleWorse": "Cobraste {{amount}} este mes — menos que de costumbre",
+      "bodyBetter": "Otros meses cobrabas cerca de {{avg}}; este mes te entró {{delta}} más. Buen momento para guardar un poco de esa diferencia.",
+      "bodyWorse": "Otros meses cobrabas cerca de {{avg}}; este mes te entró {{delta}} menos. Cuida los gastos hasta que se recupere.",
+      "explanation": "Compara lo que cobraste este mes con lo que sueles cobrar. Si entra bastante menos, conviene cuidar los gastos; si entra más, guarda la diferencia."
+    },
+    "subUsage": {
+      "cat": "Suscripciones",
+      "titleHard": "Vienes sin usar {{name}} hace ~2 meses",
+      "bodyHard": "Respondiste que casi no usas {{name}} y cuesta {{amount}}/mes. ¿Realmente necesitas pagarla? Cancelarla te ahorra {{annual}} al año.",
+      "titleSoft": "{{name}}: ¿la estás aprovechando?",
+      "bodySoft": "Las últimas veces dijiste que la usas poco. Cuesta {{amount}}/mes — si no le sacas provecho, conviene revisarla.",
+      "titlePay": "Pagaste {{name}} · ¿cuánto la usaste?",
+      "bodyPay": "Registramos el pago de {{name}} ({{amount}}/mes). ¿Cuánto la usaste el último mes?",
+      "titleReask": "¿Sigues usando {{name}}?",
+      "bodyReask": "Hace un tiempo no nos cuentas cómo va {{name}} ({{amount}}/mes). ¿La sigues usando?",
+      "impact": "{{amount}}/mes",
+      "explanation": "Te preguntamos por las suscripciones que pagas para ver si realmente las usas. Si vienes diciendo que no, te avisamos para que decidas si vale la pena seguir pagándolas."
+    },
+    "hike": {
+      "cat": "Fijos",
+      "nameFallback": "Un fijo",
+      "title": "{{name}}: aumento del {{pct}}%",
+      "body": "Pasó de {{prev}} a {{next}}. En 12 meses son {{annual}} más. Comparar otros proveedores o renegociar puede recuperar parte del aumento.",
+      "impact": "Hasta {{delta}}/mes negociando",
+      "explanation": "Detecta aumentos en los gastos fijos cuando se cargan. Los aumentos parecen chicos mes a mes, pero acumulados en un año suelen justificar buscar alternativas o renegociar con el proveedor."
+    },
+    "savingsFeasibility": {
+      "title": "Para \"{{goal}}\" te faltan {{shortfall}} este mes",
+      "body": "Para llegar a tiempo tendrías que guardar como {{perWeek}} por semana. Este mes vas por {{actual}} — guarda un poco más y llegas.",
+      "impact": "Te faltan {{shortfall}} este mes",
+      "explanation": "Compara lo que estás guardando este mes con lo que necesitas para llegar a tu meta a tiempo. Ajustar temprano hace el esfuerzo más chico."
+    },
+    "savingsOver": {
+      "title_one": "Meta adelantada en {{count}} mes",
+      "title_other": "Meta adelantada en {{count}} meses",
+      "body": "Este mes ahorraste {{actual}} cuando el plan pedía {{planned}}. A este ritmo, {{goal}} llega en {{newMonths}} meses en vez de {{months}}.",
+      "impact_one": "−{{count}} mes al objetivo",
+      "impact_other": "−{{count}} meses al objetivo",
+      "explanation": "Cuando el ahorro mensual supera el plan, recalculamos la fecha estimada de cumplimiento. Puedes mantener el ritmo para llegar antes o subir la meta."
+    },
+    "highSingle": {
+      "cat": "Gasto único",
+      "title": "Movimiento alto hoy: {{price}}",
+      "body": "Hoy registraste {{price}} en un solo movimiento — {{pct}}% de lo que puedes gastar hoy ({{cupo}}). Mira si conviene compensar el resto del día.",
+      "impact": "Hoy: {{price}}",
+      "explanation": "Cuando un solo gasto ocupa una porción grande de lo que puedes gastar hoy, el resto del día queda muy comprometido. Verlo apenas pasa permite reaccionar."
+    },
+    "duplicate": {
+      "cat": "Posible duplicado",
+      "title": "{{count}} cargos parecidos en 48h",
+      "body": "Detecté {{count}} cargos de \"{{description}}\" por ~{{amount}} en menos de 48h. ¿Confirmas que son distintos?",
+      "impact": "Revisar: {{amount}}",
+      "explanation": "Dos cargos con descripción y monto casi idénticos en pocas horas suelen ser un duplicado del comercio o del registro manual. La idea es que el usuario lo confirme."
+    },
+    "dataGap": {
+      "cat": "Registros",
+      "title_one": "{{count}} día sin gastos cargados",
+      "title_other": "{{count}} días sin gastos cargados",
+      "body": "Si tuviste movimientos esos días, regístralos para que el cierre del mes refleje la realidad. Si no, ignora este aviso.",
+      "impact_one": "Hace {{count}} día",
+      "impact_other": "Hace {{count}} días",
+      "explanation": "Los signals dependen de que los gastos estén cargados. Una pausa larga sin registros suele indicar que algo no se anotó, no que no se gastó."
+    },
+    "savingsMilestone": {
+      "title": "¡Llegaste a la meta!",
+      "body": "Cumpliste el 100% de \"{{goal}}\" con {{amount}} ahorrados. Buen momento para definir la siguiente.",
+      "impact": "Total: {{total}}",
+      "explanation": "Un hito sirve para celebrar y para aprovechar el envión: la siguiente meta arranca con el hábito ya construido, no desde cero."
+    },
+    "incomeMissing": {
+      "cat": "Cobro",
+      "title": "Cobro esperado no confirmado",
+      "body": "Tu cobro estaba previsto pero el ciclo no se confirmó. Si llegó, actualiza el balance del nuevo ciclo. Si cambió la fecha, ajusta tu día de pago.",
+      "impactExpected": "Ingreso esperado: {{amount}}",
+      "impactConfirm": "Confirmar cobro",
+      "explanation": "Cuando el día de pago configurado ya pasó pero el mes no se confirmó, el resto del cálculo (lo que puedes gastar hoy) trabaja con el mes anterior. Confirmar aquí restablece la base."
+    },
+    "cycleStart": {
+      "cat": "Inicio de ciclo",
+      "title": "Mes apretado: {{pct}}% libre",
+      "bodyWithGoal": "Después de fijos y meta, te queda {{libre}} libre ({{pct}}% del ingreso). Cuando es bajo, cualquier imprevisto te deja sin recursos. Pausar la meta este mes o renegociar un fijo te da respiro.",
+      "bodyNoGoal": "Después de fijos, te queda {{libre}} libre ({{pct}}% del ingreso). Cuando es bajo, cualquier imprevisto te deja sin recursos. Pausar la meta este mes o renegociar un fijo te da respiro.",
+      "impact": "Aire faltante: {{gap}}",
+      "explanation": "\"Libre\" es lo que te queda del ingreso después de pagar fijos y separar la meta de ahorro. Si arranca bajo, cualquier imprevisto te deja sin recursos. Mejor avisarlo al inicio del mes cuando todavía hay tiempo para ajustar."
+    },
+    "forecastPaydayGap": {
+      "cat": "Predicción",
+      "title_one": "Riesgo: $0 {{count}} día antes del cobro",
+      "title_other": "Riesgo: $0 {{count}} días antes del cobro",
+      "body_one": "Si gastas como los últimos días, llegas a $0 unos {{count}} día antes del próximo cobro. Hay tiempo para corregir si recortas ahora.",
+      "body_other": "Si gastas como los últimos días, llegas a $0 unos {{count}} días antes del próximo cobro. Hay tiempo para corregir si recortas ahora.",
+      "impact": "Faltan {{amount}}",
+      "explanation": "Comparamos lo que te queda con lo que podrías llegar a gastar en el peor de los casos (días caros + fijos). Si la cuenta da menos que los días que faltan para el cobro, se prende esta alerta."
+    },
+    "streak": {
+      "cat": "Racha",
+      "title": "{{count}} días seguidos sin pasarte",
+      "body": "Vas controlado. A este paso, el cierre del mes deja {{amount}} sin gastar.",
+      "impact": "Lo que puedes gastar hoy: {{cupo}}",
+      "explanation": "Cuenta días seguidos en los que el gasto del día se mantuvo bajo control. Ver los días seguidos refuerza el hábito y hace visible el progreso del mes."
+    },
+    "fallbackCategory": "Otros"
+  },
+  "subscriptions": {
+    "followup": {
+      "titlePaymentRecurred": "{{name}} se volvió a cobrar.",
+      "titleNoPayment": "{{name}} no se cobró este mes.",
+      "titleAwaiting_one": "Hace {{count}} día ibas a dar de baja {{name}}.",
+      "titleAwaiting_other": "Hace {{count}} días ibas a dar de baja {{name}}.",
+      "askPaymentRecurred": "¿Pasó algo?",
+      "askNoPayment": "¿Confirmas que la diste de baja?",
+      "askAwaiting": "¿Pudiste?",
+      "confirmDone": "Sí, ya está",
+      "stillNo": "Todavía no",
+      "changedMind": "Cambié de idea"
+    },
+    "classification": {
+      "unevenBody": "La usa solo una persona del grupo. ¿Es lo que esperaban?",
+      "unevenOk": "Sí, está bien",
+      "consensusBody_one": "La familia casi no la usa.\nEn {{count}} mes fueron {{total}}.",
+      "consensusBody_other": "La familia casi no la usa.\nEn {{count}} meses fueron {{total}}.",
+      "consensusQuestion": "¿Qué hacen?",
+      "cancel": "Voy a cancelarla",
+      "pause": "Voy a pausarla",
+      "downgrade": "Voy a bajar el plan",
+      "keep": "Sigo bancándola"
+    },
+    "status": {
+      "intentCancel": "va a dar de baja",
+      "intentPause": "va a pausar",
+      "intentDowngrade": "va a bajar el plan de",
+      "today": "hoy",
+      "rel_one": "hace {{count}} día",
+      "rel_other": "hace {{count}} días",
+      "savings": "Ahorro estimado: {{amount}} / mes"
+    },
+    "prompt": {
+      "perMonth": "{{amount}} / mes",
+      "someoneFallback": "Alguien",
+      "levelMucho": "la usa mucho",
+      "levelAVeces": "a veces",
+      "levelCasiNunca": "casi nunca",
+      "relAMoment": "hace un rato",
+      "relHours": "hace {{count}} h",
+      "relDays_one": "hace {{count}} día",
+      "relDays_other": "hace {{count}} días",
+      "questionAndYou": "¿Y tú?",
+      "questionUsing": "¿La estás usando?",
+      "answered": "Ya contestaste — esperando al resto."
+    },
+    "levelButtons": {
+      "mucho": "La uso mucho",
+      "aVeces": "A veces",
+      "casiNunca": "Casi nunca"
+    },
+    "push": {
+      "manyTitle": "Tienes {{count}} suscripciones que casi no usas",
+      "manyBody": "{{names}}{{more}} · {{total}}/mes. Toca para revisar.",
+      "more_one": " y {{count}} más",
+      "more_other": " y {{count}} más",
+      "consensusTitle": "{{name}} — la familia casi no la usa",
+      "unevenTitle": "{{name}} — uso desigual en la familia",
+      "singleBody": "Pagas {{amount}} al mes. Toca para revisar."
+    }
+  },
+  "push": {
+    "digestTitle": "Tienes {{count}} alertas en Control",
+    "digestBody_one": "{{first}} y {{count}} más. Toca para revisar.",
+    "digestBody_other": "{{first}} y {{count}} más. Toca para revisar."
+  },
+  "memberWarning": {
+    "title": "👥 Aviso del Asistente Financiero"
+  },
+  "controlActions": {
+    "hero": {
+      "noBase": {
+        "eyebrow": "Base faltante",
+        "title": "Falta el marco financiero",
+        "detail": "Defini ingreso, ahorro y dia de cobro para que la app pueda guiarte."
+      },
+      "salaryPending": {
+        "eyebrow": "Nuevo mes",
+        "title": "Confirma tu cobro para ponerte al dia",
+        "detail": "Confirma tu ultimo cobro y pongo al dia tus numeros del mes."
+      },
+      "overToday": {
+        "eyebrow": "Ojo hoy",
+        "title": "Hoy gastaste de mas",
+        "detail": "Hoy gastaste mas de lo que tenias para hoy, y faltan {{remaining}} para el proximo cobro."
+      },
+      "overdue": {
+        "eyebrow": "Ojo del mes",
+        "title": "Tenes pagos fijos vencidos",
+        "detail_one": "Tenes {{count}} pago fijo vencido y {{amount}} todavia sin pagar.",
+        "detail_other": "Tenes {{count}} pagos fijos vencidos y {{amount}} todavia sin pagar."
+      },
+      "adjustDaily": {
+        "eyebrow": "Ajuste chico",
+        "title": "Con un ajuste chico llegas bien",
+        "detail": "Bajando como {{amount}} por dia, llegas bien a fin de mes."
+      },
+      "dueSoon": {
+        "eyebrow": "Proximos dias",
+        "title": "Se vienen gastos fijos: conviene apartar plata",
+        "detail_one": "Se viene {{count}} pago fijo y conviene apartar {{amount}} para no quedar corto a fin de mes.",
+        "detail_other": "Se vienen {{count}} pagos fijos y conviene apartar {{amount}} para no quedar corto a fin de mes."
+      },
+      "zeroStreak": {
+        "eyebrow": "Buena noticia",
+        "title": "Venis sumando plata sin gastar",
+        "detail": "Llevas {{count}} dias seguidos sin gastar — asi te queda mas plata para el resto del mes."
+      },
+      "steady": {
+        "eyebrow": "Lectura rapida",
+        "title": "El ciclo viene controlado",
+        "detail": "Quedan {{remaining}} para el cobro y hoy todavia estas dentro del rango previsto."
+      }
+    },
+    "today": {
+      "noBase": {
+        "title": "Completa primero la configuracion financiera",
+        "detail": "Sin ingreso, ahorro meta y dia de cobro no hay una referencia confiable para decidir."
+      },
+      "salaryPending": {
+        "title": "Confirma el cobro antes de seguir cargando",
+        "detail": "Hacerlo ahora evita que el ciclo nuevo quede mezclado con el anterior."
+      },
+      "overToday": {
+        "title": "Hoy conviene cortar el gasto variable",
+        "detail": "Si frenas aqui, manana abres con {{opening}}."
+      },
+      "remainingToday": {
+        "title": "Toma como referencia lo que todavia queda hoy",
+        "detail": "Tu tope real para lo que queda del dia es {{remaining}}."
+      },
+      "overdue": {
+        "title": "Paga primero los fijos vencidos",
+        "detail_one": "Hay {{count}} caso vencido y eso ya esta empujando el ciclo.",
+        "detail_other": "Hay {{count}} casos vencidos y eso ya esta empujando el ciclo."
+      },
+      "reserve": {
+        "title": "Aparta plata para los pagos fijos que vienen",
+        "detail": "Apartar {{amount}} te evita quedar corto cuando venzan los proximos pagos fijos."
+      },
+      "flexibleOver": {
+        "title": "Ya te pasaste de lo del dia a dia",
+        "detail": "Tu plan (mitad para los pagos fijos, {{flexiblePct}}% para el dia a dia y {{savingsPct}}% para ahorrar) te dejaba {{target}} para el dia a dia, y ya llevas {{spent}}."
+      },
+      "adjustDaily": {
+        "title": "Conviene gastar un poco menos por dia",
+        "detail": "Desde manana intenta bajar alrededor de {{amount}} por dia."
+      },
+      "zeroStreak": {
+        "title": "Cuida la plata que ya ahorraste",
+        "detail_one": "Ya llevas {{count}} dia seguido sin gastar.",
+        "detail_other": "Ya llevas {{count}} dias seguidos sin gastar."
+      },
+      "onPlan": {
+        "title": "Vas bien con tu plan del mes",
+        "detail": "Todavia te quedan {{remaining}} para gastos del dia a dia este mes."
+      },
+      "protectSavings": {
+        "title": "Evita comer ahorro si no hace falta",
+        "detail": "Todavia quedan {{remaining}} del objetivo de ahorro sin tocar."
+      }
+    },
+    "cyclePlan": {
+      "noBase": {
+        "title": "Activa primero el marco de control",
+        "detail": "Una base financiera clara es lo que convierte el historial en decisiones utiles."
+      },
+      "adjustDaily": {
+        "title": "Corrige el ritmo diario antes de tocar todo el presupuesto",
+        "detail": "El ajuste sugerido es de {{amount}} por dia durante lo que queda del mes."
+      },
+      "dailyCap": {
+        "title": "Usa un cap diario en vez de revisar cada gasto aislado",
+        "detail": "El tope simple para sostener el cierre es {{amount}} por dia."
+      },
+      "topCategory": {
+        "title": "Empieza por {{category}}",
+        "detail": "{{category}} ya explica {{pct}}% del mes."
+      },
+      "recurringFocus": {
+        "title": "Audita el gasto repetido antes que el gasto chico",
+        "detail": "\"{{label}}\" aparecio {{count}} veces y suma {{total}}."
+      },
+      "committed": {
+        "title": "Separa primero lo comprometido y despues mira el resto",
+        "detail": "Hay {{amount}} comprometidos entre fijos, cuotas y deuda para este mes."
+      },
+      "weekend": {
+        "title": "Pon un limite especifico al fin de semana",
+        "detail": "Los fines de semana vienen {{pct}}% arriba del promedio de lunes a viernes."
+      },
+      "steady": {
+        "title": "Manten el ritmo actual y segui registrando",
+        "detail": "Hoy todavia te quedan {{remaining}} y la proyeccion no marca alertas fuertes."
+      }
+    }
+  }
+}

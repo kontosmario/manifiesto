@@ -1,13 +1,21 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { TextField } from '@/components/ui/text-field'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
+import { GoalIcon } from '../goal-icon'
+import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 
 export const EMOJI_PALETTE = [
   '🎯', '✈️', '🏠', '🚗',
   '🎓', '💍', '🌅', '💻',
   '🎁', '🏖️', '📱', '💰',
 ] as const
+
+// Stickers sugeridos (PNG del owner) — primeras opciones del picker,
+// junto a los emojis. El valor guardado para un sticker es su KEY del
+// registry (ej. "metas/playa"); para un emoji, el glyph literal.
+const STICKER_OPTIONS = GOAL_STICKER_KEYS
 
 export const MAX_TITLE = 40
 
@@ -25,18 +33,19 @@ export function Step1Title({
   onSelectEmoji,
 }: Step1TitleProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.step1Body}>
       <TextField
-        label="Nombre de la meta"
+        label={t('settings:savingsWizard.nameLabel')}
         value={title}
         onChangeText={(v) => onChangeTitle(v.slice(0, MAX_TITLE))}
-        placeholder="Ej: Viaje a Bariloche"
+        placeholder={t('settings:savingsWizard.namePlaceholder')}
         autoCapitalize="sentences"
         // autoFocus removido a propósito: el teclado nativo en iOS
         // empujaba el sheet entero. Con KeyboardAvoidingView wrap +
         // tap-to-focus el flow se siente más controlado y no flashea.
-        accessibilityLabel="Nombre de la meta"
+        accessibilityLabel={t('settings:savingsWizard.nameLabel')}
         helper={`${title.length}/${MAX_TITLE}`}
       />
 
@@ -48,24 +57,26 @@ export function Step1Title({
         <Text
           style={[typography.eyebrow, { color: theme.colors.textMuted }]}
         >
-          ELIGE UN ÍCONO
+          {t('settings:savingsWizard.chooseIcon')}
         </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.emojiScroll}
           contentContainerStyle={styles.emojiScrollContent}
-          accessibilityLabel="Seleccionar ícono — desliza para ver más"
+          accessibilityLabel={t('settings:savingsWizard.iconScrollA11y')}
         >
-          {EMOJI_PALETTE.map((glyph) => {
-            const isActive = glyph === selectedEmoji
+          {/* Stickers sugeridos primero, luego los emojis — todos como
+              opciones equivalentes en la misma fila scrolleable. */}
+          {[...STICKER_OPTIONS, ...EMOJI_PALETTE].map((value) => {
+            const isActive = value === selectedEmoji
             return (
               <Pressable
-                key={glyph}
+                key={value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`Ícono ${glyph}`}
-                onPress={() => onSelectEmoji(glyph)}
+                accessibilityLabel={t('settings:savingsWizard.iconA11y', { glyph: value })}
+                onPress={() => onSelectEmoji(value)}
                 style={({ pressed }) => [
                   styles.emojiCard,
                   {
@@ -82,7 +93,7 @@ export function Step1Title({
                   },
                 ]}
               >
-                <Text style={styles.emojiGlyph}>{glyph}</Text>
+                <GoalIcon value={value} size={30} emojiStyle={styles.emojiGlyph} />
               </Pressable>
             )
           })}
@@ -122,6 +133,5 @@ const styles = StyleSheet.create({
   },
   emojiGlyph: {
     fontSize: 26,
-    lineHeight: 32,
   },
 })

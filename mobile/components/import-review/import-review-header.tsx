@@ -1,4 +1,5 @@
 import { Image, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -24,13 +25,14 @@ export function ImportReviewHeader({
   mode = 'edit',
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const headingEnter = reduced ? undefined : FadeIn.duration(200)
 
   const title = (() => {
-    if (mode === 'summary') return 'Resumen final'
-    if (total <= 1) return 'Revisa el movimiento'
-    return `Movimiento ${stepIndex} de ${total}`
+    if (mode === 'summary') return t('gastos:import.header.summaryTitle')
+    if (total <= 1) return t('gastos:import.header.reviewMovement')
+    return t('gastos:import.header.movementOf', { current: stepIndex, total })
   })()
 
   return (
@@ -47,7 +49,7 @@ export function ImportReviewHeader({
           ]}
           resizeMode="cover"
           accessible
-          accessibilityLabel="Miniatura de la captura importada"
+          accessibilityLabel={t('gastos:import.header.thumbnailA11y')}
         />
       ) : null}
       <View style={styles.textCol}>

@@ -2,6 +2,7 @@
 // derecho. Step 1 → back cierra el sheet; step 2 → back vuelve al
 // step 1. Y los dots de progreso. Extraído de `add-fijo-v2-screen.tsx`.
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -16,14 +17,21 @@ export interface StepHeaderProps {
 
 export function StepHeader({ step, isEditing, onBack }: StepHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const stepTitle =
-    step === 1 ? (isEditing ? 'Editar fijo' : 'Nuevo fijo') : 'Revisa el impacto'
+    step === 1
+      ? isEditing
+        ? t('fijos:wizard.stepEdit')
+        : t('fijos:wizard.stepNew')
+      : t('fijos:wizard.stepReview')
   return (
     <View style={styles.headerRow}>
       <Pressable
         onPress={onBack}
         accessibilityRole="button"
-        accessibilityLabel={step === 2 ? 'Volver al paso anterior' : 'Cerrar'}
+        accessibilityLabel={
+          step === 2 ? t('fijos:wizard.backToPrevious') : t('fijos:wizard.close')
+        }
         style={[
           styles.backPill,
           { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },

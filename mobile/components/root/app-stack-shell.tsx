@@ -14,6 +14,7 @@ import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
+import { useLanguageSync } from '@/features/preferences/use-language-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
 import { useRegisterPushToken } from '@/features/push/use-register-push-token'
@@ -92,6 +93,10 @@ export function AppStackShell() {
   // expense belongs to, so this sync is what makes the per-user day
   // boundary work in practice (instead of a hardcoded BA default).
   useTimezoneSync()
+  // Keep `profiles.preferred_language` aligned with the resolved app
+  // language. The server reads it to localize push notifications (built
+  // by cron while the user is offline). Best-effort, same as timezone.
+  useLanguageSync()
 
   // Hydrate the advisor-dismiss cache once familyId + userId are
   // known. This server-side store replaces the previous SecureStore-

@@ -13,6 +13,7 @@
 //    avoiders / firefighters get re-classified as soon as we have ≥10
 //    `shown_only` interactions.
 
+import i18n from '@/lib/i18n'
 import type { InteractionStats } from '@/features/insights/use-interaction-stats'
 
 export type UserPersona = 'planner' | 'firefighter' | 'avoider' | 'optimizer'
@@ -27,26 +28,44 @@ export interface PersonaProfile {
   description: string
 }
 
+// `label` / `description` resolve via i18n lazily on each access (getters)
+// so they react to language changes and never run before i18n init.
 export const PERSONA_PROFILES: Record<UserPersona, PersonaProfile> = {
   planner: {
     framing: 'neutral',
-    label: 'Planificador',
-    description: 'Te muestro los números y el detalle: te gusta entender antes de moverte.',
+    get label() {
+      return i18n.t('insights:persona.planner.label')
+    },
+    get description() {
+      return i18n.t('insights:persona.planner.description')
+    },
   },
   firefighter: {
     framing: 'loss',
-    label: 'Reactivo',
-    description: 'Te aviso solo cuando hay algo importante; el resto del tiempo, te dejo tranquilo.',
+    get label() {
+      return i18n.t('insights:persona.firefighter.label')
+    },
+    get description() {
+      return i18n.t('insights:persona.firefighter.description')
+    },
   },
   avoider: {
     framing: 'gain',
-    label: 'Conservador',
-    description: 'Te hablo con calma y de a poco, con pasos chicos que sí puedes dar.',
+    get label() {
+      return i18n.t('insights:persona.avoider.label')
+    },
+    get description() {
+      return i18n.t('insights:persona.avoider.description')
+    },
   },
   optimizer: {
     framing: 'gain',
-    label: 'Optimizador',
-    description: 'Te busco oportunidades para ahorrar y aprovechar los meses buenos.',
+    get label() {
+      return i18n.t('insights:persona.optimizer.label')
+    },
+    get description() {
+      return i18n.t('insights:persona.optimizer.description')
+    },
   },
 }
 

@@ -2,7 +2,7 @@
 // `NameInput` / `AmountCard`: focus → grow + tint; warning glide sin
 // width change. Extraído de `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Image, Pressable, StyleSheet, Text } from 'react-native'
 import Animated, {
   Easing,
   interpolateColor,
@@ -11,6 +11,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -95,9 +96,17 @@ export function FreqTile({
           borderStyle,
         ]}
       >
-        <Text allowFontScaling={false} style={styles.freqTileIcon}>
-          {icon}
-        </Text>
+        {CATEGORY_ICONS[icon] ? (
+          <Image
+            source={CATEGORY_ICONS[icon]}
+            style={styles.freqTileImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text allowFontScaling={false} style={styles.freqTileIcon}>
+            {icon}
+          </Text>
+        )}
         <Text
           style={[styles.freqTileLabel, { color: theme.colors.text }]}
           numberOfLines={1}
@@ -127,6 +136,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
   },
+  freqTileImage: { width: 28, height: 28 },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',

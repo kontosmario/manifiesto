@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -44,6 +45,7 @@ interface FijosEmptyStateProps {
  */
 export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStateProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
@@ -74,17 +76,15 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
             />
           </View>
           <Text style={[styles.introTitle, { color: theme.colors.text }]}>
-            Todavía no tienes gastos fijos
+            {t('fijos:empty.introTitle')}
           </Text>
           <Text style={[styles.introBody, { color: theme.colors.textMuted }]}>
-            Aquí registras lo que se paga sí o sí cada mes: alquiler,
-            servicios, cuotas y suscripciones. Agrega el primero y armamos el
-            resumen del mes.
+            {t('fijos:empty.introBody')}
           </Text>
           <View style={styles.introCta}>
             <AppButton
               haptic="light"
-              label="Agregar mi primer fijo"
+              label={t('fijos:empty.addFirst')}
               onPress={onAddFirst}
               variant="primary"
             />
@@ -95,7 +95,7 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
       {/* ── "Así se va a ver" preview section ──────────────────────── */}
       <RiseView delay={120}>
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-          ASÍ SE VA A VER
+          {t('fijos:empty.previewEyebrow')}
         </Text>
       </RiseView>
 
@@ -104,9 +104,9 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
         {wrap(
           'hero',
           <PreviewBlock
-            description="Cuánto llevas pagado y cuánto te queda libre este mes."
+            description={t('fijos:empty.preview.summaryDescription')}
             icon="donut-large"
-            title="Resumen del mes"
+            title={t('fijos:empty.preview.summaryTitle')}
           >
             <FijosHeroCard empty />
           </PreviewBlock>,
@@ -118,9 +118,9 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
         {wrap(
           'calendar',
           <PreviewBlock
-            description="Los fijos que vencen pronto, ordenados por fecha."
+            description={t('fijos:empty.preview.upcomingDescription')}
             icon="event-note"
-            title="Próximos a pagar"
+            title={t('fijos:empty.preview.upcomingTitle')}
           >
             <FijosProximosCard empty />
           </PreviewBlock>,
@@ -132,9 +132,9 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
         {wrap(
           'list',
           <PreviewBlock
-            description="Tus fijos agrupados por categoría, con su estado."
+            description={t('fijos:empty.preview.categoryDescription')}
             icon="category"
-            title="Por categoría"
+            title={t('fijos:empty.preview.categoryTitle')}
           >
             <View style={styles.rowsStack}>
               {[0, 1, 2].map((i) => (

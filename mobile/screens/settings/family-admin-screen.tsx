@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -32,6 +33,7 @@ interface FamilyAdminScreenProps {
 
 export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const statsQuery = useFamilyMemberStats()
   const blockMutation = useBlockMember()
   const unblockMutation = useUnblockMember()
@@ -58,24 +60,24 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
 
   const heroSummary =
     blocked.length > 0
-      ? `${active.length} ${active.length === 1 ? 'activo' : 'activos'} · ${blocked.length} ${blocked.length === 1 ? 'bloqueado' : 'bloqueados'}`
-      : `${active.length} ${active.length === 1 ? 'activo' : 'activos'}`
+      ? `${t('settings:familyAdmin.activeCount', { count: active.length })} · ${t('settings:familyAdmin.blockedCount', { count: blocked.length })}`
+      : t('settings:familyAdmin.activeCount', { count: active.length })
 
   if (statsQuery.isError && !statsQuery.data) {
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-        title="Gestión de familia"
-        subtitle="Roles y bloqueos"
+        title={t('settings:familyAdmin.title')}
+        subtitle={t('settings:familyAdmin.subtitleError')}
         canGoBack
         backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       >
         <RiseView>
           <ErrorState
-            title="No pudimos cargar la familia"
+            title={t('settings:familyAdmin.errorTitle')}
             description={getErrorMessage(
               statsQuery.error,
-              'Prueba otra vez en un momento.',
+              t('settings:familyAdmin.errorDescription'),
             )}
             onAction={() => {
               void statsQuery.refetch()
@@ -89,8 +91,8 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   return (
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title="Gestión de familia"
-      subtitle="Roles, bloqueos y transferencias"
+      title={t('settings:familyAdmin.title')}
+      subtitle={t('settings:familyAdmin.subtitle')}
       canGoBack
       bodyStyle={styles.body}
       backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
@@ -113,10 +115,10 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
         >
           <CardParticles count={9} accentColor={authTokens.peach} />
           <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
-            FAMILIA
+            {t('settings:familyAdmin.heroEyebrow')}
           </Text>
           <Text style={[styles.heroCount, { color: theme.colors.heroText }]}>
-            {totalMembers} {totalMembers === 1 ? 'integrante' : 'integrantes'}
+            {t('settings:familyAdmin.memberCount', { count: totalMembers })}
           </Text>
           <Text style={[styles.heroSummary, { color: theme.colors.heroMuted }]}>
             {heroSummary}
@@ -125,13 +127,13 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
       </RiseView>
 
       <RiseView delay={80}>
-        <SettingsGroup title="Integrantes">
+        <SettingsGroup title={t('settings:familyAdmin.membersGroup')}>
           {active.length === 0 ? (
             <EmptyRow
               text={
                 statsQuery.isLoading
-                  ? 'Cargando integrantes…'
-                  : 'Todavía no hay integrantes.'
+                  ? t('settings:familyAdmin.loadingMembers')
+                  : t('settings:familyAdmin.noMembers')
               }
             />
           ) : (
@@ -150,7 +152,7 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
 
       {blocked.length > 0 ? (
         <RiseView delay={140}>
-          <SettingsGroup title="Bloqueados">
+          <SettingsGroup title={t('settings:familyAdmin.blockedGroup')}>
             {blocked.map((member, index) => (
               <MemberRow
                 key={member.userId}
@@ -190,6 +192,7 @@ interface MemberRowProps {
  */
 function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const showBadge = member.role !== 'member'
   const badgeBg =
     member.role === 'owner' ? theme.colors.primarySurface : theme.colors.peachSoft
@@ -199,7 +202,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Acciones para ${member.displayName}`}
+      accessibilityLabel={t('settings:familyAdmin.memberActionsA11y', { name: member.displayName })}
       onPress={onPress}
       style={({ pressed }) => [{ opacity: pressed ? 0.94 : 1 }]}
     >
@@ -224,7 +227,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
               numberOfLines={1}
             >
               {member.displayName}
-              {isMe ? ' (tú)' : ''}
+              {isMe ? ` ${t('settings:member.youSuffix')}` : ''}
             </Text>
             {showBadge ? (
               <View

@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as LocalAuthentication from 'expo-local-authentication'
 import { useRouter } from 'expo-router'
@@ -95,6 +96,7 @@ export function RequireReauthSheet({
   // is only active when the sheet is actually on screen — preserves
   // capture for the rest of the app.
   useScreenCaptureProtection(visible)
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const router = useRouter()
 
@@ -151,7 +153,7 @@ export function RequireReauthSheet({
         setMethod('pin')
         if (pinState.lockedForMs > 0) {
           setPinLockoutMessage(
-            `Bloqueado ${Math.ceil(pinState.lockedForMs / 1000)} seg`,
+            t('auth:reauthSheet.lockout', { seconds: Math.ceil(pinState.lockedForMs / 1000) }),
           )
         }
       } else {
@@ -188,7 +190,7 @@ export function RequireReauthSheet({
           return
         }
         const result = await authenticateBiometricAccess({
-          promptMessage: `Confirma: ${actionLabel.toLowerCase()}`,
+          promptMessage: t('auth:reauthSheet.biometricPrompt', { action: actionLabel.toLowerCase() }),
         })
         if (result.success) {
           void triggerHaptic('success')
@@ -209,7 +211,7 @@ export function RequireReauthSheet({
         setBiometricFailed(true)
       }
     },
-    [actionLabel, allowPinFallback, isChecking, onConfirmed],
+    [actionLabel, allowPinFallback, isChecking, onConfirmed, t],
   )
 
   const handlePinChange = useCallback(
@@ -229,21 +231,21 @@ export function RequireReauthSheet({
           }
           if (result.lockedForMs > 0) {
             const seconds = Math.ceil(result.lockedForMs / 1000)
-            setPinLockoutMessage(`Bloqueado ${seconds} seg`)
+            setPinLockoutMessage(t('auth:reauthSheet.lockout', { seconds }))
           } else {
             setPinLockoutMessage(null)
           }
-          setPinErrorToken((t) => t + 1)
+          setPinErrorToken((prev) => prev + 1)
           setPinValue('')
           setChecking(false)
         })
         .catch(() => {
-          setPinErrorToken((t) => t + 1)
+          setPinErrorToken((prev) => prev + 1)
           setPinValue('')
           setChecking(false)
         })
     },
-    [isChecking, onConfirmed, pinLength],
+    [isChecking, onConfirmed, pinLength, t],
   )
 
   const handleGoToSettings = useCallback(() => {
@@ -261,14 +263,14 @@ export function RequireReauthSheet({
   return (
     <ModalCard
       visible={visible}
-      title="Confirma tu identidad"
-      subtitle={`Vamos a ${actionLabel.toLowerCase()}. Pedimos una verificación rápida.`}
+      title={t('auth:reauthSheet.title')}
+      subtitle={t('auth:reauthSheet.subtitle', { action: actionLabel.toLowerCase() })}
       onClose={onCancel}
     >
       {method === 'loading' ? (
         <View style={styles.placeholder}>
           <Text style={[styles.placeholderText, { color: theme.colors.textMuted }]}>
-            Cargando opciones de verificación…
+            {t('auth:reauthSheet.loading')}
           </Text>
         </View>
       ) : null}
@@ -282,18 +284,20 @@ export function RequireReauthSheet({
             style={{ alignSelf: 'center' }}
           />
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Confirma con {biometricState?.label ?? 'biometría'}
+            {t('auth:reauthSheet.biometricTitle', {
+              label: biometricState?.label ?? t('auth:reauthSheet.biometricLabelFallback'),
+            })}
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
             {biometricFailed
-              ? 'Si no apareció el prompt o cancelaste, toca "Reintentar".'
-              : 'Si no apareció el prompt, toca "Reintentar".'}
+              ? t('auth:reauthSheet.biometricRetryHintFailed')
+              : t('auth:reauthSheet.biometricRetryHint')}
           </Text>
           <View style={styles.actionsRow}>
-            <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />
+            <AppButton label={t('auth:reauthSheet.cancel')} onPress={onCancel} variant="ghost" />
             <AppButton
               disabled={isChecking}
-              label="Reintentar"
+              label={t('auth:reauthSheet.retry')}
               loading={isChecking}
               onPress={handleRetryBiometric}
               variant="primary"
@@ -305,10 +309,10 @@ export function RequireReauthSheet({
       {method === 'pin' ? (
         <View style={styles.pinBlock}>
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Ingresa tu PIN
+            {t('auth:reauthSheet.pinTitle')}
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
-            Pedimos tu PIN como última verificación antes de continuar.
+            {t('auth:reauthSheet.pinHelper')}
           </Text>
           <View style={styles.pinPadWrap}>
             <PinPad
@@ -335,7 +339,7 @@ export function RequireReauthSheet({
             ]}
           >
             <Text style={[styles.cancelLinkText, { color: theme.colors.textMuted }]}>
-              Cancelar
+              {t('auth:reauthSheet.cancel')}
             </Text>
           </Pressable>
         </View>
@@ -350,16 +354,15 @@ export function RequireReauthSheet({
             style={{ alignSelf: 'center' }}
           />
           <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
-            Configura un PIN o biometría
+            {t('auth:reauthSheet.noneTitle')}
           </Text>
           <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
-            Para confirmar acciones importantes necesitamos verificar tu
-            identidad. Activa un PIN o Face ID desde Ajustes y vuelve.
+            {t('auth:reauthSheet.noneBody')}
           </Text>
           <View style={styles.actionsRow}>
-            <AppButton label="Cancelar" onPress={onCancel} variant="ghost" />
+            <AppButton label={t('auth:reauthSheet.cancel')} onPress={onCancel} variant="ghost" />
             <AppButton
-              label="Ir a Ajustes"
+              label={t('auth:reauthSheet.goToSettings')}
               onPress={handleGoToSettings}
               variant="primary"
             />

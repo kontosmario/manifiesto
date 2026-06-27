@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -33,6 +34,7 @@ export function StepIncomeContribution({
   amountCardRef,
 }: StepIncomeContributionProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const parsed = parsePrice(monthlyIncomeRaw)
   const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 0
 
@@ -40,24 +42,23 @@ export function StepIncomeContribution({
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          ¿Aportas al ingreso del hogar?
+          {t('onboarding:incomeContribution.title')}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          Si tienes un sueldo o ingreso, lo sumamos al total de la familia. Si no
-          (un hijo, pareja sin trabajo, etc), también está bien.
+          {t('onboarding:incomeContribution.subcopy')}
         </Text>
       </RiseView>
 
       <RiseView delay={80}>
         <View style={styles.choices}>
           <ChoicePill
-            label="Sí, aporto"
+            label={t('onboarding:incomeContribution.yes')}
             selected={contributesIncome === true}
             onPress={() => onChangeContributesIncome(true)}
             theme={theme}
           />
           <ChoicePill
-            label="No aporto"
+            label={t('onboarding:incomeContribution.no')}
             selected={contributesIncome === false}
             onPress={() => onChangeContributesIncome(false)}
             theme={theme}
@@ -68,19 +69,18 @@ export function StepIncomeContribution({
       {contributesIncome === true ? (
         <RiseView delay={140}>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            TU INGRESO MENSUAL
+            {t('onboarding:incomeContribution.incomeEyebrow')}
           </Text>
           <View ref={amountCardRef}>
             <AmountCard
               amount={amount}
               isActive={isNumpadActive}
               onPress={onRequestNumpad}
-              label="Tu sueldo mensual"
+              label={t('onboarding:incomeContribution.amountLabel')}
             />
           </View>
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-            Se suma al ingreso total de la familia. Puedes editarlo desde Ajustes
-            cuando quieras.
+            {t('onboarding:incomeContribution.hintContributes')}
           </Text>
         </RiseView>
       ) : null}
@@ -97,8 +97,7 @@ export function StepIncomeContribution({
             ]}
           >
             <Text style={[styles.infoText, { color: theme.colors.textMuted }]}>
-              Listo — no se suma nada al ingreso del hogar. Si en algún momento
-              empiezas a aportar, puedes activarlo desde Ajustes.
+              {t('onboarding:incomeContribution.infoNoContribute')}
             </Text>
           </View>
         </RiseView>

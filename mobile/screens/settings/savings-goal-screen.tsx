@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
@@ -33,6 +34,7 @@ interface SavingsGoalScreenProps {
 export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Importante: useLatestSavingsGoal (no useSavingsGoal) — Settings
   // necesita VER el goal aunque esté desactivado. Con la versión que
   // filtra por is_active, el toggle "off" hacía null al query → screen
@@ -51,10 +53,10 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         contentContainerStyle={styles.screenContent}
-        title="Meta de ahorro"
+        title={t('settings:savingsGoalScreen.title')}
         canGoBack
       >
-        <LoadingBlock label="Cargando meta..." />
+        <LoadingBlock label={t('settings:savingsGoalScreen.loading')} />
       </Screen>
     )
   }
@@ -64,7 +66,7 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
         contentContainerStyle={styles.screenContent}
-        title="Meta de ahorro"
+        title={t('settings:savingsGoalScreen.title')}
         canGoBack
       >
         <EmptyState onCreatePress={() => setWizardOpen(true)} />
@@ -83,7 +85,7 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
     <Screen
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       contentContainerStyle={styles.screenContent}
-      title="Meta de ahorro"
+      title={t('settings:savingsGoalScreen.title')}
       canGoBack
     >
       <SavingsGoalViewer
@@ -103,6 +105,7 @@ interface EmptyStateProps {
 
 function EmptyState({ onCreatePress }: EmptyStateProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.stack}>
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
@@ -131,16 +134,15 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
             <MaterialIcons color={theme.colors.primary} name="flag" size={32} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-            Aún no configuraste una meta de ahorro
+            {t('settings:savingsGoalScreen.emptyTitle')}
           </Text>
           <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>
-            Define cuánto quieres juntar y en cuánto tiempo. La meta aparece en
-            Home y suma tus aportes.
+            {t('settings:savingsGoalScreen.emptyBody')}
           </Text>
           <View style={styles.emptyCta}>
             <AppButton
               variant="primary"
-              label="Crear meta"
+              label={t('settings:savingsGoalScreen.createGoal')}
               onPress={onCreatePress}
             />
           </View>
@@ -165,6 +167,7 @@ function SavingsGoalViewer({
   onDeleted,
 }: SavingsGoalViewerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const upsert = useUpsertSavingsGoal(familyId, userId)
   const remove = useDeleteSavingsGoal(familyId, userId)
   const reauth = useRequireReauth()
@@ -212,8 +215,8 @@ function SavingsGoalViewer({
     } catch (err) {
       void triggerHaptic('error')
       Alert.alert(
-        'No pudimos eliminar',
-        err instanceof Error ? err.message : 'Intenta de nuevo.',
+        t('settings:savingsGoalScreen.deleteErrorTitle'),
+        err instanceof Error ? err.message : t('settings:savingsGoalScreen.tryAgain'),
       )
     }
   }
@@ -221,16 +224,16 @@ function SavingsGoalViewer({
   const handleDelete = () => {
     const needsReauth = currentAmount > 0
     Alert.alert(
-      'Eliminar meta',
-      `Vas a borrar tu meta de "${goal.title}". El monto que llevabas ahorrado queda en tu historial pero ya no se mostrará como meta activa. ¿Continuar?`,
+      t('settings:savingsGoalScreen.deleteTitle'),
+      t('settings:savingsGoalScreen.deleteMessage', { title: goal.title }),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common:actions.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common:actions.delete'),
           style: 'destructive',
           onPress: async () => {
             if (needsReauth) {
-              const ok = await reauth.requireReauth('Eliminar meta')
+              const ok = await reauth.requireReauth(t('settings:savingsGoalScreen.deleteReauth'))
               if (!ok) return
             }
             await proceedDelete()
@@ -265,11 +268,11 @@ function SavingsGoalViewer({
         >
           {!goalDefined ? (
             <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
-              Tu meta no tiene un objetivo definido todavía.
+              {t('settings:savingsGoalScreen.noTarget')}
             </Text>
           ) : currentAmount >= goalAmount ? (
             <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
-              🎉 ¡Ya alcanzaste tu meta!
+              {t('settings:savingsGoalScreen.reached')}
             </Text>
           ) : (
             <>
@@ -298,7 +301,7 @@ function SavingsGoalViewer({
 
               {/* Falta */}
               <Text style={[styles.insightLine, { color: theme.colors.text }]}>
-                Te falta{' '}
+                {t('settings:savingsGoalScreen.remainingPrefix')}{' '}
                 <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
                   {currencyFormatter.format(remaining)}
                 </Text>
@@ -307,12 +310,14 @@ function SavingsGoalViewer({
               {/* Por mes */}
               {monthly != null ? (
                 <Text style={[styles.insightLine, { color: theme.colors.textMuted }]}>
-                  Ahorrando {currencyFormatter.format(monthly)} por mes, llegas en{' '}
-                  {targetMonths} {targetMonths === 1 ? 'mes' : 'meses'}.
+                  {t('settings:savingsGoalScreen.monthlyPlan', {
+                    amount: currencyFormatter.format(monthly),
+                    count: targetMonths ?? 0,
+                  })}
                 </Text>
               ) : (
                 <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
-                  Sin plazo definido para esta meta.
+                  {t('settings:savingsGoalScreen.noDeadline')}
                 </Text>
               )}
             </>
@@ -323,17 +328,17 @@ function SavingsGoalViewer({
       {/* ESTADO */}
       <RiseView delay={120}>
         <SettingsGroup
-          title="Estado"
+          title={t('settings:savingsGoalScreen.statusGroup')}
           footer={
             goal.isActive
-              ? 'La meta aparece en Home y participa de tus aportes.'
-              : 'Inactiva — no aparece en Home pero los datos se conservan.'
+              ? t('settings:savingsGoalScreen.statusFooterActive')
+              : t('settings:savingsGoalScreen.statusFooterInactive')
           }
         >
           <SettingsSwitchRow
             icon="flag"
             isLast
-            label="Meta"
+            label={t('settings:savingsGoalScreen.metaLabel')}
             disabled={upsert.isPending}
             onValueChange={handleToggleActive}
             value={goal.isActive}
@@ -343,11 +348,11 @@ function SavingsGoalViewer({
 
       {/* ACCIONES */}
       <RiseView delay={180}>
-        <SettingsGroup title="Acciones">
+        <SettingsGroup title={t('settings:savingsGoalScreen.actionsGroup')}>
           <SettingsRow
             icon="delete"
             isLast
-            label="Eliminar meta"
+            label={t('settings:savingsGoalScreen.deleteRow')}
             destructive
             disabled={remove.isPending}
             onPress={handleDelete}

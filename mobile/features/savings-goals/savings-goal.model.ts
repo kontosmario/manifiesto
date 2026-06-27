@@ -1,3 +1,5 @@
+import i18n from '@/lib/i18n'
+
 export interface SavingsGoalRow {
   id: string
   family_id: string
@@ -50,17 +52,17 @@ export function mapSavingsGoalRow(row: SavingsGoalRow): SavingsGoal {
 
 export function validateSavingsGoalInput(input: SavingsGoalInput): SavingsGoalInput {
   const title = input.title.trim()
-  if (!title) throw new Error('El título de la meta es obligatorio')
-  if (title.length > 40) throw new Error('El título no puede superar 40 caracteres')
+  if (!title) throw new Error(i18n.t('settings:savingsGoalValidation.titleRequired'))
+  if (title.length > 40) throw new Error(i18n.t('settings:savingsGoalValidation.titleTooLong'))
   const emoji = input.emoji.trim() || '🎯'
   if (!Number.isFinite(input.goalAmount) || input.goalAmount <= 0) {
-    throw new Error('El monto objetivo debe ser mayor a cero')
+    throw new Error(i18n.t('settings:savingsGoalValidation.goalAmountPositive'))
   }
   if (!Number.isFinite(input.currentAmount) || input.currentAmount < 0) {
-    throw new Error('El monto actual no puede ser negativo')
+    throw new Error(i18n.t('settings:savingsGoalValidation.currentAmountNonNegative'))
   }
   if (input.targetMonths != null && (!Number.isInteger(input.targetMonths) || input.targetMonths <= 0)) {
-    throw new Error('Los meses objetivo deben ser un entero positivo')
+    throw new Error(i18n.t('settings:savingsGoalValidation.monthsPositiveInteger'))
   }
   return { title, emoji, goalAmount: input.goalAmount, currentAmount: input.currentAmount, targetMonths: input.targetMonths, isActive: input.isActive }
 }

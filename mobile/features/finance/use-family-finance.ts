@@ -8,6 +8,7 @@ import {
   upsertFamilyFinance,
 } from '@/features/finance/family-finance.repository'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import i18n from '@/lib/i18n'
 
 export {
   buildFamilyFinanceInput,
@@ -41,7 +42,7 @@ export function useUpsertFamilyFinance(familyId?: string, userId?: string) {
   return useMutation({
     mutationFn: async (input: UpsertFamilyFinanceInput) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para guardar métricas financieras.')
+        throw new Error(i18n.t('settings:financeValidation.noActiveFamily'))
       }
       return upsertFamilyFinance(familyId, input)
     },

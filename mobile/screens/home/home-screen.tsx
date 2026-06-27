@@ -9,6 +9,7 @@ import {
   type NativeSyntheticEvent,
   type ScrollView,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
@@ -38,7 +39,6 @@ import { logHomeEvent } from '@/features/home/log-home-event'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { HOME_TOUR, useRegisterTourScrollView } from '@/features/tours'
-import { errorMessages } from '@/lib/copy/states'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useEntitlement } from '@/features/billing/use-entitlement'
@@ -53,6 +53,7 @@ interface HomeScreenProps {
 export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   useScreenLifecycleLog('Inicio')
   const router = useRouter()
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -138,7 +139,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   }, [snapshot, familyId, telemetry.sessionId])
 
   const { data: profile } = useMyProfile(userId)
-  const displayName = profile?.display_name ?? 'Usuario'
+  const displayName = profile?.display_name ?? t('home:greeting.fallbackName')
 
   // Sprint R-3 — No-credentials defense. Surfaces a banner when the
   // signed-in user has neither biometric nor PIN configured, the only
@@ -196,7 +197,21 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const categoryNameById = useMemo(
     () =>
       new Map(
-        (categoriesQuery.data ?? []).map((category) => [category.id, category.name] as const),
+        (categoriesQuery.data ?? []).map(
+          (category) => [category.id, category.displayName] as const,
+        ),
+      ),
+    [categoriesQuery.data],
+  )
+  // category_id → nombre CRUDO (no localizado). Fuente para resolver el
+  // ícono/color de cada categoría (los matchers son ES). El display
+  // visible sale de `categoryNameById` (localizado).
+  const categoryRawNameById = useMemo(
+    () =>
+      new Map(
+        (categoriesQuery.data ?? []).map(
+          (category) => [category.id, category.name] as const,
+        ),
       ),
     [categoriesQuery.data],
   )
@@ -269,7 +284,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       ),
       {
         onError: (error: unknown) => {
-          setSalaryErrorMessage(getErrorMessage(error, errorMessages.server))
+          setSalaryErrorMessage(getErrorMessage(error, t('states:error.server')))
           void triggerHaptic('error')
         },
         onSuccess: () => {
@@ -300,8 +315,8 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       onError: (error: unknown) => {
         void triggerHaptic('error')
         Alert.alert(
-          'No pudimos eliminar',
-          getErrorMessage(error, errorMessages.server),
+          t('home:homeScreen.deleteError'),
+          getErrorMessage(error, t('states:error.server')),
         )
       },
       onSuccess: () => {
@@ -320,8 +335,8 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           onError: (error: unknown) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No pudimos eliminar',
-              getErrorMessage(error, errorMessages.server),
+              t('home:homeScreen.deleteError'),
+              getErrorMessage(error, t('states:error.server')),
             )
           },
           onSuccess: () => {
@@ -380,9 +395,9 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
         <ErrorState
           description={getErrorMessage(
             dashboard.dashboardError,
-            errorMessages.server,
+            t('states:error.server'),
           )}
-          title="No pudimos abrir tu panorama"
+          title={t('home:homeScreen.dashboardError')}
           onAction={() => {
             void dashboard.refetchAll()
           }}
@@ -437,6 +452,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           recentExpenses={recentExpenses}
           recentIncome={recentIncome}
           categoryNameById={categoryNameById}
+          categoryRawNameById={categoryRawNameById}
           categoryColorById={categoryColorById}
           familyId={familyId}
           isSolo={isSolo}

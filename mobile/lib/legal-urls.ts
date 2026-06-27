@@ -11,6 +11,8 @@
  * URL de Privacy declarada en App Store Connect abra una página válida.
  */
 
+import i18n from '@/lib/i18n'
+
 export const PRIVACY_POLICY_URL = 'https://manifiestoapp.com/privacy/'
 export const TERMS_OF_SERVICE_URL = 'https://manifiestoapp.com/terms/'
 
@@ -29,16 +31,23 @@ export function buildSupportMailto(params: {
   platform?: string | null
   userId?: string | null
 }): string {
-  const subject = encodeURIComponent(params.subject ?? 'Soporte Manifiesto')
+  const subject = encodeURIComponent(
+    params.subject ?? i18n.t('settings:about.supportMailto.subject'),
+  )
+  const versionValue = `${params.appVersion ?? '?'}${
+    params.buildNumber ? ` (${params.buildNumber})` : ''
+  }`
   const lines = [
-    'Cuéntanos qué pasó:',
+    i18n.t('settings:about.supportMailto.intro'),
     '',
     '',
-    '— No borrar ↓ —',
-    `Versión: ${params.appVersion ?? '?'}${params.buildNumber ? ` (${params.buildNumber})` : ''}`,
-    `Plataforma: ${params.platform ?? '?'}`,
+    i18n.t('settings:about.supportMailto.doNotDelete'),
+    i18n.t('settings:about.supportMailto.version', { value: versionValue }),
+    i18n.t('settings:about.supportMailto.platform', { value: params.platform ?? '?' }),
   ]
-  if (params.userId) lines.push(`Usuario: ${params.userId}`)
+  if (params.userId) {
+    lines.push(i18n.t('settings:about.supportMailto.user', { value: params.userId }))
+  }
   const body = encodeURIComponent(lines.join('\n'))
   return `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`
 }

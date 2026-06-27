@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   Easing,
@@ -24,7 +25,6 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoneyShort } from '@/utils/money'
-import { controlV2Copy } from './control-v2-tokens'
 
 interface ControlV2HeaderProps {
   score: number
@@ -68,6 +68,7 @@ export function ControlV2Header({
   familyId,
 }: ControlV2HeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const goalActive = dailyGoalAmount != null && dailyGoalAmount > 0
   const handlePress = () => {
     if (!goalEditable || !onPressGoal) return
@@ -81,8 +82,8 @@ export function ControlV2Header({
   const scorePillPress = usePressScale({ pressedScale: 0.96 })
   return (
     <TabSectionHeader
-      title={controlV2Copy.title}
-      subtitle={controlV2Copy.subtitle}
+      title={t('control:header.title')}
+      subtitle={t('control:header.subtitle')}
       subtitleNumberOfLines={1}
       rightClearance={8}
       right={
@@ -102,12 +103,17 @@ export function ControlV2Header({
           disabled={!goalEditable || !onPressGoal}
           hitSlop={6}
           accessibilityRole={goalEditable && onPressGoal ? 'button' : 'text'}
-          accessibilityLabel={`Score ${score}, ${scoreLabel}${
-            goalEditable && onPressGoal ? '. Toca para ajustar tu meta diaria.' : ''
+          accessibilityLabel={`${t('control:header.scorePillLabel', {
+            score,
+            label: scoreLabel,
+          })}${
+            goalEditable && onPressGoal
+              ? t('control:header.scorePillTapHint')
+              : ''
           }`}
           accessibilityHint={
             goalEditable && onPressGoal
-              ? 'Abre el ajuste de cupo personal'
+              ? t('control:header.scorePillA11yHint')
               : undefined
           }
           style={styles.pillPressable}
@@ -143,9 +149,9 @@ export function ControlV2Header({
           onPressOut={goalChipPress.onPressOut}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`Mi meta diaria: ${formatMoneyShort(
-            dailyGoalAmount as number,
-          )}. Toca para ajustarla.`}
+          accessibilityLabel={t('control:header.goalChipA11y', {
+            amount: formatMoneyShort(dailyGoalAmount as number),
+          })}
         >
           <Animated.View
             style={[
@@ -173,7 +179,9 @@ export function ControlV2Header({
               ]}
               numberOfLines={1}
             >
-              Mi meta · {formatMoneyShort(dailyGoalAmount as number)}/día
+              {t('control:header.goalChip', {
+                amount: formatMoneyShort(dailyGoalAmount as number),
+              })}
             </Text>
           </Animated.View>
         </Pressable>
@@ -200,6 +208,7 @@ function WrappedButton({
   surface: string
   accent: string
 }) {
+  const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.94 })
   const handle = () => {
     void triggerHaptic('selection')
@@ -212,8 +221,8 @@ function WrappedButton({
       onPressOut={press.onPressOut}
       hitSlop={6}
       accessibilityRole="button"
-      accessibilityLabel="Ver el resumen del cierre de mes"
-      accessibilityHint="Abre la animación del cierre del mes anterior"
+      accessibilityLabel={t('control:header.wrappedButtonA11y')}
+      accessibilityHint={t('control:header.wrappedButtonHint')}
       style={styles.wrappedPressable}
     >
       <Animated.View style={press.animatedStyle}>

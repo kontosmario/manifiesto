@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { IconButton } from '@/components/ui/icon-button'
 
 interface ExpenseHistoryToolbarProps {
@@ -18,10 +19,11 @@ export function ExpenseHistoryToolbar({
   onOpenCategories,
   onOpenFilters,
 }: ExpenseHistoryToolbarProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.headerActions}>
       <IconButton
-        accessibilityLabel="Abrir filtros"
+        accessibilityLabel={t('home:historyToolbar.openFilters')}
         backgroundColor={buttonBackgroundColor}
         badgeColor={iconColor}
         borderColor={buttonBorderColor}
@@ -32,7 +34,7 @@ export function ExpenseHistoryToolbar({
         onPress={onOpenFilters}
       />
       <IconButton
-        accessibilityLabel="Gestionar categorias"
+        accessibilityLabel={t('home:historyToolbar.manageCategories')}
         backgroundColor={buttonBackgroundColor}
         borderColor={buttonBorderColor}
         icon="tune"

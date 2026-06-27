@@ -8,12 +8,19 @@
 // is unit-testable without dragging React into the test runner.
 
 import type { Expense } from '@/features/expenses/use-expenses'
+import i18n from '@/lib/i18n'
 
 export interface TopCategoryResult {
   /** Category UUID — used for the deep-link filter. */
   categoryId: string
   /** Display name fallback to "Sin categoría" when missing. */
   name: string
+  /**
+   * Nombre CRUDO (no localizado) de la categoría — fuente para resolver
+   * el ícono del band (el matcher es ES). Cae a `name` cuando no hay
+   * crudo disponible (uncategorized). NUNCA pasar `name` al matcher.
+   */
+  rawName: string
   /** Sum of discretionary spend in this cycle (ARS, rounded). */
   total: number
   /** Fraction of the cycle's discretionary total — 0..1. */
@@ -24,6 +31,9 @@ interface CategoryLookup {
   /** Map id → display name. The Home tree already memoizes this from
    *  `useCategories(familyId)`. */
   categoryNameById: ReadonlyMap<string, string>
+  /** Map id → nombre CRUDO (no localizado). Fuente para el ícono del
+   *  band (matcher ES). Memoizado junto a `categoryNameById`. */
+  categoryRawNameById: ReadonlyMap<string, string>
 }
 
 interface ComputeArgs extends CategoryLookup {
@@ -86,12 +96,20 @@ export function computeTopCategory(args: ComputeArgs): TopCategoryResult | null 
   // deleted/missing categories. If a future caller wires the empty
   // string into a real filter, the conflation becomes user-visible
   // and this helper would need to disambiguate.
+  const uncategorized = i18n.t('home:topCategory.uncategorized')
   return {
     categoryId: topId === '__uncat__' ? '' : topId,
     name:
       topId === '__uncat__'
-        ? 'Sin categoría'
-        : args.categoryNameById.get(topId) ?? 'Sin categoría',
+        ? uncategorized
+        : args.categoryNameById.get(topId) ?? uncategorized,
+    // Crudo para el ícono: cae al display si no hay name crudo (uncat).
+    rawName:
+      topId === '__uncat__'
+        ? uncategorized
+        : args.categoryRawNameById.get(topId) ??
+          args.categoryNameById.get(topId) ??
+          uncategorized,
     total: Math.round(topAmount),
     share: total > 0 ? topAmount / total : 0,
   }
@@ -158,8 +176,8 @@ export function computeTopCategoryFallback(
   if (args.variableCount <= 0) {
     return {
       kind: 'empty',
-      primary: 'Carga tu primer gasto',
-      secondary: 'Arranca el ciclo registrando algo',
+      primary: i18n.t('home:topCategory.emptyPrimary'),
+      secondary: i18n.t('home:topCategory.emptySecondary'),
     }
   }
 
@@ -169,8 +187,8 @@ export function computeTopCategoryFallback(
   if (args.variableCount < minTransactions) {
     return {
       kind: 'sparse',
-      primary: 'Sin categoría líder aún',
-      secondary: 'Carga más gastos para verla',
+      primary: i18n.t('home:topCategory.sparsePrimary'),
+      secondary: i18n.t('home:topCategory.sparseSecondaryFewExpenses'),
     }
   }
 
@@ -179,7 +197,7 @@ export function computeTopCategoryFallback(
   // a generic placeholder instead of a blank.
   return {
     kind: 'sparse',
-    primary: 'Sin categoría líder aún',
-    secondary: 'Aún no hay datos suficientes',
+    primary: i18n.t('home:topCategory.sparsePrimary'),
+    secondary: i18n.t('home:topCategory.sparseSecondaryNotEnoughData'),
   }
 }

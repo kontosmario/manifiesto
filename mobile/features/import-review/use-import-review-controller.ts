@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useReducer } from 'react'
+import i18n from '@/lib/i18n'
 import type { ReviewRow, ReviewRowKind, ReviewState } from './types'
 import { reviewReducer } from './review-reducer'
 
@@ -112,8 +113,8 @@ export function useImportReviewController(
 function missingFieldsForRow(row: ReviewRow): string[] {
   if (row.kind === 'skip') return []
   const missing: string[] = []
-  if (row.description.trim() === '') missing.push('descripción')
-  if (row.amount <= 0) missing.push('monto')
-  if (row.kind === 'expense' && !row.categoryId) missing.push('categoría')
+  if (row.description.trim() === '') missing.push(i18n.t('gastos:import.field.description'))
+  if (row.amount <= 0) missing.push(i18n.t('gastos:import.field.amount'))
+  if (row.kind === 'expense' && !row.categoryId) missing.push(i18n.t('gastos:import.field.category'))
   return missing
 }

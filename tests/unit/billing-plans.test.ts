@@ -56,8 +56,8 @@ describe('BILLING_PLANS — constants', () => {
 })
 
 describe('BILLING_TRIAL_DAYS', () => {
-  it('expone trial de 14 días', () => {
-    expect(BILLING_TRIAL_DAYS).toBe(14)
+  it('expone trial de 30 días', () => {
+    expect(BILLING_TRIAL_DAYS).toBe(30)
   })
 })
 

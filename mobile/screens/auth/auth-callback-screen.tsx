@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { BrandedPanel } from '@/components/ui/branded-panel'
 import { Screen } from '@/components/ui/screen'
@@ -18,6 +19,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 const AUTH_CALLBACK_TIMEOUT_MS = 30_000
 
 export function AuthCallbackScreen() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { theme } = useAppTheme()
   const params = useLocalSearchParams<{
@@ -100,7 +102,7 @@ export function AuthCallbackScreen() {
       } catch (error) {
         if (!cancelledRef.current) {
           clearTimeout(timeoutId)
-          setErrorMessage(getErrorMessage(error, 'No se pudo completar la autenticación.'))
+          setErrorMessage(getErrorMessage(error, t('auth:authCallback.errorGeneric')))
           setProcessing(false)
         }
       }
@@ -112,7 +114,7 @@ export function AuthCallbackScreen() {
       cancelledRef.current = true
       clearTimeout(timeoutId)
     }
-  }, [payload, retryToken, router])
+  }, [payload, retryToken, router, t])
 
   const handleRetry = useCallback(() => {
     setProcessing(true)
@@ -122,24 +124,23 @@ export function AuthCallbackScreen() {
   }, [])
 
   if (isProcessing) {
-    return <BlockingScreen message="Confirmando acceso..." />
+    return <BlockingScreen message={t('auth:authCallback.confirming')} />
   }
 
   if (timedOut) {
     return (
       <Screen
-        subtitle="No recibimos respuesta del servidor en 30 segundos."
-        title="Está tardando más de lo normal"
+        subtitle={t('auth:authCallback.timeoutSubtitle')}
+        title={t('auth:authCallback.timeoutTitle')}
       >
         <BrandedPanel elevated style={styles.card} variant="accent">
           <Text style={[styles.body, { color: theme.colors.textSoft }]}>
-            Puede ser tu conexión o un problema temporal. Prueba de nuevo o
-            vuelve al login.
+            {t('auth:authCallback.timeoutBody')}
           </Text>
           <View style={styles.actions}>
-            <AppButton label="Reintentar" onPress={handleRetry} />
+            <AppButton label={t('auth:authCallback.retry')} onPress={handleRetry} />
             <AppButton
-              label="Volver a login"
+              label={t('auth:authCallback.backToLogin')}
               onPress={() => router.replace('/(auth)/login')}
               variant="ghost"
             />
@@ -150,12 +151,12 @@ export function AuthCallbackScreen() {
   }
 
   return (
-    <Screen subtitle="La confirmación abrió la app, pero no pudimos cerrar la sesión correctamente." title="Error de acceso">
+    <Screen subtitle={t('auth:authCallback.errorSubtitle')} title={t('auth:authCallback.errorTitle')}>
       <BrandedPanel elevated style={styles.card} variant="accent">
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
         <View style={styles.actions}>
-          <AppButton label="Volver al inicio" onPress={() => router.replace('/')} />
-          <AppButton label="Ir a login" onPress={() => router.replace('/(auth)/login')} variant="ghost" />
+          <AppButton label={t('auth:authCallback.backToHome')} onPress={() => router.replace('/')} />
+          <AppButton label={t('auth:authCallback.goToLogin')} onPress={() => router.replace('/(auth)/login')} variant="ghost" />
         </View>
       </BrandedPanel>
     </Screen>

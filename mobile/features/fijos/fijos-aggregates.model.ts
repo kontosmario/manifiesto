@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import type { Expense } from '@/features/expenses/expense-repository.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
@@ -634,7 +635,13 @@ function buildPriceHistoryMap(expenses: Expense[]): Map<string, number[]> {
  */
 export interface FijoCategoryGroup {
   categoryId: string
+  /** Label A MOSTRAR (localizado). Header del grupo. */
   label: string
+  /**
+   * Nombre CRUDO (no localizado) de la categoría — fuente para resolver
+   * el ícono del grupo (matcher ES). Cae a `label` cuando no hay crudo.
+   */
+  rawLabel: string
   color: string
   total: number
   items: FijoItem[]
@@ -650,7 +657,8 @@ function dueOrder(i: FijoItem | undefined): number {
 
 export function groupFijosByCategory(input: {
   items: FijoItem[]
-  categories: Array<{ id: string; name: string; color: string }>
+  // `name` = display localizado (header); `rawName` = crudo ES (ícono).
+  categories: Array<{ id: string; name: string; rawName?: string; color: string }>
 }): FijoCategoryGroup[] {
   const { items, categories } = input
   const byCat = new Map<string, FijoItem[]>()
@@ -663,9 +671,12 @@ export function groupFijosByCategory(input: {
   const groups: FijoCategoryGroup[] = []
   for (const [id, arr] of byCat) {
     const cat = categories.find((c) => c.id === id)
+    const label = cat?.name ?? i18n.t('fijos:groups.noCategory')
     groups.push({
       categoryId: id,
-      label: cat?.name ?? 'Sin categoría',
+      label,
+      // Crudo para el ícono; cae al display localizado si no hay crudo.
+      rawLabel: cat?.rawName ?? label,
       color: cat?.color ?? '#8A8A8A',
       total: arr.reduce((s, i) => s + Number(i.amount ?? 0), 0),
       // Cronológico: el próximo a vencer primero (next_due_on real, no

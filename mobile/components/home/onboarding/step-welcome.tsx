@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CardParticles } from '@/components/ui/card-particles'
@@ -20,6 +21,7 @@ export function StepWelcome({
   closedByOwner = false,
 }: StepWelcomeProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const trimmed = displayName.trim()
   const charCount = trimmed.length
 
@@ -48,10 +50,10 @@ export function StepWelcome({
           />
           <CardParticles count={8} accentColor="#F2A78C" />
           <Text style={[styles.greeting, { color: theme.colors.heroText }]}>
-            {isRejoin ? 'Hola de nuevo 👋' : 'Hola 👋'}
+            {isRejoin ? t('onboarding:welcome.greetingRejoin') : t('onboarding:welcome.greeting')}
           </Text>
           <Text style={[styles.subcopy, { color: theme.colors.heroMuted }]}>
-            Cuéntanos cómo quieres que te llamemos.
+            {t('onboarding:welcome.subcopy')}
           </Text>
         </View>
       </RiseView>
@@ -73,8 +75,7 @@ export function StepWelcome({
             ]}
           >
             <Text style={[styles.rejoinText, { color: theme.colors.textMuted }]}>
-              El dueño de tu hogar anterior decidió cerrarlo. Tus gastos compartidos quedan allí —
-              aquí empiezas un hogar nuevo (propio o sumándote con un código).
+              {t('onboarding:welcome.closedByOwnerBanner')}
             </Text>
           </View>
         </RiseView>
@@ -90,8 +91,7 @@ export function StepWelcome({
             ]}
           >
             <Text style={[styles.rejoinText, { color: theme.colors.textMuted }]}>
-              Esperamos que te haya sido agradable la experiencia en tu hogar anterior. A veces los
-              grupos cambian — armemos uno nuevo contigo.
+              {t('onboarding:welcome.rejoinBanner')}
             </Text>
           </View>
         </RiseView>
@@ -99,16 +99,16 @@ export function StepWelcome({
 
       <RiseView delay={80}>
         <TextField
-          label="Tu nombre"
+          label={t('onboarding:welcome.nameLabel')}
           value={displayName}
           onChangeText={onChangeDisplayName}
-          placeholder="Ej: Mario"
+          placeholder={t('onboarding:welcome.namePlaceholder')}
           maxLength={40}
-          accessibilityLabel="Tu nombre"
+          accessibilityLabel={t('onboarding:welcome.nameLabel')}
         />
         <View style={styles.helperRow}>
           <Text style={[styles.helper, { color: theme.colors.textMuted }]}>
-            Los emojis y caracteres especiales se filtran automáticamente.
+            {t('onboarding:welcome.nameHelper')}
           </Text>
           <Text style={[styles.counter, { color: theme.colors.textMuted }]}>{charCount}/40</Text>
         </View>

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -30,6 +31,7 @@ export function ControlV2EmptyState({
   onPressAddExpense,
 }: ControlV2EmptyStateProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Dark: muted surface (#0F2E1F) to match the rest of the near-black
   // Control canvas — was hardcoded to the old creamCard dark (#305A47),
   // which now reads too bright. Light keeps the cream shell.
@@ -41,16 +43,16 @@ export function ControlV2EmptyState({
   const ctaPress = usePressScale({ pressedScale: 0.97 })
 
   const heading = missingIncome
-    ? 'Configura tu sueldo para empezar'
+    ? t('control:empty.headingMissingIncome')
     : missingExpenses
-      ? 'Registra tu primer gasto'
-      : 'Estamos juntando datos'
+      ? t('control:empty.headingMissingExpenses')
+      : t('control:empty.headingGathering')
 
   const subtitle = missingIncome
-    ? 'Con tu ingreso mensual calculamos cuánto puedes gastar por día sin salirte del presupuesto.'
+    ? t('control:empty.subtitleMissingIncome')
     : missingExpenses
-      ? 'A medida que registres gastos, aparecen aquí tu ritmo diario, alertas y proyecciones.'
-      : 'Necesitamos al menos una semana de gastos para armar las estadísticas.'
+      ? t('control:empty.subtitleMissingExpenses')
+      : t('control:empty.subtitleGathering')
 
   return (
     <RiseView delay={80}>
@@ -81,13 +83,13 @@ export function ControlV2EmptyState({
               onPressIn={ctaPress.onPressIn}
               onPressOut={ctaPress.onPressOut}
               accessibilityRole="button"
-              accessibilityLabel="Configurar sueldo mensual"
+              accessibilityLabel={t('control:empty.a11ySetupIncome')}
             >
               <Animated.View
                 style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
               >
                 <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                  Configurar sueldo
+                  {t('control:empty.ctaSetupIncome')}
                 </Text>
               </Animated.View>
             </Pressable>
@@ -97,13 +99,13 @@ export function ControlV2EmptyState({
               onPressIn={ctaPress.onPressIn}
               onPressOut={ctaPress.onPressOut}
               accessibilityRole="button"
-              accessibilityLabel="Registrar primer gasto"
+              accessibilityLabel={t('control:empty.a11yAddExpense')}
             >
               <Animated.View
                 style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
               >
                 <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                  Registrar primer gasto
+                  {t('control:empty.ctaAddExpense')}
                 </Text>
               </Animated.View>
             </Pressable>
@@ -113,14 +115,14 @@ export function ControlV2EmptyState({
         <View style={[styles.checklist, { borderTopColor: theme.colors.line }]}>
           <ChecklistRow
             done={!missingIncome}
-            text="Ingreso mensual configurado"
+            text={t('control:empty.checklistIncome')}
             textColor={accent}
             mutedColor={muted}
             accentColor={accent}
           />
           <ChecklistRow
             done={!missingExpenses}
-            text="Primer gasto registrado"
+            text={t('control:empty.checklistExpense')}
             textColor={accent}
             mutedColor={muted}
             accentColor={accent}

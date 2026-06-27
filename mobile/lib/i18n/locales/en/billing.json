@@ -1,0 +1,200 @@
+{
+  "screen": {
+    "title": "Household plan",
+    "welcomeCta_one": "Start with {{count}} day of full access",
+    "welcomeCta_other": "Start with {{count}} days of full access",
+    "welcomeCtaFallback": "Start with full access"
+  },
+  "logout": {
+    "confirmTitle": "Sign out?",
+    "confirmMessage": "You'll return to the home screen. Your account and your data stay saved.",
+    "cancel": "Cancel",
+    "confirm": "Sign out",
+    "errorTitle": "We couldn't sign you out",
+    "errorFallback": "Try again in a moment."
+  },
+  "editions": {
+    "title": "Editions",
+    "subtitle": "Every closed cycle is an edition of Manifiesto. Tap one to relive it.",
+    "errorTitle": "We couldn't load your editions",
+    "errorDescription": "Try again in a moment.",
+    "emptyTitle": "Your first edition is on its way",
+    "emptySubtitle": "When you confirm your next payday, this archive will start filling up. One edition per closed cycle.",
+    "mastheadEyebrow": "YOUR ACCUMULATED BALANCE",
+    "mastheadCaption_one": "across {{count}} closed edition",
+    "mastheadCaption_other": "across {{count}} closed editions",
+    "movements_one": "mov.",
+    "movements_other": "movs.",
+    "reviveLabel": "Relive edition {{label}}, {{tone}}",
+    "toneMargin": "margin",
+    "toneExceeded": "exceeded",
+    "toneEven": "even"
+  },
+  "paywall": {
+    "lockChip": "ACCESS PAUSED",
+    "headlineLocked": "Your access\nis paused.",
+    "headlineDefault": "Your whole household,\nin one account.",
+    "subscribeWithPrice": "Subscribe for {{price}}{{period}}",
+    "subscribe": "Subscribe",
+    "perYear": "/yr",
+    "perMonth": "/mo",
+    "start": "Start",
+    "disclosure": "Payment will be charged to your Apple ID account when you confirm the purchase. The subscription renews automatically at the same price unless you cancel it at least 24 hours before the current period ends; the renewal charge happens within those 24 hours. You can manage or cancel it anytime from your account settings in the App Store.",
+    "restorePurchases": "Restore purchases",
+    "terms": "Terms",
+    "termsA11y": "Terms of use",
+    "privacy": "Privacy",
+    "privacyA11y": "Privacy policy",
+    "logout": "Sign out",
+    "deleteAccount": "Delete account"
+  },
+  "freePeriodBanner": {
+    "title": "Full access"
+  },
+  "freeAccessBadge_one": "Full access: {{count}} day left",
+  "freeAccessBadge_other": "Full access: {{count}} days left",
+  "nudge": {
+    "titleUrgent": "Last day of full access",
+    "title_one": "{{count}} day left",
+    "title_other": "{{count}} days left",
+    "subtitleUrgent": "No interruptions · from $3.33/mo",
+    "subtitle": "of full access",
+    "ctaSubscribe": "Subscribe",
+    "ctaSeePlans": "See plans",
+    "close": "Close"
+  },
+  "planTiles": {
+    "monthly": "MONTHLY",
+    "annual": "ANNUAL",
+    "recommended": "RECOMMENDED",
+    "perMonthSuffix": " /mo",
+    "perYearSuffix": " /yr",
+    "people": "{{count}} people",
+    "effectivePerMonth": "${{amount}}/mo · ",
+    "monthlyA11yLoading": "{{plan}}, loading price",
+    "monthlyA11y": "{{plan}}, {{price}} per month",
+    "annualA11yLoading": "{{plan}}, recommended, loading price",
+    "annualA11y": "{{plan}}, recommended, {{price}} per year"
+  },
+  "savingsRibbon": {
+    "text": "Save ${{amount}} a year · −{{percent}}%"
+  },
+  "changePlan": {
+    "title": "Change plan",
+    "subtitle": "Upgrading is immediate; downgrading takes effect at your next renewal.",
+    "confirm": "Confirm change",
+    "noChangeHint": "This is your plan at renewal. Pick another to change."
+  },
+  "purchaseResult": {
+    "successTitle": "Welcome to the household!",
+    "successBody": "Your {{plan}} is now active. Full access for you and your household.",
+    "successBodyFallbackPlan": "plan",
+    "planChangedTitle": "Plan updated",
+    "planChangedBody": "Done. You'll see the change reflected in \"My subscription\" — instantly if it was an upgrade, or at your next renewal if it was a downgrade.",
+    "restoredTitle": "We restored your subscription",
+    "restoredBody": "You now have access to your plan on this device.",
+    "errorTitle": "We couldn't confirm your purchase",
+    "errorBody": "Try again in a moment. You weren't charged.",
+    "restoreErrorTitle": "We couldn't restore",
+    "restoreErrorBody": "Try again in a moment.",
+    "ctaStart": "Start",
+    "ctaUnderstood": "Got it",
+    "ctaDone": "Done",
+    "retry": "Retry",
+    "close": "Close"
+  },
+  "membershipHero": {
+    "eyebrow": "Your membership"
+  },
+  "membership": {
+    "statusMvp": "MVP",
+    "heroLineMvp": "Lifetime full access",
+    "noteMvp": "Your account has full access, with no expiration.",
+    "statusComped": "COMPLIMENTARY",
+    "heroLineComped": "Complimentary access",
+    "statusFamilyMember": "HOUSEHOLD MEMBER",
+    "heroLineFamilyMember": "Your household covers your access",
+    "noteFamilyMember": "The plan is managed by whoever subscribed in your household.",
+    "statusGrace": "PAYMENT ISSUE",
+    "heroLineGrace": "Retrying until {{date}}",
+    "statusNoRenew": "WON'T RENEW",
+    "heroLineNoRenew": "Access until {{date}}",
+    "statusActive": "ACTIVE",
+    "heroLineActive": "Renews on {{date}}"
+  },
+  "manage": {
+    "pendingChangeNextRenewal": "Switches to {{plan}} at your next renewal",
+    "pendingChangeOnDate": "Switches to {{plan}} on {{date}}",
+    "termsA11y": "Terms of use",
+    "terms": "Terms of use",
+    "privacyA11y": "Privacy policy",
+    "privacy": "Privacy"
+  },
+  "detailRows": {
+    "nextRenewal": "Next renewal",
+    "householdMembers": "Household members",
+    "membersValue": "{{current}} of {{cap}} people",
+    "autoRenew": "Auto-renewal",
+    "autoRenewOn": "On",
+    "autoRenewOff": "Off",
+    "price": "Price"
+  },
+  "members": {
+    "heading": "Household members",
+    "joinedOn": "Joined on {{date}}",
+    "inHousehold": "In the household",
+    "fallbackName": "Member",
+    "owner": "Owner"
+  },
+  "actions": {
+    "reactivate": "Reactivate",
+    "fixPayment": "Update payment method in App Store",
+    "changePlan": "Change plan",
+    "manageOrCancel": "Manage or cancel in App Store",
+    "restorePurchases": "Restore purchases"
+  },
+  "brand": {
+    "tag": "Household"
+  },
+  "plans": {
+    "hogar-mensual": {
+      "name": "Monthly Plan",
+      "tagline": "To get started with no strings attached."
+    },
+    "hogar-anual": {
+      "name": "Annual Plan",
+      "tagline": "The most popular plan.",
+      "effectiveCopy": "That's about USD 3.33 a month"
+    }
+  },
+  "features": {
+    "base": [
+      "One single source of numbers, for you and whoever you add",
+      "We tell you how much you can spend each day",
+      "Fixed expenses and installments organized in one place",
+      "Savings goals with automatic tracking",
+      "Alerts and reminders when something matters",
+      "See your expenses in pesos and in dollars",
+      "Light mode and dark mode, your data protected"
+    ],
+    "monthlyMembers": "Up to 2 people on your plan",
+    "monthlyCancel": "Cancel whenever you want",
+    "annualMembers": "Up to 4 people, ideal for your family group",
+    "annualPriority": "Priority support by email",
+    "annualEarlyAccess": "Get new features before anyone else"
+  },
+  "priceLabel": "${{amount}} / {{period}}",
+  "period": {
+    "year": "yr",
+    "month": "mo"
+  },
+  "errors": {
+    "purchaseFallback": "We couldn't confirm your purchase. Try again in a moment.",
+    "boundToOtherFamily": "Your subscription is linked to another household. Contact us.",
+    "noFamily": "We couldn't identify your household. Try again in a moment.",
+    "purchaseInProgress": "A purchase is already in progress.",
+    "noPurchasesToRestore": "We couldn't find purchases to restore with this account.",
+    "restoreFailed": "We couldn't restore your subscription. Try again in a moment.",
+    "restoreFailedGeneric": "We couldn't restore your purchases. Try again in a moment."
+  }
+}

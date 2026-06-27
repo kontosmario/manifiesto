@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AnimatedFlame } from '@/components/gastos/animated-flame'
 import { AuroraBloom } from '@/components/ui/aurora-bloom'
@@ -16,6 +17,7 @@ interface SheetHeroProps {
 
 export function SheetHero({ data, derived, tone }: SheetHeroProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isBroken = derived.status === 'broken'
   // Level dial: the ring draws to the fraction of progress into the
   // current level. Broken shows an empty grey dial (no celebration).
@@ -46,7 +48,7 @@ export function SheetHero({ data, derived, tone }: SheetHeroProps) {
             <Text style={[styles.heroDays, { color: tone.fg }]}>
               {isBroken ? '0' : data.currentStreak}
             </Text>
-            <Text style={[styles.heroDaysLabel, { color: tone.soft }]}>días</Text>
+            <Text style={[styles.heroDaysLabel, { color: tone.soft }]}>{t('gastos:streakSheet.daysLabel')}</Text>
           </View>
           <Text style={[styles.heroHeadline, { color: theme.colors.text }]}>
             {derived.copyHeadline}
@@ -58,7 +60,7 @@ export function SheetHero({ data, derived, tone }: SheetHeroProps) {
             { backgroundColor: `${tone.fg}1F`, borderColor: `${tone.fg}55` },
           ]}
         >
-          <Text style={[styles.levelBadgeSuper, { color: tone.soft }]}>NIVEL</Text>
+          <Text style={[styles.levelBadgeSuper, { color: tone.soft }]}>{t('gastos:streakSheet.levelEyebrow')}</Text>
           <Text style={[styles.levelBadgeText, { color: tone.fg }]}>
             {derived.levelLabel}
           </Text>
@@ -78,6 +80,7 @@ interface ShieldChipProps {
  * mirror the spec cap (max 2 earned). Filled = available, hollow = empty.
  */
 export function ShieldChip({ tokens, tone }: ShieldChipProps) {
+  const { t } = useTranslation()
   const filled = Math.min(2, Math.max(0, tokens))
   const slots: Array<'filled' | 'empty'> = [
     filled >= 1 ? 'filled' : 'empty',
@@ -90,7 +93,7 @@ export function ShieldChip({ tokens, tone }: ShieldChipProps) {
           styles.shieldChip,
           { backgroundColor: tone.cardBg, borderColor: tone.cardBorder },
         ]}
-        accessibilityLabel={`Escudos disponibles: ${tokens} de 2`}
+        accessibilityLabel={t('gastos:streakSheet.shieldChip.a11y', { tokens })}
       >
         <View style={styles.shieldDots}>
           {slots.map((slot, idx) => (
@@ -114,17 +117,17 @@ export function ShieldChip({ tokens, tone }: ShieldChipProps) {
         <View style={{ flex: 1 }}>
           <Text style={[styles.shieldChipLabel, { color: tone.fg }]}>
             {tokens === 0
-              ? 'Sin escudos disponibles'
+              ? t('gastos:streakSheet.shieldChip.label_none')
               : tokens === 1
-                ? '1 escudo disponible'
-                : '2 escudos disponibles'}
+                ? t('gastos:streakSheet.shieldChip.label_one')
+                : t('gastos:streakSheet.shieldChip.label_two')}
           </Text>
           <Text style={[styles.shieldChipHint, { color: tone.soft }]}>
             {tokens === 2
-              ? 'Stock al máximo. Cubren un día perdido cada uno.'
+              ? t('gastos:streakSheet.shieldChip.hint_full')
               : tokens === 1
-                ? 'Te queda 1. Cubrirá un día sin registrar.'
-                : 'Ganas uno cada 7 días seguidos de racha.'}
+                ? t('gastos:streakSheet.shieldChip.hint_one')
+                : t('gastos:streakSheet.shieldChip.hint_none')}
           </Text>
         </View>
       </View>

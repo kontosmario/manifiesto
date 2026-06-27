@@ -9,6 +9,7 @@ import Animated, {
   useReducedMotion,
   interpolateColor,
 } from 'react-native-reanimated'
+import { useTranslation } from 'react-i18next'
 import { formatAnimatedAmount } from '@/components/ui/animated-amount-format'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
@@ -39,12 +40,14 @@ export function AmountCard({
   amount,
   isActive,
   onPress,
-  label = 'Monto',
+  label,
   size = 'default',
   warning = false,
 }: AmountCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
+  const resolvedLabel = label ?? t('home:amountCard.label')
   const scale = useSharedValue(1)
   const activeProgress = useSharedValue(isActive ? 1 : 0)
   const warningProgress = useSharedValue(warning ? 1 : 0)
@@ -110,8 +113,10 @@ export function AmountCard({
     <Animated.View style={scaleStyle}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Monto: ${displayText}`}
-        accessibilityHint="Abre el numpad para editar el monto"
+        accessibilityLabel={t('home:amountCard.amountAccessibility', {
+          amount: displayText,
+        })}
+        accessibilityHint={t('home:amountCard.editHint')}
         onPress={() => {
           void triggerHaptic('light')
           onPress()
@@ -140,12 +145,12 @@ export function AmountCard({
           ]}
         >
           <View style={styles.topRow}>
-            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>{label}</Text>
+            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>{resolvedLabel}</Text>
             <Animated.Text
               pointerEvents="none"
               style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
             >
-              Tap para editar
+              {t('home:amountCard.tapToEdit')}
             </Animated.Text>
           </View>
           <Text

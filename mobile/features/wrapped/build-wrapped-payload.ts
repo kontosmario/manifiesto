@@ -1,6 +1,7 @@
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
+import i18n from '@/lib/i18n'
 
 /**
  * Convierte un row de `monthly_summaries` (ya parseado al shape de
@@ -115,7 +116,12 @@ function buildPeriodRange(
   // periodEnd es exclusivo. Para display restamos un día.
   const lastDay = new Date(end.year, end.month - 1, end.day)
   lastDay.setDate(lastDay.getDate() - 1)
-  return `${start.day} ${MES_ABBR[start.month - 1]} – ${lastDay.getDate()} ${MES_ABBR[lastDay.getMonth()]}`
+  return `${start.day} ${monthAbbr(start.month - 1)} – ${lastDay.getDate()} ${monthAbbr(lastDay.getMonth())}`
+}
+
+/** Abreviatura del mes (0-indexed) localizada. */
+function monthAbbr(monthIdx: number): string {
+  return i18n.t(`control:months.short.${monthIdx}`)
 }
 
 interface PickTopCategoryArgs {
@@ -157,11 +163,15 @@ function pickTopCategory({
   }
   if (top.amount <= 0) return null
 
+  const uncategorized = i18n.t('control:wrapped.topCategory.uncategorized')
+  // `top.name` viene crudo del `category_breakdown` (ES, server-side). El
+  // Wrapped lo muestra al usuario, así que resolvemos el display localizado
+  // por `categoryId` PRIMERO; sólo caemos al name crudo del breakdown si la
+  // categoría ya no existe en el mapa (renombrada/borrada) o no hay id.
   const name =
+    (top.categoryId ? categoryNameById.get(top.categoryId) : undefined) ??
     top.name ??
-    (top.categoryId
-      ? categoryNameById.get(top.categoryId) ?? 'Sin categoría'
-      : 'Sin categoría')
+    uncategorized
   const share = totalSpent > 0 ? top.amount / totalSpent : 0
   return {
     name,
@@ -192,8 +202,3 @@ function isoToMs(iso: string): number {
   if (!parsed) return 0
   return new Date(parsed.year, parsed.month - 1, parsed.day).getTime()
 }
-
-const MES_ABBR = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-] as const

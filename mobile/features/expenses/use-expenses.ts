@@ -25,6 +25,7 @@ import type {
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
+import i18n from '@/lib/i18n'
 
 export type {
   CreateExpenseInput,
@@ -422,7 +423,7 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       price,
     }) => {
       if (!familyId || !userId) {
-        throw new Error('No hay sesión o familia activa para crear gastos.')
+        throw new Error(i18n.t('gastos:errors.noSessionCreate'))
       }
       await createExpense(familyId, userId, {
         categoryId,
@@ -501,8 +502,9 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       if (familyId) {
         const pushBody = `${variables.description.trim()} · $${variables.price}`
         void sendFamilyPush({
-          familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title: '{actor} cargó un gasto',
+          familyId,
           body: pushBody,
           kind: 'expense_logged',
           url: '/home',
@@ -515,8 +517,8 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       }
       if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
       if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
-      toast.error('No se pudo guardar el gasto.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('gastos:errors.saveFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -546,7 +548,7 @@ export function useUpdateExpense(familyId?: string, userId?: string) {
   const result = useMutation<void, Error, UpdateExpenseInput, { previous: ExpenseListSnapshot } | undefined>({
     mutationFn: async ({ expenseId, description, notes, price }) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para editar gastos.')
+        throw new Error(i18n.t('gastos:errors.noFamilyEdit'))
       }
       await updateExpense(familyId, { description, notes, expenseId, price })
     },
@@ -597,8 +599,8 @@ export function useUpdateExpense(familyId?: string, userId?: string) {
       if (familyId && ctx?.previous) {
         restoreExpenseLists(queryClient, familyId, ctx.previous)
       }
-      toast.error('No se pudo actualizar el gasto.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('gastos:errors.updateFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -635,7 +637,7 @@ export function useDeleteExpense(familyId?: string, userId?: string) {
   >({
     mutationFn: async (expenseId) => {
       if (!familyId) {
-        throw new Error('No hay familia activa para borrar gastos.')
+        throw new Error(i18n.t('gastos:errors.noFamilyDelete'))
       }
       await deleteExpense(familyId, expenseId)
     },
@@ -678,8 +680,8 @@ export function useDeleteExpense(familyId?: string, userId?: string) {
       }
       if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
       if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
-      toast.error('No se pudo borrar el gasto.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('gastos:errors.deleteFailed'), {
+        actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(expenseId),
       })
     },

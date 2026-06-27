@@ -23,6 +23,7 @@ import {
   fixedExpensePaymentsKey,
 } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { categoriesQueryKey, type Category } from '@/features/categories/use-categories'
+import { withCategoryDisplayNames } from '@/features/categories/localize-category-name'
 import { familyMembersKey, type FamilyMemberRow } from '@/features/family/use-family-members'
 import {
   familyMembersDetailKey,
@@ -77,8 +78,11 @@ interface HomeSnapshotPayload {
   family_finance: FinanceStoragePayload | null
   fixed_expenses: Array<Record<string, unknown>>
   expenses: Expense[]
-  categories_expense: Category[]
-  categories_fixed_expense: Category[]
+  // El RPC NO computa `displayName` (es derivado en cliente vía i18n) →
+  // tiparlo sin él fuerza a pasar por `withCategoryDisplayNames` al seedear
+  // (sino tsc lo caza). Ver el seed más abajo.
+  categories_expense: Array<Omit<Category, 'displayName'>>
+  categories_fixed_expense: Array<Omit<Category, 'displayName'>>
   unread_notification_count: number
   notifications: RawNotificationSlice[]
   family_members: Array<{
@@ -381,10 +385,17 @@ function seedCaches(
       .slice(0, RECENT_EXPENSES_LIMIT),
   )
 
-  client.setQueryData(categoriesQueryKey(familyId, 'expense'), payload.categories_expense)
+  // `displayName` se deriva en cliente (i18n) y NO viene en el payload del
+  // RPC → derivarlo acá, sino el rail/picker rendea vacío (staleTime 5min
+  // del query hace que el seed sin displayName persista). Ver
+  // withCategoryDisplayNames.
+  client.setQueryData(
+    categoriesQueryKey(familyId, 'expense'),
+    withCategoryDisplayNames(payload.categories_expense, 'expense'),
+  )
   client.setQueryData(
     categoriesQueryKey(familyId, 'fixed_expense'),
-    payload.categories_fixed_expense,
+    withCategoryDisplayNames(payload.categories_fixed_expense, 'fixed_expense'),
   )
 
   client.setQueryData(

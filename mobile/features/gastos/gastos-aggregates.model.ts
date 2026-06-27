@@ -1,3 +1,5 @@
+import i18n from '@/lib/i18n'
+import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { Expense } from '@/features/expenses/use-expenses'
 
 // ─── Types still consumed by the controller / endpoints ─────────────
@@ -18,7 +20,16 @@ import type { Expense } from '@/features/expenses/use-expenses'
 
 export interface CategoryLite {
   id: string
+  /** Nombre A MOSTRAR (localizado). Úsalo como label visible. */
   name: string
+  /**
+   * Nombre CRUDO de la DB (estable, en español para los templates).
+   * Fuente para resolver ícono/color por nombre (`pickIconForCategory`,
+   * `resolveCategoryHueByName`, etc.) — esos matchers esperan el crudo.
+   * NUNCA pasarles el `name` localizado o caen al default en EN.
+   * Opcional para back-compat; cae a `name` cuando falta.
+   */
+  rawName?: string
   color: string
 }
 
@@ -46,9 +57,6 @@ export interface GastosGroup {
   total: number
   items: Expense[]
 }
-
-const WEEKDAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 /**
  * Format a Date as a local-time `YYYY-MM-DD` string. Local — not
@@ -110,11 +118,11 @@ export function groupGastosByDay(input: { expenses: Expense[]; today: Date }): G
   for (const value of map.values()) {
     const diffDays = Math.round((todayMs - value.sortKey) / 86_400_000)
     let label: string
-    if (diffDays === 0) label = 'Hoy'
-    else if (diffDays === 1) label = 'Ayer'
+    if (diffDays === 0) label = i18n.t('gastos:dayGroup.today')
+    else if (diffDays === 1) label = i18n.t('gastos:dayGroup.yesterday')
     else {
       const d = new Date(value.sortKey)
-      label = `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+      label = formatWeekdayDayMonth(d)
     }
     groups.push({ label, day: value.day, total: value.total, items: value.items })
   }

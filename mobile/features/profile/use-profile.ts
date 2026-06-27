@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { setCachedProfileDisplayName } from '@/lib/profile-display-name-cache'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 
@@ -19,6 +20,13 @@ export interface Profile {
    * column set — the explicit `useMyProfile` fetch fills it in.
    */
   timezone?: string
+  /**
+   * Idioma preferido del usuario ('es' | 'en'), sincronizado por
+   * `useLanguageSync`. Lo usa el servidor para localizar las push
+   * notifications (se generan por cron con el usuario fuera de la app).
+   * Opcional: el `home_snapshot` RPC seedea un set chico de columnas.
+   */
+  preferred_language?: 'es' | 'en' | null
   /**
    * `true` once the user has completed onboarding at least once.
    * Set automatically by a SQL trigger when
@@ -109,7 +117,7 @@ export function useUpdateAvatarAnimal(userId?: string, familyId?: string) {
   return useMutation({
     mutationFn: async (slug: string) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para actualizar el avatar.')
+        throw new Error(i18n.t('settings:profileErrors.noSessionAvatar'))
       }
 
       const { error } = await supabase
@@ -144,12 +152,12 @@ export function useUpdateDisplayName(userId?: string, familyId?: string) {
   return useMutation({
     mutationFn: async (rawDisplayName: string) => {
       if (!userId) {
-        throw new Error('No hay sesión activa para actualizar el nombre.')
+        throw new Error(i18n.t('settings:profileErrors.noSessionName'))
       }
 
       const displayName = rawDisplayName.trim()
       if (!displayName) {
-        throw new Error('El display name no puede estar vacío.')
+        throw new Error(i18n.t('settings:profileErrors.emptyName'))
       }
 
       const profileResponse = await supabase

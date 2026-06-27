@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
 import { SUPPORTED_CURRENCIES } from '@/features/finance/family-finance.model'
 import { useUsdRate } from '@/features/finance/use-usd-rate'
@@ -8,15 +9,17 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
 
-const CURRENCY_LABELS: Record<string, { name: string; flag: string }> = {
-  ARS: { name: 'Argentina · Peso', flag: '🇦🇷' },
-  CLP: { name: 'Chile · Peso', flag: '🇨🇱' },
-  COP: { name: 'Colombia · Peso', flag: '🇨🇴' },
-  MXN: { name: 'México · Peso', flag: '🇲🇽' },
-  UYU: { name: 'Uruguay · Peso', flag: '🇺🇾' },
-  PEN: { name: 'Perú · Sol', flag: '🇵🇪' },
-  BRL: { name: 'Brasil · Real', flag: '🇧🇷' },
-  USD: { name: 'Dólar estadounidense', flag: '🇺🇸' },
+// Solo la bandera (emoji) vive acá; el nombre se resuelve por i18n vía
+// `settings:currency.<code>`.
+const CURRENCY_FLAGS: Record<string, string> = {
+  ARS: '🇦🇷',
+  CLP: '🇨🇱',
+  COP: '🇨🇴',
+  MXN: '🇲🇽',
+  UYU: '🇺🇾',
+  PEN: '🇵🇪',
+  BRL: '🇧🇷',
+  USD: '🇺🇸',
 }
 
 interface ConversionSettingsSheetProps {
@@ -48,6 +51,7 @@ export function ConversionSettingsSheet({
   onClose,
 }: ConversionSettingsSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const surface = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
 
   // Cotización del seleccionado, solo para mostrarla en este sheet (no en el
@@ -58,21 +62,21 @@ export function ConversionSettingsSheet({
   return (
     <ModalCard
       visible={visible}
-      title="Cotización en dólares"
-      subtitle="Muestra tu saldo convertido a dólares según tu moneda. Se actualiza sola."
+      title={t('settings:conversion.sheetTitle')}
+      subtitle={t('settings:conversion.sheetSubtitle')}
       onClose={onClose}
     >
       <View style={[styles.toggleRow, { borderColor: theme.colors.line }]}>
         <View style={styles.toggleCopy}>
           <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>
-            Mostrar equivalente en dólares
+            {t('settings:conversion.toggleLabel')}
           </Text>
           <Text style={[styles.toggleHelper, { color: theme.colors.textMuted }]}>
-            En el inicio, debajo de tu saldo.
+            {t('settings:conversion.toggleHelper')}
           </Text>
         </View>
         <Switch
-          accessibilityLabel="Mostrar equivalente en dólares"
+          accessibilityLabel={t('settings:conversion.toggleLabel')}
           disabled={isSaving}
           onValueChange={onToggle}
           value={enabled}
@@ -82,17 +86,18 @@ export function ConversionSettingsSheet({
       {enabled ? (
         <View style={styles.pickerWrap}>
           <Text style={[styles.pickerLabel, { color: theme.colors.textMuted }]}>
-            {currency ? 'Tu moneda' : 'Elige tu moneda'}
+            {currency ? t('settings:conversion.yourCurrency') : t('settings:conversion.chooseCurrency')}
           </Text>
           <View style={styles.list}>
             {SUPPORTED_CURRENCIES.map((code) => {
-              const meta = CURRENCY_LABELS[code]
+              const flag = CURRENCY_FLAGS[code]
+              const name = t(`settings:currency.${code}`)
               const active = code === currency
               return (
                 <Pressable
                   key={code}
                   accessibilityRole="button"
-                  accessibilityLabel={`${code} · ${meta.name}`}
+                  accessibilityLabel={`${code} · ${name}`}
                   accessibilityState={{ selected: active }}
                   disabled={isSaving}
                   onPress={() => {
@@ -108,11 +113,11 @@ export function ConversionSettingsSheet({
                     },
                   ]}
                 >
-                  <Text style={styles.flag}>{meta.flag}</Text>
+                  <Text style={styles.flag}>{flag}</Text>
                   <View style={styles.copy}>
                     <Text style={[styles.code, { color: theme.colors.text }]}>{code}</Text>
                     <Text style={[styles.name, { color: theme.colors.textMuted }]}>
-                      {meta.name}
+                      {name}
                     </Text>
                   </View>
                   {active ? (
@@ -129,9 +134,10 @@ export function ConversionSettingsSheet({
 
           {rateActive && rateQuery.data ? (
             <Text style={[styles.rateNote, { color: theme.colors.textMuted }]}>
-              {`Cotización en uso: US$ 1 = ${formatMoney(rateQuery.data.ratePerUsd)}${
-                rateQuery.data.source.startsWith('dolarapi') ? ' · blue' : ''
-              }`}
+              {t('settings:conversion.rateInUse', {
+                rate: formatMoney(rateQuery.data.ratePerUsd),
+                suffix: rateQuery.data.source.startsWith('dolarapi') ? ' · blue' : '',
+              })}
             </Text>
           ) : null}
         </View>

@@ -1,0 +1,970 @@
+{
+  "header": {
+    "title": "Expenses",
+    "subtitle": "History, filters, and quick edits to your movements.",
+    "cycleSubtitle": "{{cycle}} cycle"
+  },
+  "hero": {
+    "totalVisible": "TOTAL SHOWN",
+    "totalDay": "DAY TOTAL",
+    "dailyAverage": "DAILY AVERAGE",
+    "lastDays": "· last {{days}}d",
+    "topCategories": "TOP CATEGORIES BY WEIGHT"
+  },
+  "list": {
+    "movementsTitle": "Movements",
+    "swipeHint": "Swipe for actions",
+    "loadingMoreA11y": "Loading more movements",
+    "loadingMoreDays": "Loading more days…",
+    "endOfMonthA11y": "End of the month",
+    "endOfMonth": "END OF THE MONTH"
+  },
+  "emptyState": {
+    "introTitle": "You haven't logged any expenses yet",
+    "introBody": "Here you'll see every household movement: how much you've spent this cycle, your daily allowance, and the day-by-day detail. Add your first one to get started.",
+    "addFirstCta": "Log my first expense",
+    "previewEyebrow": "HERE'S HOW IT WILL LOOK",
+    "preview": {
+      "heroTitle": "Month summary",
+      "heroDescription": "How much you've spent and your daily allowance available.",
+      "calendarTitle": "Month map",
+      "calendarDescription": "A calendar with your spending days this month.",
+      "listTitle": "Your movements",
+      "listDescription": "The detail by day, with category and author."
+    }
+  },
+  "smartFilter": {
+    "eyebrow": "FILTER BY CATEGORY",
+    "all": "All"
+  },
+  "filterPill": {
+    "a11yWithCount_one": "{{label}}, {{count}} movement",
+    "a11yWithCount_other": "{{label}}, {{count}} movements",
+    "a11yWithCount_active_one": "{{label}}, {{count}} movement, filter active",
+    "a11yWithCount_active_other": "{{label}}, {{count}} movements, filter active",
+    "a11yNoCount": "{{label}}",
+    "a11yNoCount_active": "{{label}}, filter active",
+    "hintApply": "Double tap to filter by this category",
+    "hintRemove": "Double tap to remove the filter"
+  },
+  "clearFilters": {
+    "label": "Clear filters",
+    "a11yLabel": "Clear all active filters"
+  },
+  "advisorChip": {
+    "calmTitle": "No alerts for now",
+    "calmBody": "Your categories are in order",
+    "a11yLabel": "Assistant: {{title}}"
+  },
+  "movementRow": {
+    "someone": "Someone",
+    "noCategory": "No category",
+    "incomeA11yLabel": "{{title}}, income",
+    "swipeToDeleteHint": "Swipe left to delete",
+    "a11yLabel": "{{title}}, {{amount}} pesos in {{categoryName}}, logged by {{whoName}} at {{time}}."
+  },
+  "incomeRow": {
+    "kind": {
+      "transfer": "Transfer",
+      "bonus": "Bonus",
+      "gift": "Gift",
+      "other": "Income"
+    }
+  },
+  "sectionMeta": {
+    "expenses_one": "{{count}} expense",
+    "expenses_other": "{{count}} expenses",
+    "incomes_one": "{{count}} income entry",
+    "incomes_other": "{{count}} income entries",
+    "none": "no movements"
+  },
+  "calendar": {
+    "eyebrow": "YOUR MONTH AT A GLANCE",
+    "legend": {
+      "good": "good",
+      "warning": "alert",
+      "over": "over"
+    },
+    "hintInert": "Each day will be colored based on your spending",
+    "hintTap": "Tap a day to filter its expenses",
+    "filterDayA11y": "Filter day {{day}}",
+    "focusEyebrow": "SELECTED DAY",
+    "mood": {
+      "calm": "Calm day",
+      "warning": "Alert day",
+      "over": "Over-budget day",
+      "none": "No movements"
+    },
+    "backToCycleA11y": "Back to the full cycle",
+    "todaySuffix": " · today",
+    "statSpent": "SPENT",
+    "statMovements": "MOVEMENTS",
+    "registerForgotten": "Log a forgotten expense",
+    "registerForgottenA11y": "Log a forgotten expense on this day",
+    "markNoSpend": "Mark day as no spend",
+    "markNoSpendA11y": "Mark this day as no spend",
+    "unmarkNoSpend": "Undo no-spend mark",
+    "unmarkNoSpendA11y": "Undo the no-spend mark for this day",
+    "fullCycle": "Full cycle",
+    "prevDayA11y": "Previous day",
+    "nextDayA11y": "Next day"
+  },
+  "noSpendConfirm": {
+    "title": "You already have expenses logged today",
+    "subtitle": "We're showing you what you logged today so you can double-check before marking the day as no spend.",
+    "marking": "Marking…",
+    "markAnyway": "Mark anyway",
+    "totalToday": "TODAY'S TOTAL",
+    "expensesLogged_one": "1 expense logged",
+    "expensesLogged_other": "{{count}} expenses logged",
+    "tip": "If you slip up, you can undo the mark by tapping \"Marked ✓\" on the same FAB button."
+  },
+  "levelProgress": {
+    "daysIntoLevel": "{{into}} / {{total}} days → {{nextLevel}}",
+    "daysToNext_one": "{{count}} more day to reach {{nextLevel}}",
+    "daysToNext_other": "{{count}} more days to reach {{nextLevel}}"
+  },
+  "streakSheet": {
+    "daysLabel": "days",
+    "flameIconA11y_one": "Streak: {{count}} day, status {{status}}",
+    "flameIconA11y_other": "Streak: {{count}} days, status {{status}}",
+    "levelEyebrow": "LEVEL",
+    "last7Days": "Last 7 days",
+    "retryLater": "Try again in a moment.",
+    "saving": "Saving…",
+    "reverting": "Reverting…",
+    "noExpenseToday": "No spending today",
+    "markNoSpendA11y": "Mark the day as no spend",
+    "unmarkLabel": "Undo \"no spend today\"",
+    "unmarkNoSpendA11y": "Undo the no-spend mark for this day",
+    "startStreakToday": "Start your streak today",
+    "registerExpenseNow": "Log an expense now",
+    "markAlert": {
+      "title": "Mark day as no spend",
+      "message": "Confirm you didn't spend today? Your streak keeps going and you add a day to your progress. You can undo it if an expense shows up later.",
+      "confirm": "Yes, no spending today",
+      "errorTitle": "Couldn't mark the day"
+    },
+    "unmarkAlert": {
+      "title": "Undo no spend day",
+      "message": "An expense showed up and you want to undo today's mark? Your streak goes back to depending on logging before midnight.",
+      "confirm": "Undo mark",
+      "errorTitle": "Couldn't undo"
+    },
+    "shieldNotice": {
+      "title_one": "You have {{count}} shield available",
+      "title_other": "You have {{count}} shields available",
+      "body": "If you don't log today, the shield protects your streak automatically at 11:59 PM."
+    },
+    "consequence": {
+      "title": "If you don't log today",
+      "regress": "You go back to day {{day}} (start of {{level}})",
+      "lose_one": "You lose {{count}} day of progress earned",
+      "lose_other": "You lose {{count}} days of progress earned",
+      "needMore": "You'd need {{days}} more days to reach {{nextLevel}}"
+    },
+    "recovery": {
+      "title": "You can come back"
+    },
+    "motivational": {
+      "nearRecord": "You're {{away}} days from your personal record of {{record}} days.",
+      "atRecord": "🏆 You're at your personal record. Keep it up!"
+    },
+    "stats": {
+      "personalRecord": "Personal record",
+      "totalLogged": "Total logged",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days"
+    },
+    "freezeInfo": {
+      "line1": "You earn a shield every 7 days of streak in a row.",
+      "line2": "You have {{tokens}} · You can stack up to 2."
+    },
+    "shieldChip": {
+      "a11y": "Shields available: {{tokens}} of 2",
+      "label_none": "No shields available",
+      "label_one": "1 shield available",
+      "label_two": "2 shields available",
+      "hint_none": "You earn one every 7 days of streak in a row.",
+      "hint_one": "You have 1 left. It'll cover a day without logging.",
+      "hint_full": "Stock full. Each one covers a missed day."
+    }
+  },
+  "summaryChip": {
+    "day": "day {{day}}",
+    "text": "{{count}} mov · {{period}} · {{cat}}"
+  },
+  "breakdown": {
+    "noCategory": "No category",
+    "topByCategory": "Top by category",
+    "topByPerson": "Top by person"
+  },
+  "dayGroup": {
+    "today": "Today",
+    "yesterday": "Yesterday"
+  },
+  "misc": {
+    "noName": "No name"
+  },
+  "emptyVariants": {
+    "pendingConfirm": {
+      "primary": "Your expenses are waiting for the new month",
+      "secondary": "You already logged movements for the next cycle. Confirm your payday so they show up here.",
+      "action": "Confirm payday"
+    },
+    "global": {
+      "primary": "Log your first expense",
+      "secondary": "Start the cycle by logging one"
+    },
+    "filtered": {
+      "primary": "No movements for this filter",
+      "secondary": "Try removing a filter to see more"
+    },
+    "cycle": {
+      "primary": "No expenses yet this month",
+      "secondary": "When you log one, you'll see it here"
+    }
+  },
+  "noSpend": {
+    "markedSuccess": "No-spend day logged",
+    "unknownError": "Unknown error",
+    "expensesExist": "That day has expenses logged — it can't be marked as no spend.",
+    "futureDate": "You can't mark a day that hasn't happened yet.",
+    "markFailed": "Couldn't mark it. Try again in a moment.",
+    "unmarkedSuccess": "No-spend mark removed.",
+    "unmarkFailed": "Couldn't undo it. Try again in a moment."
+  },
+  "history": {
+    "loadingMovements": "Loading movements.",
+    "deleteTitle": "Delete expense",
+    "deleteMessage": "This action can't be undone.",
+    "deleteConfirm": "Delete",
+    "visibleMovements_one": "{{count}} visible movement",
+    "visibleMovements_other": "{{count}} visible movements"
+  },
+  "errors": {
+    "noSessionCreate": "No active session or household to create expenses.",
+    "noFamilyEdit": "No active household to edit expenses.",
+    "noFamilyDelete": "No active household to delete expenses.",
+    "saveFailed": "Couldn't save the expense.",
+    "updateFailed": "Couldn't update the expense.",
+    "deleteFailed": "Couldn't delete the expense.",
+    "createFailed": "Couldn't create the expense.",
+    "descriptionRequired": "Description is required.",
+    "descriptionTooLong": "Description can't exceed {{max}} characters.",
+    "noteTooLong": "The note can't exceed {{max}} characters.",
+    "priceInvalid": "Price must be a number greater than or equal to 0.",
+    "priceTooHigh": "Price exceeds the allowed maximum.",
+    "snapshotEmpty": "The expenses snapshot came back empty.",
+    "somethingWrong": "Something went wrong",
+    "somethingWrongNoAccent": "Something went wrong",
+    "deleteTitle": "Couldn't delete",
+    "loadTitle": "Couldn't load your expenses"
+  },
+  "income": {
+    "errors": {
+      "noSession": "No active session.",
+      "amountPositive": "Amount must be greater than zero.",
+      "saveFailed": "Couldn't save the income.",
+      "deleteFailed": "Couldn't delete the income."
+    }
+  },
+  "categories": {
+    "errors": {
+      "noFamilyCreate": "No active household to create a category.",
+      "noFamilyRename": "No active household to rename a category.",
+      "noFamilyDelete": "No active household to delete a category.",
+      "nameEmpty": "The category name can't be empty.",
+      "hasExpenses": "You can't delete a category that already has expenses logged."
+    }
+  },
+  "dailyBudget": {
+    "status": {
+      "exceeded": "Exceeded",
+      "critical": "Critical",
+      "inRange": "On track"
+    },
+    "ateTomorrow": {
+      "title": "You've already eaten into tomorrow",
+      "detail": "If you stop now, tomorrow you'd open with {{amount}}."
+    },
+    "zeroDay": {
+      "title": "Zero-spend day active",
+      "titleStreak": "{{count}} zero days in a row",
+      "detail": "If you close the day like this, tomorrow you start with {{amount}}."
+    },
+    "operatingMargin": {
+      "title": "There's still operating room",
+      "detail": "You still have {{amount}} left for the rest of the day."
+    },
+    "carryover": {
+      "titlePositive": "You're managing the cycle well",
+      "titleNegative": "The carryover is squeezing you today",
+      "detailPositive": "You've built up {{amount}} of breathing room under your pace.",
+      "detailNegative": "You're carrying {{amount}} of overspend from previous days."
+    },
+    "buffer": {
+      "titleIntact": "Your cushion is still defending the close",
+      "titleConsumed": "The cushion is no longer covering swings",
+      "detailIntact": "{{amount}} of the cushion is still intact to absorb swings.",
+      "detailConsumed": "The cushion is used up. From here you start touching the main plan."
+    }
+  },
+  "analytics": {
+    "overspendRisk": {
+      "title": "Risk of overspending before your next payday",
+      "detail": "If the current pace continues, you'd be short {{missing}}. Cut about {{perDay}} per day to land with room."
+    },
+    "adjustPace": {
+      "title": "You need to adjust your daily pace",
+      "detail": "To reach your next payday without falling short, try cutting around {{amount}} per day from tomorrow."
+    },
+    "concentration": {
+      "title": "Spending is heavily concentrated",
+      "detail": "{{category}} makes up {{percent}}% of the month. It's the best category to look for cuts without touching the whole budget."
+    },
+    "recurring": {
+      "title": "There's a repeated expense to audit",
+      "detail": "\"{{label}}\" showed up {{count}} times in 60 days and adds up to {{total}}. Worth checking whether it's a subscription, fee, or recurring habit."
+    },
+    "weekend": {
+      "title": "Weekends are pushing the total up",
+      "detail": "Weekend daily spending is running {{percent}}% above the Monday-to-Friday average."
+    },
+    "weeklyAccel": {
+      "title": "Spending accelerated this week",
+      "detail": "The last 7 days rose {{percent}}% versus the previous week. Check what sped up before it sets in."
+    },
+    "healthy": {
+      "title": "Your pace is healthy",
+      "detail": "At the current pattern you'd close the cycle with {{amount}} available."
+    },
+    "noAlerts": {
+      "title": "No strong alerts yet",
+      "detail": "No strong alerts yet, but it's worth keeping an eye on the month's close."
+    }
+  },
+  "intelligence": {
+    "headline": {
+      "healthy": "If you keep this up, there should still be room at the end of the month.",
+      "short": "If you keep this up, the month ends short and it's worth correcting now."
+    },
+    "dailyCap": {
+      "label": "Daily cap",
+      "helper": "{{count}} days left in the month."
+    },
+    "cutPerDay": {
+      "label": "Cut per day",
+      "helper": "Suggested cut to reach your next payday."
+    },
+    "weeklyPace": {
+      "label": "Weekly pace",
+      "helperNoBase": "Not enough data yet to compare weeks.",
+      "helperHeavier": "This week is running heavier.",
+      "helperLighter": "This week is running lighter or steady."
+    },
+    "last7": {
+      "label": "Last 7 days",
+      "helper": "Variable spending accumulated over the last 7 days."
+    },
+    "topCategory": {
+      "label": "Top category",
+      "helper": "{{label}} adds up to {{total}} this month."
+    },
+    "recurring": {
+      "label": "Repeated expense",
+      "helper": "{{label}} showed up {{count}} times."
+    },
+    "weekend": {
+      "label": "Weekend",
+      "helper": "Compares Saturdays and Sundays against the Monday-to-Friday average."
+    }
+  },
+  "import": {
+    "incomeKind": {
+      "transfer": "Transfer",
+      "bonus": "Bonus",
+      "gift": "Gift",
+      "other": "Other",
+      "incomeLabel": "Income"
+    },
+    "field": {
+      "description": "description",
+      "amount": "amount",
+      "category": "category"
+    },
+    "warning": {
+      "foreignCurrency": "Currency not supported. Edit the amount in ARS.",
+      "swapAmbiguous": "Currency swap. Double-check before logging.",
+      "noMerchant": "No description. Fill it in before confirming.",
+      "noDate": "No clear date. We assumed today.",
+      "valueZero": "Amount is 0. Edit before confirming.",
+      "futureDate": "The date was in the future. We set it to today — review it."
+    },
+    "relativeDate": {
+      "today": "today",
+      "yesterday": "yesterday",
+      "tomorrow": "tomorrow"
+    },
+    "error": {
+      "missingCategory": "Category is missing for the expense."
+    },
+    "noDescription": "(no description)",
+    "header": {
+      "summaryTitle": "Final summary",
+      "reviewMovement": "Review the movement",
+      "movementOf": "Movement {{current}} of {{total}}",
+      "thumbnailA11y": "Imported screenshot thumbnail"
+    },
+    "footer": {
+      "confirmWith": "Confirm {{parts}}",
+      "reviewAndConfirm": "Review and confirm",
+      "backToEdit": "Back to editing",
+      "previous": "Previous",
+      "restore": "Restore",
+      "skipThis": "Skip this"
+    },
+    "summary": {
+      "expensesCount_one": "{{count}} expense",
+      "expensesCount_other": "{{count}} expenses",
+      "incomesCount_one": "{{count}} income entry",
+      "incomesCount_other": "{{count}} income entries",
+      "and": " and ",
+      "nothingToLoad": "Nothing to load",
+      "willLoad": "You're going to load {{summary}}.",
+      "skippedLine_one": "1 movement you skipped won't be loaded.",
+      "skippedLine_other": "{{count}} movements you skipped won't be loaded.",
+      "itemA11y": "{{kind}}, {{description}}, {{plus}}${{amount}}, {{meta}}",
+      "plusPrefix": "plus ",
+      "editHint": "Tap to edit this movement"
+    },
+    "row": {
+      "skipped": "Skipped",
+      "restoreMovement": "Restore this movement",
+      "amount": "Amount",
+      "incomeAmount": "Income amount",
+      "description": "Description",
+      "descriptionPlaceholder": "e.g. Supermarket",
+      "date": "Date",
+      "category": "Category",
+      "incomeType": "Income type"
+    },
+    "dateSlider": {
+      "a11yLabel": "Movement date",
+      "dayA11y": "day {{day}}",
+      "dayA11yFuture": "day {{day}}, future date not available"
+    },
+    "toast": {
+      "incomplete": "There's an incomplete movement — review it before confirming.",
+      "previewLoaded": "Preview: {{parts}} (nothing was loaded).",
+      "loaded": "Loaded {{parts}}.",
+      "reasonSuffix": " Reason: {{reason}}",
+      "partialFailure": "{{baseMsg}} {{count}} couldn't be loaded.{{reasonSuffix}}",
+      "allFailed_one": "Couldn't load any movement ({{count}} error).{{reasonSuffix}}",
+      "allFailed_other": "Couldn't load any movement ({{count}} errors).{{reasonSuffix}}"
+    },
+    "unmatched_one": "{{count}} line from the screenshot didn't look like movements; we skipped it.",
+    "unmatched_other": "{{count}} lines from the screenshot didn't look like movements; we skipped them.",
+    "empty": {
+      "title": "I didn't see expenses in that screenshot.",
+      "body": "Try another image."
+    }
+  },
+  "shareImport": {
+    "reading": "Reading your screenshot…",
+    "readError": "I couldn't read that screenshot: {{message}}",
+    "onlyScreenshots": "I can only import screenshots.",
+    "firstOnly": "We're processing the first screenshot — one at a time for now.",
+    "receiveError": "I couldn't receive that screenshot. Try again."
+  },
+  "filtersScreen": {
+    "title": "Filters",
+    "subtitle": "Adjust period, category, and search with the same modal pattern as Add expense.",
+    "defineTitle": "Define what you want to look at",
+    "period": "Period",
+    "category": "Category",
+    "cycleFallback": "Cycle",
+    "loadingCategories": "Loading categories...",
+    "noCategoriesTitle": "No categories",
+    "noCategoriesSubtitle": "No categories yet. You can still apply a period and free search.",
+    "searchLabel": "Search",
+    "searchHelper": "Description, category, or person.",
+    "searchPlaceholder": "e.g. supermarket, gas, Agus",
+    "apply": "Apply filters",
+    "periodOptions": {
+      "cycle": "Cycle",
+      "week": "7 days",
+      "today": "Today",
+      "all": "All"
+    }
+  },
+  "categoriesScreen": {
+    "title": "Categories",
+    "subtitle": "Manage the catalog with the same modal experience as Add expense.",
+    "loadErrorTitle": "We couldn't open categories",
+    "loadErrorDescription": "We couldn't load the household's categories.",
+    "catalogEyebrow": "Catalog",
+    "catalogTitle": "Organize how expenses are classified",
+    "selectedLabel": "Selected category",
+    "pickToManage": "Pick a category to manage it",
+    "associatedExpenses_one": "{{count}} associated expense",
+    "associatedExpenses_other": "{{count}} associated expenses",
+    "usedInFilterSuffix": " · used in the current filter",
+    "tapRowHint": "Tap a row to rename or delete that category.",
+    "cannotDeleteWarning": "This category can't be deleted because it already has movements.",
+    "manageCategoryA11y": "Manage category {{name}}",
+    "categoryMeta_one": "{{count}} expense · created {{date}}",
+    "categoryMeta_other": "{{count}} expenses · created {{date}}",
+    "filterBadge": "Filter",
+    "newCategory": "New category",
+    "renameSelected": "Rename selected",
+    "deleteSelected": "Delete selected",
+    "deleteAlertTitle": "Delete category",
+    "deleteAlertMessage": "\"{{name}}\" will be deleted if it has no expenses logged.",
+    "deleteFailed": "Couldn't delete the category.",
+    "createFailed": "Couldn't create the category.",
+    "renameFailed": "Couldn't rename the category.",
+    "create": "Create",
+    "renameTitle": "Rename category"
+  },
+  "historyScreen": {
+    "loadErrorTitle": "We couldn't load the history",
+    "loadErrorDescription": "We couldn't load the history and its filters.",
+    "update": "Update",
+    "editExpense": "Edit expense"
+  },
+  "addExpense": {
+    "title": "Add expense",
+    "formErrorTitle": "We couldn't open the form",
+    "createCategory": "Create category"
+  },
+  "addIncome": {
+    "title": "Add income",
+    "registeringFor": "LOGGING FOR",
+    "yesterdayLower": "yesterday",
+    "dayBeforeLower": "two days ago",
+    "fromWhere": "Where from?",
+    "fromWhereFlagged": "Pick where it comes from",
+    "when": "When?",
+    "save": "Save income",
+    "retryLater": "Try again in a moment.",
+    "saveErrorTitle": "We couldn't save",
+    "field": {
+      "incomeType": "income type"
+    },
+    "dayChips": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "dayBefore": "Two days ago"
+    },
+    "quickDescriptions": {
+      "transfer": "Transfer",
+      "bonus13th": "13th salary",
+      "workBonus": "Work bonus",
+      "birthdayGift": "Birthday gift",
+      "freelance": "Freelance",
+      "refund": "Refund"
+    }
+  },
+  "categoryTemplates": {
+    "expense": {
+      "alquiler": {
+        "default": "Alquiler",
+        "name": "Rent",
+        "quickDescriptions": [
+          "Rent",
+          "HOA fees",
+          "Deposit"
+        ]
+      },
+      "mercado": {
+        "default": "Mercado",
+        "name": "Groceries",
+        "quickDescriptions": [
+          "Supermarket",
+          "Greengrocer",
+          "Convenience store",
+          "Bakery"
+        ]
+      },
+      "transporte": {
+        "default": "Transporte",
+        "name": "Transport",
+        "quickDescriptions": [
+          "Transit card",
+          "Fuel",
+          "Uber",
+          "Parking"
+        ]
+      },
+      "ocio": {
+        "default": "Ocio",
+        "name": "Leisure",
+        "quickDescriptions": [
+          "Cinema",
+          "Night out",
+          "Streaming",
+          "Games"
+        ]
+      },
+      "servicios": {
+        "default": "Servicios",
+        "name": "Utilities",
+        "quickDescriptions": [
+          "Electricity",
+          "Gas",
+          "Water",
+          "Internet"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Health",
+        "quickDescriptions": [
+          "Pharmacy",
+          "Appointment",
+          "Private health",
+          "Health plan"
+        ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Education",
+        "quickDescriptions": [
+          "Tuition",
+          "Course",
+          "Books",
+          "School"
+        ]
+      },
+      "mascotas": {
+        "default": "Mascotas",
+        "name": "Pets",
+        "quickDescriptions": [
+          "Pet food",
+          "Vet",
+          "Litter",
+          "Grooming"
+        ]
+      },
+      "ropa": {
+        "default": "Ropa",
+        "name": "Clothing",
+        "quickDescriptions": [
+          "Clothing",
+          "Footwear",
+          "Accessories"
+        ]
+      },
+      "tecnologia": {
+        "default": "Tecnología",
+        "name": "Tech",
+        "quickDescriptions": [
+          "Electronics",
+          "Accessory",
+          "Repair"
+        ]
+      },
+      "regalos": {
+        "default": "Regalos",
+        "name": "Gifts",
+        "quickDescriptions": [
+          "Gift",
+          "Birthday",
+          "Souvenir"
+        ]
+      },
+      "viajes": {
+        "default": "Viajes",
+        "name": "Travel",
+        "quickDescriptions": [
+          "Hotel",
+          "Tickets",
+          "Excursion"
+        ]
+      },
+      "restaurantes": {
+        "default": "Restaurantes",
+        "name": "Restaurants",
+        "quickDescriptions": [
+          "Restaurant",
+          "Coffee",
+          "Delivery"
+        ]
+      },
+      "deporte": {
+        "default": "Deporte",
+        "name": "Sports",
+        "quickDescriptions": [
+          "Gym",
+          "Yoga",
+          "Supplements"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Subscriptions",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "iCloud"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Taxes",
+        "quickDescriptions": [
+          "Property tax",
+          "Self-employed tax",
+          "Local tax"
+        ]
+      },
+      "belleza": {
+        "default": "Belleza",
+        "name": "Beauty",
+        "quickDescriptions": [
+          "Hair salon",
+          "Perfumery",
+          "Skincare"
+        ]
+      },
+      "otros": {
+        "default": "Otros",
+        "name": "Other",
+        "quickDescriptions": [
+          "Misc",
+          "Unexpected",
+          "Adjustment"
+        ]
+      },
+      "combustible": {
+        "default": "Combustible",
+        "name": "Fuel",
+        "quickDescriptions": [
+          "Gas",
+          "Diesel",
+          "Fill-up",
+          "Station"
+        ]
+      },
+      "delivery": {
+        "default": "Delivery",
+        "name": "Delivery",
+        "quickDescriptions": [
+          "Order",
+          "Food",
+          "Shipping",
+          "App"
+        ]
+      },
+      "cafeteria": {
+        "default": "Cafetería",
+        "name": "Coffee",
+        "quickDescriptions": [
+          "Coffee",
+          "Breakfast",
+          "Snack",
+          "Bar"
+        ]
+      },
+      "farmacia": {
+        "default": "Farmacia",
+        "name": "Pharmacy",
+        "quickDescriptions": [
+          "Meds",
+          "Prescription",
+          "Care",
+          "Pharmacy"
+        ]
+      },
+      "peluqueria": {
+        "default": "Peluquería",
+        "name": "Hair salon",
+        "quickDescriptions": [
+          "Haircut",
+          "Color",
+          "Styling",
+          "Beard"
+        ]
+      },
+      "taxi": {
+        "default": "Taxi",
+        "name": "Taxi",
+        "quickDescriptions": [
+          "Taxi",
+          "Uber",
+          "Rideshare",
+          "Cab"
+        ]
+      },
+      "estacionamiento": {
+        "default": "Estacionamiento",
+        "name": "Parking",
+        "quickDescriptions": [
+          "Garage",
+          "Toll",
+          "Lot",
+          "Parking"
+        ]
+      },
+      "libros": {
+        "default": "Libros",
+        "name": "Books",
+        "quickDescriptions": [
+          "Book",
+          "Bookstore",
+          "eBook",
+          "Magazine"
+        ]
+      },
+      "conciertos": {
+        "default": "Conciertos",
+        "name": "Concerts",
+        "quickDescriptions": [
+          "Show",
+          "Gig",
+          "Ticket",
+          "Festival"
+        ]
+      },
+      "donaciones": {
+        "default": "Donaciones",
+        "name": "Donations",
+        "quickDescriptions": [
+          "Donation",
+          "Contribution",
+          "Charity",
+          "Collection"
+        ]
+      },
+      "hobbies": {
+        "default": "Hobbies",
+        "name": "Hobbies",
+        "quickDescriptions": [
+          "Art",
+          "Pastime",
+          "Workshop",
+          "Hobby"
+        ]
+      },
+      "streaming": {
+        "default": "Streaming",
+        "name": "Streaming",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney",
+          "HBO"
+        ]
+      }
+    },
+    "fixed_expense": {
+      "servicios": {
+        "default": "Servicios",
+        "name": "Utilities",
+        "quickDescriptions": [
+          "Electricity",
+          "Gas",
+          "Water",
+          "Internet"
+        ]
+      },
+      "vivienda": {
+        "default": "Vivienda",
+        "name": "Housing",
+        "quickDescriptions": [
+          "Rent",
+          "HOA fees",
+          "Garage"
+        ]
+      },
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Subscriptions",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney+",
+          "iCloud"
+        ]
+      },
+      "seguros": {
+        "default": "Seguros",
+        "name": "Insurance",
+        "quickDescriptions": [
+          "Car",
+          "Private health",
+          "Home",
+          "Life"
+        ]
+      },
+      "cuotas": {
+        "default": "Cuotas",
+        "name": "Installments",
+        "quickDescriptions": [
+          "Credit card",
+          "Loan",
+          "Financing"
+        ]
+      },
+      "impuestos": {
+        "default": "Impuestos",
+        "name": "Taxes",
+        "quickDescriptions": [
+          "Property tax",
+          "Self-employed tax",
+          "Vehicle tax"
+        ]
+      },
+      "deudas": {
+        "default": "Deudas",
+        "name": "Debts",
+        "quickDescriptions": [
+          "Personal loan",
+          "Credit card",
+          "Family"
+        ]
+      },
+      "inversiones": {
+        "default": "Inversiones",
+        "name": "Investments",
+        "quickDescriptions": [
+          "Fixed deposit",
+          "Bonds",
+          "Stocks",
+          "Monthly contribution"
+        ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Education",
+        "quickDescriptions": [
+          "School",
+          "University",
+          "Tuition",
+          "Course"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Health",
+        "quickDescriptions": [
+          "Health plan",
+          "Insurance",
+          "Medical plan",
+          "Coverage"
+        ]
+      },
+      "gimnasio": {
+        "default": "Gimnasio",
+        "name": "Gym",
+        "quickDescriptions": [
+          "Membership",
+          "Monthly fee",
+          "Club",
+          "Training"
+        ]
+      }
+    }
+  }
+}

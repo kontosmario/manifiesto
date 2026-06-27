@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SuggestedAmountStripProps {
@@ -15,6 +16,7 @@ export function SuggestedAmountStrip({
   onClear,
 }: SuggestedAmountStripProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <ScrollView
@@ -28,7 +30,7 @@ export function SuggestedAmountStrip({
           key={v}
           onPress={() => onAdd(v)}
           accessibilityRole="button"
-          accessibilityLabel={`Sumar ${v}`}
+          accessibilityLabel={t('home:suggestedAmount.addAccessibility', { amount: v })}
           style={[
             styles.chip,
             { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
@@ -43,11 +45,11 @@ export function SuggestedAmountStrip({
         <Pressable
           onPress={onClear}
           accessibilityRole="button"
-          accessibilityLabel="Borrar monto"
+          accessibilityLabel={t('home:suggestedAmount.clearAccessibility')}
           style={[styles.chipDashed, { borderColor: theme.colors.line }]}
         >
           <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>
-            Borrar
+            {t('home:suggestedAmount.clear')}
           </Text>
         </Pressable>
       ) : null}

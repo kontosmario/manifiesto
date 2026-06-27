@@ -1,6 +1,7 @@
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { useDbHealth } from '@/features/dev-health/use-db-health'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { radii } from '@/theme/palette'
 
@@ -11,6 +12,8 @@ function fmtBytes(b: number): string {
   return `${(b / 1024 ** 3).toFixed(2)} GB`
 }
 
+// @i18n-ignore (dev-only: toda esta pantalla es diagnóstico DB Health gated por __DEV__ —
+// labels/títulos/estados en español son copy interno de tooling, NO copy de producción y no se traducen)
 export default function DevHealthScreen() {
   const { theme } = useAppTheme()
   const { data, isLoading, isError, error, refetch, isRefetching } = useDbHealth()
@@ -71,6 +74,7 @@ export default function DevHealthScreen() {
             {/* ── Resumen ───────────────────────────── */}
             <SectionCard title="Resumen" theme={theme}>
               <Row
+                // @i18n-ignore (dev-only: pantalla de diagnóstico DB Health gated por __DEV__, copy interno de tooling)
                 label="Tamaño DB"
                 value={data.db_size_pretty}
                 theme={theme}
@@ -82,7 +86,7 @@ export default function DevHealthScreen() {
               />
               <Row
                 label="Computed at"
-                value={new Date(data.computed_at).toLocaleString('es-AR')}
+                value={new Date(data.computed_at).toLocaleString(getIntlLocale())}
                 theme={theme}
                 isLast
               />

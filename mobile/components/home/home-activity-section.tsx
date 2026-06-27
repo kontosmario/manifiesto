@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react'
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
-import { errorMessages } from '@/lib/copy/states'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
 import type { IncomeEvent, IncomeEventKind } from '@/features/income/use-income-events'
@@ -17,6 +17,9 @@ interface HomeActivitySectionProps {
    *  timestamp desc; positivos en verde con ícono distinto. */
   incomeEvents?: IncomeEvent[]
   categoryNameById: Map<string, string>
+  /** category_id → nombre CRUDO (no localizado). Fuente para el ícono de
+   *  cada row (matcher ES). El display sale de `categoryNameById`. */
+  categoryRawNameById: Map<string, string>
   /** category_id → color (hex). Tinta el icon tile de cada gasto por
    *  categoría, igual que en Gastos · Movimientos. */
   categoryColorById: Map<string, string>
@@ -54,11 +57,11 @@ type MovementItem =
   | { kind: 'expense'; iso: string; expense: Expense }
   | { kind: 'income'; iso: string; income: IncomeEvent }
 
-const INCOME_KIND_LABEL: Record<IncomeEventKind, string> = {
-  transfer: 'Transferencia',
-  bonus: 'Bono',
-  gift: 'Regalo',
-  other: 'Ingreso',
+const INCOME_KIND_LABEL_KEY: Record<IncomeEventKind, string> = {
+  transfer: 'home:activitySection.incomeKind.transfer',
+  bonus: 'home:activitySection.incomeKind.bonus',
+  gift: 'home:activitySection.incomeKind.gift',
+  other: 'home:activitySection.incomeKind.other',
 }
 
 const INCOME_KIND_ICON: Record<IncomeEventKind, string> = {
@@ -91,6 +94,7 @@ function HomeActivitySectionImpl({
   expenses,
   incomeEvents = [],
   categoryNameById,
+  categoryRawNameById,
   categoryColorById,
   familyMembers = [],
   isLoading,
@@ -102,6 +106,7 @@ function HomeActivitySectionImpl({
   pendingIncomeId,
   limit = 6,
 }: HomeActivitySectionProps) {
+  const { t } = useTranslation()
   const memberById = useMemo(() => {
     const map = new Map<string, (typeof familyMembers)[number]>()
     for (const m of familyMembers) map.set(m.id, m)
@@ -140,7 +145,7 @@ function HomeActivitySectionImpl({
   if (errorKind) {
     return (
       <ErrorState
-        description={errorKind === 'network' ? errorMessages.network : errorMessages.server}
+        description={errorKind === 'network' ? t('states:error.network') : t('states:error.server')}
         onAction={onRetry}
       />
     )
@@ -160,15 +165,15 @@ function HomeActivitySectionImpl({
         const delay = Math.min(180 + index * 40, 360)
         if (m.kind === 'income') {
           const income = m.income
-          const kindLabel = INCOME_KIND_LABEL[income.kind]
+          const kindLabel = t(INCOME_KIND_LABEL_KEY[income.kind])
           const title = income.description?.trim() || kindLabel
           const row = (
             <ActivityRowV2
               icon={INCOME_KIND_ICON[income.kind]}
               title={title}
-              category={`Ingreso · ${kindLabel}`}
+              category={t('home:activitySection.incomeCategory', { kind: kindLabel })}
               categoryColor={INCOME_TILE_COLOR}
-              whoName={memberById.get(income.created_by)?.name ?? 'Alguien'}
+              whoName={memberById.get(income.created_by)?.name ?? t('home:activitySection.someone')}
               whoColor={memberById.get(income.created_by)?.color ?? '#329315'}
               amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
               delay={delay}
@@ -178,7 +183,7 @@ function HomeActivitySectionImpl({
             return <View key={`income-${income.id}`}>{row}</View>
           }
           const dangerAction: SwipeAction = {
-            label: 'Eliminar',
+            label: t('home:activitySection.delete'),
             tone: 'danger',
             icon: 'delete',
             onPress: () => onDeleteIncome(income.id),
@@ -186,7 +191,7 @@ function HomeActivitySectionImpl({
           return (
             <SwipeRow
               key={`income-${income.id}`}
-              accessibilityHint="Desliza hacia la izquierda para eliminar"
+              accessibilityHint={t('home:activitySection.swipeDeleteHint')}
               rightActions={[dangerAction]}
               isProcessing={pendingIncomeId === income.id}
             >
@@ -195,9 +200,12 @@ function HomeActivitySectionImpl({
           )
         }
         const expense = m.expense
-        const categoryName = categoryNameById.get(expense.category_id) ?? 'Sin categoría'
+        const categoryName = categoryNameById.get(expense.category_id) ?? t('home:activitySection.noCategory')
+        // Ícono por nombre CRUDO (matcher ES); el display sigue en
+        // `categoryName` (localizado). Cae al display si falta el crudo.
+        const categoryRawName = categoryRawNameById.get(expense.category_id) ?? categoryName
         const dangerAction: SwipeAction = {
-          label: 'Eliminar',
+          label: t('home:activitySection.delete'),
           tone: 'danger',
           icon: 'delete',
           onPress: () => onDelete(expense.id),
@@ -205,16 +213,16 @@ function HomeActivitySectionImpl({
         return (
           <SwipeRow
             key={`expense-${expense.id}`}
-            accessibilityHint="Desliza hacia la izquierda para eliminar"
+            accessibilityHint={t('home:activitySection.swipeDeleteHint')}
             rightActions={[dangerAction]}
             isProcessing={pendingExpenseId === expense.id}
           >
             <ActivityRowV2
-              icon={pickIconForCategory(categoryName)}
+              icon={<CategoryIcon name={categoryRawName} scope="expense" size={24} />}
               title={expense.description || categoryName}
               category={categoryName}
               categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}
-              whoName={memberById.get(expense.created_by)?.name ?? 'Alguien'}
+              whoName={memberById.get(expense.created_by)?.name ?? t('home:activitySection.someone')}
               whoColor={memberById.get(expense.created_by)?.color ?? '#329315'}
               amount={-Math.round(Math.abs(Number(expense.price ?? 0)))}
               delay={delay}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { getEmailRedirectTo } from '@/features/auth/auth-flow'
@@ -58,6 +59,7 @@ export function useResendConfirmEmail(
   options: UseResendConfirmEmailOptions = {},
 ): UseResendConfirmEmailResult {
   const cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS
+  const { t } = useTranslation()
 
   const [cooldownUntil, setCooldownUntil] = useState<number>(0)
   const [now, setNow] = useState(() => Date.now())
@@ -96,9 +98,7 @@ export function useResendConfirmEmail(
       }
       purgeOldSendTimestamps()
       if (sendTimestamps.length >= MAX_SENDS_PER_WINDOW) {
-        setError(
-          'Espera unos minutos antes de pedir otro email. Ya enviamos varios.',
-        )
+        setError(t('auth:errors.resendRateLimited'))
         return
       }
       try {
@@ -108,13 +108,11 @@ export function useResendConfirmEmail(
         setNow(Date.now())
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : 'No pudimos reenviar el email. Intenta de nuevo.',
+          err instanceof Error ? err.message : t('auth:errors.resendFailed'),
         )
       }
     },
-    [cooldownMs, cooldownUntil, mutation],
+    [cooldownMs, cooldownUntil, mutation, t],
   )
 
   const startCooldown = useCallback(() => {

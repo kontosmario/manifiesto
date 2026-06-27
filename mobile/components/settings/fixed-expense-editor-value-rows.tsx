@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { TextField } from '@/components/ui/text-field'
 import type { FixedExpenseKind } from '@/features/fixed-expenses/fixed-expense-types'
@@ -23,12 +24,13 @@ export function FixedExpenseAmountRow({
   onAmountFocusChange,
   onNextDueOnChange,
 }: FixedExpenseAmountRowProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.row}>
       <View style={styles.field}>
         <TextField
           keyboardType="decimal-pad"
-          label={kind === 'debt' ? 'Pago planificado' : 'Monto'}
+          label={kind === 'debt' ? t('settings:fixedEditor.plannedPayment') : t('settings:fixedEditor.amount')}
           onBlur={() => onAmountFocusChange(false)}
           onChangeText={(value) => onAmountChange(normalizePriceInput(value))}
           onFocus={() => onAmountFocusChange(true)}
@@ -40,8 +42,8 @@ export function FixedExpenseAmountRow({
         <TextField
           autoCapitalize="none"
           autoCorrect={false}
-          helper="Formato: DD/MM/AAAA"
-          label="Próximo vencimiento"
+          helper={t('settings:fixedEditor.dateHelper')}
+          label={t('settings:fixedEditor.nextDue')}
           maxLength={10}
           onChangeText={onNextDueOnChange}
           placeholder="25/04/2026"
@@ -65,12 +67,13 @@ export function FixedExpenseInstallmentRow({
   onInstallmentsPaidChange,
   onInstallmentsTotalChange,
 }: FixedExpenseInstallmentRowProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.row}>
       <View style={styles.field}>
         <TextField
           keyboardType="number-pad"
-          label="Cuotas totales"
+          label={t('settings:fixedEditor.installmentsTotal')}
           onChangeText={onInstallmentsTotalChange}
           placeholder="12"
           value={installmentsTotal}
@@ -79,7 +82,7 @@ export function FixedExpenseInstallmentRow({
       <View style={styles.field}>
         <TextField
           keyboardType="number-pad"
-          label="Cuotas ya pagadas"
+          label={t('settings:fixedEditor.installmentsPaid')}
           onChangeText={onInstallmentsPaidChange}
           placeholder="0"
           value={installmentsPaid}
@@ -106,12 +109,13 @@ export function FixedExpenseDebtRow({
   onRemainingBalanceChange,
   onRemainingBalanceFocusChange,
 }: FixedExpenseDebtRowProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.row}>
       <View style={styles.field}>
         <TextField
           keyboardType="decimal-pad"
-          label="Saldo pendiente"
+          label={t('settings:fixedEditor.remainingBalance')}
           onBlur={() => onRemainingBalanceFocusChange(false)}
           onChangeText={(value) => onRemainingBalanceChange(normalizePriceInput(value))}
           onFocus={() => onRemainingBalanceFocusChange(true)}
@@ -123,10 +127,10 @@ export function FixedExpenseDebtRow({
         <TextField
           autoCapitalize="words"
           autoCorrect={false}
-          label="Acreedor"
+          label={t('settings:fixedEditor.lender')}
           maxLength={60}
           onChangeText={onLenderNameChange}
-          placeholder="Ej: Banco / Familiar"
+          placeholder={t('settings:fixedEditor.lenderPlaceholder')}
           value={lenderName}
         />
       </View>
@@ -151,11 +155,12 @@ export function FixedExpenseActions({
   showCancel = true,
   submitLabel,
 }: FixedExpenseActionsProps) {
+  const { t } = useTranslation()
   return (
     <View style={styles.actions}>
       <AppButton disabled={!canSubmit} label={submitLabel} loading={isBusy} onPress={onSubmit} />
       {showCancel && onClose ? (
-        <AppButton label="Cancelar" onPress={onClose} size="compact" variant="ghost" />
+        <AppButton label={t('common:actions.cancel')} onPress={onClose} size="compact" variant="ghost" />
       ) : null}
     </View>
   )

@@ -22,6 +22,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { StatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'
 import { RequireGuest } from '@/components/guards'
 import { TextField } from '@/components/ui/text-field'
@@ -92,6 +93,7 @@ export function SignupScreen() {
   // Sprint P · Audit #9 P-3 (2026-06-10): block screen capture on the
   // signup credential form (email + password + name).
   useScreenCaptureProtection()
+  const { t } = useTranslation()
   const router = useRouter()
   const reduced = useReducedMotion()
   const passwordSignUp = usePasswordSignUp()
@@ -131,9 +133,9 @@ export function SignupScreen() {
       setErrorMessage(resendConfirm.error)
       return
     }
-    setInfoMessage('Te reenviamos el email. Revisa también spam.')
+    setInfoMessage(t('auth:signup.resentInfo'))
     await triggerHaptic('success')
-  }, [confirmationEmail, resendCooldownSeconds, resendConfirm])
+  }, [confirmationEmail, resendCooldownSeconds, resendConfirm, t])
 
   const handleChangeEmail = useCallback(() => {
     setConfirmationEmail(null)
@@ -167,14 +169,14 @@ export function SignupScreen() {
     const trimmedPassword = password.trim()
 
     if (trimmedName.length < 2) {
-      setErrorMessage('Agrega un nombre para tu perfil.')
+      setErrorMessage(t('auth:signup.errorAddName'))
       setErrorField('name')
       await triggerHaptic('warning')
       nameRef.current?.focus?.()
       return
     }
     if (!normalizedEmail.includes('@')) {
-      setErrorMessage('Ingresa un email válido.')
+      setErrorMessage(t('auth:signup.errorInvalidEmail'))
       setErrorField('email')
       await triggerHaptic('warning')
       emailRef.current?.focus?.()
@@ -182,7 +184,7 @@ export function SignupScreen() {
     }
     const policy = checkPasswordPolicy(trimmedPassword)
     if (!policy.ok) {
-      setErrorMessage(policy.error ?? 'La contraseña no cumple los requisitos.')
+      setErrorMessage(policy.error ?? t('auth:signup.errorPasswordPolicy'))
       setErrorField('password')
       await triggerHaptic('warning')
       passwordRef.current?.focus?.()
@@ -206,7 +208,7 @@ export function SignupScreen() {
           // Cancel / error / expired — no avanzamos.
           setSubmitting(false)
           await triggerHaptic('warning')
-          setErrorMessage('No pudimos verificar el captcha. Prueba de nuevo.')
+          setErrorMessage(t('auth:signup.errorCaptcha'))
           return
         }
         captchaToken = token
@@ -243,11 +245,11 @@ export function SignupScreen() {
       dispatchAuthFlow({ type: 'SIGNUP_SUCCESS' })
     } catch (error) {
       await triggerHaptic('error')
-      setErrorMessage(getErrorMessage(error, 'No pudimos crear tu cuenta.'))
+      setErrorMessage(getErrorMessage(error, t('auth:signup.errorCreateFailed')))
     } finally {
       setSubmitting(false)
     }
-  }, [captcha, email, isSubmitting, name, password, passwordSignUp, startResendCooldown])
+  }, [captcha, email, isSubmitting, name, password, passwordSignUp, startResendCooldown, t])
 
   // Track availability so we can disable buttons cleanly when the
   // platform / config doesn't support a provider (e.g. Android shows
@@ -291,39 +293,39 @@ export function SignupScreen() {
           return
         }
         await triggerHaptic('warning')
-        setErrorMessage(result.error ?? `No pudimos continuar con ${label}.`)
+        setErrorMessage(result.error ?? t('auth:common.socialSignInFailed', { provider: label }))
       } finally {
         setSubmitting(false)
       }
     },
-    [isSubmitting],
+    [isSubmitting, t],
   )
 
   const handleAppleSignUp = useCallback(() => {
     void triggerHaptic('selection')
     if (!appleAvailable) {
       Alert.alert(
-        'No disponible',
+        t('auth:common.notAvailable'),
         Platform.OS === 'ios'
-          ? 'Sign in with Apple no está habilitado en este dispositivo.'
-          : 'Sign in with Apple solo está disponible en iOS.',
+          ? t('auth:common.appleNotEnabledOnDevice')
+          : t('auth:common.appleOnlyOnIos'),
       )
       return
     }
     void handleSocialResult('Apple', signInWithApple)
-  }, [appleAvailable, handleSocialResult])
+  }, [appleAvailable, handleSocialResult, t])
 
   const handleGoogleSignUp = useCallback(() => {
     void triggerHaptic('selection')
     if (!googleAvailable) {
       Alert.alert(
-        'No disponible',
-        'Google sign-in todavía no está configurado en este build.',
+        t('auth:common.notAvailable'),
+        t('auth:common.googleNotConfigured'),
       )
       return
     }
     void handleSocialResult('Google', signInWithGoogle)
-  }, [googleAvailable, handleSocialResult])
+  }, [googleAvailable, handleSocialResult, t])
 
   // Strength meter for the password input — gives the user a quick
   // visual indicator without forcing extra steps.
@@ -335,7 +337,12 @@ export function SignupScreen() {
         : password.length < 14
           ? 2
           : 3
-  const strengthLabel = ['', 'Débil', 'Buena', 'Excelente'][strength]
+  const strengthLabel = [
+    '',
+    t('auth:signup.strengthWeak'),
+    t('auth:signup.strengthGood'),
+    t('auth:signup.strengthStrong'),
+  ][strength]
 
   return (
     <RequireGuest allowFamilylessSession>
@@ -344,7 +351,7 @@ export function SignupScreen() {
         {/* Top nav */}
         <View style={styles.topNav}>
           <Pressable
-            accessibilityLabel="Volver"
+            accessibilityLabel={t('auth:common.back')}
             accessibilityRole="button"
             hitSlop={DEFAULT_HIT_SLOP}
             onPress={handleBack}
@@ -367,27 +374,27 @@ export function SignupScreen() {
         <View style={styles.body}>
           <FadeInUp delay={0} reduced={reduced} style={styles.heroBlock}>
             <Text style={[styles.title, { color: theme.colors.text }]}>
-              Crear cuenta
+              {t('auth:signup.title')}
             </Text>
             <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-              Empieza a organizar tus finanzas en menos de un minuto.
+              {t('auth:signup.subtitle')}
             </Text>
           </FadeInUp>
 
           {/* Email + password form — primary path at the top. */}
           <FadeInUp delay={100} reduced={reduced} style={styles.formBlock}>
             <TextField
-              accessibilityLabel="Tu nombre"
+              accessibilityLabel={t('auth:signup.nameA11y')}
               autoCapitalize="words"
               autoCorrect={false}
-              label="Nombre"
+              label={t('auth:signup.nameLabel')}
               onChangeText={(v) => {
                 setErrorMessage(null)
                 setErrorField(null)
                 setName(v)
               }}
               warning={errorField === 'name'}
-              placeholder="Nombre completo"
+              placeholder={t('auth:signup.namePlaceholder')}
               ref={nameRef}
               returnKeyType="next"
               textContentType="givenName"
@@ -395,18 +402,18 @@ export function SignupScreen() {
               onSubmitEditing={() => emailRef.current?.focus?.()}
             />
             <TextField
-              accessibilityLabel="Email"
+              accessibilityLabel={t('auth:signup.emailLabel')}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
-              label="Email"
+              label={t('auth:signup.emailLabel')}
               onChangeText={(v) => {
                 setErrorMessage(null)
                 setErrorField(null)
                 setEmail(v)
               }}
               warning={errorField === 'email'}
-              placeholder="nombre@correo.com"
+              placeholder={t('auth:common.emailPlaceholder')}
               ref={emailRef}
               returnKeyType="next"
               textContentType="emailAddress"
@@ -415,16 +422,16 @@ export function SignupScreen() {
             />
             <View>
               <PasswordField
-                accessibilityLabel="Contraseña"
-                label="Contraseña"
+                accessibilityLabel={t('auth:signup.passwordLabel')}
+                label={t('auth:signup.passwordLabel')}
                 onChangeText={(v) => {
                   setErrorMessage(null)
                   setErrorField(null)
                   setPassword(v)
                 }}
                 warning={errorField === 'password'}
-                helper="Mínimo 10 caracteres, combinando letras y números."
-                placeholder="••••••••"
+                helper={t('auth:signup.passwordHelper')}
+                placeholder={t('auth:common.passwordPlaceholder')}
                 ref={passwordRef}
                 returnKeyType="go"
                 textContentType="newPassword"
@@ -462,16 +469,14 @@ export function SignupScreen() {
                 ]}
               >
                 <Text style={[styles.confirmationTitle, { color: theme.colors.text }]}>
-                  Te mandamos un mail a {maskEmail(confirmationEmail)}
+                  {t('auth:signup.confirmation.title', { email: maskEmail(confirmationEmail) })}
                 </Text>
                 <Text style={[styles.confirmationBody, { color: theme.colors.textSoft }]}>
-                  Si es una cuenta nueva, confirma desde el link del email
-                  (revisa spam). Si ya tenías cuenta con este email, inicia
-                  sesión.
+                  {t('auth:signup.confirmation.body')}
                 </Text>
                 <View style={styles.confirmationActions}>
                   <Pressable
-                    accessibilityLabel="Reenviar email de confirmación"
+                    accessibilityLabel={t('auth:signup.confirmation.resendA11y')}
                     accessibilityRole="button"
                     disabled={
                       resendCooldownSeconds > 0 ||
@@ -502,16 +507,16 @@ export function SignupScreen() {
                       ]}
                     >
                       {resendConfirm.isPending
-                        ? 'Enviando…'
+                        ? t('auth:signup.confirmation.sending')
                         : resendConfirm.rateLimited
-                          ? 'Reintenta en unos minutos'
+                          ? t('auth:signup.confirmation.rateLimited')
                           : resendCooldownSeconds > 0
-                            ? `Reenviar en ${resendCooldownSeconds}s`
-                            : 'Reenviar email'}
+                            ? t('auth:signup.confirmation.cooldown', { seconds: resendCooldownSeconds })
+                            : t('auth:signup.confirmation.resend')}
                     </Text>
                   </Pressable>
                   <Pressable
-                    accessibilityLabel="Cambiar email"
+                    accessibilityLabel={t('auth:signup.confirmation.changeEmail')}
                     accessibilityRole="button"
                     onPress={handleChangeEmail}
                     style={({ pressed }) => [
@@ -522,7 +527,7 @@ export function SignupScreen() {
                     <Text
                       style={[styles.confirmationSecondaryLabel, { color: theme.colors.text }]}
                     >
-                      Cambiar email
+                      {t('auth:signup.confirmation.changeEmail')}
                     </Text>
                   </Pressable>
                 </View>
@@ -532,7 +537,7 @@ export function SignupScreen() {
                     da salida sin revelar si el email existe — el copy del
                     body es condicional ("si ya tenías cuenta…"). */}
                 <Pressable
-                  accessibilityLabel="Iniciar sesión"
+                  accessibilityLabel={t('auth:signup.confirmation.loginLinkA11y')}
                   accessibilityRole="button"
                   hitSlop={DEFAULT_HIT_SLOP}
                   onPress={() => {
@@ -550,7 +555,7 @@ export function SignupScreen() {
                       { color: theme.colors.text },
                     ]}
                   >
-                    ¿Ya tienes cuenta? Inicia sesión
+                    {t('auth:signup.confirmation.loginLink')}
                   </Text>
                 </Pressable>
               </View>
@@ -572,14 +577,14 @@ export function SignupScreen() {
           {/* Divider */}
           <FadeInUp delay={150} reduced={reduced} style={styles.dividerRow}>
             <View style={[styles.dividerLine, { backgroundColor: theme.colors.line }]} />
-            <Text style={[styles.dividerLabel, { color: theme.colors.textSoft }]}>O</Text>
+            <Text style={[styles.dividerLabel, { color: theme.colors.textSoft }]}>{t('auth:common.or')}</Text>
             <View style={[styles.dividerLine, { backgroundColor: theme.colors.line }]} />
           </FadeInUp>
 
           {/* Social options — secondary fallback below the form. */}
           <FadeInUp delay={200} reduced={reduced} style={styles.socialBlock}>
             <Pressable
-              accessibilityLabel="Continuar con Apple"
+              accessibilityLabel={t('auth:common.continueWithApple')}
               accessibilityRole="button"
               onPress={handleAppleSignUp}
               style={({ pressed }) => [
@@ -589,7 +594,7 @@ export function SignupScreen() {
               ]}
             >
               <AppleIcon />
-              <Text style={styles.appleLabel}>Continuar con Apple</Text>
+              <Text style={styles.appleLabel}>{t('auth:common.continueWithApple')}</Text>
             </Pressable>
 
             {/* Google sign-in (rewrite 2026-06-21): ahora usa el flujo
@@ -601,7 +606,7 @@ export function SignupScreen() {
                 real. Ver el detalle en social-sign-in.ts. */}
             {googleAvailable ? (
               <Pressable
-                accessibilityLabel="Continuar con Google"
+                accessibilityLabel={t('auth:common.continueWithGoogle')}
                 accessibilityRole="button"
                 onPress={handleGoogleSignUp}
                 style={({ pressed }) => [
@@ -613,7 +618,7 @@ export function SignupScreen() {
               >
                 <GoogleIcon />
                 <Text style={[styles.googleLabel, { color: theme.colors.text }]}>
-                  Continuar con Google
+                  {t('auth:common.continueWithGoogle')}
                 </Text>
               </Pressable>
             ) : null}
@@ -621,21 +626,21 @@ export function SignupScreen() {
 
           <FadeInUp delay={300} reduced={reduced}>
             <Text style={[styles.fineprint, { color: theme.colors.textSoft }]}>
-              Al crear tu cuenta aceptas los{' '}
+              {t('auth:signup.fineprintPrefix')}{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => void Linking.openURL(TERMS_OF_SERVICE_URL)}
                 style={styles.fineprintLink}
               >
-                Términos
+                {t('auth:signup.fineprintTerms')}
               </Text>{' '}
-              y la{' '}
+              {t('auth:signup.fineprintAnd')}{' '}
               <Text
                 accessibilityRole="link"
                 onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
                 style={styles.fineprintLink}
               >
-                Privacidad
+                {t('auth:signup.fineprintPrivacy')}
               </Text>
               .
             </Text>
@@ -715,6 +720,7 @@ function SubmitCta({
   mutedLabel: string
   reduced: boolean
 }) {
+  const { t } = useTranslation()
   const progress = useSharedValue(canSubmit ? 1 : 0)
   const busy = useSharedValue(isSubmitting ? 1 : 0)
   const scale = useSharedValue(1)
@@ -748,7 +754,7 @@ function SubmitCta({
 
   return (
     <Pressable
-      accessibilityLabel="Crear cuenta"
+      accessibilityLabel={t('auth:signup.create')}
       accessibilityRole="button"
       accessibilityState={{ disabled: !canSubmit, busy: isSubmitting }}
       disabled={isSubmitting}
@@ -764,7 +770,7 @@ function SubmitCta({
     >
       <Animated.View style={[styles.submitCta, containerStyle]}>
         <Animated.Text style={[styles.submitLabel, labelStyle]}>
-          {isSubmitting ? 'Creando…' : 'Crear cuenta'}
+          {isSubmitting ? t('auth:signup.creating') : t('auth:signup.create')}
         </Animated.Text>
         <View style={styles.submitTrailing}>
           <Animated.View style={[StyleSheet.absoluteFillObject, styles.submitTrailingCenter, arrowStyle]}>

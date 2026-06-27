@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -7,6 +8,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
+import { weekdayLongFromMondayIndex } from '@/utils/date-format'
 
 interface GastosMonthCalendarProps {
   dayMoods: Record<number, GastosDayMood>
@@ -59,7 +61,12 @@ interface GastosMonthCalendarProps {
   noSpendMarkedDates?: Set<string>
 }
 
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+// Inicial de cada día (Lunes=0 … Domingo=6). La letra se deriva del idioma
+// activo (NO un array ES fijo) para que el encabezado siga al locale.
+const weekdayInitials = (): string[] =>
+  Array.from({ length: 7 }, (_, i) =>
+    weekdayLongFromMondayIndex(i).charAt(0).toUpperCase(),
+  )
 
 /**
  * Finds the concrete Date for a calendar day-of-month within the
@@ -235,6 +242,7 @@ function GridMode({
   inert?: boolean
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Build the week rows: lead with `firstWeekdayOffset` blanks, then the
   // cycle's days rendered with their real calendar day-of-month
   // (so a 20→20 cycle shows 20,21,22…30,1,2…19). Each cycle day
@@ -280,20 +288,20 @@ function GridMode({
       ]}
     >
       <View style={styles.header}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>TU MES EN UN VISTAZO</Text>
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>{t('gastos:calendar.eyebrow')}</Text>
           <View style={styles.legend}>
-            <LegendDot mood="green" label="bien" theme={theme} />
-            <LegendDot mood="amber" label="alerta" theme={theme} />
-            <LegendDot mood="red" label="exceso" theme={theme} />
+            <LegendDot mood="green" label={t('gastos:calendar.legend.good')} theme={theme} />
+            <LegendDot mood="amber" label={t('gastos:calendar.legend.warning')} theme={theme} />
+            <LegendDot mood="red" label={t('gastos:calendar.legend.over')} theme={theme} />
           </View>
         </View>
         <Text style={[styles.hint, { color: theme.colors.textSoft }]}>
           {inert
-            ? 'Cada día se va a colorear según tu gasto'
-            : 'Toca un día para filtrar sus gastos'}
+            ? t('gastos:calendar.hintInert')
+            : t('gastos:calendar.hintTap')}
         </Text>
         <View style={styles.weekdaysRow}>
-          {WEEKDAYS.map((d, i) => (
+          {weekdayInitials().map((d, i) => (
             <View key={i} style={styles.weekdayCell}>
               <Text style={[styles.weekdayText, { color: theme.colors.textSoft }]}>{d}</Text>
             </View>
@@ -383,6 +391,7 @@ function DayCell({
   isNoSpendMarked?: boolean
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const moodStyle = getMoodStyle(mood, theme.isDark)
   // In preview mode past cells are not tappable.
   const tappable = isPast && !inert
@@ -433,7 +442,7 @@ function DayCell({
       onPressOut={tappable ? press.onPressOut : undefined}
       disabled={!tappable}
       accessibilityRole="button"
-      accessibilityLabel={`Filtrar día ${day}`}
+      accessibilityLabel={t('gastos:calendar.filterDayA11y', { day })}
       // Layout-affecting styles van EN el Pressable porque es el child
       // directo de `gridRow` (flexDirection: row, gap: 6). Sin `flex: 1`
       // aquí, la cell colapsa al tamaño del contenido y rompe el grid
@@ -557,6 +566,7 @@ function FocusMode({
   hasNoSpendMark?: boolean
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Tres press hooks Emil-grade — uno por cada Pressable inline en
   // FocusMode. Tap-targets distintos así que escalas matched al peso:
   //   - focusCenter (72pt day number, área grande): 0.97 sutil
@@ -569,10 +579,10 @@ function FocusMode({
   const backChipPress = usePressScale({ pressedScale: 0.95 })
   const isToday = day === todayDay
   const moodLabel =
-    mood === 'green' ? 'Día tranquilo'
-      : mood === 'amber' ? 'Día de alerta'
-      : mood === 'red' ? 'Día de exceso'
-      : 'Sin movimientos'
+    mood === 'green' ? t('gastos:calendar.mood.calm')
+      : mood === 'amber' ? t('gastos:calendar.mood.warning')
+      : mood === 'red' ? t('gastos:calendar.mood.over')
+      : t('gastos:calendar.mood.none')
   const moodStyle = getMoodStyle(mood, theme.isDark)
 
   return (
@@ -588,7 +598,7 @@ function FocusMode({
       ]}
     >
       <View style={styles.header}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>DÍA SELECCIONADO</Text>
+          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>{t('gastos:calendar.focusEyebrow')}</Text>
           <View
             style={[
               styles.moodPill,
@@ -606,7 +616,7 @@ function FocusMode({
             onPressIn={centerPress.onPressIn}
             onPressOut={centerPress.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Volver al ciclo completo"
+            accessibilityLabel={t('gastos:calendar.backToCycleA11y')}
             // Pressable lleva el layout (flex:1 dentro de focusHero row).
             // Animated.View interno solo carga la transform de press
             // scale — sin doble flex:1 redundante.
@@ -617,7 +627,7 @@ function FocusMode({
               <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
                 {cycleLabel}
                 {isToday ? (
-                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{' · hoy'}</Text>
+                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{t('gastos:calendar.todaySuffix')}</Text>
                 ) : null}
               </Text>
             </Animated.View>
@@ -627,11 +637,11 @@ function FocusMode({
 
         <View style={[styles.focusStats, { borderTopColor: theme.colors.line }]}>
           <View>
-            <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>GASTADO</Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>{t('gastos:calendar.statSpent')}</Text>
             <Text style={[styles.statValue, { color: theme.colors.text }]}>{formatMoney(total)}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>MOVIMIENTOS</Text>
+            <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>{t('gastos:calendar.statMovements')}</Text>
             <Text style={[styles.statValue, { color: theme.colors.text }]}>{count}</Text>
           </View>
         </View>
@@ -642,7 +652,7 @@ function FocusMode({
             onPressIn={registerPress.onPressIn}
             onPressOut={registerPress.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Registrar gasto olvidado en este día"
+            accessibilityLabel={t('gastos:calendar.registerForgottenA11y')}
           >
             <Animated.View
               style={[
@@ -663,7 +673,7 @@ function FocusMode({
                 />
               </Svg>
               <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
-                Registrar gasto olvidado
+                {t('gastos:calendar.registerForgotten')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -678,7 +688,7 @@ function FocusMode({
             onPressIn={markPress.onPressIn}
             onPressOut={markPress.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Marcar este día como sin gastos"
+            accessibilityLabel={t('gastos:calendar.markNoSpendA11y')}
           >
             <Animated.View
               style={[
@@ -703,7 +713,7 @@ function FocusMode({
                 />
               </Svg>
               <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
-                Marcar día sin gastos
+                {t('gastos:calendar.markNoSpend')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -715,7 +725,7 @@ function FocusMode({
             onPressIn={unmarkPress.onPressIn}
             onPressOut={unmarkPress.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Revertir marca de día sin gastos"
+            accessibilityLabel={t('gastos:calendar.unmarkNoSpendA11y')}
           >
             <Animated.View
               style={[
@@ -739,7 +749,7 @@ function FocusMode({
                 />
               </Svg>
               <Text style={[styles.registerForgottenText, { color: theme.colors.text }]}>
-                Revertir marca de sin gastos
+                {t('gastos:calendar.unmarkNoSpend')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -751,7 +761,7 @@ function FocusMode({
             onPressIn={backChipPress.onPressIn}
             onPressOut={backChipPress.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Volver al ciclo completo"
+            accessibilityLabel={t('gastos:calendar.backToCycleA11y')}
           >
             <Animated.View
               style={[
@@ -769,7 +779,7 @@ function FocusMode({
                 />
               </Svg>
               <Text style={[styles.backChipText, { color: theme.colors.creamCard }]}>
-                Ciclo completo
+                {t('gastos:calendar.fullCycle')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -793,6 +803,7 @@ function ChevronBtn({
   bg: string
   border: string
 }) {
+  const { t } = useTranslation()
   const d = direction === 'prev' ? 'M15 6l-6 6 6 6' : 'M9 6l6 6-6 6'
   // Press scale solo cuando no está disabled. Cuando lo está, el
   // opacity 0.35 sigue siendo el feedback visual de estado.
@@ -805,7 +816,7 @@ function ChevronBtn({
       disabled={disabled}
       accessibilityState={{ disabled }}
       accessibilityRole="button"
-      accessibilityLabel={direction === 'prev' ? 'Día anterior' : 'Día siguiente'}
+      accessibilityLabel={direction === 'prev' ? t('gastos:calendar.prevDayA11y') : t('gastos:calendar.nextDayA11y')}
     >
       <Animated.View
         style={[

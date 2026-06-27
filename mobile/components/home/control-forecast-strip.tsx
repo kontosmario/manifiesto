@@ -1,17 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { clamp, formatCompactMoney, getSignalPalette } from '@/components/home/control-visual-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 
-const shortDateFormatter = new Intl.DateTimeFormat('es-AR', {
+const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
-const weekdayFormatter = new Intl.DateTimeFormat('es-AR', {
+const weekdayOptions: Intl.DateTimeFormatOptions = {
   weekday: 'short',
-})
+}
 
 export interface ControlForecastStripPoint {
   dateIso: string
@@ -30,6 +32,7 @@ export function ControlForecastStrip({
   points,
 }: ControlForecastStripProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   if (points.length === 0) {
     return null
@@ -45,9 +48,9 @@ export function ControlForecastStrip({
   return (
     <View style={styles.forecastWrap}>
       <View style={styles.forecastHeader}>
-        <Text style={[styles.forecastTitle, { color: theme.colors.text }]}>Radar de próximos días</Text>
+        <Text style={[styles.forecastTitle, { color: theme.colors.text }]}>{t('home:forecastStrip.title')}</Text>
         <Text style={[styles.forecastLegend, { color: theme.colors.textSoft }]}>
-          Marca: cap diario {currencyFormatter.format(dailyCap)}
+          {t('home:forecastStrip.legend', { cap: currencyFormatter.format(dailyCap) })}
         </Text>
       </View>
 
@@ -67,9 +70,11 @@ export function ControlForecastStrip({
             trackHeight - clamp(dailyCap / Math.max(maxProjectedSpend, 1)) * trackHeight
           const dayLabel =
             index === 0
-              ? 'Mañ'
-              : shortDateFormatter.format(pointDate)
-          const weekdayLabel = weekdayFormatter.format(pointDate).replace('.', '')
+              ? t('home:forecastStrip.tomorrowShort')
+              : getDateTimeFormat(shortDateOptions).format(pointDate)
+          const weekdayLabel = getDateTimeFormat(weekdayOptions)
+            .format(pointDate)
+            .replace('.', '')
 
           return (
             <View key={point.dateIso} style={styles.forecastItem}>

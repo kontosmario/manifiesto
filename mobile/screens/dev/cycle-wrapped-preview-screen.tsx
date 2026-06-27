@@ -22,6 +22,7 @@ export function CycleWrappedPreviewScreen() {
   return (
     <Screen
       title="Preview · Cierre de ciclo"
+      // @i18n-ignore (dev-only: pantalla de preview gated por __DEV__, copy interno de tooling)
       subtitle="Dispara el Manifiesto Wrapped con datos sintéticos. Mismo path que el flow real post-cobro."
       canGoBack
     >
@@ -116,10 +117,12 @@ interface Preset {
   payload: CycleWrappedPayload
 }
 
+// @i18n-ignore (dev-only: presets sintéticos para el preview gated por __DEV__, no es copy de producción)
 const PRESETS: Preset[] = [
   {
     id: 'positive',
     title: 'Cerraste con margen',
+    // @i18n-ignore (dev-only: subtítulo sintético de preset de preview, no es copy de producción)
     subtitle: 'Ahorraste 28% del ingreso · 12 gastos · -8% vs anterior',
     icon: 'trending-up',
     accent: { bg: 'rgba(60,150,40,0.16)', fg: '#1F590D' },
@@ -148,6 +151,7 @@ const PRESETS: Preset[] = [
   {
     id: 'even',
     title: 'Cerraste empatado',
+    // @i18n-ignore (dev-only: subtítulo sintético de preset de preview, no es copy de producción)
     subtitle: 'Gastaste lo justo · 18 gastos · igual que el anterior',
     icon: 'horizontal-rule',
     accent: { bg: 'rgba(60,60,60,0.10)', fg: '#3A3A3A' },

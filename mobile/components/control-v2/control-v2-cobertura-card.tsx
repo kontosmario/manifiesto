@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -58,6 +59,7 @@ function ControlV2CoberturaCardImpl({
   cycleStartingBalanceOverride,
 }: ControlV2CoberturaCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
 
   // Day breakdown (rounded so the labels stay clean integers).
@@ -99,9 +101,11 @@ function ControlV2CoberturaCardImpl({
   // read inside the positive band, so power users see "Excelente" on
   // <35% — but the visual treatment stays unified.
   const positiveContext =
-    fijosRatioPct < 35 ? 'Excelente' : 'Saludable'
-  const cautionContext = 'Alto'
-  const criticalContext = 'Crítico'
+    fijosRatioPct < 35
+      ? t('control:cobertura.ctxExcelente')
+      : t('control:cobertura.ctxSaludable')
+  const cautionContext = t('control:cobertura.ctxAlto')
+  const criticalContext = t('control:cobertura.ctxCritico')
 
   const tokens = getStateTokens(state, theme)
   const palette = {
@@ -145,7 +149,7 @@ function ControlV2CoberturaCardImpl({
     if (ahorroMes === 0 && ingresoMes > 0) {
       return {
         icon: 'savings' as const,
-        text: 'No definiste cuánto ahorrar. Configura tu meta mensual en Ajustes para que la app la respete.',
+        text: t('control:cobertura.hintNoSavings'),
       }
     }
     switch (state) {
@@ -154,18 +158,26 @@ function ControlV2CoberturaCardImpl({
           icon: tokens.icon,
           text:
             fijosRatioPct < 35
-              ? `Excelente: ${Math.round(fijosRatioPct)}% va a fijos. Tu margen es amplio.`
-              : `Saludable: ${Math.round(fijosRatioPct)}% va a fijos. Estás dentro del rango ideal (35-50%).`,
+              ? t('control:cobertura.hintExcelente', {
+                  pct: Math.round(fijosRatioPct),
+                })
+              : t('control:cobertura.hintSaludable', {
+                  pct: Math.round(fijosRatioPct),
+                }),
         }
       case 'caution':
         return {
           icon: tokens.icon,
-          text: `Alto: ${Math.round(fijosRatioPct)}% se va a fijos. Revisa si puedes renegociar suscripciones o servicios.`,
+          text: t('control:cobertura.hintAlto', {
+            pct: Math.round(fijosRatioPct),
+          }),
         }
       case 'critical':
         return {
           icon: tokens.icon,
-          text: `Crítico: ${Math.round(fijosRatioPct)}% va a fijos. Hay que reducir o renegociar para tener margen real.`,
+          text: t('control:cobertura.hintCritico', {
+            pct: Math.round(fijosRatioPct),
+          }),
         }
     }
   })()
@@ -184,7 +196,7 @@ function ControlV2CoberturaCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={palette.fg} glow={palette.fg} />
           <Text style={[styles.eyebrow, { color: palette.fg }]} numberOfLines={1}>
-            TU SUELDO EN DÍAS
+            {t('control:cobertura.eyebrow')}
           </Text>
           <View
             style={[
@@ -200,30 +212,36 @@ function ControlV2CoberturaCardImpl({
               style={[styles.statePillText, { color: palette.fg }]}
               numberOfLines={1}
             >
-              {tokens.label} · {Math.round(fijosRatioPct)}% fijos
+              {t('control:cobertura.statePill', {
+                label: tokens.label,
+                pct: Math.round(fijosRatioPct),
+              })}
             </Text>
           </View>
         </View>
 
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          De los <Text style={styles.headlineStrong}>{diasMes} días</Text> del
-          ciclo, los primeros{' '}
+          {t('control:cobertura.headlinePrefix')}
+          <Text style={styles.headlineStrong}>
+            {t('control:cobertura.headlineDias', { days: diasMes })}
+          </Text>
+          {t('control:cobertura.headlineMid')}
           <Text style={[styles.headlineStrong, { color: fijosTone.solid }]}>
-            {coberturaFijos} pagan tus fijos
+            {t('control:cobertura.headlineFijos', { days: coberturaFijos })}
           </Text>
           {coberturaAhorro > 0 ? (
             <>
-              ,{' '}
+              {', '}
               <Text
                 style={[styles.headlineStrong, { color: ahorroTone.solid }]}
               >
-                {coberturaAhorro} van a tu ahorro
+                {t('control:cobertura.headlineAhorro', { days: coberturaAhorro })}
               </Text>
             </>
           ) : null}{' '}
-          y{' '}
+          {t('control:cobertura.headlineAnd')}{' '}
           <Text style={[styles.headlineStrong, { color: libreTone.solid }]}>
-            {coberturaLibre} son libres
+            {t('control:cobertura.headlineLibre', { days: coberturaLibre })}
           </Text>
           .
         </Text>
@@ -250,11 +268,9 @@ function ControlV2CoberturaCardImpl({
             <Text
               style={[styles.overrideText, { color: theme.colors.textMuted }]}
             >
-              Trabajando con{' '}
-              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-                {formatMoneyShort(cycleStartingBalanceOverride)}
-              </Text>{' '}
-              confirmados — el split refleja el sueldo bruto.
+              {t('control:cobertura.overrideWorkingWith', {
+                amount: formatMoneyShort(cycleStartingBalanceOverride),
+              })}
             </Text>
           </View>
         ) : null}
@@ -312,29 +328,38 @@ function ControlV2CoberturaCardImpl({
         <View style={styles.statsRow}>
           <SegmentStat
             dotColor={fijosTone.solid}
-            label="Fijos"
+            label={t('control:cobertura.statFijos')}
             value={formatMoneyShort(fijosMes)}
-            sub={`${coberturaFijos}d · ${Math.round(fijosPct)}%`}
+            sub={t('control:cobertura.statSub', {
+              days: coberturaFijos,
+              pct: Math.round(fijosPct),
+            })}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <SegmentStat
             dotColor={ahorroTone.solid}
-            label="Ahorro"
+            label={t('control:cobertura.statAhorro')}
             value={formatMoneyShort(ahorroMes)}
             sub={
               ahorroMes > 0
-                ? `${coberturaAhorro}d · ${Math.round(ahorroPct)}%`
-                : 'sin definir'
+                ? t('control:cobertura.statSub', {
+                    days: coberturaAhorro,
+                    pct: Math.round(ahorroPct),
+                  })
+                : t('control:cobertura.statSinDefinir')
             }
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <SegmentStat
             dotColor={libreTone.solid}
-            label="Libre"
+            label={t('control:cobertura.statLibre')}
             value={formatMoneyShort(libreMes)}
-            sub={`${coberturaLibre}d · ${Math.round(librePct)}%`}
+            sub={t('control:cobertura.statSub', {
+              days: coberturaLibre,
+              pct: Math.round(librePct),
+            })}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />

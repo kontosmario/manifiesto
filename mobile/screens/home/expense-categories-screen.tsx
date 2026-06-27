@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { BrandedPanel } from '@/components/ui/branded-panel'
@@ -24,6 +25,7 @@ import { useExpenses } from '@/features/expenses/use-expenses'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -34,6 +36,7 @@ interface ExpenseCategoriesScreenProps {
 }
 
 export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenProps) {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   const headerPalette = buildScreenHeaderPalette(theme)
   const categoriesQuery = useCategories(familyId)
@@ -79,14 +82,18 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   )
   const managedCategory = categoryById.get(managedCategoryId) ?? null
   const selectedCount = managedCategory ? categoryExpenseCountById.get(managedCategory.id) ?? 0 : 0
-  const canDeleteManagedCategory = Boolean(managedCategory) && selectedCount === 0
+  // Solo las categorías CUSTOM (sin template_id) se editan/borran. Las standard
+  // son del catálogo global (read-only). Ver category-architecture-refactor.md.
+  const isManagedCustom = Boolean(managedCategory) && managedCategory?.template_id == null
+  const canRenameManagedCategory = isManagedCustom
+  const canDeleteManagedCategory = isManagedCustom && selectedCount === 0
   const isBusy =
     createCategoryMutation.isPending ||
     renameCategoryMutation.isPending ||
     deleteCategoryMutation.isPending
 
   const showError = (error: unknown, fallbackMessage: string) => {
-    Alert.alert('Algo salió mal', getErrorMessage(error, fallbackMessage))
+    Alert.alert(t('gastos:errors.somethingWrong'), getErrorMessage(error, fallbackMessage))
   }
 
   return (
@@ -94,8 +101,8 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
       <Screen
         canGoBack
         contentContainerStyle={styles.screenContent}
-        subtitle="Administra el catálogo con la misma experiencia modal de Agregar gasto."
-        title="Categorias"
+        subtitle={t('gastos:categoriesScreen.subtitle')}
+        title={t('gastos:categoriesScreen.title')}
         titleColor={headerPalette.titleColor}
       >
         <View style={styles.sectionStack}>
@@ -105,9 +112,9 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
             <ErrorState
               description={getErrorMessage(
                 categoriesQuery.error,
-                'No pudimos cargar las categorias del hogar.',
+                t('gastos:categoriesScreen.loadErrorDescription'),
               )}
-              title="No pudimos abrir categorías"
+              title={t('gastos:categoriesScreen.loadErrorTitle')}
               onAction={() => {
                 void Promise.all([categoriesQuery.refetch(), expensesQuery.refetch()])
               }}
@@ -117,10 +124,10 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
               <BrandedPanel style={styles.formCard}>
                 <View style={styles.sectionIntro}>
                   <Text style={[styles.sectionEyebrow, { color: theme.colors.primaryStrong }]}>
-                    Catalogo
+                    {t('gastos:categoriesScreen.catalogEyebrow')}
                   </Text>
                   <Text style={[styles.sectionTitle, theme.typography.sectionTitle, { color: theme.colors.text }]}>
-                    Ordena cómo se clasifica el gasto
+                    {t('gastos:categoriesScreen.catalogTitle')}
                   </Text>
                 </View>
 
@@ -134,21 +141,19 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   ]}
                 >
                   <Text style={[styles.selectionLabel, { color: theme.colors.primaryStrong }]}>
-                    Categoría seleccionada
+                    {t('gastos:categoriesScreen.selectedLabel')}
                   </Text>
                   <Text style={[styles.selectionValue, { color: theme.colors.text }]}>
-                    {managedCategory?.name ?? 'Elige una categoría para administrarla'}
+                    {managedCategory?.displayName ?? t('gastos:categoriesScreen.pickToManage')}
                   </Text>
                   <Text style={[styles.selectionMeta, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
                     {managedCategory
-                      ? `${selectedCount} ${
-                          selectedCount === 1 ? 'gasto asociado' : 'gastos asociados'
-                        }${selectedCategoryId === managedCategory.id ? ' · usada en el filtro actual' : ''}`
-                      : 'Toca una fila para renombrar o borrar la categoría correcta.'}
+                      ? `${t('gastos:categoriesScreen.associatedExpenses', { count: selectedCount })}${selectedCategoryId === managedCategory.id ? t('gastos:categoriesScreen.usedInFilterSuffix') : ''}`
+                      : t('gastos:categoriesScreen.tapRowHint')}
                   </Text>
                   {managedCategory && selectedCount > 0 ? (
                     <Text style={[styles.selectionWarning, { color: theme.colors.warning }]}>
-                      Esta categoría no se puede borrar porque ya tiene movimientos.
+                      {t('gastos:categoriesScreen.cannotDeleteWarning')}
                     </Text>
                   ) : null}
                 </View>
@@ -159,7 +164,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   <View style={styles.categoryList}>
                     {categories.map((category) => (
                       <Pressable
-                        accessibilityLabel={`Gestionar categoría ${category.name}`}
+                        accessibilityLabel={t('gastos:categoriesScreen.manageCategoryA11y', { name: category.displayName })}
                         accessibilityRole="button"
                         android_ripple={{
                           color: withAlpha(theme.colors.primary, 0.12),
@@ -188,19 +193,18 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                         <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
                         <View style={styles.categoryCopy}>
                           <Text style={[styles.categoryName, { color: theme.colors.text }]}>
-                            {category.name}
+                            {category.displayName}
                           </Text>
                           <Text style={[styles.categoryMeta, { color: theme.colors.textMuted }]}>
-                            {`${categoryExpenseCountById.get(category.id) ?? 0} ${
-                              (categoryExpenseCountById.get(category.id) ?? 0) === 1
-                                ? 'gasto'
-                                : 'gastos'
-                            } · creada ${new Date(category.created_at).toLocaleDateString('es-AR')}`}
+                            {t('gastos:categoriesScreen.categoryMeta', {
+                              count: categoryExpenseCountById.get(category.id) ?? 0,
+                              date: new Date(category.created_at).toLocaleDateString(getIntlLocale()),
+                            })}
                           </Text>
                         </View>
                         {selectedCategoryId === category.id ? (
                           <Text style={[styles.categoryBadge, { color: theme.colors.primaryStrong }]}>
-                            Filtro
+                            {t('gastos:categoriesScreen.filterBadge')}
                           </Text>
                         ) : null}
                       </Pressable>
@@ -211,7 +215,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
 
               <View style={styles.actions}>
                 <AppButton
-                  label="Nueva categoria"
+                  label={t('gastos:categoriesScreen.newCategory')}
                   loading={createCategoryMutation.isPending}
                   onPress={() => {
                     setEditingCategory(null)
@@ -220,11 +224,11 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   variant="secondary"
                 />
                 <AppButton
-                  disabled={!managedCategory}
-                  label="Renombrar seleccionada"
+                  disabled={!canRenameManagedCategory}
+                  label={t('gastos:categoriesScreen.renameSelected')}
                   loading={renameCategoryMutation.isPending}
                   onPress={() => {
-                    if (!managedCategory) {
+                    if (!managedCategory || !canRenameManagedCategory) {
                       return
                     }
 
@@ -235,7 +239,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                 />
                 <AppButton
                   disabled={!canDeleteManagedCategory}
-                  label="Borrar seleccionada"
+                  label={t('gastos:categoriesScreen.deleteSelected')}
                   loading={deleteCategoryMutation.isPending}
                   onPress={() => {
                     if (!managedCategory || !canDeleteManagedCategory) {
@@ -243,17 +247,17 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                     }
 
                     Alert.alert(
-                      'Borrar categoria',
-                      `Se va a borrar "${managedCategory.name}" si no tiene gastos cargados.`,
+                      t('gastos:categoriesScreen.deleteAlertTitle'),
+                      t('gastos:categoriesScreen.deleteAlertMessage', { name: managedCategory.name }),
                       [
-                        { style: 'cancel', text: 'Cancelar' },
+                        { style: 'cancel', text: t('common:actions.cancel') },
                         {
                           style: 'destructive',
-                          text: 'Borrar',
+                          text: t('gastos:history.deleteConfirm'),
                           onPress: () => {
                             deleteCategoryMutation.mutate(managedCategory.id, {
                               onError: (error: unknown) => {
-                                showError(error, 'No se pudo borrar la categoria.')
+                                showError(error, t('gastos:categoriesScreen.deleteFailed'))
                               },
                               onSuccess: () => {
                                 if (selectedCategoryId === managedCategory.id) {
@@ -285,15 +289,15 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
           onSubmit={async (name: string) => {
             await createCategoryMutation.mutateAsync(name, {
               onError: (error: unknown) => {
-                showError(error, 'No se pudo crear la categoria.')
+                showError(error, t('gastos:categoriesScreen.createFailed'))
               },
               onSuccess: () => {
                 setCategoryEditorMode(null)
               },
             })
           }}
-          submitLabel="Crear"
-          title="Nueva categoria"
+          submitLabel={t('gastos:categoriesScreen.create')}
+          title={t('gastos:categoriesScreen.newCategory')}
           visible
         />
       ) : null}
@@ -312,7 +316,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
               },
               {
                 onError: (error: unknown) => {
-                  showError(error, 'No se pudo renombrar la categoria.')
+                  showError(error, t('gastos:categoriesScreen.renameFailed'))
                 },
                 onSuccess: () => {
                   setCategoryEditorMode(null)
@@ -320,8 +324,8 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
               },
             )
           }}
-          submitLabel="Guardar"
-          title="Renombrar categoria"
+          submitLabel={t('common:actions.save')}
+          title={t('gastos:categoriesScreen.renameTitle')}
           visible
         />
       ) : null}

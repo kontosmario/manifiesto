@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -41,6 +42,7 @@ interface AboutScreenProps {
  */
 export function AboutScreen({ userId }: AboutScreenProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isNavSettled = useIsNavigationSettled()
 
   const appVersion =
@@ -58,21 +60,21 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     if (!hasPrivacy) return
     void Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
       Alert.alert(
-        'No pudimos abrir el navegador',
-        'Prueba copiar el enlace manualmente: ' + PRIVACY_POLICY_URL,
+        t('settings:about.browserErrorTitle'),
+        t('settings:about.browserErrorMessage', { url: PRIVACY_POLICY_URL }),
       )
     })
-  }, [hasPrivacy])
+  }, [hasPrivacy, t])
 
   const handleOpenTerms = useCallback(() => {
     if (!hasTerms) return
     void Linking.openURL(TERMS_OF_SERVICE_URL).catch(() => {
       Alert.alert(
-        'No pudimos abrir el navegador',
-        'Prueba copiar el enlace manualmente: ' + TERMS_OF_SERVICE_URL,
+        t('settings:about.browserErrorTitle'),
+        t('settings:about.browserErrorMessage', { url: TERMS_OF_SERVICE_URL }),
       )
     })
-  }, [hasTerms])
+  }, [hasTerms, t])
 
   const handleOpenSupport = useCallback(() => {
     if (!hasSupport) return
@@ -84,11 +86,11 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     })
     void Linking.openURL(url).catch(() => {
       Alert.alert(
-        'No pudimos abrir tu mail',
-        `Escríbenos a ${SUPPORT_EMAIL} desde la app de correo que prefieras.`,
+        t('settings:about.mailErrorTitle'),
+        t('settings:about.mailErrorMessage', { email: SUPPORT_EMAIL }),
       )
     })
-  }, [appVersion, buildNumber, hasSupport, userId])
+  }, [appVersion, buildNumber, hasSupport, userId, t])
 
   // El grupo "Información legal" se renderiza solo si al menos una URL
   // está configurada. Cuando ambas están vacías, la sección entera
@@ -101,8 +103,8 @@ export function AboutScreen({ userId }: AboutScreenProps) {
       backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
       canGoBack
       contentContainerStyle={styles.screenContent}
-      subtitle="Versión, información legal y contacto de soporte."
-      title="Acerca de"
+      subtitle={t('settings:about.subtitle')}
+      title={t('settings:about.title')}
     >
       <RiseViewGate skip={!isNavSettled}>
         <View style={styles.sectionStack}>
@@ -135,23 +137,23 @@ export function AboutScreen({ userId }: AboutScreenProps) {
               como isLast para que no muestre el divisor inferior. */}
           {showLegalGroup ? (
             <RiseView delay={80}>
-              <SettingsGroup title="Información legal">
+              <SettingsGroup title={t('settings:about.legalGroup')}>
                 {hasPrivacy ? (
                   <SettingsRow
                     icon="policy"
                     isLast={!hasTerms}
-                    label="Política de privacidad"
+                    label={t('settings:about.privacyPolicy')}
                     onPress={handleOpenPrivacy}
-                    value="Abrir"
+                    value={t('settings:about.open')}
                   />
                 ) : null}
                 {hasTerms ? (
                   <SettingsRow
                     icon="description"
                     isLast
-                    label="Términos de uso"
+                    label={t('settings:about.termsOfUse')}
                     onPress={handleOpenTerms}
-                    value="Abrir"
+                    value={t('settings:about.open')}
                   />
                 ) : null}
               </SettingsGroup>
@@ -162,16 +164,16 @@ export function AboutScreen({ userId }: AboutScreenProps) {
           {hasSupport ? (
             <RiseView delay={160}>
               <SettingsGroup
-                footer={`Te respondemos por mail a ${SUPPORT_EMAIL}.`}
-                title="Soporte"
+                footer={t('settings:about.supportFooter', { email: SUPPORT_EMAIL })}
+                title={t('settings:about.supportGroup')}
               >
                 <SettingsRow
-                  helper="Incluye tu versión + plataforma para hacer triage más rápido."
+                  helper={t('settings:about.contactHelper')}
                   icon="mail-outline"
                   isLast
-                  label="Contactar a soporte"
+                  label={t('settings:about.contactSupport')}
                   onPress={handleOpenSupport}
-                  value="Escribir"
+                  value={t('settings:about.write')}
                 />
               </SettingsGroup>
             </RiseView>
@@ -180,7 +182,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
           {/* FOOTER cálido — refuerza la identidad del producto. */}
           <RiseView delay={240}>
             <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
-              Hecho con ♥ para Latinoamérica
+              {t('settings:about.madeWithLove')}
             </Text>
           </RiseView>
         </View>

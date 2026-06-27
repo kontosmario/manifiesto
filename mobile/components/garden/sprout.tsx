@@ -1,5 +1,5 @@
 import { memo, useEffect } from 'react'
-import { StyleSheet } from 'react-native'
+import { Image, StyleSheet } from 'react-native'
 import Svg, { Circle, Ellipse, Path } from 'react-native-svg'
 import Animated, {
   Easing,
@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { FernMark } from '@/components/billing/fern-mark'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import type { BroteStage } from '@/features/garden/garden-model'
 
@@ -70,19 +71,23 @@ function SproutGlyph({
   const c = GLYPH[tone]
   switch (stage) {
     case 'seed':
+      // Sticker del owner — semilla (estado más temprano). Mismo box 22×22 que
+      // el glyph SVG anterior; el growIn lo aplica el Animated.View que envuelve.
       return (
-        <Svg viewBox="0 0 40 44" width={22} height={22} style={[styles.seed]}>
-          <Ellipse cx={20} cy={26} rx={6.5} ry={9} rotation={20} originX={20} originY={26} fill={c.seedFill} />
-          <Path d="M16 24 Q20 18 25 21" stroke={c.seedStem} strokeWidth={2} fill="none" strokeLinecap="round" />
-        </Svg>
+        <Image
+          source={CATEGORY_ICONS['crecimiento/semilla']}
+          style={[styles.seedImg, styles.seed]}
+          resizeMode="contain"
+        />
       )
     case 'germ':
+      // Sticker del owner — mini brote (etapa intermedia, 2 hojas). Box 27×27.
       return (
-        <Svg viewBox="0 0 40 44" width={27} height={27} style={[styles.germ]}>
-          <Path d="M20 40 V21" stroke={c.germStem} strokeWidth={2.4} strokeLinecap="round" />
-          <Ellipse cx={12.5} cy={21} rx={7.5} ry={4.6} rotation={-36} originX={12.5} originY={21} fill={c.germLeaf1} />
-          <Ellipse cx={27.5} cy={18.5} rx={8} ry={5} rotation={33} originX={27.5} originY={18.5} fill={c.germLeaf2} />
-        </Svg>
+        <Image
+          source={CATEGORY_ICONS['crecimiento/mini-brote']}
+          style={[styles.germImg, styles.germ]}
+          resizeMode="contain"
+        />
       )
     case 'fern':
       return <FernMark variant="cream" size={fernSize} style={styles.fern} />
@@ -172,6 +177,9 @@ const styles = StyleSheet.create({
   bloom: { marginBottom: 3 },
   recovered: { marginBottom: 5 },
   missed: { marginBottom: 5 },
+  // Tamaños fijos para los stickers PNG (el <Svg> los tomaba por prop width/height).
+  seedImg: { width: 22, height: 22 },
+  germImg: { width: 27, height: 27 },
 })
 
 export const Sprout = memo(SproutImpl)

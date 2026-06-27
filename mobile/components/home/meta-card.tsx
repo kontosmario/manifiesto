@@ -1,5 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
   Easing,
@@ -15,6 +16,7 @@ import { FloatView } from '@/components/home/animated/float-view'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
+import { GoalIcon } from '@/components/savings-goals/goal-icon'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -68,6 +70,7 @@ function MetaCardImpl({
   suggestedAmount,
 }: MetaCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const isDark = theme.isDark
   // Tactile scale on the "Agregar ahorro" CTA — opacity dimming alone
@@ -128,8 +131,8 @@ function MetaCardImpl({
         onError: (err) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos sumar el aporte',
-            err instanceof Error ? err.message : 'Reintenta en un momento.',
+            t('home:metaCard.addError'),
+            err instanceof Error ? err.message : t('home:metaCard.retrySoon'),
           )
         },
       },
@@ -137,18 +140,25 @@ function MetaCardImpl({
   }
 
   const chipLabel = isComplete
-    ? '¡Completa!'
+    ? t('home:metaCard.complete')
     : goal.targetMonths != null
-      ? `${pct}% · ~${goal.targetMonths} ${goal.targetMonths === 1 ? 'mes' : 'meses'}`
-      : `${pct}% logrado`
+      ? t('home:metaCard.chipWithMonths', {
+          pct,
+          months: t('home:metaCard.months', { count: goal.targetMonths }),
+        })
+      : t('home:metaCard.chipAchieved', { pct })
 
   return (
     <RiseView delay={300}>
       <View
         accessibilityLabel={
           isComplete
-            ? `Tu meta ${goal.title} está completa`
-            : `Tu meta ${goal.title}: ${pct} por ciento logrado, faltan ${formatMoneyShort(remaining)}`
+            ? t('home:metaCard.completeAccessibility', { title: goal.title })
+            : t('home:metaCard.progressAccessibility', {
+                title: goal.title,
+                pct,
+                remaining: formatMoneyShort(remaining),
+              })
         }
         style={[
           styles.card,
@@ -172,7 +182,7 @@ function MetaCardImpl({
                   numberOfLines={1}
                   style={[styles.label, { color: accentFg }]}
                 >
-                  TU META · {goal.title.toUpperCase()}
+                  {t('home:metaCard.eyebrow', { title: goal.title.toUpperCase() })}
                 </Text>
               </View>
               <View
@@ -200,11 +210,11 @@ function MetaCardImpl({
                   style={[styles.amount, { color: theme.colors.text }]}
                 />
                 <Text style={[styles.goalText, { color: theme.colors.textMuted }]}>
-                  Objetivo · {formatMoneyShort(goal.goalAmount)}
+                  {t('home:metaCard.objective', { amount: formatMoneyShort(goal.goalAmount) })}
                 </Text>
               </View>
               <FloatView amplitude={4} periodMs={3000}>
-                <Text style={styles.emoji}>{goal.emoji}</Text>
+                <GoalIcon value={goal.emoji} size={34} emojiStyle={styles.emoji} />
               </FloatView>
             </View>
           </RiseView>
@@ -242,14 +252,14 @@ function MetaCardImpl({
                   style={[styles.footerText, { color: accentFg, flex: 1 }]}
                   numberOfLines={1}
                 >
-                  <Text style={styles.footerStrong}>¡Lo lograste!</Text> Disfruta tu meta.
+                  <Text style={styles.footerStrong}>{t('home:metaCard.youDidIt')}</Text> {t('home:metaCard.enjoyGoal')}
                 </Text>
               ) : (
                 <Text
                   style={[styles.footerText, { color: theme.colors.textMuted }]}
                   numberOfLines={1}
                 >
-                  Faltan{' '}
+                  {t('home:metaCard.remaining')}{' '}
                   <Text style={[styles.footerStrong, { color: theme.colors.text }]}>
                     {formatMoneyShort(remaining)}
                   </Text>
@@ -262,7 +272,7 @@ function MetaCardImpl({
                   onPressIn={quickAddPress.onPressIn}
                   onPressOut={quickAddPress.onPressOut}
                   accessibilityRole="button"
-                  accessibilityLabel="Agregar ahorro a esta meta"
+                  accessibilityLabel={t('home:metaCard.addSavingsAccessibility')}
                   hitSlop={6}
                 >
                   <Animated.View
@@ -277,7 +287,7 @@ function MetaCardImpl({
                   >
                     <MaterialIcons name="savings" size={14} color={accentFg} />
                     <Text style={[styles.actionPillText, { color: accentFg }]}>
-                      Agregar ahorro
+                      {t('home:metaCard.addSavings')}
                     </Text>
                   </Animated.View>
                 </Pressable>

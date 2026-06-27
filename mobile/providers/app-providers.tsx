@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { MotionPreferenceProvider } from '@/features/preferences/motion-preference-provider'
+import { LanguageProvider } from '@/features/preferences/language-provider'
 import { TourProvider } from '@/features/tours'
 import { queryClient, queryPersister, queryPersistOptions } from '@/lib/query-client'
 import { AppThemeProvider, useAppTheme } from '@/theme/theme-provider'
@@ -43,6 +44,11 @@ export function AppProviders({ children }: PropsWithChildren) {
           persistOptions={{ persister: queryPersister, ...queryPersistOptions }}
         >
           <AppThemeProvider>
+            {/* LanguageProvider: idioma del sistema por defecto + override
+                manual (ES/EN/Sistema) persistido en persistent-kv, igual que
+                el tema. Mantiene i18next sincronizado. Montado alto para que
+                cualquier consumidor pueda usar `useTranslation`/`t`. */}
+            <LanguageProvider>
             {/* MotionPreferenceProvider exposes the user's animations
                 preference ('auto' | 'always' | 'never') and persists
                 it across launches. `useReducedMotion()` reads from it
@@ -64,6 +70,7 @@ export function AppProviders({ children }: PropsWithChildren) {
                 <TourProvider>{children}</TourProvider>
               </BottomSheetModalProvider>
             </MotionPreferenceProvider>
+            </LanguageProvider>
           </AppThemeProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>

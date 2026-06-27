@@ -1,6 +1,7 @@
 /**
  * Pure derivations used by the Home screen. No React, no side effects.
  */
+import i18n from '@/lib/i18n'
 
 export type DashboardErrorKind = 'network' | 'server' | 'unknown'
 
@@ -107,10 +108,10 @@ function normalizeMidnight(date: Date): Date {
 }
 
 export function getGreeting(hour: number): string {
-  if (hour < 6) return 'Buenas noches'
-  if (hour < 13) return 'Buen día'
-  if (hour < 20) return 'Buenas tardes'
-  return 'Buenas noches'
+  if (hour < 6) return i18n.t('home:greeting.night')
+  if (hour < 13) return i18n.t('home:greeting.morning')
+  if (hour < 20) return i18n.t('home:greeting.afternoon')
+  return i18n.t('home:greeting.night')
 }
 
 /** Tope de caracteres del nombre mostrado en el saludo del Home. Es la
@@ -136,7 +137,7 @@ export const GREETING_NAME_MAX_CHARS = 22
  */
 export function getGreetingName(displayName?: string | null): string {
   const cleaned = (displayName ?? '').replace(/\s+/g, ' ').trim()
-  if (!cleaned) return 'Usuario'
+  if (!cleaned) return i18n.t('home:greeting.fallbackName')
   const givenNames = cleaned.split(' ').slice(0, 2).join(' ')
   if (givenNames.length <= GREETING_NAME_MAX_CHARS) return givenNames
   return `${givenNames.slice(0, GREETING_NAME_MAX_CHARS - 1).trimEnd()}…`

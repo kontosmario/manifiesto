@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -41,13 +42,6 @@ export interface BaseMonthCalendarProps {
   accent?: string
 }
 
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-
-const MONTH_NAMES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
-]
-
 export function BaseMonthCalendar({
   initialYear,
   initialMonth,
@@ -59,6 +53,9 @@ export function BaseMonthCalendar({
   accent,
 }: BaseMonthCalendarProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
+  const weekdays = t('states:calendar.weekdays', { returnObjects: true }) as string[]
+  const monthNames = t('states:calendar.months', { returnObjects: true }) as string[]
   const accentColor = accent ?? theme.colors.primary
   const selectedNumColor = theme.isDark ? '#0A1410' : '#F6FBEF'
 
@@ -105,19 +102,19 @@ export function BaseMonthCalendar({
           onPress={goPrev}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Mes anterior"
+          accessibilityLabel={t('states:calendar.prevMonth')}
           style={({ pressed }) => [styles.chevron, pressed && styles.chevronPressed]}
         >
           <MaterialIcons name="chevron-left" size={22} color={theme.colors.text} />
         </Pressable>
         <Text style={[styles.monthLabel, { color: theme.colors.text }]}>
-          {MONTH_NAMES[month]} {year}
+          {monthNames[month]} {year}
         </Text>
         <Pressable
           onPress={goNext}
           hitSlop={10}
           accessibilityRole="button"
-          accessibilityLabel="Mes siguiente"
+          accessibilityLabel={t('states:calendar.nextMonth')}
           style={({ pressed }) => [styles.chevron, pressed && styles.chevronPressed]}
         >
           <MaterialIcons name="chevron-right" size={22} color={theme.colors.text} />
@@ -125,7 +122,7 @@ export function BaseMonthCalendar({
       </View>
 
       <View style={styles.weekdayRow}>
-        {WEEKDAYS.map((w, idx) => (
+        {weekdays.map((w, idx) => (
           <View key={`h-${idx}`} style={styles.weekdayCell}>
             <Text style={[styles.weekdayText, { color: theme.colors.textMuted }]}>{w}</Text>
           </View>
@@ -147,7 +144,7 @@ export function BaseMonthCalendar({
                 disabled={!day.selectable}
                 onPress={() => handlePick(day)}
                 accessibilityRole="button"
-                accessibilityLabel={`Día ${day.dayOfMonth}`}
+                accessibilityLabel={t('states:calendar.dayLabel', { day: day.dayOfMonth })}
                 accessibilityState={{ selected: true, disabled: !day.selectable }}
                 style={styles.cell}
               >
@@ -182,7 +179,7 @@ export function BaseMonthCalendar({
               disabled={!day.selectable}
               onPress={() => handlePick(day)}
               accessibilityRole="button"
-              accessibilityLabel={`Día ${day.dayOfMonth}`}
+              accessibilityLabel={t('states:calendar.dayLabel', { day: day.dayOfMonth })}
               accessibilityState={{ selected: false, disabled: !day.selectable }}
               style={({ pressed }) => [
                 styles.cell,

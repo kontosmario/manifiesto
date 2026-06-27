@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Redirect } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { useAppLockState } from '@/features/auth/app-lock-state'
 import { authFlowLog } from '@/lib/auth-flow-logger'
@@ -15,6 +16,7 @@ interface RequireAuthProps {
 }
 
 export function RequireAuth({ children }: RequireAuthProps) {
+  const { t } = useTranslation()
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
   const userId = session?.user.id
@@ -36,7 +38,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
 
   if (isLoading) {
     authFlowLog('require-auth', 'render BlockingScreenView (loading)')
-    return <BlockingScreenView message="Preparando tu espacio..." />
+    return <BlockingScreenView message={t('states:loading.preparingSpace')} />
   }
 
   if (!session || !userId) {
@@ -77,13 +79,14 @@ export function RequireGuest({
   allowFamilylessSession?: boolean
   children: ReactNode
 }) {
+  const { t } = useTranslation()
   const sessionQuery = useAuthSession()
   const session = sessionQuery.data ?? null
   const isUnlocked = useAppLockState()
 
   if (sessionQuery.isLoading) {
     authFlowLog('require-guest', 'render BlockingScreenView (loading)')
-    return <BlockingScreenView message="Preparando tu sesión..." />
+    return <BlockingScreenView message={t('states:loading.preparingSession')} />
   }
 
   // Route signed-in + UNLOCKED users through AppEntryGate (the `/` index)

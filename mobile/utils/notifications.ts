@@ -1,14 +1,16 @@
 import type { NotificationSeverity } from '@/features/notifications/use-notifications'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import i18n from '@/lib/i18n'
 
-const notificationDayMonthFormatter = new Intl.DateTimeFormat('es-AR', {
+const notificationDayMonthOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
   month: 'short',
-})
+}
 
-const notificationTimeFormatter = new Intl.DateTimeFormat('es-AR', {
+const notificationTimeOptions: Intl.DateTimeFormatOptions = {
   hour: '2-digit',
   minute: '2-digit',
-})
+}
 
 export type NotificationGroup =
   | 'gastos'
@@ -49,15 +51,6 @@ export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
   ],
   meta: ['goal_created', 'goal_contribution', 'goal_milestone', 'goal_achieved', 'goal_behind'],
   otros: ['zombie_detected'],
-}
-
-export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
-  gastos: 'Gastos',
-  ingresos: 'Ingresos',
-  fijos: 'Fijos',
-  racha: 'Racha y check-ins',
-  meta: 'Metas',
-  otros: 'Otros',
 }
 
 export function groupForKind(kind: string): NotificationGroup {
@@ -130,16 +123,16 @@ export function pillForSeverity(
   switch (severity) {
     case 'success':
       return isDark
-        ? { surface: 'rgba(158,224,178,0.16)', ink: '#9EE0B2', label: 'Logro' }
-        : { surface: 'rgba(46,125,91,0.10)', ink: '#2E7D5B', label: 'Logro' }
+        ? { surface: 'rgba(158,224,178,0.16)', ink: '#9EE0B2', label: i18n.t('common:severity.success') }
+        : { surface: 'rgba(46,125,91,0.10)', ink: '#2E7D5B', label: i18n.t('common:severity.success') }
     case 'warning':
       return isDark
-        ? { surface: 'rgba(242,181,138,0.16)', ink: '#F2B58A', label: 'Atención' }
-        : { surface: 'rgba(194,90,62,0.10)', ink: '#C25A3E', label: 'Atención' }
+        ? { surface: 'rgba(242,181,138,0.16)', ink: '#F2B58A', label: i18n.t('common:severity.warning') }
+        : { surface: 'rgba(194,90,62,0.10)', ink: '#C25A3E', label: i18n.t('common:severity.warning') }
     case 'alert':
       return isDark
-        ? { surface: 'rgba(232,138,112,0.18)', ink: '#E88A70', label: 'Alerta' }
-        : { surface: 'rgba(192,58,42,0.10)', ink: '#C03A2A', label: 'Alerta' }
+        ? { surface: 'rgba(232,138,112,0.18)', ink: '#E88A70', label: i18n.t('common:severity.alert') }
+        : { surface: 'rgba(192,58,42,0.10)', ink: '#C03A2A', label: i18n.t('common:severity.alert') }
     default:
       return null
   }
@@ -154,15 +147,15 @@ function startOfDay(date: Date): Date {
 export function formatRelativeNotificationTime(value: string, now: Date = new Date()): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {
-    return 'Sin fecha'
+    return i18n.t('home:notifTime.noDate')
   }
 
   const diffMs = now.getTime() - parsed.getTime()
   const diffMin = Math.round(diffMs / 60_000)
   const diffHours = Math.round(diffMs / 3_600_000)
 
-  if (diffMin < 1) return 'ahora'
-  if (diffMin < 60) return `hace ${diffMin} min`
+  if (diffMin < 1) return i18n.t('home:notifTime.now')
+  if (diffMin < 60) return i18n.t('home:notifTime.minutesAgo', { count: diffMin })
 
   const startToday = startOfDay(now)
   const startMsg = startOfDay(parsed)
@@ -171,19 +164,21 @@ export function formatRelativeNotificationTime(value: string, now: Date = new Da
   )
 
   if (dayDiff === 0) {
-    if (diffHours < 12) return `hace ${diffHours} h`
-    return notificationTimeFormatter.format(parsed)
+    if (diffHours < 12) return i18n.t('home:notifTime.hoursAgo', { count: diffHours })
+    return getDateTimeFormat(notificationTimeOptions).format(parsed)
   }
 
   if (dayDiff === 1) {
-    return `ayer ${notificationTimeFormatter.format(parsed)}`
+    return i18n.t('home:notifTime.yesterdayAt', {
+      time: getDateTimeFormat(notificationTimeOptions).format(parsed),
+    })
   }
 
   if (dayDiff < 7) {
-    return notificationDayMonthFormatter.format(parsed)
+    return getDateTimeFormat(notificationDayMonthOptions).format(parsed)
   }
 
-  return notificationDayMonthFormatter.format(parsed)
+  return getDateTimeFormat(notificationDayMonthOptions).format(parsed)
 }
 
 export type NotificationSectionKey = 'unread' | 'today' | 'yesterday' | 'thisWeek' | 'older'

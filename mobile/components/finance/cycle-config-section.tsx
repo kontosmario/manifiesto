@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
+import i18n from '@/lib/i18n'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { MonthDayPicker } from '@/components/ui/month-day-picker'
 import { BaseMonthCalendar } from '@/components/ui/base-month-calendar'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -8,24 +11,20 @@ import { triggerHaptic } from '@/lib/haptics'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
 
-interface CycleTypeChipDef {
-  type: FinanceCycleConfig['cycle_type']
-  title: string
-  subtitle: string
-}
-
-const CYCLE_TYPES: CycleTypeChipDef[] = [
-  { type: 'monthly',  title: 'Mensual',   subtitle: 'Una vez al mes' },
-  { type: 'biweekly', title: 'Quincenal', subtitle: 'Cada 14 días' },
-  { type: 'weekly',   title: 'Semanal',   subtitle: 'Cada 7 días' },
-  { type: 'custom',   title: 'Custom',    subtitle: 'Cada N días' },
+const CYCLE_TYPE_ORDER: FinanceCycleConfig['cycle_type'][] = [
+  'monthly',
+  'biweekly',
+  'weekly',
+  'custom',
 ]
 
-const HELPER: Record<FinanceCycleConfig['cycle_type'], string> = {
-  monthly:  'El ciclo dura 28-31 días según el mes.',
-  biweekly: 'A partir de esta fecha, cada 14 días.',
-  weekly:   'A partir de esta fecha, cada 7 días.',
-  custom:   'Indica la fecha del próximo cobro y cuántos días dura el ciclo.',
+// Sticker PNG (from the category icon registry) shown beside each
+// cycle-type chip title — maps each cadence to its "frecuencias" sticker.
+const CYCLE_TYPE_ICON: Record<FinanceCycleConfig['cycle_type'], string> = {
+  monthly: 'frecuencias/mensual',
+  biweekly: 'frecuencias/quincenal',
+  weekly: 'frecuencias/semanal',
+  custom: 'frecuencias/cuotas',
 }
 
 const CUSTOM_LENGTH_MIN = 1
@@ -45,6 +44,7 @@ interface CycleConfigSectionProps {
 
 export function CycleConfigSection({ value, onChange, currentConfig }: CycleConfigSectionProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const today = useMemo(() => normalizeToStartOfDay(new Date()), [])
   const todayIso = useMemo(() => formatLocalDateKey(today), [today])
 
@@ -85,18 +85,21 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
 
   const transitionNotice =
     currentConfig && currentConfig.cycle_type !== value.cycle_type
-      ? `Estás cambiando tu ciclo de ${typeLabel(currentConfig.cycle_type)} a ${typeLabel(value.cycle_type)}. El cambio aplica al próximo cobro que indicaste.`
+      ? t('settings:cycleConfig.transitionNotice', {
+          from: typeLabel(currentConfig.cycle_type),
+          to: typeLabel(value.cycle_type),
+        })
       : null
 
   return (
     <View style={styles.container}>
       <View style={styles.chipsRow}>
-        {CYCLE_TYPES.map((def) => {
-          const selected = def.type === value.cycle_type
+        {CYCLE_TYPE_ORDER.map((type) => {
+          const selected = type === value.cycle_type
           return (
             <Pressable
-              key={def.type}
-              onPress={() => handleTypeChange(def.type)}
+              key={type}
+              onPress={() => handleTypeChange(type)}
               style={[
                 styles.chip,
                 {
@@ -109,8 +112,17 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
               accessibilityRole="button"
               accessibilityState={{ selected }}
             >
-              <Text style={[styles.chipTitle, { color: theme.colors.text }]}>{def.title}</Text>
-              <Text style={[styles.chipSubtitle, { color: theme.colors.textMuted }]}>{def.subtitle}</Text>
+              <View style={styles.chipTitleRow}>
+                {CATEGORY_ICONS[CYCLE_TYPE_ICON[type]] ? (
+                  <Image
+                    source={CATEGORY_ICONS[CYCLE_TYPE_ICON[type]]}
+                    style={styles.chipIcon}
+                    resizeMode="contain"
+                  />
+                ) : null}
+                <Text style={[styles.chipTitle, { color: theme.colors.text }]}>{t(`settings:cycleConfig.type.${type}.title`)}</Text>
+              </View>
+              <Text style={[styles.chipSubtitle, { color: theme.colors.textMuted }]}>{t(`settings:cycleConfig.type.${type}.subtitle`)}</Text>
             </Pressable>
           )
         })}
@@ -118,7 +130,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
 
       {value.cycle_type === 'monthly' ? (
         <View>
-          <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>DÍA DEL MES EN QUE COBRÁS</Text>
+          <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.monthDayLabel')}</Text>
           <MonthDayPicker
             value={value.salary_payment_day}
             onChange={(d) => onChange({ cycle_type: 'monthly', salary_payment_day: d })}
@@ -127,7 +139,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
       ) : (
         <View style={styles.rollingStack}>
           <View>
-            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>¿CUÁNDO ES TU PRÓXIMO COBRO?</Text>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.nextPaydayLabel')}</Text>
             <BaseMonthCalendar
               initialYear={anchorYear(value.cycle_anchor_date, today)}
               initialMonth={anchorMonth(value.cycle_anchor_date, today)}
@@ -138,7 +150,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
           </View>
           {value.cycle_type === 'custom' ? (
             <View>
-              <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>CADA CUÁNTOS DÍAS COBRÁS</Text>
+              <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.everyNDaysLabel')}</Text>
               <View
                 style={[
                   styles.stepperCard,
@@ -150,7 +162,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
                   disabled={value.cycle_length_days <= CUSTOM_LENGTH_MIN}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Restar un día"
+                  accessibilityLabel={t('settings:cycleConfig.minusDay')}
                   style={({ pressed }) => [
                     styles.stepperBtn,
                     { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
@@ -165,7 +177,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
                     {value.cycle_length_days}
                   </Text>
                   <Text style={[styles.stepperValueUnit, { color: theme.colors.textMuted }]}>
-                    {value.cycle_length_days === 1 ? 'día' : 'días'}
+                    {t('settings:cycleConfig.days', { count: value.cycle_length_days })}
                   </Text>
                 </View>
                 <Pressable
@@ -173,7 +185,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
                   disabled={value.cycle_length_days >= CUSTOM_LENGTH_MAX}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Sumar un día"
+                  accessibilityLabel={t('settings:cycleConfig.plusDay')}
                   style={({ pressed }) => [
                     styles.stepperBtn,
                     { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
@@ -189,7 +201,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
         </View>
       )}
 
-      <Text style={[styles.helper, { color: theme.colors.textMuted }]}>{HELPER[value.cycle_type]}</Text>
+      <Text style={[styles.helper, { color: theme.colors.textMuted }]}>{t(`settings:cycleConfig.helper.${value.cycle_type}`)}</Text>
 
       {transitionNotice ? (
         <View
@@ -205,11 +217,8 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
   )
 }
 
-function typeLabel(t: FinanceCycleConfig['cycle_type']): string {
-  return t === 'monthly' ? 'Mensual'
-    : t === 'biweekly' ? 'Quincenal'
-    : t === 'weekly' ? 'Semanal'
-    : 'Custom'
+function typeLabel(type: FinanceCycleConfig['cycle_type']): string {
+  return i18n.t(`settings:cycleConfig.type.${type}.title`)
 }
 
 function clamp(n: number, min: number, max: number): number {
@@ -236,7 +245,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
   },
-  chipTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  chipTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  chipIcon: { width: 24, height: 24 },
+  chipTitle: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
   chipSubtitle: { fontSize: 11 },
   fieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginBottom: 8 },
   rollingStack: { gap: 16 },

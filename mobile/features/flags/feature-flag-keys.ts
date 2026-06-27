@@ -24,10 +24,12 @@ export interface FeatureFlagDefinition {
 export const FEATURE_FLAGS = {
   wrapped_v2: {
     default: false,
+    // @i18n-ignore (dev-only: descripción interna de feature flag, nunca renderizada a usuarios)
     description: 'Nueva versión del cycle wrapped con scenes refactoreadas',
   },
   ai_coach: {
     default: false,
+    // @i18n-ignore (dev-only: descripción interna de feature flag, nunca renderizada a usuarios)
     description: 'Reemplaza el control-advisor heurístico con Claude LLM',
   },
 } as const satisfies Record<string, FeatureFlagDefinition>

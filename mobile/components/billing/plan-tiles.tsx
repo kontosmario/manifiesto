@@ -1,4 +1,5 @@
 import { memo, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   FadeIn,
@@ -62,7 +63,9 @@ const MonthlyTile = memo(function MonthlyTile({
   loading?: boolean
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const highlight = useSelectionHighlight(selected)
+  const planName = MONTHLY.name
   const storePrice = productPrices?.[MONTHLY.productId]
   // Skeleton solo mientras StoreKit aún no respondió. Si falló (loading=false
   // sin precio) caemos al hardcode; así nunca flasheamos un monto y lo cambiamos.
@@ -74,7 +77,9 @@ const MonthlyTile = memo(function MonthlyTile({
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={
-        showSkeleton ? `${MONTHLY.name}, cargando precio` : `${MONTHLY.name}, ${price} por mes`
+        showSkeleton
+          ? t('billing:planTiles.monthlyA11yLoading', { plan: planName })
+          : t('billing:planTiles.monthlyA11y', { plan: planName, price })
       }
       onPress={() => handlePress(selected, MONTHLY.id, onSelect)}
       style={styles.flex}
@@ -90,7 +95,9 @@ const MonthlyTile = memo(function MonthlyTile({
           highlight.style,
         ]}
       >
-        <Text style={[styles.label, { color: theme.colors.textMuted }]}>MENSUAL</Text>
+        <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+          {t('billing:planTiles.monthly')}
+        </Text>
         <View style={styles.priceRow}>
           {showSkeleton ? (
             <SkeletonBox width={56} height={20} radius={6} />
@@ -102,10 +109,12 @@ const MonthlyTile = memo(function MonthlyTile({
               {price}
             </Animated.Text>
           )}
-          <Text style={[styles.priceSuffix, { color: theme.colors.textMuted }]}> /mes</Text>
+          <Text style={[styles.priceSuffix, { color: theme.colors.textMuted }]}>
+            {t('billing:planTiles.perMonthSuffix')}
+          </Text>
         </View>
         <Text style={[styles.sub, { color: theme.colors.textMuted }]}>
-          {MONTHLY.memberCap} personas
+          {t('billing:planTiles.people', { count: MONTHLY.memberCap })}
         </Text>
       </Animated.View>
     </Pressable>
@@ -125,7 +134,9 @@ const YearlyTile = memo(function YearlyTile({
   loading?: boolean
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const highlight = useSelectionHighlight(selected)
+  const planName = YEARLY.name
   const storePrice = productPrices?.[YEARLY.productId]
   const showSkeleton = !storePrice && loading
   const price = storePrice ?? `$${YEARLY.priceUsd}`
@@ -136,8 +147,8 @@ const YearlyTile = memo(function YearlyTile({
       accessibilityState={{ selected }}
       accessibilityLabel={
         showSkeleton
-          ? `${YEARLY.name}, recomendado, cargando precio`
-          : `${YEARLY.name}, recomendado, ${price} por año`
+          ? t('billing:planTiles.annualA11yLoading', { plan: planName })
+          : t('billing:planTiles.annualA11y', { plan: planName, price })
       }
       onPress={() => handlePress(selected, YEARLY.id, onSelect)}
       style={styles.flex}
@@ -167,10 +178,12 @@ const YearlyTile = memo(function YearlyTile({
           <View style={styles.content}>
             <View style={[styles.badge, { backgroundColor: theme.colors.heroAccent }]}>
               <Text style={[styles.badgeText, { color: theme.colors.heroGradient[1] }]}>
-                RECOMENDADO
+                {t('billing:planTiles.recommended')}
               </Text>
             </View>
-            <Text style={[styles.label, { color: theme.colors.heroText }]}>ANUAL</Text>
+            <Text style={[styles.label, { color: theme.colors.heroText }]}>
+              {t('billing:planTiles.annual')}
+            </Text>
             <View style={styles.priceRow}>
               {showSkeleton ? (
                 <SkeletonBox width={64} height={20} radius={6} style={styles.skeletonOnForest} />
@@ -183,13 +196,16 @@ const YearlyTile = memo(function YearlyTile({
                 </Animated.Text>
               )}
               <Text style={[styles.priceSuffix, styles.priceSuffixOnForest, { color: theme.colors.heroText }]}>
-                {' '}
-                /año
+                {t('billing:planTiles.perYearSuffix')}
               </Text>
             </View>
             <Text style={[styles.sub, styles.subOnForest, { color: theme.colors.heroText }]}>
-              {YEARLY.effectiveCopy ? `$${(YEARLY.priceUsd / 12).toFixed(2)}/mes · ` : ''}
-              {YEARLY.memberCap} personas
+              {YEARLY.effectiveCopy
+                ? t('billing:planTiles.effectivePerMonth', {
+                    amount: (YEARLY.priceUsd / 12).toFixed(2),
+                  })
+                : ''}
+              {t('billing:planTiles.people', { count: YEARLY.memberCap })}
             </Text>
           </View>
         </LinearGradient>

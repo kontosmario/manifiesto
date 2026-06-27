@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@supabase/supabase-js'
+import i18n from '@/lib/i18n'
 import {
   FIXED_EXPENSE_FREQUENCIES,
   FIXED_EXPENSE_KINDS,
@@ -150,14 +151,14 @@ export function asFixedExpense(row: RawFixedExpense): FixedExpense {
 
 export function throwMigrationError(error: PostgrestError): never {
   if (isMissingFixedExpensesTableError(error) || isMissingCommitmentColumnsError(error)) {
-    throw new Error('Falta correr la migracion SQL para habilitar Gastos Fijos.')
+    throw new Error(i18n.t('fijos:errors.missingMigration'))
   }
 
   const parts = [error.message, error.details, error.hint].filter(
     (value): value is string => typeof value === 'string' && value.trim().length > 0,
   )
 
-  throw new Error(parts.length > 0 ? parts.join(' ') : 'Ocurrio un error inesperado en Supabase.')
+  throw new Error(parts.length > 0 ? parts.join(' ') : i18n.t('fijos:errors.unexpectedSupabase'))
 }
 
 function validateCommonFields(input: {
@@ -172,35 +173,35 @@ function validateCommonFields(input: {
 }) {
   const normalizedName = input.name.trim()
   if (!normalizedName) {
-    throw new Error('El nombre del gasto fijo no puede estar vacio.')
+    throw new Error(i18n.t('fijos:errors.nameEmpty'))
   }
 
   if (!Number.isFinite(input.amount) || input.amount <= 0) {
-    throw new Error('El monto del gasto fijo debe ser valido (> 0).')
+    throw new Error(i18n.t('fijos:errors.amountInvalid'))
   }
 
   if (!input.categoryId.trim()) {
-    throw new Error('Elegi una categoria para poder integrar el pago al historial.')
+    throw new Error(i18n.t('fijos:errors.categoryRequired'))
   }
 
   if (!FIXED_EXPENSE_KINDS.includes(input.kind)) {
-    throw new Error('Tipo de gasto fijo invalido.')
+    throw new Error(i18n.t('fijos:errors.kindInvalid'))
   }
 
   if (!FIXED_EXPENSE_STATUSES.includes(input.status)) {
-    throw new Error('Estado de gasto fijo invalido.')
+    throw new Error(i18n.t('fijos:errors.statusInvalid'))
   }
 
   if (!FIXED_EXPENSE_FREQUENCIES.includes(input.frequency)) {
-    throw new Error('Frecuencia invalida.')
+    throw new Error(i18n.t('fijos:errors.frequencyInvalid'))
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.nextDueOn)) {
-    throw new Error('Defini una fecha de proximo vencimiento valida.')
+    throw new Error(i18n.t('fijos:errors.nextDueInvalid'))
   }
 
   if (input.endsOn && !/^\d{4}-\d{2}-\d{2}$/.test(input.endsOn)) {
-    throw new Error('La fecha de fin no es valida.')
+    throw new Error(i18n.t('fijos:errors.endsOnInvalid'))
   }
 
   return normalizedName
@@ -236,11 +237,11 @@ export function buildFixedExpensePayload({
   })
 
   if (!Number.isFinite(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
-    throw new Error('El día del mes debe estar entre 1 y 31.')
+    throw new Error(i18n.t('fijos:errors.dayOfMonthInvalid'))
   }
 
   if (kind === 'installment' && (!installmentsTotal || installmentsTotal <= 0)) {
-    throw new Error('Defini la cantidad total de cuotas.')
+    throw new Error(i18n.t('fijos:errors.installmentsTotalRequired'))
   }
 
   if (
@@ -249,7 +250,7 @@ export function buildFixedExpensePayload({
       Number(remainingBalance) < 0 ||
       (!allowZeroDebtBalance && Number(remainingBalance) === 0))
   ) {
-    throw new Error('Defini un saldo pendiente valido para la deuda.')
+    throw new Error(i18n.t('fijos:errors.debtBalanceRequired'))
   }
 
   return {

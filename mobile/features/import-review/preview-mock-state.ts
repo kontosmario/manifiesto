@@ -68,6 +68,7 @@ export function buildPreviewReviewState(): ReviewState {
         id: 'preview-01',
         kind: 'expense',
         amount: 12_500,
+        // @i18n-ignore (mock data: nombre de comercio sintético para el preview del wizard, no es copy de producción)
         description: 'Mercado El Día',
         date: isoDaysAgo(0),
       }),
@@ -99,6 +100,7 @@ export function buildPreviewReviewState(): ReviewState {
         id: 'preview-05',
         kind: 'expense',
         amount: 89_400,
+        // @i18n-ignore (mock data: nombre de comercio sintético para el preview del wizard, no es copy de producción)
         description: 'Carrefour Av. Pueyrredón',
         date: isoDaysAgo(2),
       }),
@@ -106,6 +108,7 @@ export function buildPreviewReviewState(): ReviewState {
         id: 'preview-06',
         kind: 'expense',
         amount: 4_800,
+        // @i18n-ignore (mock data: nombre de comercio sintético para el preview del wizard, no es copy de producción)
         description: 'Cafetería',
         date: isoDaysAgo(0),
       }),
@@ -120,6 +123,7 @@ export function buildPreviewReviewState(): ReviewState {
         id: 'preview-08',
         kind: 'income',
         amount: 45_000,
+        // @i18n-ignore (mock data: descripción de movimiento sintético para el preview del wizard, no es copy de producción)
         description: 'Devolución impuestos',
         date: isoDaysAgo(6),
         incomeKind: 'bonus',
@@ -130,6 +134,7 @@ export function buildPreviewReviewState(): ReviewState {
         id: 'preview-09',
         kind: 'skip',
         amount: 1_100,
+        // @i18n-ignore (mock data: descripción de movimiento sintético para el preview del wizard, no es copy de producción)
         description: 'Comisión bancaria',
         date: isoDaysAgo(7),
       }),

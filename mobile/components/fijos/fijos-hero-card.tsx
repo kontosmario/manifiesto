@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   LinearTransition,
   cancelAnimation,
@@ -77,6 +78,7 @@ function FijosHeroCardImpl({
   empty = false,
 }: FijosHeroCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Gateado: el primer attach del tab no debe disparar la layout
   // transition del hero (warp). Se habilita tras el idle para los cambios
   // reales (pagar un fijo → el total/porcentaje transicionan suave).
@@ -211,10 +213,12 @@ function FijosHeroCardImpl({
               // value queda en 0 y los valores son estáticos.
               <Animated.View
                 style={[styles.urgentBadge, urgencyBadgeStyle]}
-                accessibilityLabel={`${cantidadVencidos} ${cantidadVencidos === 1 ? 'vencido' : 'vencidos'}`}
+                accessibilityLabel={t('fijos:hero.overdueAccessibility', {
+                  count: cantidadVencidos,
+                })}
               >
                 <Text style={styles.urgentBadgeText}>
-                  {cantidadVencidos} {cantidadVencidos === 1 ? 'VENCIDO' : 'VENCIDOS'}
+                  {t('fijos:hero.overdueBadge', { count: cantidadVencidos })}
                 </Text>
               </Animated.View>
             ) : null}
@@ -229,9 +233,9 @@ function FijosHeroCardImpl({
                     styles.celebrateBadge,
                     { backgroundColor: 'rgba(166,239,143,0.18)', borderColor: 'rgba(166,239,143,0.45)' },
                   ]}
-                  accessibilityLabel="Todo al día"
+                  accessibilityLabel={t('fijos:hero.allPaidAccessibility')}
                 >
-                  <Text style={styles.celebrateBadgeText}>AL DÍA</Text>
+                  <Text style={styles.celebrateBadgeText}>{t('fijos:hero.allPaidBadge')}</Text>
                 </View>
               </View>
             ) : null}
@@ -253,7 +257,7 @@ function FijosHeroCardImpl({
           <View style={styles.montosRow}>
             <View>
               <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
-                Ya pagaste
+                {t('fijos:hero.alreadyPaid')}
               </Text>
               <CountUpText
                 value={montoPagado}
@@ -265,12 +269,12 @@ function FijosHeroCardImpl({
                   Vocabulary: "pagados / pendientes" canon — alineado
                   con el tab pill correspondiente. */}
               <Text style={[styles.montoSub, { color: theme.colors.heroAccent }]}>
-                {cantidadPagados} {cantidadPagados === 1 ? 'pagado' : 'pagados'}
+                {t('fijos:hero.paidCount', { count: cantidadPagados })}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
-                Te falta pagar
+                {t('fijos:hero.stillToPay')}
               </Text>
               <CountUpText
                 value={montoPendiente}
@@ -281,7 +285,7 @@ function FijosHeroCardImpl({
                   Cuando hay vencidos, el badge "X VENCIDOS" arriba
                   los contabiliza — no duplicamos esa info aquí. */}
               <Text style={[styles.montoSub, { color: '#F2A78C' }]}>
-                {cantidadPendientes} {cantidadPendientes === 1 ? 'pendiente' : 'pendientes'}
+                {t('fijos:hero.pendingCount', { count: cantidadPendientes })}
               </Text>
             </View>
           </View>
@@ -300,10 +304,10 @@ function FijosHeroCardImpl({
           />
           <View style={styles.progressFooter}>
             <Text style={[styles.progressPct, { color: theme.colors.heroAccent }]}>
-              {porcentaje}% pagado
+              {t('fijos:hero.pctPaid', { pct: porcentaje })}
             </Text>
             <Text style={[styles.progressTotal, { color: theme.colors.heroMuted2 }]}>
-              Total {formatMoney(totalFijos)}
+              {t('fijos:hero.total', { amount: formatMoney(totalFijos) })}
             </Text>
           </View>
 
@@ -343,7 +347,7 @@ function FijosHeroCardImpl({
               <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
                 {/* "ESTE MES" removido — impeccable rule: redundante con
                     el eyebrow "GASTOS FIJOS · ABRIL" del header. */}
-                DINERO LIBRE
+                {t('fijos:hero.freeMoney')}
               </Text>
               <CountUpText
                 value={dineroLibre}
@@ -353,13 +357,13 @@ function FijosHeroCardImpl({
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
-                de tu sueldo
+                {t('fijos:hero.ofYourSalary')}
               </Text>
               <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>
                 {porcentajeSueldo}%
               </Text>
               <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
-                va a fijos
+                {t('fijos:hero.goesToFixed')}
               </Text>
             </View>
           </View>
@@ -406,6 +410,7 @@ function CycleRouteLine({
   cream: string
   muted2: string
 }) {
+  const { t } = useTranslation()
   const stations = parseCycleStations(cycleLabel)
   const safePct = Math.max(0, Math.min(100, (cycleDayIndex / cycleDays) * 100))
   const DASH_COUNT = 24
@@ -458,7 +463,7 @@ function CycleRouteLine({
             { color: accent, left: `${labelLeft}%` },
           ]}
         >
-          HOY · DÍA {cycleDayIndex}
+          {t('fijos:hero.today', { day: cycleDayIndex })}
         </Text>
       </View>
 
@@ -582,6 +587,7 @@ function PaymentSegments({
  */
 function FijosHeroCardEmpty() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const muted = 'rgba(242,234,211,0.22)'
   const ph = 'rgba(242,234,211,0.14)'
   return (
@@ -595,7 +601,7 @@ function FijosHeroCardEmpty() {
         <View style={styles.headerLeft}>
           <BreatheDot size={8} color={theme.colors.heroMuted} glow={theme.colors.heroMuted} />
           <Text style={[styles.titulo, { color: theme.colors.heroMuted }]}>
-            TU CICLO DE FIJOS
+            {t('fijos:hero.emptyEyebrow')}
           </Text>
         </View>
       </View>
@@ -620,13 +626,13 @@ function FijosHeroCardEmpty() {
       <View style={styles.montosRow}>
         <View>
           <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
-            Ya pagaste
+            {t('fijos:hero.alreadyPaid')}
           </Text>
           <Text style={[styles.montoPagado, { color: theme.colors.heroText }]}>—</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={[styles.montoLabel, { color: theme.colors.heroMuted2 }]}>
-            Te falta pagar
+            {t('fijos:hero.stillToPay')}
           </Text>
           <Text style={[styles.montoPendiente, { color: theme.colors.heroMuted }]}>—</Text>
         </View>
@@ -656,17 +662,17 @@ function FijosHeroCardEmpty() {
       <View style={styles.bottomRow}>
         <View>
           <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
-            DINERO LIBRE
+            {t('fijos:hero.freeMoney')}
           </Text>
           <Text style={[styles.bottomMonto, { color: theme.colors.heroText }]}>—</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
-            de tu sueldo
+            {t('fijos:hero.ofYourSalary')}
           </Text>
           <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>—</Text>
           <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
-            va a fijos
+            {t('fijos:hero.goesToFixed')}
           </Text>
         </View>
       </View>

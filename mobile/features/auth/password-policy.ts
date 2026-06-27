@@ -26,6 +26,8 @@
  *   generic "muy común" for the blocklist hit.
  */
 
+import i18n from '@/lib/i18n'
+
 const MIN_PASSWORD_LENGTH = 10
 const MAX_PASSWORD_LENGTH = 72
 
@@ -83,13 +85,13 @@ export function checkPasswordPolicy(password: string): PasswordPolicyResult {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
       ok: false,
-      error: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+      error: i18n.t('auth:passwordPolicy.tooShort', { min: MIN_PASSWORD_LENGTH }),
     }
   }
   if (password.length > MAX_PASSWORD_LENGTH) {
     return {
       ok: false,
-      error: `La contraseña no puede tener más de ${MAX_PASSWORD_LENGTH} caracteres.`,
+      error: i18n.t('auth:passwordPolicy.tooLong', { max: MAX_PASSWORD_LENGTH }),
     }
   }
 
@@ -98,14 +100,14 @@ export function checkPasswordPolicy(password: string): PasswordPolicyResult {
   if (isAllDigits || isAllAlpha) {
     return {
       ok: false,
-      error: 'Combina letras y números para una contraseña más segura.',
+      error: i18n.t('auth:passwordPolicy.mixLettersNumbers'),
     }
   }
 
   if (COMMON_PASSWORDS.has(password.toLowerCase())) {
     return {
       ok: false,
-      error: 'Esa contraseña es muy común. Elige una más difícil de adivinar.',
+      error: i18n.t('auth:passwordPolicy.tooCommon'),
     }
   }
 

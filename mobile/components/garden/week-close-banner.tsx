@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { FernMark } from '@/components/billing/fern-mark'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { WeekClose } from '@/features/garden/garden-model'
@@ -15,6 +16,7 @@ interface WeekCloseBannerProps {
  */
 function WeekCloseBannerImpl({ weekClose, onPress }: WeekCloseBannerProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const perfect = weekClose.score >= 7
   const isDark = theme.isDark
 
@@ -37,7 +39,10 @@ function WeekCloseBannerImpl({ weekClose, onPress }: WeekCloseBannerProps) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Cierre de semana: ${weekClose.label}, ${weekClose.score} de 7 días`}
+      accessibilityLabel={t('garden:weekCloseBanner.a11y', {
+        label: weekClose.label,
+        score: weekClose.score,
+      })}
       style={[styles.banner, { backgroundColor: bg, borderColor: border }]}
     >
       <View style={[styles.iconTile, { backgroundColor: isDark ? 'rgba(166,239,143,0.16)' : '#FFFFFF' }]}>
@@ -46,10 +51,12 @@ function WeekCloseBannerImpl({ weekClose, onPress }: WeekCloseBannerProps) {
       <View style={styles.textCol}>
         <Text style={[styles.title, { color: theme.colors.text }]}>{weekClose.label}</Text>
         <Text style={[styles.sub, { color: theme.colors.textSoft }]}>
-          Semana pasada · {weekClose.score}/7 días
+          {t('garden:weekCloseBanner.sub', { score: weekClose.score })}
         </Text>
       </View>
-      <Text style={[styles.chip, { backgroundColor: chipBg, color: chipColor }]}>Ver cierre ›</Text>
+      <Text style={[styles.chip, { backgroundColor: chipBg, color: chipColor }]}>
+        {t('garden:weekCloseBanner.chip')}
+      </Text>
     </Pressable>
   )
 }

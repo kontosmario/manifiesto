@@ -1,0 +1,362 @@
+{
+  "commitmentRow": {
+    "overdue": "Vencio {{date}}",
+    "dueToday": "Vence hoy",
+    "dueTomorrow": "Vence manana",
+    "dueIn": "Vence en {{days}}",
+    "noDueDate": "Sin vencimiento",
+    "dueOn": "Vence {{date}}"
+  },
+  "descriptionRow": {
+    "label": "Descripción",
+    "placeholder": "Ej: Supermercado"
+  },
+  "notesRow": {
+    "addAccessibility": "Agregar una nota a este gasto",
+    "addLabel": "Agregar nota",
+    "optional": "opcional",
+    "noteLabel": "NOTA",
+    "closeAccessibility": "Cerrar nota",
+    "placeholder": "Ej: pagado con tarjeta de mamá, se lo devuelvo el lunes"
+  },
+  "categoryRail": {
+    "label": "Categoría",
+    "warningLabel": "Elige una categoría",
+    "selectAccessibility": "Seleccionar {{name}}"
+  },
+  "amountCard": {
+    "label": "Monto",
+    "amountAccessibility": "Monto: {{amount}}",
+    "editHint": "Abre el numpad para editar el monto",
+    "tapToEdit": "Tap para editar"
+  },
+  "forecastStrip": {
+    "title": "Radar de próximos días",
+    "legend": "Marca: cap diario {{cap}}",
+    "tomorrowShort": "Mañ"
+  },
+  "streakWidget": {
+    "accessibility_one": "Tu jardín: racha de {{count}} día. Abrir.",
+    "accessibility_other": "Tu jardín: racha de {{count}} días. Abrir.",
+    "daysLabel": "días"
+  },
+  "suggestedAmount": {
+    "addAccessibility": "Sumar {{amount}}",
+    "clearAccessibility": "Borrar monto",
+    "clear": "Borrar"
+  },
+  "startingBalanceCta": {
+    "tourText": "Confirma cuánta plata tienes disponible hoy para arrancar el ciclo.",
+    "accessibility": "Confirma tu saldo inicial del mes",
+    "title": "Confirma tu saldo inicial",
+    "confirm": "Confirmar"
+  },
+  "paydayPill": {
+    "didYouGetPaid": "¿Ya cobraste?",
+    "payToday": "Sueldo hoy",
+    "payTomorrow": "Sueldo mañana",
+    "payInDays_one": "Sueldo en {{count}} día",
+    "payInDays_other": "Sueldo en {{count}} días",
+    "confirmPaidHint": "Abre el diálogo para confirmar que cobraste",
+    "confirmAmountHint": "Abre el diálogo para confirmar el monto que recibiste"
+  },
+  "projectionWait": {
+    "label": "Aún calculando",
+    "detail_one": "{{count}} día",
+    "detail_other": "{{count}} días"
+  },
+  "nextFixed": {
+    "dueToday": "Vence hoy",
+    "tomorrow": "Mañana",
+    "inDays_one": "En {{count}} día",
+    "inDays_other": "En {{count}} días"
+  },
+  "nextFixedFallback": {
+    "primary": "Carga tu primer gasto fijo",
+    "secondary": "Alquiler, servicios, suscripciones"
+  },
+  "topCategory": {
+    "uncategorized": "Sin categoría",
+    "emptyPrimary": "Carga tu primer gasto",
+    "emptySecondary": "Arranca el ciclo registrando algo",
+    "sparsePrimary": "Sin categoría líder aún",
+    "sparseSecondaryFewExpenses": "Carga más gastos para verla",
+    "sparseSecondaryNotEnoughData": "Aún no hay datos suficientes"
+  },
+  "hero": {
+    "payToday": "Cobra hoy",
+    "daysOverdue_one": "+{{count}} día sin cobrar",
+    "daysOverdue_other": "+{{count}} días sin cobrar",
+    "cycleDay": "día {{day}} de {{total}}",
+    "a11yBalance": "Saldo del mes: {{amount}}.",
+    "a11yDailyAllowance": "Cupo diario: {{amount}}.",
+    "a11yProjectedClose": "Cierre proyectado: {{amount}}.",
+    "a11yUsdEquivalent": "Equivale a {{amount}}.",
+    "setupA11y": "Configura tu ingreso mensual para activar el seguimiento del mes.",
+    "configureIncomeAccessibility": "Configurar tu ingreso mensual",
+    "startHere": "Empieza aquí",
+    "setupTitle": "Configura tu ingreso mensual",
+    "setupBody": "Una vez que cargues tu sueldo y tus fijos, te decimos cuánto puedes gastar por día y cómo vas a cerrar el ciclo.",
+    "configureNow": "Configurar ahora",
+    "monthBalance": "Saldo del mes",
+    "acumuladoA11y": "Tienes {{amount}} acumulado del mes pasado.",
+    "acumuladoChip": "+{{amount}} de {{period}}",
+    "addedToMonthA11y": "Sumaste {{amount}} al saldo del mes",
+    "addedToMonthChip": "+{{amount}} al mes",
+    "adjustedBalanceA11y": "Saldo ajustado para este mes",
+    "adjustedBalanceChip": "Saldo ajustado",
+    "reserveA11y": "Tienes {{amount}} en reserva acumulada",
+    "reserveChip": "Reserva {{amount}}",
+    "canSpendPerDay": "Puedes gastar por día",
+    "untilCycleEnd": "hasta fin de ciclo",
+    "youWillCloseWith": "Vas a cerrar con",
+    "trendUpA11y": "{{pct}} por ciento más que el ciclo anterior.",
+    "trendDownA11y": "{{pct}} por ciento menos que el ciclo anterior.",
+    "trendFlatA11y": "Mismo ritmo que el ciclo anterior.",
+    "trendVsPrevCycle": "{{sign}}{{pct}}% vs ciclo anterior",
+    "ifYouKeepThisPace": "si sigues este ritmo"
+  },
+  "monthClose": {
+    "subtitle": "Cerraste {{period}} con un saldo a favor. ¿Qué haces con esa plata?",
+    "title": "Te sobraron {{amount}}",
+    "metaTitleWithGoal": "Sumar a {{goal}}",
+    "metaTitle": "A una meta",
+    "metaSubtitleActive": "Aporte al goal activo",
+    "metaSubtitleEmpty": "Primero crea una meta en Home",
+    "accumulateTitle": "Sumar al mes actual",
+    "accumulateSubtitle": "Queda como disponible extra este mes",
+    "reserveTitle": "Guardar como reserva",
+    "reserveSubtitle": "Plata aparte, sin destino concreto",
+    "confirm": "Confirmar",
+    "decideLater": "Decidir más tarde"
+  },
+  "cycleBalance": {
+    "mustBePositive": "Tiene que ser mayor a cero.",
+    "onboarding": {
+      "title": "¿Cuál es tu saldo hoy?",
+      "contextPrefix": "Sueldo configurado",
+      "helperEmpty": "Anota el monto en mano. Lo usamos para arrancar este mes con la realidad.",
+      "saveLabel": "Guardar saldo",
+      "eyebrow": "O AJUSTA EL SALDO",
+      "chipTitle": "Tengo el sueldo completo",
+      "chipSubtitle": "Igual al monto configurado",
+      "chipA11y": "Tengo el sueldo completo de {{amount}}, igual al monto configurado"
+    },
+    "salary": {
+      "title": "¿Cobraste? Confirma el monto",
+      "contextPrefix": "Sueldo recurrente",
+      "helperEmpty": "Anota el monto que recibiste este mes. Solo aplica a este mes.",
+      "saveLabel": "Guardar cobro",
+      "eyebrow": "O AJUSTA EL MONTO COBRADO",
+      "chipTitle": "Cobré el sueldo completo",
+      "chipSubtitle": "Igual al sueldo recurrente",
+      "chipA11y": "Cobré {{amount}}, igual al sueldo recurrente"
+    }
+  },
+  "greeting": {
+    "night": "Buenas noches",
+    "morning": "Buen día",
+    "afternoon": "Buenas tardes",
+    "fallbackName": "Usuario"
+  },
+  "alerts": {
+    "dueWhen": {
+      "today": "hoy",
+      "tomorrow": "mañana",
+      "inDays": "en {{days}}d"
+    },
+    "upcomingTitle": "{{name}} vence {{when}}",
+    "markPaid": "Marcar pagado",
+    "zombieTitle_one": "{{count}} suscripción zombi",
+    "zombieTitle_other": "{{count}} suscripciones zombi",
+    "zombieSubtitle": "sin uso hace más de 45 días",
+    "review": "Revisar",
+    "hikeTitle": "{{name}} subió +{{pct}}%",
+    "hikeSubtitle": "vs mes pasado",
+    "view": "Ver"
+  },
+  "dashboard": {
+    "saveDecisionError": "No pudimos guardar tu decisión. Prueba de nuevo en un rato.",
+    "viewAllHistory": "Ver todo el historial",
+    "activity": "ACTIVIDAD",
+    "viewAll": "Ver todos"
+  },
+  "addExpenseDashboard": {
+    "loggingFor": "REGISTRANDO PARA",
+    "saveExpense": "Guardar gasto",
+    "today": "hoy",
+    "yesterday": "ayer"
+  },
+  "assistantButton": {
+    "open": "Abrir asistente",
+    "openWithCount_one": "Abrir asistente — {{count}} sugerencia",
+    "openWithCount_other": "Abrir asistente — {{count}} sugerencias"
+  },
+  "header": {
+    "notifications": "Ir a notificaciones",
+    "settingsNoProtection": "Ir a ajustes. Tu cuenta no tiene protección configurada.",
+    "settings": "Ir a ajustes"
+  },
+  "familyStrip": {
+    "membersAccessibility": "Miembros del hogar: {{members}}.",
+    "none": "ninguno",
+    "membersLabel": "Miembros ·"
+  },
+  "historyToolbar": {
+    "openFilters": "Abrir filtros",
+    "manageCategories": "Gestionar categorias"
+  },
+  "historyRowActions": {
+    "edit": "Editar",
+    "delete": "Borrar"
+  },
+  "historyRow": {
+    "editHint": "Doble toque para editar. Tambien podes deslizar hacia la izquierda para acciones.",
+    "noCategory": "Sin categoria",
+    "swipe": "Desliza"
+  },
+  "activitySection": {
+    "incomeKind": {
+      "transfer": "Transferencia",
+      "bonus": "Bono",
+      "gift": "Regalo",
+      "other": "Ingreso"
+    },
+    "incomeCategory": "Ingreso · {{kind}}",
+    "someone": "Alguien",
+    "delete": "Eliminar",
+    "swipeDeleteHint": "Desliza hacia la izquierda para eliminar",
+    "noCategory": "Sin categoría"
+  },
+  "homeScreen": {
+    "dashboardError": "No pudimos abrir tu panorama",
+    "deleteError": "No pudimos eliminar"
+  },
+  "notificationsScreen": {
+    "back": "Volver",
+    "title": "Notificaciones",
+    "pendingCount_one": "{{count}} pendiente",
+    "pendingCount_other": "{{count}} pendientes",
+    "markAllAccessibility": "Marcar todas como leídas",
+    "markAll": "Marcar todas",
+    "loadError": "No pudimos cargar las notificaciones."
+  },
+  "notificationsHook": {
+    "deleteError": "No se pudo eliminar la notificación.",
+    "retry": "Reintentar",
+    "clearAllError": "No se pudieron borrar las notificaciones."
+  },
+  "notificationFeed": {
+    "swipeHint": "Desliza para marcar como leída",
+    "done": "Listo",
+    "loading": "Cargando notificaciones...",
+    "loadError": "No pudimos cargar las notificaciones",
+    "emptyTitle": "Todo al día",
+    "emptySubtitle": "No tienes notificaciones pendientes.",
+    "markRead": "Marcar leída"
+  },
+  "notifTime": {
+    "noDate": "Sin fecha",
+    "now": "ahora",
+    "minutesAgo": "hace {{count}} min",
+    "hoursAgo": "hace {{count}} h",
+    "yesterdayAt": "ayer {{time}}"
+  },
+  "dailyBudgetNudge": {
+    "closeDayTitle": "Cierra tu día",
+    "closeDayBody": "Mira cómo te fue hoy."
+  },
+  "expenseEditor": {
+    "subtitle": "Actualiza sólo lo necesario y mantén el historial limpio.",
+    "quickEdit": "Edición rápida",
+    "introText": "Cambia la descripción o el monto final. El resto del movimiento se conserva.",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Ej: Supermercado",
+    "amountHelper": "Ingresa el valor final en pesos.",
+    "amountLabel": "Monto",
+    "cancel": "Cancelar"
+  },
+  "historyContent": {
+    "subtitle": "Toca para editar o desliza cada fila para acciones rapidas.",
+    "title": "Movimientos",
+    "loading": "Cargando gastos...",
+    "emptySubtitle": "Carga el primer gasto del hogar para empezar a construir el historial.",
+    "emptyTitle": "No hay movimientos",
+    "noResultsSubtitle": "Proba otro periodo, otra categoria o limpia la busqueda.",
+    "noResultsTitle": "No encontramos resultados",
+    "clearFilters": "Limpiar filtros"
+  },
+  "historyHero": {
+    "eyebrow": "Total visible",
+    "shareOfTotal": "{{pct}}% del total visible",
+    "emptyTitle": "Todavia no hay lectura"
+  },
+  "historySectionHeader": {
+    "movements_one": "{{count}} movimiento",
+    "movements_other": "{{count}} movimientos"
+  },
+  "monthSummary": {
+    "trendVsPrev": "{{sign}}{{pct}}% vs prev",
+    "pendingCount_one": "{{count}} pendiente",
+    "pendingCount_other": "{{count}} pendientes",
+    "variablesLabel": "VARIABLES",
+    "movements_one": "{{count}} mov",
+    "movements_other": "{{count}} movs",
+    "viewVariables": "Ver gastos variables",
+    "topCategoryA11y": "{{name}} lidera el ciclo: {{share}} del gasto, {{total}}.",
+    "topCategoryHint": "Abre los gastos filtrados por esta categoría",
+    "addExpenseHint": "Abre la pantalla para registrar un gasto",
+    "fixedLabel": "FIJOS",
+    "noFixedLoaded": "Sin fijos cargados",
+    "fixedPaidOf": "{{paid}} de {{count}} pagados",
+    "viewFixed": "Ver gastos fijos",
+    "nextFixedA11y": "Próximo fijo: {{name}}, {{amount}}, {{due}}.",
+    "nextFixedHint": "Abre la pantalla de gastos fijos",
+    "allPaid": "Todos pagados",
+    "allPaidA11y": "Los {{count}} gastos fijos del mes están pagados.",
+    "addFixedHint": "Abre la pantalla para registrar un gasto fijo",
+    "notPaidYet": "Sin cobrar"
+  },
+  "metaCard": {
+    "addError": "No pudimos sumar el aporte",
+    "retrySoon": "Reintenta en un momento.",
+    "complete": "¡Completa!",
+    "months_one": "{{count}} mes",
+    "months_other": "{{count}} meses",
+    "chipWithMonths": "{{pct}}% · ~{{months}}",
+    "chipAchieved": "{{pct}}% logrado",
+    "completeAccessibility": "Tu meta {{title}} está completa",
+    "progressAccessibility": "Tu meta {{title}}: {{pct}} por ciento logrado, faltan {{remaining}}",
+    "eyebrow": "TU META · {{title}}",
+    "objective": "Objetivo · {{amount}}",
+    "youDidIt": "¡Lo lograste!",
+    "enjoyGoal": "Disfruta tu meta.",
+    "remaining": "Faltan",
+    "addSavingsAccessibility": "Agregar ahorro a esta meta",
+    "addSavings": "Agregar ahorro"
+  },
+  "quickAddSavings": {
+    "pctOfSuggested": "{{pct}}% del ahorro sugerido",
+    "helperPick": "Mueves el slider para elegir cuánto sumar.",
+    "helperExceeds": "Estás superando lo que falta ({{remaining}}). Vamos a guardar igual y la meta queda completa.",
+    "helperAdding": "Sumas {{amount}} a \"{{goalTitle}}\".",
+    "saveAmount": "Sumar {{amount}}",
+    "saveToGoal": "Sumar a la meta",
+    "title": "Agregar ahorro · {{goalTitle}}",
+    "subtitle": "Elige cuánto del ahorro sugerido quieres mover. Puedes ajustar el monto deslizando o usando los atajos de porcentaje.",
+    "contributionEyebrow": "APORTE",
+    "sliderAccessibility": "Aporte: {{amount}} de {{max}}",
+    "sliderValue": "{{pct}} por ciento",
+    "chipAccessibility": "Aportar {{pct}} por ciento, {{amount}}"
+  },
+  "savingsHero": {
+    "consumedLabel": "Sin ahorro este mes",
+    "consumedA11y": "Aviso: tus gastos consumieron los {{target}} de ahorro previstos para este mes.",
+    "healthyLabel": "Ahorrando {{target}}",
+    "healthyA11y": "Estás apartando {{target}} de ahorro este mes.",
+    "healthyA11y_withPercent": "Estás apartando {{target}} de ahorro este mes, equivalente al {{percent}} por ciento del ingreso.",
+    "partialLabel": "{{remaining}} de meta {{target}}",
+    "partialA11y": "Llevas apartados {{remaining}} de los {{target}} previstos para este mes.",
+    "partialA11y_withPercent": "Llevas apartados {{remaining}} de los {{target}} previstos para este mes, {{percent}} por ciento del ingreso."
+  }
+}

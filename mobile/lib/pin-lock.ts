@@ -53,6 +53,7 @@ import {
   setPinEnabledFlag,
 } from '@/features/auth/pin-enabled-flag'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 
 const PIN_HASH_KEY = 'app-lock.pin.hash'
 const PIN_SALT_KEY = 'app-lock.pin.salt'
@@ -304,15 +305,15 @@ function nextLockoutDuration(failedAttempts: number): number {
 
 export async function setPin(pin: string): Promise<void> {
   if (!PIN_PATTERN.test(pin)) {
-    throw new Error(`El PIN debe tener entre ${PIN_MIN_LENGTH} y ${PIN_MAX_LENGTH} dígitos.`)
+    throw new Error(
+      i18n.t('auth:pinSetup.lengthRange', { min: PIN_MIN_LENGTH, max: PIN_MAX_LENGTH }),
+    )
   }
   // Sprint F · F2: reject obvious weak PINs at setPin time. The
   // setup screen also checks `isWeakPin` to give a specific UX hint
   // before reaching here; this throw is the defense-in-depth gate.
   if (isWeakPin(pin)) {
-    throw new WeakPinError(
-      'Ese PIN es demasiado fácil de adivinar. Evita repeticiones (1111) o secuencias (1234).',
-    )
+    throw new WeakPinError(i18n.t('auth:pinSetup.weakPinEngine'))
   }
   const salt = randomSalt()
   await SecureStore.setItemAsync(PIN_SALT_KEY, salt, storeOptions)

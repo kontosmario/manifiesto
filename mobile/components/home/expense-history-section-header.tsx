@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import type { ExpenseDaySection } from '@/features/expenses/expense-history'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
@@ -10,6 +11,7 @@ export const ExpenseHistorySectionHeader = memo(function ExpenseHistorySectionHe
   section: ExpenseDaySection
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View style={styles.dayGroup}>
@@ -17,7 +19,7 @@ export const ExpenseHistorySectionHeader = memo(function ExpenseHistorySectionHe
         <View style={styles.dayHeaderCopy}>
           <Text style={[styles.dayLabel, { color: theme.colors.text }]}>{section.label}</Text>
           <Text style={[styles.dayMeta, { color: theme.colors.textMuted }]}>
-            {section.data.length} {section.data.length === 1 ? 'movimiento' : 'movimientos'}
+            {t('home:historySectionHeader.movements', { count: section.data.length })}
           </Text>
         </View>
         <Text style={[styles.dayTotal, { color: theme.colors.text }]}>

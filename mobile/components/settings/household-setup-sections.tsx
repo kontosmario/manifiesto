@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import type {
   HouseholdSavingsPreset,
@@ -22,6 +23,7 @@ export function HouseholdSetupProgressCard({
   totalSteps: number
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View
@@ -35,7 +37,7 @@ export function HouseholdSetupProgressCard({
     >
       <View style={styles.progressHeader}>
         <Text style={[styles.progressEyebrow, { color: theme.colors.primaryStrong }]}>
-          Paso {currentStep} de {totalSteps}
+          {t('settings:householdSetup.stepOf', { current: currentStep, total: totalSteps })}
         </Text>
         <View style={styles.progressDots}>
           {Array.from({ length: totalSteps }).map((_, index) => {
@@ -73,6 +75,7 @@ export function HouseholdSavingsResearchPanel({
   stats: readonly HouseholdSavingsResearchStat[]
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View
@@ -98,10 +101,10 @@ export function HouseholdSavingsResearchPanel({
         </View>
         <View style={styles.researchCopy}>
           <Text style={[styles.researchTitle, { color: theme.colors.text }]}>
-            Referencias usadas por Manifiesto
+            {t('settings:householdSetup.researchTitle')}
           </Text>
           <Text style={[styles.researchSubtitle, { color: theme.colors.textMuted }]}>
-            Usamos 3 meses de gastos como benchmark de resguardo del hogar.
+            {t('settings:householdSetup.researchSubtitle')}
           </Text>
         </View>
       </View>
@@ -133,7 +136,7 @@ export function HouseholdSavingsResearchPanel({
       </View>
 
       <Text style={[styles.benchmarkText, { color: theme.colors.text }]}>
-        Fondo de referencia sugerido: {currencyFormatter.format(benchmarkFund || 0)}
+        {t('settings:householdSetup.benchmarkText', { amount: currencyFormatter.format(benchmarkFund || 0) })}
       </Text>
       <Text style={[styles.researchNote, { color: theme.colors.textMuted }]}>{note}</Text>
     </View>
@@ -150,10 +153,11 @@ export function HouseholdSavingsPresetCard({
   preset: HouseholdSavingsPreset
 }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <Pressable
-      accessibilityLabel={`Usar perfil ${preset.title}`}
+      accessibilityLabel={t('settings:householdSetup.usePresetA11y', { title: preset.title })}
       accessibilityRole="button"
       android_ripple={{
         borderless: false,

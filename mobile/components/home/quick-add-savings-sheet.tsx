@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -62,6 +63,7 @@ export function QuickAddSavingsSheet({
   inline,
 }: QuickAddSavingsSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
 
   // The slider's "100%" reference. Prefer the suggested amount,
@@ -216,24 +218,33 @@ export function QuickAddSavingsSheet({
   const exceedsRemaining = isValid && remaining > 0 && amount > remaining
   const pctLabel =
     maxAmount > 0
-      ? `${Math.round((amount / maxAmount) * 100)}% del ahorro sugerido`
+      ? t('home:quickAddSavings.pctOfSuggested', {
+          pct: Math.round((amount / maxAmount) * 100),
+        })
       : ''
 
   const helper = !isValid
-    ? 'Mueves el slider para elegir cuánto sumar.'
+    ? t('home:quickAddSavings.helperPick')
     : exceedsRemaining
-      ? `Estás superando lo que falta (${formatMoneyShort(remaining)}). Vamos a guardar igual y la meta queda completa.`
-      : `Sumas ${currencyFormatter.format(amount)} a "${goalTitle}".`
+      ? t('home:quickAddSavings.helperExceeds', {
+          remaining: formatMoneyShort(remaining),
+        })
+      : t('home:quickAddSavings.helperAdding', {
+          amount: currencyFormatter.format(amount),
+          goalTitle,
+        })
 
-  const saveLabel = isValid ? `Sumar ${formatMoneyShort(amount)}` : 'Sumar a la meta'
+  const saveLabel = isValid
+    ? t('home:quickAddSavings.saveAmount', { amount: formatMoneyShort(amount) })
+    : t('home:quickAddSavings.saveToGoal')
 
   return (
     <ModalCard
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title={`Agregar ahorro · ${goalTitle}`}
-      subtitle="Elige cuánto del ahorro sugerido quieres mover. Puedes ajustar el monto deslizando o usando los atajos de porcentaje."
+      title={t('home:quickAddSavings.title', { goalTitle })}
+      subtitle={t('home:quickAddSavings.subtitle')}
     >
       <View style={styles.body}>
         <View
@@ -246,7 +257,7 @@ export function QuickAddSavingsSheet({
           ]}
         >
           <Text style={[styles.amountEyebrow, { color: theme.colors.textMuted }]}>
-            APORTE
+            {t('home:quickAddSavings.contributionEyebrow')}
           </Text>
           <Text
             style={[styles.amountValue, { color: theme.colors.text }]}
@@ -274,12 +285,17 @@ export function QuickAddSavingsSheet({
             <View
               style={styles.sliderHitArea}
               accessibilityRole="adjustable"
-              accessibilityLabel={`Aporte: ${formatMoneyShort(amount)} de ${formatMoneyShort(maxAmount)}`}
+              accessibilityLabel={t('home:quickAddSavings.sliderAccessibility', {
+                amount: formatMoneyShort(amount),
+                max: formatMoneyShort(maxAmount),
+              })}
               accessibilityValue={{
                 min: 0,
                 max: maxAmount,
                 now: amount,
-                text: `${Math.round((amount / Math.max(1, maxAmount)) * 100)} por ciento`,
+                text: t('home:quickAddSavings.sliderValue', {
+                  pct: Math.round((amount / Math.max(1, maxAmount)) * 100),
+                }),
               }}
             >
               <View
@@ -327,7 +343,10 @@ export function QuickAddSavingsSheet({
                 key={pct}
                 onPress={() => handlePickPercentage(pct)}
                 accessibilityRole="button"
-                accessibilityLabel={`Aportar ${pct} por ciento, ${formatMoneyShort(slice)}`}
+                accessibilityLabel={t('home:quickAddSavings.chipAccessibility', {
+                  pct,
+                  amount: formatMoneyShort(slice),
+                })}
                 accessibilityState={{ selected: isActive }}
                 style={({ pressed }) => [
                   styles.chip,

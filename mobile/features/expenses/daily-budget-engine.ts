@@ -1,3 +1,5 @@
+import i18n from '@/lib/i18n'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import type { Expense } from '@/features/expenses/use-expenses'
 import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import { formatLocalDateKey, normalizeToStartOfDay } from '@/utils/pay-cycle'
@@ -200,29 +202,31 @@ export function computeDailyBudgetSummary({
     remainingToday < 0 ? 'exceeded' : remainingRatio <= 0.2 ? 'critical' : 'positive'
   const statusLabel =
     status === 'exceeded'
-      ? 'Excedido'
+      ? i18n.t('gastos:dailyBudget.status.exceeded')
       : status === 'critical'
-        ? 'Crítico'
-        : 'En rango'
+        ? i18n.t('gastos:dailyBudget.status.critical')
+        : i18n.t('gastos:dailyBudget.status.inRange')
 
   const suggestions: DailyBudgetSuggestion[] = []
 
   if (remainingToday < 0) {
     suggestions.push({
-      detail: `Si frenas ahora, mañana abrirías con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
-      title: 'Hoy ya te comiste parte de mañana',
+      detail: i18n.t('gastos:dailyBudget.ateTomorrow.detail', { amount: formatSignedCurrency(projectedTomorrowOpening) }),
+      title: i18n.t('gastos:dailyBudget.ateTomorrow.title'),
       tone: 'warning',
     })
   } else if (todaySpent === 0) {
     suggestions.push({
-      detail: `Si cierras el día así, mañana arrancas con ${formatSignedCurrency(projectedTomorrowOpening)}.`,
-      title: zeroSpendStreak > 0 ? `${zeroSpendStreak} días cero en fila` : 'Día cero activo',
+      detail: i18n.t('gastos:dailyBudget.zeroDay.detail', { amount: formatSignedCurrency(projectedTomorrowOpening) }),
+      title: zeroSpendStreak > 0
+        ? i18n.t('gastos:dailyBudget.zeroDay.titleStreak', { count: zeroSpendStreak })
+        : i18n.t('gastos:dailyBudget.zeroDay.title'),
       tone: 'success',
     })
   } else {
     suggestions.push({
-      detail: `Todavía te quedan ${formatSignedCurrency(remainingToday)} para lo que resta del día.`,
-      title: 'Todavía hay margen operativo',
+      detail: i18n.t('gastos:dailyBudget.operatingMargin.detail', { amount: formatSignedCurrency(remainingToday) }),
+      title: i18n.t('gastos:dailyBudget.operatingMargin.title'),
       tone: status === 'critical' ? 'warning' : 'primary',
     })
   }
@@ -232,9 +236,11 @@ export function computeDailyBudgetSummary({
     suggestions.push({
       detail:
         carryover >= 0
-          ? `Traes ${formatSignedCurrency(carryover)} de aire acumulado por debajo del ritmo.`
-          : `Arrastrás ${formatSignedCurrency(Math.abs(carryover))} de exceso desde días anteriores.`,
-      title: carryover >= 0 ? 'Vienes administrando bien el ciclo' : 'El arrastre te está apretando hoy',
+          ? i18n.t('gastos:dailyBudget.carryover.detailPositive', { amount: formatSignedCurrency(carryover) })
+          : i18n.t('gastos:dailyBudget.carryover.detailNegative', { amount: formatSignedCurrency(Math.abs(carryover)) }),
+      title: carryover >= 0
+        ? i18n.t('gastos:dailyBudget.carryover.titlePositive')
+        : i18n.t('gastos:dailyBudget.carryover.titleNegative'),
       tone: carryover >= 0 ? 'success' : 'warning',
     })
   }
@@ -243,9 +249,11 @@ export function computeDailyBudgetSummary({
     suggestions.push({
       detail:
         bufferRemaining > 0
-          ? `${formatSignedCurrency(bufferRemaining)} del colchón siguen intactos para absorber desvíos.`
-          : 'El colchón ya se consumió. Desde aquí empiezas a tocar el plan principal.',
-      title: bufferRemaining > 0 ? 'Tu colchón sigue defendiendo el cierre' : 'El colchón ya no está cubriendo desvíos',
+          ? i18n.t('gastos:dailyBudget.buffer.detailIntact', { amount: formatSignedCurrency(bufferRemaining) })
+          : i18n.t('gastos:dailyBudget.buffer.detailConsumed'),
+      title: bufferRemaining > 0
+        ? i18n.t('gastos:dailyBudget.buffer.titleIntact')
+        : i18n.t('gastos:dailyBudget.buffer.titleConsumed'),
       tone: bufferRemaining > 0 ? 'primary' : 'warning',
     })
   }
@@ -283,5 +291,5 @@ function carryoverAmount(openingBudget: number, baseDailyBudget: number) {
 function formatSignedCurrency(value: number) {
   const absoluteValue = Math.abs(value)
   const prefix = value < 0 ? '-' : ''
-  return `${prefix}$${absoluteValue.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
+  return `${prefix}$${absoluteValue.toLocaleString(getIntlLocale(), { maximumFractionDigits: 0 })}`
 }

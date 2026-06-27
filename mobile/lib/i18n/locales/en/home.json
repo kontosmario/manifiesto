@@ -1,0 +1,362 @@
+{
+  "commitmentRow": {
+    "overdue": "Due {{date}}",
+    "dueToday": "Due today",
+    "dueTomorrow": "Due tomorrow",
+    "dueIn": "Due in {{days}}",
+    "noDueDate": "No due date",
+    "dueOn": "Due {{date}}"
+  },
+  "descriptionRow": {
+    "label": "Description",
+    "placeholder": "e.g. Groceries"
+  },
+  "notesRow": {
+    "addAccessibility": "Add a note to this expense",
+    "addLabel": "Add note",
+    "optional": "optional",
+    "noteLabel": "NOTE",
+    "closeAccessibility": "Close note",
+    "placeholder": "e.g. paid with mom's card, I'll pay her back Monday"
+  },
+  "categoryRail": {
+    "label": "Category",
+    "warningLabel": "Pick a category",
+    "selectAccessibility": "Select {{name}}"
+  },
+  "amountCard": {
+    "label": "Amount",
+    "amountAccessibility": "Amount: {{amount}}",
+    "editHint": "Opens the numpad to edit the amount",
+    "tapToEdit": "Tap to edit"
+  },
+  "forecastStrip": {
+    "title": "Next few days",
+    "legend": "Marker: daily allowance {{cap}}",
+    "tomorrowShort": "Tmr"
+  },
+  "streakWidget": {
+    "accessibility_one": "Your garden: {{count}}-day streak. Open.",
+    "accessibility_other": "Your garden: {{count}}-day streak. Open.",
+    "daysLabel": "days"
+  },
+  "suggestedAmount": {
+    "addAccessibility": "Add {{amount}}",
+    "clearAccessibility": "Clear amount",
+    "clear": "Clear"
+  },
+  "startingBalanceCta": {
+    "tourText": "Confirm how much money you have available today to start the cycle.",
+    "accessibility": "Confirm your starting balance for the month",
+    "title": "Confirm your starting balance",
+    "confirm": "Confirm"
+  },
+  "paydayPill": {
+    "didYouGetPaid": "Did you get paid?",
+    "payToday": "Payday today",
+    "payTomorrow": "Payday tomorrow",
+    "payInDays_one": "Payday in {{count}} day",
+    "payInDays_other": "Payday in {{count}} days",
+    "confirmPaidHint": "Opens the dialog to confirm you got paid",
+    "confirmAmountHint": "Opens the dialog to confirm the amount you received"
+  },
+  "projectionWait": {
+    "label": "Still calculating",
+    "detail_one": "{{count}} day",
+    "detail_other": "{{count}} days"
+  },
+  "nextFixed": {
+    "dueToday": "Due today",
+    "tomorrow": "Tomorrow",
+    "inDays_one": "In {{count}} day",
+    "inDays_other": "In {{count}} days"
+  },
+  "nextFixedFallback": {
+    "primary": "Add your first fixed expense",
+    "secondary": "Rent, utilities, subscriptions"
+  },
+  "topCategory": {
+    "uncategorized": "No category",
+    "emptyPrimary": "Add your first expense",
+    "emptySecondary": "Kick off the cycle by logging something",
+    "sparsePrimary": "No leading category yet",
+    "sparseSecondaryFewExpenses": "Add more expenses to see it",
+    "sparseSecondaryNotEnoughData": "Not enough data yet"
+  },
+  "hero": {
+    "payToday": "Payday today",
+    "daysOverdue_one": "+{{count}} day without pay",
+    "daysOverdue_other": "+{{count}} days without pay",
+    "cycleDay": "day {{day}} of {{total}}",
+    "a11yBalance": "Month balance: {{amount}}.",
+    "a11yDailyAllowance": "Daily allowance: {{amount}}.",
+    "a11yProjectedClose": "Projected close: {{amount}}.",
+    "a11yUsdEquivalent": "Equals {{amount}}.",
+    "setupA11y": "Set up your monthly income to start tracking the month.",
+    "configureIncomeAccessibility": "Set up your monthly income",
+    "startHere": "Start here",
+    "setupTitle": "Set up your monthly income",
+    "setupBody": "Once you add your income and fixed expenses, we'll tell you how much you can spend per day and how you'll close the cycle.",
+    "configureNow": "Set up now",
+    "monthBalance": "Month balance",
+    "acumuladoA11y": "You have {{amount}} carried over from last month.",
+    "acumuladoChip": "+{{amount}} from {{period}}",
+    "addedToMonthA11y": "You added {{amount}} to the month's balance",
+    "addedToMonthChip": "+{{amount}} to the month",
+    "adjustedBalanceA11y": "Balance adjusted for this month",
+    "adjustedBalanceChip": "Adjusted balance",
+    "reserveA11y": "You have {{amount}} in accumulated reserve",
+    "reserveChip": "Reserve {{amount}}",
+    "canSpendPerDay": "You can spend per day",
+    "untilCycleEnd": "until cycle end",
+    "youWillCloseWith": "You'll close with",
+    "trendUpA11y": "{{pct}} percent more than the previous cycle.",
+    "trendDownA11y": "{{pct}} percent less than the previous cycle.",
+    "trendFlatA11y": "Same pace as the previous cycle.",
+    "trendVsPrevCycle": "{{sign}}{{pct}}% vs previous cycle",
+    "ifYouKeepThisPace": "if you keep this pace"
+  },
+  "monthClose": {
+    "subtitle": "You closed {{period}} with a positive balance. What do you want to do with that money?",
+    "title": "You have {{amount}} left over",
+    "metaTitleWithGoal": "Add to {{goal}}",
+    "metaTitle": "To a goal",
+    "metaSubtitleActive": "Contribute to the active goal",
+    "metaSubtitleEmpty": "First create a goal on Home",
+    "accumulateTitle": "Add to the current month",
+    "accumulateSubtitle": "Stays as extra available this month",
+    "reserveTitle": "Save as reserve",
+    "reserveSubtitle": "Money set aside, no specific purpose",
+    "confirm": "Confirm",
+    "decideLater": "Decide later"
+  },
+  "cycleBalance": {
+    "mustBePositive": "It has to be greater than zero.",
+    "onboarding": {
+      "title": "What's your balance today?",
+      "contextPrefix": "Configured income",
+      "helperEmpty": "Note the amount on hand. We use it to start this month grounded in reality.",
+      "saveLabel": "Save balance",
+      "eyebrow": "OR ADJUST THE BALANCE",
+      "chipTitle": "I have the full income",
+      "chipSubtitle": "Same as the configured amount",
+      "chipA11y": "I have the full income of {{amount}}, same as the configured amount"
+    },
+    "salary": {
+      "title": "Did you get paid? Confirm the amount",
+      "contextPrefix": "Recurring income",
+      "helperEmpty": "Note the amount you received this month. It only applies to this month.",
+      "saveLabel": "Save payment",
+      "eyebrow": "OR ADJUST THE AMOUNT RECEIVED",
+      "chipTitle": "I got the full income",
+      "chipSubtitle": "Same as the recurring income",
+      "chipA11y": "I got {{amount}}, same as the recurring income"
+    }
+  },
+  "greeting": {
+    "night": "Good night",
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "fallbackName": "User"
+  },
+  "alerts": {
+    "dueWhen": {
+      "today": "today",
+      "tomorrow": "tomorrow",
+      "inDays": "in {{days}}d"
+    },
+    "upcomingTitle": "{{name}} due {{when}}",
+    "markPaid": "Mark paid",
+    "zombieTitle_one": "{{count}} zombie subscription",
+    "zombieTitle_other": "{{count}} zombie subscriptions",
+    "zombieSubtitle": "unused for over 45 days",
+    "review": "Review",
+    "hikeTitle": "{{name}} went up +{{pct}}%",
+    "hikeSubtitle": "vs last month",
+    "view": "View"
+  },
+  "dashboard": {
+    "saveDecisionError": "We couldn't save your decision. Try again in a bit.",
+    "viewAllHistory": "View all history",
+    "activity": "ACTIVITY",
+    "viewAll": "View all"
+  },
+  "addExpenseDashboard": {
+    "loggingFor": "LOGGING FOR",
+    "saveExpense": "Save expense",
+    "today": "today",
+    "yesterday": "yesterday"
+  },
+  "assistantButton": {
+    "open": "Open assistant",
+    "openWithCount_one": "Open assistant — {{count}} suggestion",
+    "openWithCount_other": "Open assistant — {{count}} suggestions"
+  },
+  "header": {
+    "notifications": "Go to notifications",
+    "settingsNoProtection": "Go to settings. Your account has no protection set up.",
+    "settings": "Go to settings"
+  },
+  "familyStrip": {
+    "membersAccessibility": "Household members: {{members}}.",
+    "none": "none",
+    "membersLabel": "Members ·"
+  },
+  "historyToolbar": {
+    "openFilters": "Open filters",
+    "manageCategories": "Manage categories"
+  },
+  "historyRowActions": {
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "historyRow": {
+    "editHint": "Double tap to edit. You can also swipe left for actions.",
+    "noCategory": "No category",
+    "swipe": "Swipe"
+  },
+  "activitySection": {
+    "incomeKind": {
+      "transfer": "Transfer",
+      "bonus": "Bonus",
+      "gift": "Gift",
+      "other": "Income"
+    },
+    "incomeCategory": "Income · {{kind}}",
+    "someone": "Someone",
+    "delete": "Delete",
+    "swipeDeleteHint": "Swipe left to delete",
+    "noCategory": "No category"
+  },
+  "homeScreen": {
+    "dashboardError": "We couldn't open your overview",
+    "deleteError": "We couldn't delete"
+  },
+  "notificationsScreen": {
+    "back": "Back",
+    "title": "Notifications",
+    "pendingCount_one": "{{count}} pending",
+    "pendingCount_other": "{{count}} pending",
+    "markAllAccessibility": "Mark all as read",
+    "markAll": "Mark all",
+    "loadError": "We couldn't load notifications."
+  },
+  "notificationsHook": {
+    "deleteError": "The notification couldn't be deleted.",
+    "retry": "Retry",
+    "clearAllError": "The notifications couldn't be cleared."
+  },
+  "notificationFeed": {
+    "swipeHint": "Swipe to mark as read",
+    "done": "Done",
+    "loading": "Loading notifications...",
+    "loadError": "We couldn't load notifications",
+    "emptyTitle": "All caught up",
+    "emptySubtitle": "You have no pending notifications.",
+    "markRead": "Mark read"
+  },
+  "notifTime": {
+    "noDate": "No date",
+    "now": "now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}}h ago",
+    "yesterdayAt": "yesterday {{time}}"
+  },
+  "dailyBudgetNudge": {
+    "closeDayTitle": "Wrap up your day",
+    "closeDayBody": "See how today went."
+  },
+  "expenseEditor": {
+    "subtitle": "Update only what you need and keep your history clean.",
+    "quickEdit": "Quick edit",
+    "introText": "Change the description or final amount. The rest of the entry stays the same.",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "e.g. Groceries",
+    "amountHelper": "Enter the final value in pesos.",
+    "amountLabel": "Amount",
+    "cancel": "Cancel"
+  },
+  "historyContent": {
+    "subtitle": "Tap to edit or swipe each row for quick actions.",
+    "title": "Entries",
+    "loading": "Loading expenses...",
+    "emptySubtitle": "Add the household's first expense to start building your history.",
+    "emptyTitle": "No entries yet",
+    "noResultsSubtitle": "Try another period, another category, or clear the search.",
+    "noResultsTitle": "No results found",
+    "clearFilters": "Clear filters"
+  },
+  "historyHero": {
+    "eyebrow": "Visible total",
+    "shareOfTotal": "{{pct}}% of visible total",
+    "emptyTitle": "No reading yet"
+  },
+  "historySectionHeader": {
+    "movements_one": "{{count}} entry",
+    "movements_other": "{{count}} entries"
+  },
+  "monthSummary": {
+    "trendVsPrev": "{{sign}}{{pct}}% vs prev",
+    "pendingCount_one": "{{count}} pending",
+    "pendingCount_other": "{{count}} pending",
+    "variablesLabel": "VARIABLE",
+    "movements_one": "{{count}} entry",
+    "movements_other": "{{count}} entries",
+    "viewVariables": "View variable expenses",
+    "topCategoryA11y": "{{name}} leads the cycle: {{share}} of spending, {{total}}.",
+    "topCategoryHint": "Opens expenses filtered by this category",
+    "addExpenseHint": "Opens the screen to log an expense",
+    "fixedLabel": "FIXED",
+    "noFixedLoaded": "No fixed expenses added",
+    "fixedPaidOf": "{{paid}} of {{count}} paid",
+    "viewFixed": "View fixed expenses",
+    "nextFixedA11y": "Next fixed expense: {{name}}, {{amount}}, {{due}}.",
+    "nextFixedHint": "Opens the fixed expenses screen",
+    "allPaid": "All paid",
+    "allPaidA11y": "All {{count}} fixed expenses for the month are paid.",
+    "addFixedHint": "Opens the screen to add a fixed expense",
+    "notPaidYet": "Not collected yet"
+  },
+  "metaCard": {
+    "addError": "We couldn't add the contribution",
+    "retrySoon": "Try again in a moment.",
+    "complete": "Done!",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "chipWithMonths": "{{pct}}% · ~{{months}}",
+    "chipAchieved": "{{pct}}% reached",
+    "completeAccessibility": "Your {{title}} goal is complete",
+    "progressAccessibility": "Your {{title}} goal: {{pct}} percent reached, {{remaining}} to go",
+    "eyebrow": "YOUR GOAL · {{title}}",
+    "objective": "Target · {{amount}}",
+    "youDidIt": "You did it!",
+    "enjoyGoal": "Enjoy your goal.",
+    "remaining": "Still need",
+    "addSavingsAccessibility": "Add savings to this goal",
+    "addSavings": "Add savings"
+  },
+  "quickAddSavings": {
+    "pctOfSuggested": "{{pct}}% of suggested savings",
+    "helperPick": "Slide to choose how much to add.",
+    "helperExceeds": "You're going over what's left ({{remaining}}). We'll save it anyway and the goal will be complete.",
+    "helperAdding": "Adding {{amount}} to \"{{goalTitle}}\".",
+    "saveAmount": "Add {{amount}}",
+    "saveToGoal": "Add to goal",
+    "title": "Add savings · {{goalTitle}}",
+    "subtitle": "Choose how much of the suggested savings to move. You can adjust the amount by sliding or using the percentage shortcuts.",
+    "contributionEyebrow": "CONTRIBUTION",
+    "sliderAccessibility": "Contribution: {{amount}} of {{max}}",
+    "sliderValue": "{{pct}} percent",
+    "chipAccessibility": "Contribute {{pct}} percent, {{amount}}"
+  },
+  "savingsHero": {
+    "consumedLabel": "No savings this month",
+    "consumedA11y": "Heads up: your expenses used up the {{target}} of savings planned for this month.",
+    "healthyLabel": "Saving {{target}}",
+    "healthyA11y": "You're setting aside {{target}} of savings this month.",
+    "healthyA11y_withPercent": "You're setting aside {{target}} of savings this month, equal to {{percent}} percent of your income.",
+    "partialLabel": "{{remaining}} of {{target}} goal",
+    "partialA11y": "You've set aside {{remaining}} of the {{target}} planned for this month.",
+    "partialA11y_withPercent": "You've set aside {{remaining}} of the {{target}} planned for this month, {{percent}} percent of your income."
+  }
+}

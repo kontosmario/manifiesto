@@ -51,6 +51,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
 import {
@@ -103,6 +104,7 @@ export function FreshInstallResetFriction({
   onCancel,
   frictionKey,
 }: FreshInstallResetFrictionProps) {
+  const { t } = useTranslation()
   const { theme } = useAppTheme()
   // L-Med3: anchor on wall-clock ms, not on tick count, so background
   // time IS counted towards the countdown. `mountedAtRef.current` is
@@ -185,7 +187,9 @@ export function FreshInstallResetFriction({
   }, [onContinue, storageKey])
 
   const canContinue = remaining <= 0
-  const ctaLabel = canContinue ? 'Continuar' : `Continuar (${remaining}s)`
+  const ctaLabel = canContinue
+    ? t('auth:freshInstallFriction.continue')
+    : t('auth:freshInstallFriction.continueCountdown', { seconds: remaining })
 
   return (
     <View style={styles.stack}>
@@ -201,11 +205,10 @@ export function FreshInstallResetFriction({
         <MaterialIcons color={theme.colors.danger} name="warning-amber" size={28} />
         <View style={styles.cardBody}>
           <Text style={[styles.title, { color: theme.colors.text }]}>
-            Estás por cambiar la contraseña de tu cuenta
+            {t('auth:freshInstallFriction.title')}
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-            Esto te va a desloguear de todos los dispositivos que tengan
-            sesión activa.
+            {t('auth:freshInstallFriction.body')}
           </Text>
           <Text
             style={[
@@ -218,8 +221,7 @@ export function FreshInstallResetFriction({
               },
             ]}
           >
-            Si tú NO pediste este cambio, cierra esta pantalla AHORA y
-            avísanos a{' '}
+            {t('auth:freshInstallFriction.bodyStrongPrefix')}{' '}
             <Text
               accessibilityRole="link"
               onPress={handleEmailSupport}
@@ -241,7 +243,7 @@ export function FreshInstallResetFriction({
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cerrar y no cambiar la contraseña"
+        accessibilityLabel={t('auth:freshInstallFriction.closeA11y')}
         onPress={onCancel}
         style={({ pressed }) => [
           styles.cancelLink,
@@ -249,7 +251,7 @@ export function FreshInstallResetFriction({
         ]}
       >
         <Text style={[styles.cancelLabel, { color: theme.colors.textMuted }]}>
-          Cerrar sin cambiar
+          {t('auth:freshInstallFriction.closeWithoutChanging')}
         </Text>
       </Pressable>
     </View>

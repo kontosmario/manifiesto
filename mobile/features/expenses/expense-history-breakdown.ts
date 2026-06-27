@@ -1,6 +1,7 @@
 import type { Category } from '@/features/categories/use-categories'
 import type { BreakdownEntry, ExpenseHistorySnapshot } from '@/features/expenses/expense-history.types'
 import type { Expense } from '@/features/expenses/use-expenses'
+import i18n from '@/lib/i18n'
 
 export function buildExpenseBreakdown({
   categoryById,
@@ -33,7 +34,7 @@ export function buildExpenseBreakdown({
 
       totalsByCategory.set(expense.category_id, {
         color: category?.color ?? primaryColor,
-        label: category?.name ?? 'Sin categoria',
+        label: category?.displayName ?? i18n.t('gastos:breakdown.noCategory'),
         total: (previous?.total ?? 0) + expense.price,
       })
     })
@@ -42,7 +43,7 @@ export function buildExpenseBreakdown({
       rows: [...totalsByCategory.values()]
         .sort((first, second) => second.total - first.total)
         .slice(0, 3),
-      title: 'Mas peso por categoria',
+      title: i18n.t('gastos:breakdown.topByCategory'),
     }
   }
 
@@ -65,6 +66,6 @@ export function buildExpenseBreakdown({
         label,
         total,
       })),
-    title: 'Mas peso por persona',
+    title: i18n.t('gastos:breakdown.topByPerson'),
   }
 }

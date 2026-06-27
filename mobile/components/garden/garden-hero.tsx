@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CardParticles } from '@/components/ui/card-particles'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -15,9 +16,6 @@ interface GardenHeroProps {
   /** Semillas / escudos (revive un día olvidado). */
   seeds: number
 }
-
-const HERO_SUB =
-  'Una semilla por cada día que registras. Los huecos son días que no cargaste, tranquilo: el jardín sigue.'
 
 function HeroStat({ label, value }: { label: string; value: string }) {
   const { theme } = useAppTheme()
@@ -37,6 +35,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
  */
 function GardenHeroImpl({ streak, total, record, seeds }: GardenHeroProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   return (
     <View style={styles.card}>
       <LinearGradient
@@ -51,7 +50,9 @@ function GardenHeroImpl({ streak, total, record, seeds }: GardenHeroProps) {
       <FernMark variant="cream" size={232} style={styles.fern} />
 
       <View style={styles.content}>
-        <Text style={[styles.label, { color: theme.colors.heroAccent }]}>RACHA ACTIVA</Text>
+        <Text style={[styles.label, { color: theme.colors.heroAccent }]}>
+          {t('garden:hero.label')}
+        </Text>
         <View style={styles.numberRow}>
           <CountUpText
             value={streak}
@@ -60,19 +61,21 @@ function GardenHeroImpl({ streak, total, record, seeds }: GardenHeroProps) {
             flourish
             glowColor={theme.colors.heroAccent}
             style={[styles.number, { color: theme.colors.heroText }]}
-            accessibilityLabel={`${streak} brotes seguidos`}
+            accessibilityLabel={t('garden:hero.streakA11y', { count: streak })}
           />
-          <Text style={[styles.unit, { color: theme.colors.heroMuted }]}>brotes{'\n'}seguidos</Text>
+          <Text style={[styles.unit, { color: theme.colors.heroMuted }]}>
+            {t('garden:hero.unit')}
+          </Text>
         </View>
-        <Text style={[styles.sub, { color: theme.colors.heroMuted }]}>{HERO_SUB}</Text>
+        <Text style={[styles.sub, { color: theme.colors.heroMuted }]}>{t('garden:hero.sub')}</Text>
 
         <View style={[styles.divider, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
         <View style={styles.statStrip}>
-          <HeroStat label="JARDÍN" value={String(total)} />
+          <HeroStat label={t('garden:hero.statGarden')} value={String(total)} />
           <View style={[styles.statDivider, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-          <HeroStat label="RÉCORD" value={`${record}`} />
+          <HeroStat label={t('garden:hero.statRecord')} value={`${record}`} />
           <View style={[styles.statDivider, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-          <HeroStat label="SEMILLAS" value={`×${seeds}`} />
+          <HeroStat label={t('garden:hero.statSeeds')} value={`×${seeds}`} />
         </View>
       </View>
     </View>

@@ -1,6 +1,8 @@
 import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -60,6 +62,7 @@ function ControlV2PatronCardImpl({
   diasConGasto = 999,
 }: ControlV2PatronCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
 
   // Today's day-of-week mapped to the mock convention (0=Mon..6=Sun).
@@ -103,7 +106,9 @@ function ControlV2PatronCardImpl({
             : 'rgba(194,122,10,0.20)',
           icon: 'trending-up' as const,
           canonical: 'Atención',
-          stateLabel: `${dowFullName(peorDow.name)} intenso`,
+          stateLabel: t('control:patron.stateIntenso', {
+            day: dowFullName(peorDow.name),
+          }),
         }
       case 'leve':
         return {
@@ -121,7 +126,9 @@ function ControlV2PatronCardImpl({
             : 'rgba(194,122,10,0.16)',
           icon: 'trending-up' as const,
           canonical: 'Atención',
-          stateLabel: `${dowFullName(peorDow.name)} alto`,
+          stateLabel: t('control:patron.stateAlto', {
+            day: dowFullName(peorDow.name),
+          }),
         }
       case 'plano':
         return {
@@ -139,7 +146,7 @@ function ControlV2PatronCardImpl({
             : 'rgba(28,126,58,0.16)',
           icon: 'trending-flat' as const,
           canonical: 'Saludable',
-          stateLabel: 'Distribución pareja',
+          stateLabel: t('control:patron.statePareja'),
         }
     }
   })()
@@ -171,18 +178,24 @@ function ControlV2PatronCardImpl({
     if (severity === 'plano') {
       return {
         icon: 'check-circle' as const,
-        text: 'Tu gasto está balanceado a lo largo de la semana. No hay un día que se dispare.',
+        text: t('control:patron.hintBalanced'),
       }
     }
     if (severity === 'leve') {
       return {
         icon: 'trending-up' as const,
-        text: `Los ${dowPlural(peorDow.name)} tienden a ser más caros (${ratio.toFixed(1)}×). Vale la pena prestarles atención.`,
+        text: t('control:patron.hintLeve', {
+          days: dowPlural(peorDow.name),
+          ratio: ratio.toFixed(1),
+        }),
       }
     }
     return {
       icon: 'savings' as const,
-      text: `Si los ${dowPlural(peorDow.name)} bajan al promedio, ahorras ~${formatMoneyShort(ahorroProyectado)} en este mes.`,
+      text: t('control:patron.hintFuerte', {
+        days: dowPlural(peorDow.name),
+        amount: formatMoneyShort(ahorroProyectado),
+      }),
     }
   })()
 
@@ -200,7 +213,7 @@ function ControlV2PatronCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={palette.fg} glow={palette.fg} />
           <Text style={[styles.eyebrow, { color: palette.fg }]} numberOfLines={1}>
-            TU PATRÓN SEMANAL
+            {t('control:patron.eyebrow')}
           </Text>
           <View
             style={[
@@ -221,32 +234,32 @@ function ControlV2PatronCardImpl({
         <Text style={[styles.headline, { color: theme.colors.text }]}>
           {severity === 'plano' ? (
             <>
-              No hay un día que se dispare. Tu gasto está{' '}
+              {t('control:patron.headlineBalancedPrefix')}
               <Text style={[styles.headlineStrong, { color: palette.fg }]}>
-                balanceado
+                {t('control:patron.headlineBalancedStrong')}
               </Text>
               .
             </>
           ) : (
             <>
-              Los{' '}
+              {t('control:patron.headlineWorstPrefix')}
               <Text style={[styles.headlineStrong, { color: tones.peor }]}>
                 {dowPlural(peorDow.name)}
-              </Text>{' '}
-              gastas{' '}
+              </Text>
+              {t('control:patron.headlineWorstMid')}
               <Text style={[styles.headlineStrong, { color: tones.peor }]}>
                 {ratio.toFixed(1)}×
-              </Text>{' '}
-              más que tu promedio
+              </Text>
+              {t('control:patron.headlineWorstRatio')}
               {mejorMatters ? (
                 <>
-                  ; los{' '}
+                  {t('control:patron.headlineBestMid')}
                   <Text
                     style={[styles.headlineStrong, { color: tones.mejor }]}
                   >
                     {dowPlural(mejorDow.name)}
-                  </Text>{' '}
-                  eres el más ahorrativo
+                  </Text>
+                  {t('control:patron.headlineBestSuffix')}
                 </>
               ) : null}
               .
@@ -257,7 +270,7 @@ function ControlV2PatronCardImpl({
         <View style={styles.statsRow}>
           <SegmentStat
             dotColor={tones.peor}
-            label="Peor día"
+            label={t('control:patron.statPeorDia')}
             value={dowFullName(peorDow.name)}
             sub={formatMoneyShort(peorDow.avg)}
             text={theme.colors.text}
@@ -265,19 +278,25 @@ function ControlV2PatronCardImpl({
           />
           <SegmentStat
             dotColor={mejorDow.avg > 0 ? tones.mejor : tones.neutral}
-            label="Mejor día"
+            label={t('control:patron.statMejorDia')}
             value={mejorDow.avg > 0 ? dowFullName(mejorDow.name) : '—'}
             sub={
-              mejorDow.avg > 0 ? formatMoneyShort(mejorDow.avg) : 'sin datos'
+              mejorDow.avg > 0
+                ? formatMoneyShort(mejorDow.avg)
+                : t('control:patron.statSinDatos')
             }
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
           <SegmentStat
             dotColor={tones.neutral}
-            label="Promedio"
-            value={`${formatMoneyShort(globalAvg)}/día`}
-            sub={`últimos ${diaActual >= 28 ? '28' : diaActual} días`}
+            label={t('control:patron.statPromedio')}
+            value={t('control:patron.statPromedioValue', {
+              amount: formatMoneyShort(globalAvg),
+            })}
+            sub={t('control:patron.statUltimosDias', {
+              days: diaActual >= 28 ? 28 : diaActual,
+            })}
             text={theme.colors.text}
             muted={theme.colors.textMuted}
           />
@@ -320,7 +339,7 @@ function ControlV2PatronCardImpl({
                   <Text
                     style={[styles.avgTagText, { color: theme.colors.textMuted }]}
                   >
-                    PROM
+                    {t('control:patron.barPromTag')}
                   </Text>
                 </View>
               </View>
@@ -384,7 +403,7 @@ function ControlV2PatronCardImpl({
                   ]}
                   numberOfLines={1}
                 >
-                  {d.name}
+                  {dowShortName(d.name)}
                   {isToday ? ' ·' : ''}
                 </Text>
               )
@@ -417,13 +436,13 @@ function ControlV2PatronCardImpl({
                 borderColor: palette.chipBorder,
               },
             ]}
-            accessibilityLabel="Hoy es tu día más caro"
+            accessibilityLabel={t('control:patron.todayIsWorstA11y')}
           >
             <MaterialIcons name="today" size={14} color={palette.fg} />
             <Text
               style={[styles.todayCalloutText, { color: theme.colors.text }]}
             >
-              Hoy es {dowFullName(peorDow.name)} — cuida el ritmo.
+              {t('control:patron.todayCallout', { day: dowFullName(peorDow.name) })}
             </Text>
           </View>
         ) : null}
@@ -449,6 +468,7 @@ const EMPTY_DOW_HEIGHTS = [48, 36, 60, 44, 72, 54, 40] as const
  */
 function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const ph = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,42,30,0.06)'
   const avgLineColor = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,42,30,0.16)'
@@ -459,7 +479,7 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
     <RiseView delay={300}>
       <View
         accessibilityRole="text"
-        accessibilityLabel="Tu patrón semanal: esperando más días con gasto"
+        accessibilityLabel={t('control:patron.empty.a11y')}
         style={[
           styles.card,
           styles.emptyCard,
@@ -472,11 +492,11 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
             style={[styles.eyebrow, { color: theme.colors.textMuted }]}
             numberOfLines={1}
           >
-            TU PATRÓN SEMANAL
+            {t('control:patron.eyebrow')}
           </Text>
           <View style={[styles.emptyPill, { borderColor: theme.colors.line }]}>
             <Text style={[styles.emptyPillText, { color: theme.colors.textMuted }]}>
-              Pronto
+              {t('control:patron.empty.soon')}
             </Text>
           </View>
         </View>
@@ -485,8 +505,14 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
         <View style={[styles.emptyBar, { width: '88%', height: 14, backgroundColor: ph }]} />
 
         <View style={styles.statsRow}>
-          {(['Peor día', 'Mejor día', 'Promedio'] as const).map((label) => (
-            <View key={label} style={styles.stat}>
+          {(
+            [
+              ['peorDia', t('control:patron.empty.statPeorDia')],
+              ['mejorDia', t('control:patron.empty.statMejorDia')],
+              ['promedio', t('control:patron.empty.statPromedio')],
+            ] as const
+          ).map(([key, label]) => (
+            <View key={key} style={styles.stat}>
               <View style={styles.statHead}>
                 <View style={[styles.dot, { backgroundColor: ph }]} />
                 <Text
@@ -534,7 +560,7 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
                 style={[styles.dayLabel, { color: theme.colors.textMuted, fontWeight: '600' }]}
                 numberOfLines={1}
               >
-                {d}
+                {dowShortName(d)}
               </Text>
             ))}
           </View>
@@ -552,11 +578,13 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
           <MaterialIcons name="schedule" size={16} color={theme.colors.textMuted} />
           <View style={styles.calloutBody}>
             <Text style={[styles.calloutText, { color: theme.colors.text }]}>
-              Registra gastos en al menos {MIN_SPEND_DAYS} días distintos para
-              detectar en qué día de la semana gastas más.
+              {t('control:patron.empty.callout', { days: MIN_SPEND_DAYS })}
             </Text>
             <Text style={[styles.emptyProgress, { color: theme.colors.textMuted }]}>
-              Gasto en {progreso} de {MIN_SPEND_DAYS} días.
+              {t('control:patron.empty.progress', {
+                progress: progreso,
+                days: MIN_SPEND_DAYS,
+              })}
             </Text>
           </View>
         </View>
@@ -616,40 +644,24 @@ function dowIndexFromName(name: string): number {
   return map[name] ?? -1
 }
 
-// Plural form for the narrative copy, capitalised so the day reads
-// as a proper label inside the inline text ("Los Viernes gastas...",
-// "los Lunes sos el más ahorrativo"). Lun/Mar/Mié/Jue/Vie share form
-// in singular and plural in Spanish, so the "s" only attaches to
-// Sáb/Dom.
-const DOW_PLURALS: Record<string, string> = {
-  Lun: 'Lunes',
-  Mar: 'Martes',
-  Mié: 'Miércoles',
-  Jue: 'Jueves',
-  Vie: 'Viernes',
-  Sáb: 'Sábados',
-  Dom: 'Domingos',
-}
-
+// Plural form for the narrative copy ("Los Viernes gastas...", "los
+// Lunes sos el más ahorrativo"). Resolved from i18n by the abbrev key
+// so EN gets its own plural forms.
 function dowPlural(name: string): string {
-  return DOW_PLURALS[name] ?? name
+  return i18n.t(`control:patron.dowPlural.${name}`, { defaultValue: name })
 }
 
-// Capitalised singular for headers / pills ("Viernes intenso",
-// "Sábado alto"). Falls back to the abbrev when the name doesn't
-// match the table.
-const DOW_FULL: Record<string, string> = {
-  Lun: 'Lunes',
-  Mar: 'Martes',
-  Mié: 'Miércoles',
-  Jue: 'Jueves',
-  Vie: 'Viernes',
-  Sáb: 'Sábado',
-  Dom: 'Domingo',
-}
-
+// Singular full name for headers / pills ("Viernes intenso", "Sábado
+// alto"). Resolved from i18n by the abbrev key; falls back to the
+// abbrev when the name doesn't match the table.
 function dowFullName(name: string): string {
-  return DOW_FULL[name] ?? name
+  return i18n.t(`control:patron.dowFull.${name}`, { defaultValue: name })
+}
+
+// Short label for the chart axis ("Lun", "Mar" → "Mon", "Tue"). Resolved
+// from i18n by the abbrev key; falls back to the abbrev when unmatched.
+function dowShortName(name: string): string {
+  return i18n.t(`control:patron.dowShort.${name}`, { defaultValue: name })
 }
 
 const styles = StyleSheet.create({

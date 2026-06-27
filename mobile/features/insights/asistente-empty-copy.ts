@@ -9,6 +9,8 @@
 //     either had no signals this cycle or dismissed them all. The
 //     original "Revisaste todas las sugerencias" copy applies.
 
+import i18n from '@/lib/i18n'
+
 export interface AsistenteEmptyCopyInput {
   usingMock: boolean
 }
@@ -23,12 +25,12 @@ export function selectAsistenteEmptyCopy(
 ): AsistenteEmptyCopy {
   if (input.usingMock) {
     return {
-      title: 'Listos para empezar',
-      body: 'Carga tu ingreso y un par de gastos para que el asistente pueda mirar tus números.',
+      title: i18n.t('insights:asistente.empty.firstTimeTitle'),
+      body: i18n.t('insights:asistente.empty.firstTimeBody'),
     }
   }
   return {
-    title: 'Revisaste todas las sugerencias',
-    body: 'El asistente sigue mirando tus números. Si los patrones persisten, las sugerencias volverán a aparecer.',
+    title: i18n.t('insights:asistente.empty.reviewedTitle'),
+    body: i18n.t('insights:asistente.empty.reviewedBody'),
   }
 }

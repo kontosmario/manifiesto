@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   useAnimatedStyle,
   useReducedMotion,
@@ -54,13 +55,15 @@ export function NumpadGrid({
   rawValue,
   onChangeRawValue,
   onDone,
-  doneLabel = 'Listo',
+  doneLabel,
   maxIntegerDigits = 8,
   maxDecimalDigits = 2,
   doneDisabled = false,
   doneLoading = false,
   hideDoneButton = false,
 }: NumpadGridProps) {
+  const { t } = useTranslation()
+  const resolvedDoneLabel = doneLabel ?? t('common:actions.done')
   const handleDigit = useCallback(
     (digit: string) => {
       void triggerHaptic('selection')
@@ -106,7 +109,7 @@ export function NumpadGrid({
       {hideDoneButton ? null : (
         <AppButton
           variant="primary"
-          label={doneLabel}
+          label={resolvedDoneLabel}
           onPress={handleDone}
           disabled={doneDisabled}
           loading={doneLoading}
@@ -123,14 +126,14 @@ export function NumpadGrid({
                 iconFallback={key === 'backspace' ? 'backspace' : undefined}
                 accessibilityLabel={
                   key === 'backspace'
-                    ? 'Borrar último dígito'
+                    ? t('states:numpad.backspaceLabel')
                     : key === ','
-                      ? 'Coma'
+                      ? t('states:numpad.commaLabel')
                       : key
                 }
                 accessibilityHint={
                   key === 'backspace'
-                    ? 'Mantén presionado para limpiar todo'
+                    ? t('states:numpad.backspaceHint')
                     : undefined
                 }
                 onPress={() => handleKeyPress(key)}

@@ -4,6 +4,7 @@
 // `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   interpolateColor,
@@ -37,6 +38,7 @@ export function NameInput({
   warning = false,
 }: NameInputProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const focusProgress = useSharedValue(isFocused ? 1 : 0)
   const warningProgress = useSharedValue(warning ? 1 : 0)
@@ -100,7 +102,7 @@ export function NameInput({
         onChangeText={onChange}
         onFocus={onFocus}
         onBlur={onBlur}
-        placeholder="Ej: Alquiler, Netflix, Cuota iPhone"
+        placeholder={t('fijos:wizard.step1.namePlaceholder')}
         placeholderTextColor={theme.colors.textSoft}
         style={[styles.textInputField, { color: theme.colors.text }]}
       />

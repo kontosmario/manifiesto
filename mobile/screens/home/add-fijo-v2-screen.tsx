@@ -17,6 +17,7 @@ import {
   Text,
   useWindowDimensions,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
@@ -38,7 +39,6 @@ import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
-import { errorMessages } from '@/lib/copy/states'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -74,6 +74,7 @@ export function AddFijoV2Screen({
 }: AddFijoV2ScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
   // Compute un tile width que llene la row exactamente cuando las 8
   // fijo categories layout como 4 cols × 2 rows. Screen tiene paddingH=20
@@ -199,8 +200,10 @@ export function AddFijoV2Screen({
             // desde el listado.
             void triggerHaptic('error')
             Alert.alert(
-              'Fijo creado, pero no pudimos marcarlo como pagado',
-              `${getErrorMessage(paymentError, errorMessages.server)}\n\nPuedes tocar "Registrar pago" desde el listado.`,
+              t('fijos:wizard.errors.createdNotPaidTitle'),
+              t('fijos:wizard.errors.createdNotPaidBody', {
+                error: getErrorMessage(paymentError, t('states:error.server')),
+              }),
             )
             handleClose()
             return
@@ -211,8 +214,10 @@ export function AddFijoV2Screen({
     } catch (error) {
       void triggerHaptic('error')
       Alert.alert(
-        isEditing ? 'No pudimos actualizar el fijo' : 'No pudimos crear el fijo',
-        getErrorMessage(error, errorMessages.server),
+        isEditing
+          ? t('fijos:wizard.errors.updateFailed')
+          : t('fijos:wizard.errors.createFailed'),
+        getErrorMessage(error, t('states:error.server')),
       )
     }
   }
@@ -336,7 +341,11 @@ export function AddFijoV2Screen({
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
             ]}
             accessibilityRole="button"
-            accessibilityLabel={form.canContinue ? 'Ver impacto' : 'Completa los datos'}
+            accessibilityLabel={
+              form.canContinue
+                ? t('fijos:wizard.cta.seeImpactA11y')
+                : t('fijos:wizard.cta.completeDataA11y')
+            }
           >
             <Text
               style={[
@@ -344,7 +353,9 @@ export function AddFijoV2Screen({
                 { color: theme.colors.creamCard },
               ]}
             >
-              {form.canContinue ? 'Ver impacto →' : 'Completa los datos'}
+              {form.canContinue
+                ? t('fijos:wizard.cta.seeImpact')
+                : t('fijos:wizard.cta.completeData')}
             </Text>
           </Pressable>
           </Animated.View>
@@ -364,10 +375,10 @@ export function AddFijoV2Screen({
             accessibilityRole="button"
             accessibilityLabel={
               !form.canSubmit
-                ? 'Elige el día del mes'
+                ? t('fijos:wizard.cta.pickDay')
                 : isEditing
-                  ? 'Actualizar fijo'
-                  : 'Confirmar fijo'
+                  ? t('fijos:wizard.cta.updateFijoA11y')
+                  : t('fijos:wizard.cta.confirmFijoA11y')
             }
           >
             <Text
@@ -380,14 +391,14 @@ export function AddFijoV2Screen({
               ]}
             >
               {!form.canSubmit
-                ? 'Elige el día del mes'
+                ? t('fijos:wizard.cta.pickDay')
                 : pending
                 ? isEditing
-                  ? 'Actualizando…'
-                  : 'Creando…'
+                  ? t('fijos:wizard.cta.updating')
+                  : t('fijos:wizard.cta.creating')
                 : isEditing
-                  ? 'Actualizar ✓'
-                  : 'Confirmar y crear ✓'}
+                  ? t('fijos:wizard.cta.update')
+                  : t('fijos:wizard.cta.confirmCreate')}
             </Text>
           </Pressable>
           </Animated.View>

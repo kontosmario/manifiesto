@@ -1,7 +1,10 @@
 import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Avatar } from '@/components/ui/avatar'
 import { useAppTheme } from '@/theme/theme-provider'
+import { getIntlLocale } from '@/lib/i18n/active-locale'
 import { UsageLevelButtons } from './usage-level-buttons'
 import type {
   UsageAuditRecord,
@@ -25,20 +28,20 @@ interface Props {
   onSelect: (level: UsageLevel) => void
 }
 
-function relativeTime(iso: string, now: Date): string {
+function relativeTime(iso: string, now: Date, t: TFunction): string {
   const ms = now.getTime() - Date.parse(iso)
   const minutes = Math.floor(ms / 60000)
-  if (minutes < 60) return 'hace un rato'
+  if (minutes < 60) return t('insights:subscriptions.prompt.relAMoment')
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `hace ${hours} h`
+  if (hours < 24) return t('insights:subscriptions.prompt.relHours', { count: hours })
   const days = Math.floor(hours / 24)
-  return days === 1 ? 'hace 1 día' : `hace ${days} días`
+  return t('insights:subscriptions.prompt.relDays', { count: days })
 }
 
-const LEVEL_LABEL: Record<UsageLevel, string> = {
-  mucho: 'la usa mucho',
-  a_veces: 'a veces',
-  casi_nunca: 'casi nunca',
+const LEVEL_LABEL_KEY: Record<UsageLevel, string> = {
+  mucho: 'insights:subscriptions.prompt.levelMucho',
+  a_veces: 'insights:subscriptions.prompt.levelAVeces',
+  casi_nunca: 'insights:subscriptions.prompt.levelCasiNunca',
 }
 
 export function AuditPromptCard({
@@ -51,6 +54,7 @@ export function AuditPromptCard({
   onSelect,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const cardBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
   const others = audits.filter((a) => a.userId !== currentUserId)
   const youAlreadyAnswered = audits.some((a) => a.userId === currentUserId)
@@ -62,7 +66,9 @@ export function AuditPromptCard({
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        ${fijoAmount.toLocaleString('es-AR')} / mes
+        {t('insights:subscriptions.prompt.perMonth', {
+          amount: `$${fijoAmount.toLocaleString(getIntlLocale())}`,
+        })}
       </Text>
 
       {others.length > 0 && (
@@ -75,9 +81,9 @@ export function AuditPromptCard({
               <View key={a.id} style={styles.otherRow}>
                 <Avatar name={member?.name ?? ''} color={color} size={24} />
                 <Text style={[styles.otherText, { color: theme.colors.text }]}>
-                  {member?.name ?? 'Alguien'}{' '}
-                  <Text style={styles.otherStrong}>{LEVEL_LABEL[a.level]}</Text> ·{' '}
-                  {relativeTime(a.createdAt, now)}
+                  {member?.name ?? t('insights:subscriptions.prompt.someoneFallback')}{' '}
+                  <Text style={styles.otherStrong}>{t(LEVEL_LABEL_KEY[a.level])}</Text> ·{' '}
+                  {relativeTime(a.createdAt, now, t)}
                 </Text>
               </View>
             )
@@ -88,13 +94,15 @@ export function AuditPromptCard({
       {!youAlreadyAnswered ? (
         <>
           <Text style={[styles.question, { color: theme.colors.text }]}>
-            {others.length > 0 ? '¿Y tú?' : '¿La estás usando?'}
+            {others.length > 0
+              ? t('insights:subscriptions.prompt.questionAndYou')
+              : t('insights:subscriptions.prompt.questionUsing')}
           </Text>
           <UsageLevelButtons onSelect={onSelect} />
         </>
       ) : (
         <Text style={[styles.answered, { color: theme.colors.textMuted }]}>
-          Ya contestaste — esperando al resto.
+          {t('insights:subscriptions.prompt.answered')}
         </Text>
       )}
     </View>

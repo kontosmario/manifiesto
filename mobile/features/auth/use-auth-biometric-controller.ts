@@ -17,6 +17,7 @@ import { authFlowLog } from '@/lib/auth-flow-logger'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface UseAuthBiometricControllerParams {
@@ -75,7 +76,7 @@ export function useAuthBiometricController({
 
       if (!shouldSaveCredentials && options?.shouldPromptSetup) {
         const biometricResult = await authenticateBiometricAccess({
-          promptMessage: `Activa ${nextBiometricState.label} para entrar más rápido la próxima vez.`,
+          promptMessage: i18n.t('auth:biometric.activatePrompt', { label: nextBiometricState.label }),
         })
 
         if (!biometricResult.success) {
@@ -119,13 +120,13 @@ export function useAuthBiometricController({
       clearFeedback()
 
       if (!biometricState.isAvailable) {
-        onInfoMessage(`Este dispositivo no tiene ${biometricState.label} disponible para Manifiesto.`)
+        onInfoMessage(i18n.t('auth:biometric.notAvailableOnDevice', { label: biometricState.label }))
         void triggerHaptic('warning')
         return
       }
 
       if (!biometricState.hasSavedCredentials) {
-        onInfoMessage(`Ingresa una vez con email y contraseña para activar ${biometricState.label}.`)
+        onInfoMessage(i18n.t('auth:biometric.signInOnceToActivate', { label: biometricState.label }))
         void triggerHaptic('selection')
         return
       }
@@ -179,7 +180,7 @@ export function useAuthBiometricController({
           dispatchAuthFlow({ type: 'LOGIN_FAILED' })
           await clearBiometricCredentials()
           await refreshBiometricState()
-          onInfoMessage(`Vuelve a ingresar manualmente para reactivar ${biometricState.label}.`)
+          onInfoMessage(i18n.t('auth:biometric.reenterManually', { label: biometricState.label }))
           void triggerHaptic('warning')
           return
         }
@@ -195,7 +196,7 @@ export function useAuthBiometricController({
         authFlowLog('controller', 'refreshSession returned', { hasError: Boolean(refreshResponse.error), hasSession: Boolean(refreshResponse.data.session) })
 
         if (refreshResponse.error || !refreshResponse.data.session) {
-          throw refreshResponse.error ?? new Error('No se pudo restaurar la sesión.')
+          throw refreshResponse.error ?? new Error(i18n.t('auth:biometric.sessionRestoreFailed'))
         }
 
         const newRefreshToken = refreshResponse.data.session.refresh_token
@@ -237,7 +238,7 @@ export function useAuthBiometricController({
         onErrorMessage(
           getErrorMessage(
             error,
-            `Tu sesión expiró. Ingresa con tu contraseña una vez para reactivar ${biometricState.label}.`,
+            i18n.t('auth:biometric.sessionExpired', { label: biometricState.label }),
           ),
         )
       } finally {

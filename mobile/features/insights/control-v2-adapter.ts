@@ -14,8 +14,10 @@ import type { FamilyFinance } from '@/features/finance/use-family-finance'
 import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
-import { emptyStates } from '@/lib/copy/states'
-import { formatLocalDateKey } from '@/utils/pay-cycle'
+import i18n from '@/lib/i18n'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import { monthShort } from '@/utils/date-format'
+import { capitalizeText, formatLocalDateKey } from '@/utils/pay-cycle'
 import { DAY_MS } from '@/utils/time'
 
 /** One entry of the `category_breakdown` jsonb column.
@@ -123,15 +125,14 @@ interface BuildControlDataArgs {
   now?: Date
 }
 
-const MES_ES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-] as const
-
-const MES_ABBR_ES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-] as const
+/** Nombre completo del mes en el idioma activo, capitalizado
+ *  ("Marzo" / "March"). Mismo patrón locale-aware que la historia
+ *  mensual del dashboard familiar (getDateTimeFormat + capitalizeText). */
+function monthLongCapitalized(monthIndex: number): string {
+  const safe = ((monthIndex % 12) + 12) % 12
+  const formatted = getDateTimeFormat({ month: 'long' }).format(new Date(2024, safe, 1))
+  return capitalizeText(formatted)
+}
 
 interface ParsedISODate {
   year: number
@@ -170,9 +171,8 @@ function buildCycleRangeLabel(
   // Date constructor (year, month-1, day) — no TZ pitfall.
   const lastDay = new Date(end.year, end.month - 1, end.day)
   lastDay.setDate(lastDay.getDate() - 1)
-  const lastDayMonth = lastDay.getMonth() // 0-11
-  const startStr = `${start.day} ${MES_ABBR_ES[start.month - 1]}`
-  const endStr = `${lastDay.getDate()} ${MES_ABBR_ES[lastDayMonth]}`
+  const startStr = `${start.day} ${monthShort(new Date(start.year, start.month - 1, 1))}`
+  const endStr = `${lastDay.getDate()} ${monthShort(lastDay)}`
   return `${startStr} – ${endStr}`
 }
 
@@ -339,10 +339,11 @@ export function buildControlDataFromSnapshot(
   // otherwise fall back to a neutral marker so the UI doesn't crash.
   const last = summaries[0]
   const prevMonthIndex = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const prevMonthName = MES_ES[prevMonthIndex.getMonth()] ?? 'Mes anterior'
+  const prevMonthName =
+    monthLongCapitalized(prevMonthIndex.getMonth()) || i18n.t('control:vsmes.prevMonthFallback')
   const lastTopCat = last
     ? topCategoryFromBreakdown(last.category_breakdown)
-    : { label: emptyStates.noData.title, categoryId: null, amount: 0, pct: 0 }
+    : { label: i18n.t('states:empty.noData.title'), categoryId: null, amount: 0, pct: 0 }
   // Cross-cycle category check: how much did the user spend THIS
   // cycle in the same category that was the worst last month? Lets
   // the UI raise an alert when the same drain repeats.
@@ -533,11 +534,11 @@ function topCategoryFromBreakdown(
 ): { label: string; categoryId: string | null; amount: number; pct: number } {
   const list = normaliseCategoryBreakdown(raw)
   if (list.length === 0) {
-    return { label: emptyStates.noData.title, categoryId: null, amount: 0, pct: 0 }
+    return { label: i18n.t('states:empty.noData.title'), categoryId: null, amount: 0, pct: 0 }
   }
   const top = list[0]!
   return {
-    label: top.name ?? 'Sin nombre',
+    label: top.name ?? i18n.t('control:vsmes.unnamedCategory'),
     categoryId: top.category_id,
     amount: top.total,
     pct: top.pct,
@@ -587,5 +588,5 @@ function formatPeriodLabel(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoDate)
   if (!match) return ''
   const monthIdx = Number(match[2]) - 1
-  return MES_ES[monthIdx] ?? ''
+  return monthLongCapitalized(monthIdx)
 }

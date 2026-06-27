@@ -85,6 +85,7 @@ export function AchievementsStreakPreviewScreen() {
   return (
     <Screen
       title="Preview · Logros & Racha"
+      // @i18n-ignore (dev-only: pantalla de preview gated por __DEV__, copy interno de tooling)
       subtitle="Herramientas de desarrollo para previsualizar el modal de unlock y la racha en cada estado."
       canGoBack
     >

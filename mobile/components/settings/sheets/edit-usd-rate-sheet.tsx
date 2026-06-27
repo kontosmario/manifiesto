@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import {
   currencyFormatter,
@@ -22,6 +23,7 @@ export function EditUsdRateSheet({
   onClose,
   onSave,
 }: EditUsdRateSheetProps) {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(() => serializePrice(currentValue))
 
   useEffect(() => {
@@ -39,20 +41,20 @@ export function EditUsdRateSheet({
   return (
     <NumericEditSheet
       visible={visible}
-      title="Cotización USD"
-      subtitle="Cotización de referencia para mostrar equivalentes USD dentro de la app."
+      title={t('settings:editUsdRate.title')}
+      subtitle={t('settings:editUsdRate.subtitle')}
       rawValue={draft}
       onChangeRawValue={setDraft}
       formatDisplay={(raw) => formatPriceInputValue(raw, false)}
-      displayEyebrow="ARS POR USD"
+      displayEyebrow={t('settings:editUsdRate.eyebrow')}
       displayPlaceholder="$ 1000"
       helper={
         isValid
-          ? `1 USD ≈ ${currencyFormatter.format(parsed)}.`
-          : 'Ingresa la cotización actual en ARS.'
+          ? t('settings:editUsdRate.helperValid', { amount: currencyFormatter.format(parsed) })
+          : t('settings:editUsdRate.helperInvalid')
       }
-      errorText={showError ? 'La cotización debe ser mayor a cero.' : undefined}
-      saveLabel="Guardar cotización"
+      errorText={showError ? t('settings:editUsdRate.error') : undefined}
+      saveLabel={t('settings:editUsdRate.save')}
       saveDisabled={!hasChanged}
       isSaving={isSaving}
       onSave={() => {

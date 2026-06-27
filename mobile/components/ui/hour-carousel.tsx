@@ -26,6 +26,7 @@ import {
   type NativeSyntheticEvent,
   type ScrollView,
 } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -47,6 +48,8 @@ interface Props {
 
 export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
+  const hourSuffix = t('states:hourPicker.suffix')
   const reduced = useReducedMotion()
   // Texto sobre el pill primary: mismo patrón que el Button canónico —
   // blanco en light (5.5:1 sobre #297811) y el canvas oscuro en dark
@@ -144,8 +147,8 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
           onScroll={handleScroll}
           onMomentumScrollEnd={settle}
           accessibilityRole="adjustable"
-          accessibilityLabel={accessibilityLabel ?? 'Hora'}
-          accessibilityHint="Desliza para cambiar la hora. El número del centro es el elegido."
+          accessibilityLabel={accessibilityLabel ?? t('states:hourPicker.label')}
+          accessibilityHint={t('states:hourPicker.hint')}
         >
           {DATA.map((hour, idx) => (
             <HourTile
@@ -159,6 +162,7 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
               onPrimary={onPrimary}
               textColor={theme.colors.text}
               mutedColor={theme.colors.textMuted}
+              hourSuffix={hourSuffix}
               onTilePress={onTilePress}
             />
           ))}
@@ -178,6 +182,7 @@ interface TileProps {
   onPrimary: string
   textColor: string
   mutedColor: string
+  hourSuffix: string
   onTilePress: (index: number, hour: number) => void
 }
 
@@ -194,6 +199,7 @@ const HourTile = memo(function HourTile({
   onPrimary,
   textColor,
   mutedColor,
+  hourSuffix,
   onTilePress,
 }: TileProps) {
   const inputRange = [
@@ -242,7 +248,7 @@ const HourTile = memo(function HourTile({
             {hh}
           </Text>
         </View>
-        <Text style={[styles.suffix, { color: isCentered ? primary : mutedColor }]}>hs</Text>
+        <Text style={[styles.suffix, { color: isCentered ? primary : mutedColor }]}>{hourSuffix}</Text>
       </Animated.View>
     </Pressable>
   )

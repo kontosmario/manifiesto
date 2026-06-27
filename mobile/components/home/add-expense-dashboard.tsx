@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
@@ -13,6 +14,8 @@ import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import type { Category } from '@/features/categories/use-categories'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { formatMissingFields } from '@/lib/form-missing-fields'
+import i18n from '@/lib/i18n'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 import { triggerHaptic } from '@/lib/haptics'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -80,6 +83,7 @@ export function AddExpenseDashboard({
   onSubmit,
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [numpadVisible, setNumpadVisible] = useState(false)
 
   // Flagged once the user nudges Guardar with required fields empty.
@@ -87,9 +91,13 @@ export function AddExpenseDashboard({
   // and clear field-by-field as the user completes each input.
   const initialTokenRef = useRef(highlightToken)
   const isFlagged = highlightToken > initialTokenRef.current
-  const flagAmount = isFlagged && missingFields.includes('monto')
-  const flagDescription = isFlagged && missingFields.includes('descripción')
-  const flagCategory = isFlagged && missingFields.includes('categoría')
+  // Comparar contra el MISMO valor localizado que produce el controller
+  // (i18n.t de las mismas keys), no contra el literal ES — sino el resaltado
+  // de campo faltante dejaba de dispararse en inglés.
+  const flagAmount = isFlagged && missingFields.includes(t('gastos:import.field.amount'))
+  const flagDescription =
+    isFlagged && missingFields.includes(t('gastos:import.field.description'))
+  const flagCategory = isFlagged && missingFields.includes(t('gastos:import.field.category'))
 
   const canSubmit = missingFields.length === 0
 
@@ -145,7 +153,7 @@ export function AddExpenseDashboard({
             ]}
           >
             <Text style={[styles.forDatePillLabel, { color: theme.colors.textMuted }]}>
-              REGISTRANDO PARA
+              {t('home:addExpenseDashboard.loggingFor')}
             </Text>
             <Text style={[styles.forDatePillValue, { color: theme.colors.text }]}>
               {formatForDateLabel(forDate)}
@@ -173,11 +181,15 @@ export function AddExpenseDashboard({
       </RiseView>
 
       <RiseView delay={forDate ? 180 : 120}>
+        {/* Scroll horizontal (rows=2, como el picker de fijos): con el
+            catálogo expandido a 30 categorías la grilla estática recortaba
+            las columnas que desbordaban. rankedCategories deja las más
+            usadas al inicio; el resto se alcanza scrolleando. */}
         <CategoryHorizontalRail
           categories={rankedCategories}
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
-          staticGrid
+          rows={2}
           warning={flagCategory}
         />
       </RiseView>
@@ -222,7 +234,7 @@ export function AddExpenseDashboard({
               the AppButton's own disabled affordance with the in-flight
               flag (`loading`) being the only hard-block. */}
           <AppButton
-            label="Guardar gasto"
+            label={t('home:addExpenseDashboard.saveExpense')}
             variant="primary"
             loading={isBusy}
             disabled={false}
@@ -257,14 +269,8 @@ export function AddExpenseDashboard({
   )
 }
 
-const WEEKDAY_LABELS = [
-  'domingo', 'lunes', 'martes', 'miércoles',
-  'jueves', 'viernes', 'sábado',
-]
-const MONTH_LABELS = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
+const WEEKDAY_LONG_OPTIONS: Intl.DateTimeFormatOptions = { weekday: 'long' }
+const MONTH_SHORT_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short' }
 
 function formatForDateLabel(date: Date): string {
   const now = new Date()
@@ -273,10 +279,10 @@ function formatForDateLabel(date: Date): string {
   const diffDays = Math.round(
     (now.getTime() - target.getTime()) / (1000 * 60 * 60 * 24),
   )
-  if (diffDays === 0) return 'hoy'
-  if (diffDays === 1) return 'ayer'
-  const weekday = WEEKDAY_LABELS[date.getDay()]
-  const month = MONTH_LABELS[date.getMonth()]
+  if (diffDays === 0) return i18n.t('home:addExpenseDashboard.today')
+  if (diffDays === 1) return i18n.t('home:addExpenseDashboard.yesterday')
+  const weekday = getDateTimeFormat(WEEKDAY_LONG_OPTIONS).format(date)
+  const month = getDateTimeFormat(MONTH_SHORT_OPTIONS).format(date)
   return `${weekday} ${date.getDate()} ${month}`
 }
 

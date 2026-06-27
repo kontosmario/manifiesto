@@ -15,7 +15,7 @@ const base = {
 
 describe('formatDate', () => {
   it('formatea es-AR corto en UTC', () => {
-    expect(formatDate('2027-06-14T12:00:00Z')).toBe('14 jun 2027')
+    expect(formatDate('2027-06-14T12:00:00Z')).toBe('14 de jun de 2027')
   })
   it('null → guion', () => {
     expect(formatDate(null)).toBe('—')
@@ -28,7 +28,7 @@ describe('membershipVariant', () => {
     const v = membershipVariant(base)
     expect(v.tone).toBe('active')
     expect(v.statusLabel).toBe('ACTIVA')
-    expect(v.heroLine).toBe('Se renueva el 14 jun 2027')
+    expect(v.heroLine).toBe('Se renueva el 14 de jun de 2027')
     expect(v.primaryAction).toBe('change')
     expect(v.canManage).toBe(true)
   })
@@ -59,7 +59,7 @@ describe('membershipVariant', () => {
     const v = membershipVariant({ ...base, autoRenew: false })
     expect(v.tone).toBe('warn')
     expect(v.statusLabel).toBe('NO SE RENOVARÁ')
-    expect(v.heroLine).toBe('Habilitado hasta 14 jun 2027')
+    expect(v.heroLine).toBe('Habilitado hasta 14 de jun de 2027')
     expect(v.primaryAction).toBe('reactivate')
   })
 
@@ -71,7 +71,7 @@ describe('membershipVariant', () => {
     })
     expect(v.tone).toBe('warn')
     expect(v.statusLabel).toBe('PROBLEMA DE PAGO')
-    expect(v.heroLine).toBe('Reintentando hasta 18 jun 2026')
+    expect(v.heroLine).toBe('Reintentando hasta 18 de jun de 2026')
     expect(v.primaryAction).toBe('fixPayment')
   })
 

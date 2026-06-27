@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import i18n from '@/lib/i18n'
 import {
   groupGastosByDay,
   type CategoryLite,
@@ -15,6 +16,7 @@ import {
   useGastosHeroSummary,
 } from '@/features/gastos/use-gastos-endpoints'
 import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
+import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
 import { computeCupoDiario } from '@/features/gastos/cupo-diario'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
@@ -192,7 +194,15 @@ export function useGastosController(
   const categoriesById = useMemo<Map<string, CategoryLite>>(() => {
     const m = new Map<string, CategoryLite>()
     for (const c of categoriesQuery.data ?? []) {
-      m.set(c.id, { id: c.id, name: c.name, color: c.color })
+      // Display localizado NO destructivo: el RPC de counts no trae
+      // template_id, así que matcheamos por (name, scope='expense').
+      m.set(c.id, {
+        id: c.id,
+        name: localizeCategoryNameByName(c.name, 'expense'),
+        // Crudo de la DB → fuente para ícono/color (los matchers son ES).
+        rawName: c.name,
+        color: c.color,
+      })
     }
     return m
   }, [categoriesQuery.data])
@@ -219,12 +229,15 @@ export function useGastosController(
     () =>
       (hero?.top_categories ?? []).map((r) => ({
         id: r.id,
-        label: r.name,
+        // El hero RPC devuelve el `name` crudo (server-side, sin i18n).
+        // Re-resolvemos por id contra el mapa ya localizado; si la
+        // categoría no está en el mapa (raro), caemos al name del RPC.
+        label: categoriesById.get(r.id)?.name ?? r.name,
         color: r.color,
         amount: r.amount,
         percent: r.percent,
       })),
-    [hero?.top_categories],
+    [hero?.top_categories, categoriesById],
   )
 
   // ── Calendar (server-computed moods + per-day totals) ───────────
@@ -303,7 +316,7 @@ export function useGastosController(
         const c = categoriesById.get(id)
         return {
           id,
-          label: c?.name ?? 'Sin categoría',
+          label: c?.name ?? i18n.t('gastos:movementRow.noCategory'),
           color: c?.color ?? '#888',
           amount,
           percent: Math.round((amount / dayTotal) * 100),
@@ -324,12 +337,12 @@ export function useGastosController(
 
   // ── Summary chip ────────────────────────────────────────────────
   const summaryChip = useMemo(() => {
-    const period = selectedDay != null ? `día ${selectedDay}` : cycleLabel
+    const period = selectedDay != null ? i18n.t('gastos:summaryChip.day', { day: selectedDay }) : cycleLabel
     const cat =
       selectedCategoryId == null
-        ? 'Todas'
-        : (categoriesById.get(selectedCategoryId)?.name ?? 'Todas')
-    return `${filteredCount} mov · ${period} · ${cat}`
+        ? i18n.t('gastos:smartFilter.all')
+        : (categoriesById.get(selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all'))
+    return i18n.t('gastos:summaryChip.text', { count: filteredCount, period, cat })
   }, [
     filteredCount,
     selectedDay,
@@ -436,7 +449,7 @@ function rowToExpense(row: GastosExpenseRow): Expense {
     price: row.price,
     created_at: row.created_at,
     created_by: row.created_by,
-    creator_display_name: row.creator_display_name ?? 'Sin nombre',
+    creator_display_name: row.creator_display_name ?? i18n.t('gastos:misc.noName'),
     paid_in_arrears: row.paid_in_arrears === true,
   }
 }

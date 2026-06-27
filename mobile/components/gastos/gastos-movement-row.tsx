@@ -11,6 +11,7 @@
 // con el flag local que se prende solo en filter changes / mutations.
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { StyleSheet } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { IncomeRow } from '@/components/gastos/income-row'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
@@ -58,6 +59,7 @@ export function GastosMovementRow({
   onDeleteIncome,
 }: GastosMovementRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   if (movement.kind === 'income') {
     const income = movement.income
@@ -65,7 +67,7 @@ export function GastosMovementRow({
     const title = income.description?.trim() || incomeKindFallback(income.kind)
     const incomeActions: SwipeAction[] = [
       {
-        label: 'Eliminar',
+        label: t('common:actions.delete'),
         tone: 'danger',
         icon: 'delete',
         onPress: () => onDeleteIncome(income.id),
@@ -79,9 +81,9 @@ export function GastosMovementRow({
         layout={animationEnabled ? LinearTransition.duration(220) : undefined}
       >
         <SwipeRow
-          accessibilityLabel={`${title}, ingreso`}
-          accessibilityHint="Desliza a la izquierda para eliminar"
-          accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+          accessibilityLabel={t('gastos:movementRow.incomeA11yLabel', { title })}
+          accessibilityHint={t('gastos:movementRow.swipeToDeleteHint')}
+          accessibilityActions={[{ name: 'delete', label: t('common:actions.delete') }]}
           onAccessibilityAction={(event) => {
             if (event.nativeEvent.actionName === 'delete') {
               onDeleteIncome(income.id)
@@ -93,7 +95,7 @@ export function GastosMovementRow({
           <IncomeRow
             title={title}
             kind={income.kind}
-            whoName={who?.name ?? 'Alguien'}
+            whoName={who?.name ?? t('gastos:movementRow.someone')}
             whoColor={who?.color ?? '#329315'}
             amount={Math.round(Math.abs(Number(income.amount ?? 0)))}
             time={formatTime(income.created_at)}
@@ -108,16 +110,16 @@ export function GastosMovementRow({
   const who = memberById.get(item.created_by)
   const actions: SwipeAction[] = [
     {
-      label: 'Eliminar',
+      label: t('common:actions.delete'),
       tone: 'danger',
       icon: 'delete',
       onPress: () => onDeleteExpense(item.id),
     },
   ]
   const a11yLabel = composeRowA11yLabel({
-    title: item.description || cat?.name || 'Gasto',
-    categoryName: cat?.name ?? 'Sin categoría',
-    whoName: who?.name ?? 'Alguien',
+    title: item.description || cat?.name || t('common:terms.expense'),
+    categoryName: cat?.name ?? t('gastos:movementRow.noCategory'),
+    whoName: who?.name ?? t('gastos:movementRow.someone'),
     amount: Math.abs(Number(item.price ?? 0)),
     iso: item.created_at,
   })
@@ -139,8 +141,8 @@ export function GastosMovementRow({
     >
       <SwipeRow
         accessibilityLabel={a11yLabel}
-        accessibilityHint="Desliza a la izquierda para eliminar"
-        accessibilityActions={[{ name: 'delete', label: 'Eliminar' }]}
+        accessibilityHint={t('gastos:movementRow.swipeToDeleteHint')}
+        accessibilityActions={[{ name: 'delete', label: t('common:actions.delete') }]}
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === 'delete') {
             onDeleteExpense(item.id)
@@ -150,10 +152,12 @@ export function GastosMovementRow({
         isProcessing={isExpenseDeleting}
       >
         <GastoRow
-          title={item.description || cat?.name || 'Gasto'}
-          categoryName={cat?.name ?? 'Sin categoría'}
+          title={item.description || cat?.name || t('common:terms.expense')}
+          categoryName={cat?.name ?? t('gastos:movementRow.noCategory')}
+          // Ícono por crudo (no localizado); el display sigue en `cat.name`.
+          categoryRawName={cat?.rawName}
           categoryColor={cat?.color ?? theme.colors.textMuted}
-          whoName={who?.name ?? 'Alguien'}
+          whoName={who?.name ?? t('gastos:movementRow.someone')}
           whoColor={who?.color ?? '#329315'}
           amount={-Math.abs(Number(item.price ?? 0))}
           time={formatTime(item.created_at)}

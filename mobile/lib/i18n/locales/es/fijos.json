@@ -1,0 +1,312 @@
+{
+  "header": {
+    "title": "Fijos",
+    "subtitle": "Todo lo recurrente en un solo lugar",
+    "addButton": "Agregar fijo"
+  },
+  "screen": {
+    "loadError": "No pudimos cargar tus fijos"
+  },
+  "toast": {
+    "paymentReverted": "Pago revertido.",
+    "undoNotReadyYet": "No pudimos deshacer todavía — prueba de nuevo en 1s.",
+    "paymentRecorded": "Pago de {{name}} registrado",
+    "fallbackName": "fijo",
+    "undo": "Deshacer"
+  },
+  "alerts": {
+    "revertFailedTitle": "No pudimos revertir el pago",
+    "recordFailedTitle": "No pudimos registrar el pago",
+    "deleteTitle": "Eliminar fijo",
+    "deleteMessage": "¿Seguro que quieres eliminar este fijo?",
+    "deleteFailedTitle": "No pudimos eliminar"
+  },
+  "empty": {
+    "introTitle": "Todavía no tienes gastos fijos",
+    "introBody": "Aquí registras lo que se paga sí o sí cada mes: alquiler, servicios, cuotas y suscripciones. Agrega el primero y armamos el resumen del mes.",
+    "addFirst": "Agregar mi primer fijo",
+    "previewEyebrow": "ASÍ SE VA A VER",
+    "preview": {
+      "summaryTitle": "Resumen del mes",
+      "summaryDescription": "Cuánto llevas pagado y cuánto te queda libre este mes.",
+      "upcomingTitle": "Próximos a pagar",
+      "upcomingDescription": "Los fijos que vencen pronto, ordenados por fecha.",
+      "categoryTitle": "Por categoría",
+      "categoryDescription": "Tus fijos agrupados por categoría, con su estado."
+    }
+  },
+  "scheduledBanner": {
+    "count_one": "1 fijo programado",
+    "count_other": "{{count}} fijos programados",
+    "unpaidYet": "Sin pagar todavía",
+    "toggleHint": "{{label}}. Tap para {{action}} detalles.",
+    "toggleShow": "ver",
+    "toggleHide": "ocultar",
+    "noDate": "Sin fecha",
+    "due": "Vence {{date}}"
+  },
+  "proximos": {
+    "eyebrow": "POR PAGAR · ESTE MES",
+    "itemCount_one": "{{count}} ítem",
+    "itemCount_other": "{{count}} ítems",
+    "calm": "Sin pendientes. Vuelve a chequear en unos días.",
+    "alertsLabel": "AVISOS",
+    "hikeAccessibility": "{{name}} subió {{deltaPct}}%",
+    "dismissHike": "Ya lo vi"
+  },
+  "marquee": {
+    "today": "HOY",
+    "tomorrow": "MAÑANA",
+    "inDays": "EN {{days}}D"
+  },
+  "tabs": {
+    "vencidos": "Vencidos",
+    "pendientes": "Pendientes",
+    "pagados": "Pagados"
+  },
+  "categoryGroups": {
+    "empty": "No hay fijos para este filtro.",
+    "itemCount_one": "{{count}} ítem",
+    "itemCount_other": "{{count}} ítems",
+    "categoryAccessibility": "Categoría {{label}}"
+  },
+  "hero": {
+    "emptyEyebrow": "TU CICLO DE FIJOS",
+    "overdueBadge_one": "{{count}} VENCIDO",
+    "overdueBadge_other": "{{count}} VENCIDOS",
+    "overdueAccessibility_one": "{{count}} vencido",
+    "overdueAccessibility_other": "{{count}} vencidos",
+    "allPaidBadge": "AL DÍA",
+    "allPaidAccessibility": "Todo al día",
+    "alreadyPaid": "Ya pagaste",
+    "stillToPay": "Te falta pagar",
+    "paidCount_one": "{{count}} pagado",
+    "paidCount_other": "{{count}} pagados",
+    "pendingCount_one": "{{count}} pendiente",
+    "pendingCount_other": "{{count}} pendientes",
+    "pctPaid": "{{pct}}% pagado",
+    "total": "Total {{amount}}",
+    "freeMoney": "DINERO LIBRE",
+    "ofYourSalary": "de tu sueldo",
+    "goesToFixed": "va a fijos",
+    "today": "HOY · DÍA {{day}}"
+  },
+  "row": {
+    "swipeDeleteHint": "Desliza para eliminar",
+    "delete": "Eliminar",
+    "pay": "Pagar",
+    "payOverdue": "Pagar — fijo en mora",
+    "payHint": "Abre el sheet para confirmar el monto pagado",
+    "status": {
+      "paid": "Estado: pagado",
+      "overdue": "Estado: en mora",
+      "future": "Estado: al día, próximo pago futuro",
+      "pending": "Estado: pendiente"
+    },
+    "detail": {
+      "paid": "Pagada",
+      "overdueDays": "Vencida {{days}}d",
+      "inArrears": "En mora",
+      "next": "Próxima",
+      "pending": "Pendiente",
+      "today": "Hoy",
+      "inDays": "En {{days}}d"
+    }
+  },
+  "trendBadge": {
+    "labelArrears": "{{value}}% int.",
+    "label": "{{value}}%",
+    "arrearsAccessibility": "Incremento con intereses {{deltaPct}} por ciento respecto al último pago",
+    "trendUpAccessibility": "Tendencia subió {{pct}} por ciento",
+    "trendDownAccessibility": "Tendencia bajó {{pct}} por ciento"
+  },
+  "detailPanel": {
+    "totalDebtEyebrow": "TOTAL DE LA DEUDA",
+    "remainingDebtEyebrow": "DEUDA RESTANTE",
+    "annualEyebrow": "SE LLEVA AL AÑO",
+    "pctOfSalary": "{{pct}}% de tu sueldo mensual",
+    "trendEyebrow": "TENDENCIA",
+    "thisPaymentEyebrow": "ESTE PAGO",
+    "installmentLabel": "Cuota {{current}} de {{total}}",
+    "recurringLabel": "{{frequency}} · día {{day}}",
+    "noCategory": "Sin categoría",
+    "historyEyebrow": "HISTORIAL",
+    "installmentsRecorded_one": "{{count}} cuota registrada",
+    "installmentsRecorded_other": "{{count}} cuotas registradas",
+    "totalPaid": "Ya pagaste {{amount}} en total",
+    "revertPayment": "Revertir pago",
+    "revertPaymentHint": "Deshace el pago: borra el movimiento y vuelve el fijo a pendiente.",
+    "editFijo": "Editar fijo",
+    "edit": "Editar"
+  },
+  "trendCopy": {
+    "keepsPrice": "Mantiene el precio",
+    "wentUp": "Subió {{pct}}% desde el último pago",
+    "wentDown": "Bajó {{pct}}% desde el último pago",
+    "deltaOverPayments": "{{delta}}% en {{count}} pagos",
+    "comparisonPrevious": "Comparación con el pago anterior"
+  },
+  "dueLabel": {
+    "noDate": "Sin fecha programada",
+    "dueToday": "Vence HOY ({{day}} de {{month}}{{yearSuffix}})",
+    "dueIn_one": "Vence el {{day}} de {{month}}{{yearSuffix}} (en {{count}} día)",
+    "dueIn_other": "Vence el {{day}} de {{month}}{{yearSuffix}} (en {{count}} días)",
+    "overdueSince_one": "Venció el {{day}} de {{month}}{{yearSuffix}} (hace {{count}} día)",
+    "overdueSince_other": "Venció el {{day}} de {{month}}{{yearSuffix}} (hace {{count}} días)",
+    "yearSuffix": " de {{year}}"
+  },
+  "months": {
+    "0": "enero",
+    "1": "febrero",
+    "2": "marzo",
+    "3": "abril",
+    "4": "mayo",
+    "5": "junio",
+    "6": "julio",
+    "7": "agosto",
+    "8": "septiembre",
+    "9": "octubre",
+    "10": "noviembre",
+    "11": "diciembre"
+  },
+  "frequency": {
+    "weekly": "Semanal",
+    "biweekly": "Quincenal",
+    "monthly": "Mensual",
+    "quarterly": "Trimestral",
+    "semiannual": "Semestral",
+    "annual": "Anual"
+  },
+  "kind": {
+    "periodic": "Periódico",
+    "installment": "Cuotas",
+    "debt": "Deuda",
+    "recurring": "Recurrente"
+  },
+  "kindStatus": {
+    "paused": "Pausado",
+    "completed": "Completado",
+    "archived": "Archivado",
+    "active": "Activo"
+  },
+  "groups": {
+    "noCategory": "Sin categoría"
+  },
+  "wizard": {
+    "stepNew": "Nuevo fijo",
+    "stepEdit": "Editar fijo",
+    "stepReview": "Revisa el impacto",
+    "backToPrevious": "Volver al paso anterior",
+    "close": "Cerrar",
+    "cta": {
+      "seeImpact": "Ver impacto →",
+      "completeData": "Completa los datos",
+      "seeImpactA11y": "Ver impacto",
+      "completeDataA11y": "Completa los datos",
+      "pickDay": "Elige el día del mes",
+      "updating": "Actualizando…",
+      "creating": "Creando…",
+      "update": "Actualizar ✓",
+      "confirmCreate": "Confirmar y crear ✓",
+      "updateFijoA11y": "Actualizar fijo",
+      "confirmFijoA11y": "Confirmar fijo"
+    },
+    "errors": {
+      "updateFailed": "No pudimos actualizar el fijo",
+      "createFailed": "No pudimos crear el fijo",
+      "createdNotPaidTitle": "Fijo creado, pero no pudimos marcarlo como pagado",
+      "createdNotPaidBody": "{{error}}\n\nPuedes tocar \"Registrar pago\" desde el listado."
+    },
+    "step1": {
+      "nameLabel": "NOMBRE",
+      "namePlaceholder": "Ej: Alquiler, Netflix, Cuota iPhone",
+      "frequencyLabel": "FRECUENCIA",
+      "installmentSummary": "{{count}} cuotas de {{amount}} · Total {{total}}",
+      "howManyInstallments": "¿CUÁNTAS CUOTAS?",
+      "installmentsA11y": "{{count}} cuotas"
+    },
+    "step2": {
+      "noCategory": "Sin categoría",
+      "metaInstallment": " ({{count}})",
+      "metaDay": " · día {{day}}",
+      "installmentMeta": "× {{count}} · {{total}} total",
+      "impactEyebrow": "IMPACTO EN EL PRESUPUESTO",
+      "currentFixed": "TUS FIJOS ACTUALES",
+      "afterAdding": "DESPUÉS DE AGREGAR",
+      "pctOfSalary": "{{pct}}% del sueldo",
+      "freeLeftEyebrow": "TE QUEDA LIBRE",
+      "freePhraseTight": "Cuidado: queda muy poco libre",
+      "freePhraseSnug": "Va a quedar algo ajustado",
+      "freePhraseComfortable": "Te queda holgado este mes",
+      "scheduledOn": "SE AGENDARÁ EN",
+      "reminderEyebrow": "RECORDATORIO",
+      "reminderA11y": "Recordatorio",
+      "reminderOn": "Avisar 2 días antes",
+      "reminderOff": "Sin aviso",
+      "currentStateEyebrow": "ESTADO ACTUAL",
+      "alreadyPaidA11y": "Ya pagué la cuota más reciente",
+      "alreadyPaidHint": "Activa si ya pagaste la cuota del mes en curso. El fijo arranca con el pago registrado y la próxima cuota apuntando al mes siguiente.",
+      "alreadyPaidOn": "Ya pagué la cuota más reciente",
+      "alreadyPaidOff": "Aún no pagué la cuota actual"
+    },
+    "calendar": {
+      "dayA11y": "Día {{day}}",
+      "daySelectedA11y": "Día {{day}}, seleccionado",
+      "footSelected": "Toca un día para cambiar · día {{day}} de cada mes",
+      "footPrompt": "Elige el día del mes"
+    },
+    "healthBadge": {
+      "high": "Alto",
+      "mid": "Medio",
+      "healthy": "Sano"
+    },
+    "summaryFallbackIcon": "📁"
+  },
+  "confirmPayment": {
+    "title": "Confirmar pago",
+    "subtitle": "Anota el monto real que pagaste. Si cambió, lo actualizamos para los próximos meses.",
+    "lastAmount": "Último monto registrado",
+    "overdueNote": "Cobrado con mora · el monto puede incluir intereses",
+    "sameAmount": "Mismo monto",
+    "same": "Mismo · {{amount}}",
+    "changed": "Cambió",
+    "amountPaid": "Monto pagado",
+    "amountPaidA11y": "Monto realmente pagado",
+    "confirm": "Confirmar pago"
+  },
+  "feed": {
+    "created": "{actor} sumó un gasto fijo",
+    "edited": "{actor} editó un gasto fijo",
+    "deleted": "{actor} eliminó un gasto fijo"
+  },
+  "errors": {
+    "createFailed": "No se pudo crear el gasto fijo.",
+    "updateFailed": "No se pudo actualizar el gasto fijo.",
+    "statusUpdateFailed": "No se pudo actualizar el estado del fijo.",
+    "recordPaymentFailed": "No se pudo registrar el pago.",
+    "revertPaymentFailed": "No se pudo revertir el pago.",
+    "deleteFailed": "No se pudo borrar el gasto fijo.",
+    "noFamilyCreate": "No hay familia activa para crear un gasto fijo.",
+    "noFamilyEdit": "No hay familia activa para editar un gasto fijo.",
+    "noFamilyUpdate": "No hay familia activa para actualizar el gasto fijo.",
+    "noFamilyRecord": "No hay familia activa para registrar el pago.",
+    "noFamilyRevert": "No hay familia activa para revertir el pago.",
+    "noFamilyDelete": "No hay familia activa para borrar un gasto fijo.",
+    "sessionExpiredPayment": "Tu sesion vencio. Volve a iniciar sesion antes de registrar un pago.",
+    "sessionExpiredRevert": "Tu sesion vencio. Volve a iniciar sesion antes de revertir un pago.",
+    "paymentAmountPositive": "El monto del pago debe ser mayor a 0.",
+    "missingMigration": "Falta correr la migracion SQL para habilitar Gastos Fijos.",
+    "unexpectedSupabase": "Ocurrio un error inesperado en Supabase.",
+    "nameEmpty": "El nombre del gasto fijo no puede estar vacio.",
+    "amountInvalid": "El monto del gasto fijo debe ser valido (> 0).",
+    "categoryRequired": "Elegi una categoria para poder integrar el pago al historial.",
+    "kindInvalid": "Tipo de gasto fijo invalido.",
+    "statusInvalid": "Estado de gasto fijo invalido.",
+    "frequencyInvalid": "Frecuencia invalida.",
+    "nextDueInvalid": "Defini una fecha de proximo vencimiento valida.",
+    "endsOnInvalid": "La fecha de fin no es valida.",
+    "dayOfMonthInvalid": "El día del mes debe estar entre 1 y 31.",
+    "installmentsTotalRequired": "Defini la cantidad total de cuotas.",
+    "debtBalanceRequired": "Defini un saldo pendiente valido para la deuda."
+  }
+}

@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 import { AppButton } from '@/components/ui/button'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -29,16 +30,22 @@ export const MembershipActions = memo(function MembershipActions({
   onRestore,
 }: MembershipActionsProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
 
   return (
     <View style={{ gap: theme.spacing.xs }}>
       {/* CTA primario contextual según el estado del entitlement. */}
       {variant.primaryAction === 'reactivate' ? (
-        <AppButton variant="primary" label="Reactivar" fullWidth onPress={onChangePlan} />
+        <AppButton
+          variant="primary"
+          label={t('billing:actions.reactivate')}
+          fullWidth
+          onPress={onChangePlan}
+        />
       ) : variant.primaryAction === 'fixPayment' ? (
         <AppButton
           variant="primary"
-          label="Actualizar método de pago en App Store"
+          label={t('billing:actions.fixPayment')}
           fullWidth
           onPress={openManage}
         />
@@ -50,13 +57,13 @@ export const MembershipActions = memo(function MembershipActions({
         <>
           <AppButton
             variant="secondary"
-            label="Cambiar de plan"
+            label={t('billing:actions.changePlan')}
             fullWidth
             onPress={onChangePlan}
           />
           <AppButton
             variant="ghost"
-            label="Administrar o cancelar en App Store"
+            label={t('billing:actions.manageOrCancel')}
             fullWidth
             onPress={openManage}
           />
@@ -76,13 +83,13 @@ export const MembershipActions = memo(function MembershipActions({
       {/* Link discreto — recupera compras previas sin volver a pagar. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Restaurar compras"
+        accessibilityLabel={t('billing:actions.restorePurchases')}
         hitSlop={8}
         onPress={onRestore}
         style={styles.restoreHit}
       >
         <Text style={[theme.typography.bodySmall, styles.restore, { color: theme.colors.textMuted }]}>
-          Restaurar compras
+          {t('billing:actions.restorePurchases')}
         </Text>
       </Pressable>
     </View>

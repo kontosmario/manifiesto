@@ -1,0 +1,62 @@
+{
+  "terms": {
+    "expense": "Gasto",
+    "expensePlural": "Gastos",
+    "currentCycle": "Este ciclo",
+    "available": "Disponible",
+    "margin": "Margen",
+    "payday": "Día de cobro",
+    "fixedExpense": "Gasto fijo",
+    "fixedExpensePlural": "Gastos fijos",
+    "history": "Historial",
+    "income": "Ingreso"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "back": "Volver",
+    "retry": "Reintentar",
+    "continue": "Continuar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "done": "Listo",
+    "next": "Siguiente",
+    "skip": "Omitir",
+    "add": "Agregar",
+    "remove": "Quitar",
+    "understood": "Entendido",
+    "allow": "Permitir",
+    "activate": "Activar",
+    "later": "Más tarde",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "severity": {
+    "success": "Logro",
+    "warning": "Atención",
+    "alert": "Alerta"
+  },
+  "avatar": {
+    "selectAction": "Seleccionar",
+    "selected": "Elegido",
+    "pickA11y": "Elegir avatar {{name}}"
+  },
+  "cycle": {
+    "biweekly": "{{range}} · quincena",
+    "weekly": "{{range}} · semana",
+    "custom": "{{range}} · cada {{days}} días",
+    "summaryMonthly": "Mensual · día {{day}}",
+    "summaryBiweekly": "Quincenal · desde {{date}}",
+    "summaryWeekly": "Semanal · desde {{date}}",
+    "summaryCustom": "Custom · cada {{days}} días"
+  },
+  "form": {
+    "missing": "Completa {{fields}} para continuar.",
+    "join2": "{{a}} y {{b}}",
+    "joinN": "{{list}} y {{last}}"
+  },
+  "placeholders": {
+    "noBase": "Sin base"
+  }
+}

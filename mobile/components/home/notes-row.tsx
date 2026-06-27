@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { EXPENSE_NOTES_MAX_LENGTH } from '@/features/expenses/expense-repository.model'
@@ -28,6 +29,7 @@ interface NotesRowProps {
  */
 export function NotesRow({ notes, onChange, onFocus }: NotesRowProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Auto-expand when the user already has a draft note (e.g. came back
   // from another screen / editing an existing expense). Otherwise the
   // user has to opt into expanding it.
@@ -48,7 +50,7 @@ export function NotesRow({ notes, onChange, onFocus }: NotesRowProps) {
           <Pressable
             onPress={() => setExpanded(true)}
             accessibilityRole="button"
-            accessibilityLabel="Agregar una nota a este gasto"
+            accessibilityLabel={t('home:notesRow.addAccessibility')}
             style={({ pressed }) => [
               styles.addPill,
               {
@@ -60,10 +62,10 @@ export function NotesRow({ notes, onChange, onFocus }: NotesRowProps) {
           >
             <MaterialIcons name="edit-note" size={18} color={theme.colors.textMuted} />
             <Text style={[styles.addPillLabel, { color: theme.colors.textMuted }]}>
-              Agregar nota
+              {t('home:notesRow.addLabel')}
             </Text>
             <Text style={[styles.addPillHint, { color: theme.colors.textSoft }]}>
-              opcional
+              {t('home:notesRow.optional')}
             </Text>
           </Pressable>
         </Animated.View>
@@ -75,13 +77,13 @@ export function NotesRow({ notes, onChange, onFocus }: NotesRowProps) {
         >
           <View style={styles.headerRow}>
             <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-              NOTA
+              {t('home:notesRow.noteLabel')}
             </Text>
             <Pressable
               onPress={handleCollapse}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Cerrar nota"
+              accessibilityLabel={t('home:notesRow.closeAccessibility')}
               style={({ pressed }) => [
                 styles.closeButton,
                 { opacity: pressed ? 0.5 : 1 },
@@ -94,7 +96,7 @@ export function NotesRow({ notes, onChange, onFocus }: NotesRowProps) {
             value={notes}
             onChangeText={onChange}
             onFocus={onFocus}
-            placeholder="Ej: pagado con tarjeta de mamá, se lo devuelvo el lunes"
+            placeholder={t('home:notesRow.placeholder')}
             placeholderTextColor={theme.colors.textSoft}
             multiline
             numberOfLines={3}

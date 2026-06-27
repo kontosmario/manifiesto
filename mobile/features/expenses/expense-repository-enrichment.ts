@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 import {
   getCachedProfileDisplayName,
   setCachedProfileDisplayNames,
@@ -50,7 +51,7 @@ export function enrichExpensesFromEmbed(rows: EmbedRow[]): Expense[] {
     creator_display_name:
       readEmbedDisplayName(row.profiles) ??
       getCachedProfileDisplayName(row.created_by) ??
-      'Sin nombre',
+      i18n.t('gastos:misc.noName'),
     description: row.description,
     // Normalize undefined → null so the consumer only branches on
     // null vs string (legacy snapshots without the column still
@@ -102,7 +103,7 @@ export async function enrichExpenses(rows: RawExpense[]): Promise<Expense[]> {
     ...row,
     commitment_id: typeof row.commitment_id === 'string' ? row.commitment_id : null,
     notes: typeof row.notes === 'string' ? row.notes : null,
-    creator_display_name: displayNames.get(row.created_by) ?? 'Sin nombre',
+    creator_display_name: displayNames.get(row.created_by) ?? i18n.t('gastos:misc.noName'),
     price: Number(row.price),
     paid_in_arrears: row.paid_in_arrears === true,
   }))

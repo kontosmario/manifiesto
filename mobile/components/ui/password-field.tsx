@@ -2,6 +2,7 @@ import { forwardRef, useRef, useState, type ComponentProps } from 'react'
 import { Pressable, StyleSheet } from 'react-native'
 import type { TextInput } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { TextField } from './text-field'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -18,6 +19,7 @@ type PasswordFieldProps = Omit<TextFieldProps, 'secureTextEntry' | 'trailing'>
 export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(
   function PasswordField(props, ref) {
     const { theme } = useAppTheme()
+    const { t } = useTranslation()
     const [visible, setVisible] = useState(false)
     const innerRef = useRef<TextInput | null>(null)
 
@@ -46,7 +48,7 @@ export const PasswordField = forwardRef<TextInput, PasswordFieldProps>(
         secureTextEntry={!visible}
         trailing={
           <Pressable
-            accessibilityLabel={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            accessibilityLabel={visible ? t('states:passwordField.hide') : t('states:passwordField.show')}
             accessibilityRole="button"
             hitSlop={DEFAULT_HIT_SLOP}
             onPress={toggle}

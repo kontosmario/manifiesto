@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -28,6 +29,7 @@ export const MembershipHero = memo(function MembershipHero({
   variant,
 }: MembershipHeroProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const pill = getStateTokens(TONE_TO_STATE[variant.tone], theme)
 
   return (
@@ -44,7 +46,7 @@ export const MembershipHero = memo(function MembershipHero({
     >
       <View style={styles.headerRow}>
         <Text style={[theme.typography.eyebrow, { color: theme.colors.textMuted }]}>
-          Tu membresía
+          {t('billing:membershipHero.eyebrow')}
         </Text>
         <View
           style={[styles.pill, { backgroundColor: pill.bg, borderColor: pill.border }]}

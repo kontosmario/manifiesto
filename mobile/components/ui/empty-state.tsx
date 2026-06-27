@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,7 +11,7 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated'
 import { AppButton } from '@/components/ui/button'
-import { emptyStates, type EmptyStateKey } from '@/lib/copy/states'
+import { type EmptyStateKey } from '@/lib/copy/states'
 import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -33,9 +34,11 @@ export function EmptyState({
   icon = 'info-outline',
   stateKey,
 }: EmptyStateProps) {
-  const template = stateKey ? emptyStates[stateKey] : undefined
-  const resolvedTitle = title ?? template?.title ?? ''
-  const resolvedSubtitle = subtitle ?? template?.description ?? ''
+  const { t } = useTranslation()
+  const resolvedTitle =
+    title ?? (stateKey ? t(`states:empty.${stateKey}.title`) : '')
+  const resolvedSubtitle =
+    subtitle ?? (stateKey ? t(`states:empty.${stateKey}.description`) : '')
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
 

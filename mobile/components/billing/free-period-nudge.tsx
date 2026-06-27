@@ -1,4 +1,5 @@
 import { memo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -24,17 +25,20 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
   onSeePlans,
 }: FreePeriodNudgeProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [dismissed, setDismissed] = useState(false)
   if (dismissed) return null
 
   const urgent = daysLeft <= 2
   const title = urgent
-    ? 'Último día de acceso completo'
-    : `Te quedan ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}`
+    ? t('billing:nudge.titleUrgent')
+    : t('billing:nudge.title', { count: daysLeft })
   const subtitle = urgent
-    ? 'Sigue sin cortes · desde $3.33/mes'
-    : 'de acceso completo'
-  const ctaLabel = urgent ? 'Suscribirme' : 'Ver planes'
+    ? t('billing:nudge.subtitleUrgent')
+    : t('billing:nudge.subtitle')
+  const ctaLabel = urgent
+    ? t('billing:nudge.ctaSubscribe')
+    : t('billing:nudge.ctaSeePlans')
 
   const handleCta = () => {
     void triggerHaptic('selection')
@@ -88,7 +92,7 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cerrar"
+            accessibilityLabel={t('billing:nudge.close')}
             onPress={handleDismiss}
             hitSlop={10}
             style={styles.close}

@@ -5,11 +5,13 @@ import {
   useCategoryTemplates,
 } from '@/features/categories/use-category-templates'
 import { type Category, useCategories } from '@/features/categories/use-categories'
+import { localizeQuickDescriptions } from '@/features/categories/localize-category-name'
 import { filterVariableExpenseCategories } from '@/features/expenses/variable-expense-categories'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
 import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/expenses/category-ranking'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
+import i18n from '@/lib/i18n'
 import { getErrorMessage } from '@/utils/error-message'
 import { parsePrice, serializePrice } from '@/utils/money'
 
@@ -20,6 +22,9 @@ const MAX_QUICK_DESCRIPTION_SUGGESTIONS = 6
 const QUICK_AMOUNTS = [5000, 15000, 30000, 50000, 100000] as const
 
 function normalizeSuggestionLabel(value: string) {
+  // NO display: normalización para matching/dedup de sugerencias (case- y
+  // acento-insensible). El locale 'es-AR' acá no es formato visible sino la
+  // semántica de lowercase; se mantiene fijo a propósito (no locale-aware).
   return value
     .trim()
     .toLocaleLowerCase('es-AR')
@@ -104,10 +109,17 @@ export function useAddExpenseController({
 
   const quickDescriptionSuggestions = useMemo(() => {
     if (!selectedCategory) return []
-    const templateDescriptions =
-      categoryTemplates.find((t) => t.id === selectedCategory.template_id)?.quickDescriptions ??
-      categoryTemplates.find((t) => t.name === selectedCategory.name)?.quickDescriptions ??
-      []
+    const matchedTemplate =
+      categoryTemplates.find((t) => t.id === selectedCategory.template_id) ??
+      categoryTemplates.find((t) => t.name === selectedCategory.name) ??
+      null
+    // Localización NO destructiva de los quick_descriptions del template
+    // (estos NO son datos del usuario — viven en category_templates).
+    // El `name` del template es el default ES (key estable). Este flujo
+    // es siempre de categorías variables → scope 'expense'.
+    const templateDescriptions = matchedTemplate
+      ? localizeQuickDescriptions('expense', matchedTemplate.name, matchedTemplate.quickDescriptions)
+      : []
     const fromHistory = pickTopCategoryDescriptions(expenses, selectedCategory.id, 6)
     const merged = [...fromHistory, ...templateDescriptions]
     const seen = new Set<string>()
@@ -130,7 +142,7 @@ export function useAddExpenseController({
 
   const showError = (error: unknown, fallback: string) => {
     void triggerHaptic('error')
-    Alert.alert('Algo salió mal', getErrorMessage(error, fallback))
+    Alert.alert(i18n.t('gastos:errors.somethingWrong'), getErrorMessage(error, fallback))
   }
 
   // Human-readable list of required fields the user still has to
@@ -139,9 +151,9 @@ export function useAddExpenseController({
   // a disabled-looking Guardar button via formatMissingFields.
   const missingFields = useMemo<string[]>(() => {
     const missing: string[] = []
-    if (!hasValidAmount) missing.push('monto')
-    if (description.trim().length === 0) missing.push('descripción')
-    if (!selectedCategoryId) missing.push('categoría')
+    if (!hasValidAmount) missing.push(i18n.t('gastos:import.field.amount'))
+    if (description.trim().length === 0) missing.push(i18n.t('gastos:import.field.description'))
+    if (!selectedCategoryId) missing.push(i18n.t('gastos:import.field.category'))
     return missing
   }, [hasValidAmount, description, selectedCategoryId])
 
@@ -172,7 +184,7 @@ export function useAddExpenseController({
       },
       {
         onError: (error: unknown) => {
-          showError(error, 'No se pudo crear el gasto.')
+          showError(error, i18n.t('gastos:errors.createFailed'))
         },
         onSuccess: () => {
           void triggerHaptic('success')

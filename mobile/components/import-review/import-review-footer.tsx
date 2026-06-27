@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -9,7 +10,6 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { motionDurations } from '@/lib/motion/tokens'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { loadingLabels } from '@/lib/copy/states'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 
 interface Props {
@@ -73,31 +73,28 @@ export function ImportReviewFooter({
   onPrimary,
 }: Props) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isFirst = stepIndex <= 0
   const isLastMovement = !isSummary && stepIndex >= totalSteps - 1
   const totalSubmittable = expensesCount + incomesCount
 
   const primaryLabel = (() => {
-    if (busy) return `${loadingLabels.import}…`
+    if (busy) return `${t('states:loading.import')}…`
     if (isSummary) {
       // All-skipped: the CTA now closes (the sheet routes this to onClose),
       // so it must read as a real action, not an inert "nada para cargar".
-      if (totalSubmittable === 0) return 'Cerrar'
+      if (totalSubmittable === 0) return t('common:actions.close')
       const parts: string[] = []
       if (expensesCount > 0) {
-        parts.push(
-          `${expensesCount} gasto${expensesCount === 1 ? '' : 's'}`,
-        )
+        parts.push(t('gastos:import.summary.expensesCount', { count: expensesCount }))
       }
       if (incomesCount > 0) {
-        parts.push(
-          `${incomesCount} ingreso${incomesCount === 1 ? '' : 's'}`,
-        )
+        parts.push(t('gastos:import.summary.incomesCount', { count: incomesCount }))
       }
-      return `Confirmar ${parts.join(' y ')}`
+      return t('gastos:import.footer.confirmWith', { parts: parts.join(t('gastos:import.summary.and')) })
     }
-    if (isLastMovement) return 'Revisar y confirmar'
-    return 'Siguiente'
+    if (isLastMovement) return t('gastos:import.footer.reviewAndConfirm')
+    return t('common:actions.next')
   })()
 
   const primaryIcon: keyof typeof MaterialIcons.glyphMap = (() => {
@@ -126,7 +123,7 @@ export function ImportReviewFooter({
       <View style={styles.secondaryRow}>
         <SecondaryButton
           icon="chevron-left"
-          label={isSummary ? 'Volver a editar' : 'Anterior'}
+          label={isSummary ? t('gastos:import.footer.backToEdit') : t('gastos:import.footer.previous')}
           onPress={onPrev}
           disabled={isFirst || busy}
           theme={theme}
@@ -136,7 +133,7 @@ export function ImportReviewFooter({
         ) : (
           <SecondaryButton
             icon={isCurrentSkipped ? 'restore' : 'block'}
-            label={isCurrentSkipped ? 'Restaurar' : 'Saltear este'}
+            label={isCurrentSkipped ? t('gastos:import.footer.restore') : t('gastos:import.footer.skipThis')}
             onPress={onSkip}
             disabled={busy}
             theme={theme}

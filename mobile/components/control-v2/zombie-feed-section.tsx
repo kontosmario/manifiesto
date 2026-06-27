@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react'
 import { View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import {
   useDeclareSubscriptionIntent,
   useRecordSubscriptionAudit,
@@ -25,6 +26,7 @@ interface Props {
  * the card depends on the feed item's classification + open intent + follow-up.
  */
 export function ZombieFeedSection({ familyId, userId }: Props) {
+  const { t } = useTranslation()
   const { data, raw } = useSubscriptionAuditFeed(familyId)
   const recordAudit = useRecordSubscriptionAudit(familyId)
   const declareIntent = useDeclareSubscriptionIntent(familyId, userId ?? undefined)
@@ -62,7 +64,7 @@ export function ZombieFeedSection({ familyId, userId }: Props) {
             <View key={item.fixedExpenseId} style={{ gap: 8 }}>
               <IntentStatusCard
                 intent={item.openIntent.intent}
-                declaredByName={declaredBy?.name ?? 'Alguien'}
+                declaredByName={declaredBy?.name ?? t('control:zombieFeed.someoneFallback')}
                 declaredAtIso={item.openIntent.declaredAt}
                 fijoName={fijo.name}
                 monthlySaving={fijo.amount}

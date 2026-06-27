@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   cancelAnimation,
@@ -59,6 +60,7 @@ interface CycleWrappedModalProps {
  */
 export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
   const insets = useSafeAreaInsets()
 
@@ -406,7 +408,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
             >
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Escena anterior"
+                accessibilityLabel={t('control:wrapped.a11yPrevScene')}
                 onPress={handleTapLeft}
                 hitSlop={16}
                 style={({ pressed }) => [
@@ -426,11 +428,11 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
             style={[styles.brandMark, { color: scene.foregroundSoft }]}
             accessibilityRole="header"
           >
-            MANIFIESTO
+            {t('control:wrapped.brandMark')}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cerrar resumen"
+            accessibilityLabel={t('control:wrapped.a11yClose')}
             onPress={onDismiss}
             hitSlop={16}
             style={({ pressed }) => [
@@ -467,7 +469,9 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
             />
           ) : (
             <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
-              {isPaused ? 'En pausa. Suelta para seguir.' : 'Mantén presionado para pausar.'}
+              {isPaused
+                ? t('control:wrapped.hintPaused')
+                : t('control:wrapped.hintHold')}
             </Text>
           )}
         </View>
@@ -490,14 +494,14 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
               onPress={handleTapLeft}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
-              accessibilityLabel="Escena anterior"
+              accessibilityLabel={t('control:wrapped.a11yPrevScene')}
               style={styles.tapZoneLeft}
             />
             <Pressable
               onPress={handleTapRight}
               onPressIn={handlePressIn}
               onPressOut={handlePressOut}
-              accessibilityLabel="Escena siguiente"
+              accessibilityLabel={t('control:wrapped.a11yNextScene')}
               style={styles.tapZoneRight}
             />
           </View>

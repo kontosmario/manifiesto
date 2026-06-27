@@ -5,12 +5,14 @@ import {
   formatLocalDateKey,
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import i18n from '@/lib/i18n'
 
-const dayGroupFormatter = new Intl.DateTimeFormat('es-AR', {
+const dayGroupFormatOptions: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: '2-digit',
   month: 'short',
-})
+}
 
 export function groupExpensesByDay(expenses: Expense[], today: Date): ExpenseDaySection[] {
   const todayKey = formatLocalDateKey(today)
@@ -38,10 +40,10 @@ export function groupExpensesByDay(expenses: Expense[], today: Date): ExpenseDay
 
     const label =
       groupKey === todayKey
-        ? 'Hoy'
+        ? i18n.t('gastos:dayGroup.today')
         : groupKey === yesterdayKey
-          ? 'Ayer'
-          : capitalizeText(dayGroupFormatter.format(normalizedDate))
+          ? i18n.t('gastos:dayGroup.yesterday')
+          : capitalizeText(getDateTimeFormat(dayGroupFormatOptions).format(normalizedDate))
 
     const nextGroup: ExpenseDaySection = {
       data: [expense],

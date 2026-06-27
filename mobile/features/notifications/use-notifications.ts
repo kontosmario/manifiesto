@@ -5,6 +5,7 @@ import { notificationQueryKeys } from '@/features/notifications/notification-que
 import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { toast } from '@/lib/toast-bus'
+import i18n from '@/lib/i18n'
 
 export type NotificationSeverity = 'info' | 'success' | 'warning' | 'alert'
 
@@ -292,8 +293,8 @@ export function useDeleteNotification(familyId?: string, userId?: string) {
       for (const snapshot of context?.snapshots ?? []) {
         queryClient.setQueryData(snapshot.key, snapshot.data)
       }
-      toast.error('No se pudo eliminar la notificación.', {
-        actionLabel: 'Reintentar',
+      toast.error(i18n.t('home:notificationsHook.deleteError'), {
+        actionLabel: i18n.t('home:notificationsHook.retry'),
         onAction: () => ref.current?.mutate(input),
       })
     },
@@ -359,7 +360,7 @@ export function useDeleteAllNotifications(familyId?: string, userId?: string) {
       for (const snapshot of context?.snapshots ?? []) {
         queryClient.setQueryData(snapshot.key, snapshot.data)
       }
-      toast.error('No se pudieron borrar las notificaciones.')
+      toast.error(i18n.t('home:notificationsHook.clearAllError'))
     },
     onSettled: () => {
       void syncAllAfterMutation(queryClient, {

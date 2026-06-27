@@ -1,0 +1,62 @@
+{
+  "terms": {
+    "expense": "Expense",
+    "expensePlural": "Expenses",
+    "currentCycle": "This cycle",
+    "available": "Available",
+    "margin": "Margin",
+    "payday": "Payday",
+    "fixedExpense": "Fixed expense",
+    "fixedExpensePlural": "Fixed expenses",
+    "history": "History",
+    "income": "Income"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "retry": "Try again",
+    "continue": "Continue",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "done": "Done",
+    "next": "Next",
+    "skip": "Skip",
+    "add": "Add",
+    "remove": "Remove",
+    "understood": "Got it",
+    "allow": "Allow",
+    "activate": "Turn on",
+    "later": "Later",
+    "tryAgain": "Try again"
+  },
+  "severity": {
+    "success": "Win",
+    "warning": "Heads up",
+    "alert": "Alert"
+  },
+  "avatar": {
+    "selectAction": "Select",
+    "selected": "Selected",
+    "pickA11y": "Pick avatar {{name}}"
+  },
+  "cycle": {
+    "biweekly": "{{range}} · biweekly",
+    "weekly": "{{range}} · weekly",
+    "custom": "{{range}} · every {{days}} days",
+    "summaryMonthly": "Monthly · day {{day}}",
+    "summaryBiweekly": "Biweekly · from {{date}}",
+    "summaryWeekly": "Weekly · from {{date}}",
+    "summaryCustom": "Custom · every {{days}} days"
+  },
+  "form": {
+    "missing": "Fill in {{fields}} to continue.",
+    "join2": "{{a}} and {{b}}",
+    "joinN": "{{list}} and {{last}}"
+  },
+  "placeholders": {
+    "noBase": "No baseline"
+  }
+}

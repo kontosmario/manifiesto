@@ -11,6 +11,7 @@ import {
 } from '@/features/finance/family-finance.model'
 export { resolveFlexibleTargetPercent } from '@/features/finance/family-finance.model'
 import { formatPriceInputValue, parsePrice, serializePrice } from '@/utils/money'
+import i18n from '@/lib/i18n'
 
 const EMERGENCY_FUND_MONTHS_BENCHMARK = 3
 const WIZARD_ROUNDING_UNIT = 500
@@ -47,23 +48,26 @@ export interface HouseholdSavingsPreset {
   title: string
 }
 
-export const HOUSEHOLD_SAVINGS_RESEARCH_STATS: HouseholdSavingsResearchStat[] = [
-  {
-    detail: 'tenia ahorro para cubrir tres meses de gastos',
-    label: 'Fondo de 3 meses',
-    source: 'Fed SHED 2024',
-    value: '55%',
-  },
-  {
-    detail: 'de quienes siempre cierran el mes con resto',
-    label: 'Mes con resto',
-    source: 'Fed SHED 2024',
-    value: '85%',
-  },
-]
+export function buildHouseholdSavingsResearchStats(): HouseholdSavingsResearchStat[] {
+  return [
+    {
+      detail: i18n.t('settings:householdSetup.researchStat1Detail'),
+      label: i18n.t('settings:householdSetup.researchStat1Label'),
+      source: 'Fed SHED 2024',
+      value: '55%',
+    },
+    {
+      detail: i18n.t('settings:householdSetup.researchStat2Detail'),
+      label: i18n.t('settings:householdSetup.researchStat2Label'),
+      source: 'Fed SHED 2024',
+      value: '85%',
+    },
+  ]
+}
 
-export const HOUSEHOLD_SAVINGS_RESEARCH_NOTE =
-  'Tomamos la regla 50/20/30 del CFPB como punto de partida y proponemos subir ahorro a 25%-30% recortando gasto flexible. CFPB y FDIC tambien recomiendan automatizar el ahorro al cobrar.'
+export function buildHouseholdSavingsResearchNote(): string {
+  return i18n.t('settings:householdSetup.researchNote')
+}
 
 function roundWizardMoney(value: number) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -102,8 +106,14 @@ function buildHouseholdSavingsPreset({
   return {
     helper:
       monthlyGoal > 0
-        ? `${TARGET_ESSENTIALS_PERCENT}% necesidades, ${flexiblePercent}% flexible y ${savingsPercent}% ahorro. El fondo de ${EMERGENCY_FUND_MONTHS_BENCHMARK} meses se arma en ~${resolveMonthsToBenchmark({ benchmarkFund, monthlyGoal })} meses.`
-        : 'Define un ingreso para sugerir una distribucion objetivo.',
+        ? i18n.t('settings:householdSetup.presetHelper', {
+            needs: TARGET_ESSENTIALS_PERCENT,
+            flexible: flexiblePercent,
+            savings: savingsPercent,
+            months: EMERGENCY_FUND_MONTHS_BENCHMARK,
+            toBenchmark: resolveMonthsToBenchmark({ benchmarkFund, monthlyGoal }),
+          })
+        : i18n.t('settings:householdSetup.presetHelperEmpty'),
     flexiblePercent,
     id,
     monthlyGoal,
@@ -141,8 +151,8 @@ export function buildHouseholdSavingsPresets({
       savingsPercent: 20,
       suggestedBufferMode: 'none',
       suggestedBufferValue: 0,
-      subtitle: 'Baseline del CFPB: necesitas orden, pero sin asfixiar el gasto flexible.',
-      title: 'Base 50/30/20',
+      subtitle: i18n.t('settings:householdSetup.presetSteadySubtitle'),
+      title: i18n.t('settings:householdSetup.presetSteadyTitle'),
     }),
     buildHouseholdSavingsPreset({
       flexiblePercent: 25,
@@ -151,8 +161,8 @@ export function buildHouseholdSavingsPresets({
       savingsPercent: 25,
       suggestedBufferMode: 'percent',
       suggestedBufferValue: 5,
-      subtitle: 'Recorta parte del gasto flexible para fortalecer la reserva mensual.',
-      title: 'Ahorro reforzado',
+      subtitle: i18n.t('settings:householdSetup.presetBalancedSubtitle'),
+      title: i18n.t('settings:householdSetup.presetBalancedTitle'),
     }),
     buildHouseholdSavingsPreset({
       flexiblePercent: 20,
@@ -161,8 +171,8 @@ export function buildHouseholdSavingsPresets({
       savingsPercent: 30,
       suggestedBufferMode: 'percent',
       suggestedBufferValue: 10,
-      subtitle: 'Prioriza construir caja rapido y protege mas el flujo del hogar.',
-      title: 'Reserva acelerada',
+      subtitle: i18n.t('settings:householdSetup.presetResilientSubtitle'),
+      title: i18n.t('settings:householdSetup.presetResilientTitle'),
     }),
   ] as const
 }

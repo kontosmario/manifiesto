@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -55,6 +56,7 @@ function GastosHeroCardImpl({
   empty = false,
 }: GastosHeroCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Gateado: el primer attach del tab (pre-mounted + detached) NO debe
   // disparar la layout transition del hero — sino la card warpea. Se
   // habilita después del idle para los cambios reales (filtro de día, etc).
@@ -100,7 +102,9 @@ function GastosHeroCardImpl({
 
           <View style={styles.topRow}>
             <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>
-              {daySelected ? 'TOTAL DEL DÍA' : 'TOTAL VISIBLE'}
+              {daySelected
+                ? t('gastos:hero.totalDay')
+                : t('gastos:hero.totalVisible')}
             </Text>
             <View
               style={[
@@ -124,7 +128,7 @@ function GastosHeroCardImpl({
             <View style={styles.avgRow}>
               <View style={styles.avgText}>
                 <Text style={[styles.avgLabel, { color: theme.colors.heroMuted }]}>
-                  PROMEDIO DÍA
+                  {t('gastos:hero.dailyAverage')}
                 </Text>
                 <View style={styles.avgValueRow}>
                   <CountUpText
@@ -134,7 +138,7 @@ function GastosHeroCardImpl({
                     style={[styles.avgValue, { color: theme.colors.heroText }]}
                   />
                   <Text style={[styles.avgSub, { color: theme.colors.heroMuted }]}>
-                    · últimos {averageWindowDays}d
+                    {t('gastos:hero.lastDays', { days: averageWindowDays })}
                   </Text>
                 </View>
               </View>
@@ -151,7 +155,7 @@ function GastosHeroCardImpl({
               layout={heroLayout}
             >
               <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted }]}>
-                MÁS PESO POR CATEGORÍA
+                {t('gastos:hero.topCategories')}
               </Text>
               <View style={{ marginTop: 6 }}>
                 <CategoryWeightsList
@@ -178,6 +182,7 @@ function GastosHeroCardImpl({
  */
 function GastosHeroCardEmpty() {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   // Neutral placeholder over the dark gradient — a faint cream wash, so
   // it reads as "value goes here", never as a real bar or shimmer.
   const ph = 'rgba(242,234,211,0.14)'
@@ -190,7 +195,7 @@ function GastosHeroCardEmpty() {
     >
       <View style={styles.topRow}>
         <Text style={[styles.topLabel, { color: theme.colors.heroAccent }]}>
-          TOTAL VISIBLE
+          {t('gastos:hero.totalVisible')}
         </Text>
         <View
           style={[
@@ -207,7 +212,7 @@ function GastosHeroCardEmpty() {
       <View style={styles.avgRow}>
         <View style={styles.avgText}>
           <Text style={[styles.avgLabel, { color: theme.colors.heroMuted }]}>
-            PROMEDIO DÍA
+            {t('gastos:hero.dailyAverage')}
           </Text>
           <View style={styles.avgValueRow}>
             <Text style={[styles.avgValue, { color: theme.colors.heroText }]}>—</Text>
@@ -220,7 +225,7 @@ function GastosHeroCardEmpty() {
 
       <View style={styles.weightsBlock}>
         <Text style={[styles.weightsLabel, { color: theme.colors.heroMuted }]}>
-          MÁS PESO POR CATEGORÍA
+          {t('gastos:hero.topCategories')}
         </Text>
         <View style={{ marginTop: 10, gap: 10 }}>
           {[0, 1, 2].map((i) => (

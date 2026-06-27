@@ -6,6 +6,7 @@
 // layer.
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
 import { notificationQueryKeys } from '@/features/notifications/notification-query-keys'
 import { supabase } from '@/lib/supabase'
 
@@ -23,7 +24,7 @@ export function useSendMemberWarning() {
       const { error } = await supabase.rpc('emit_user_notification', {
         p_target_user_id: targetUserId,
         p_kind: 'member_warning',
-        p_title: '👥 Aviso del Asistente Financiero',
+        p_title: i18n.t('insights:memberWarning.title'),
         p_body: message,
         p_metadata: { source: 'control-advisor' },
       })

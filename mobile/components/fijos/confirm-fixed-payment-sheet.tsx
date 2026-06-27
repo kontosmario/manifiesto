@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'
@@ -63,6 +64,7 @@ export function ConfirmFixedPaymentSheet({
   onConfirmChanged,
 }: ConfirmFixedPaymentSheetProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('same')
   const [amountText, setAmountText] = useState('')
   const samePress = usePressScale({ pressedScale: 0.97 })
@@ -124,7 +126,7 @@ export function ConfirmFixedPaymentSheet({
           { color: theme.isDark ? '#F2A78C' : '#973511' },
         ]}
       >
-        Cobrado con mora · el monto puede incluir intereses
+        {t('fijos:confirmPayment.overdueNote')}
       </Text>
     </View>
   ) : null
@@ -133,8 +135,8 @@ export function ConfirmFixedPaymentSheet({
     <ModalCard
       visible={visible}
       onClose={onClose}
-      title="Confirmar pago"
-      subtitle="Anota el monto real que pagaste. Si cambió, lo actualizamos para los próximos meses."
+      title={t('fijos:confirmPayment.title')}
+      subtitle={t('fijos:confirmPayment.subtitle')}
     >
       <View style={styles.body}>
         {/* Snapshot del último monto + nombre del fijo. */}
@@ -159,7 +161,7 @@ export function ConfirmFixedPaymentSheet({
           <Text
             style={[styles.snapshotMeta, { color: theme.colors.textMuted }]}
           >
-            Último monto registrado
+            {t('fijos:confirmPayment.lastAmount')}
           </Text>
           {overduePill}
         </View>
@@ -174,7 +176,7 @@ export function ConfirmFixedPaymentSheet({
             onPressOut={samePress.onPressOut}
             accessibilityRole="button"
             accessibilityState={{ selected: mode === 'same' }}
-            accessibilityLabel="Mismo monto"
+            accessibilityLabel={t('fijos:confirmPayment.sameAmount')}
             style={styles.modeWrap}
           >
             <Animated.View
@@ -209,7 +211,7 @@ export function ConfirmFixedPaymentSheet({
                 ]}
                 numberOfLines={1}
               >
-                Mismo · {previousLabel}
+                {t('fijos:confirmPayment.same', { amount: previousLabel })}
               </Text>
             </Animated.View>
           </Pressable>
@@ -219,7 +221,7 @@ export function ConfirmFixedPaymentSheet({
             onPressOut={changedPress.onPressOut}
             accessibilityRole="button"
             accessibilityState={{ selected: mode === 'changed' }}
-            accessibilityLabel="Cambió"
+            accessibilityLabel={t('fijos:confirmPayment.changed')}
             style={styles.modeWrap}
           >
             <Animated.View
@@ -254,7 +256,7 @@ export function ConfirmFixedPaymentSheet({
                 ]}
                 numberOfLines={1}
               >
-                Cambió
+                {t('fijos:confirmPayment.changed')}
               </Text>
             </Animated.View>
           </Pressable>
@@ -270,13 +272,13 @@ export function ConfirmFixedPaymentSheet({
             style={styles.changedBlock}
           >
             <TextField
-              label="Monto pagado"
+              label={t('fijos:confirmPayment.amountPaid')}
               value={amountText}
               onChangeText={setAmountText}
               keyboardType="number-pad"
               inputMode="numeric"
               placeholder="0"
-              accessibilityLabel="Monto realmente pagado"
+              accessibilityLabel={t('fijos:confirmPayment.amountPaidA11y')}
             />
             {parsedAmount > 0 && delta !== 0 ? (
               <View
@@ -329,7 +331,7 @@ export function ConfirmFixedPaymentSheet({
 
         <AppButton
           variant="primary"
-          label="Confirmar pago"
+          label={t('fijos:confirmPayment.confirm')}
           loading={isProcessing}
           disabled={mode === 'changed' ? !isChangedValid : !isSameValid}
           onPress={() => {

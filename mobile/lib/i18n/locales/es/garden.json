@@ -1,0 +1,144 @@
+{
+  "screen": {
+    "title": "Mi jardín",
+    "subtitle": "Un brote por cada día que registras.",
+    "footnote": "Tu jardín crece solo: cada gasto que registras planta el brote del día. ¿No gastaste? Marca el día sin gastos en el calendario y también suma."
+  },
+  "card": {
+    "title": "Tu jardín",
+    "legendToggleLabel": "Qué significan los brotes",
+    "legendToggle": "¿qué significan?",
+    "firstWeek": "tu primera semana",
+    "weeksShown": "últimas {{count}} semanas"
+  },
+  "legend": {
+    "seed": "semilla",
+    "growing": "creciendo",
+    "rooted": "arraigado",
+    "bloom": "floración",
+    "skipped": "salteado"
+  },
+  "grid": {
+    "plantGapLabel": "Plantar el día que faltó la semana pasada"
+  },
+  "plantGap": {
+    "title": "Planta el día que faltó",
+    "message": "La semana pasada registraste 6 de 7 días. Planta el que falta con una semilla guardada (tienes {{seeds}}). No florece como una semana perfecta, pero completas tu jardín.",
+    "cancel": "Ahora no",
+    "confirm": "Plantar",
+    "errorTitle": "No se pudo plantar",
+    "errorFallback": "Intenta de nuevo en un rato."
+  },
+  "hero": {
+    "label": "RACHA ACTIVA",
+    "unit": "brotes\nseguidos",
+    "streakA11y_one": "{{count}} brote seguido",
+    "streakA11y_other": "{{count}} brotes seguidos",
+    "sub": "Una semilla por cada día que registras. Los huecos son días que no cargaste, tranquilo: el jardín sigue.",
+    "statGarden": "JARDÍN",
+    "statRecord": "RÉCORD",
+    "statSeeds": "SEMILLAS"
+  },
+  "weekCloseBanner": {
+    "a11y": "Cierre de semana: {{label}}, {{score}} de 7 días",
+    "sub": "Semana pasada · {{score}}/7 días",
+    "chip": "Ver cierre ›"
+  },
+  "weekCloseCelebration": {
+    "closeLabel": "Cerrar cierre de semana",
+    "eyebrow": "CIERRE DE SEMANA",
+    "count": "{{score}} de 7 días",
+    "continue": "Seguir cultivando"
+  },
+  "weekClose": {
+    "perfect": {
+      "label": "Semana perfecta",
+      "title": "Tu jardín floreció.",
+      "sub": "Registraste los 7 días. Cada brote llegó a su máximo."
+    },
+    "great": {
+      "label": "Gran semana",
+      "title": "Casi pleno.",
+      "sub": "La mayoría de tus brotes maduraron. Te faltó poco para el jardín completo."
+    },
+    "going": {
+      "label": "Semana en marcha",
+      "title": "Vas tomando ritmo.",
+      "sub": "Tus brotes están creciendo. Una semana más así y maduran del todo."
+    },
+    "calm": {
+      "label": "Semana tranquila",
+      "title": "Unos pocos brotes.",
+      "sub": "Asomaron algunas semillas. Sin culpa — la próxima arrancas con todo."
+    },
+    "pause": {
+      "label": "Una pausa",
+      "title": "Esta semana, descanso.",
+      "sub": "No registraste días, y está bien. Tu jardín te espera intacto."
+    }
+  },
+  "leafIcon": {
+    "a11y_one": "Tu jardín: racha de {{count}} día",
+    "a11y_other": "Tu jardín: racha de {{count}} días"
+  },
+  "levels": {
+    "arranque": "Arranque",
+    "constante": "Constante",
+    "disciplinado": "Disciplinado",
+    "imparable": "Imparable",
+    "maestro": "Maestro",
+    "leyenda": "Leyenda"
+  },
+  "streakCopy": {
+    "noSpend": {
+      "headline": "Hoy sin gastos — racha protegida",
+      "message": "Marcaste el día como \"sin gastos\". La racha sigue activa en {{level}} y cada día contado suma a tu progreso."
+    },
+    "nearLevel": {
+      "headline": "¡Casi en {{level}}!",
+      "message_one": "Solo {{count}} día más para subir de nivel. Sigue así.",
+      "message_other": "Solo {{count}} días más para subir de nivel. Sigue así."
+    },
+    "active": {
+      "headlineStart": "Empezaste tu racha",
+      "headlineStreak": "{{count}} días seguidos, imparable",
+      "message": "Estás en {{level}}. Cada día que registras tu dinero trabaja mejor para ti."
+    },
+    "atRiskWithShield": {
+      "message_one": "{{tone}} Tienes {{count}} escudo disponible — si no registras hoy se consume uno solo a la medianoche.",
+      "message_other": "{{tone}} Tienes {{count}} escudos disponibles — si no registras hoy se consume uno solo a la medianoche."
+    },
+    "atRiskNoShield": {
+      "message_one": "{{tone}} Llevas {{count}} día — sin escudos, si no registras se corta y mañana arrancas de cero.",
+      "message_other": "{{tone}} Llevas {{count}} días — sin escudos, si no registras se corta y mañana arrancas de cero."
+    },
+    "broken": {
+      "headline": "La racha se cortó",
+      "messageWithRecord_one": "Tu marca personal sigue siendo {{count}} día. Carga un movimiento hoy y arranca una nueva.",
+      "messageWithRecord_other": "Tu marca personal sigue siendo {{count}} días. Carga un movimiento hoy y arranca una nueva.",
+      "messageFresh": "Una racha nueva empieza con un solo registro. Carga hoy y arrancas día 1."
+    }
+  },
+  "dayTone": {
+    "calm": {
+      "atRiskHeadlineWithShield": "Buen día — tu racha sigue viva",
+      "atRiskHeadlineNoShield": "Hoy todavía no registraste",
+      "atRiskMessage": "Tienes toda la jornada por delante, registra cuando puedas."
+    },
+    "gentle": {
+      "atRiskHeadlineWithShield": "Tu racha sigue en juego",
+      "atRiskHeadlineNoShield": "Aún no registraste hoy",
+      "atRiskMessage": "Buen momento para anotar el gasto del día antes de que se haga tarde."
+    },
+    "urgent": {
+      "atRiskHeadlineWithShield": "Cuidado — se acerca el corte",
+      "atRiskHeadlineNoShield": "Faltan pocas horas para medianoche",
+      "atRiskMessage": "Si registras ahora, evitas cualquier sobresalto."
+    },
+    "critical": {
+      "atRiskHeadlineWithShield": "Última hora — racha en riesgo",
+      "atRiskHeadlineNoShield": "Última hora antes de medianoche",
+      "atRiskMessage": "Registra ya para cerrar el día sin perder progreso."
+    }
+  }
+}

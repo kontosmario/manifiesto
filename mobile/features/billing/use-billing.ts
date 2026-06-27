@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { isExpoGo } from '@/lib/runtime-environment'
 import { useEntitlement, entitlementQueryKey } from '@/features/billing/use-entitlement'
@@ -120,19 +121,24 @@ const iap: ExpoIapModule | null = (() => {
   }
 })()
 
+// Centinela INTERNO (no se muestra): solo aplica en Expo Go, donde el sheet no
+// se presenta. No es copy user-facing.
 const EXPO_GO_REASON = 'IAP no disponible en Expo Go'
 
-// Mensajes accionables (ES, sin tecnicismos) por código de la edge function.
-const PURCHASE_FALLBACK_REASON =
-  'No pudimos confirmar tu compra. Reintenta en un momento.'
-export const CANCELLED_REASON = 'Cancelaste la compra.'
+// Mensajes accionables (resueltos en el idioma activo) por código de la edge
+// function. Son funciones porque `reason` se computa en runtime y debe seguir
+// el idioma activo (no congelarse al cargar el módulo).
+const purchaseFallbackReason = () => i18n.t('billing:errors.purchaseFallback')
+// CANCELLED_REASON es un CENTINELA: billing-screen lo compara con `===` para
+// saltarse el sheet de error en un cancel. Su texto NO se muestra al usuario,
+// así que se queda como string opaco estable (no se traduce).
+export const CANCELLED_REASON = '__cancelled__'
 // Centinela INTERNO (no se muestra): un cambio de plan DIFERIDO (downgrade)
 // confirmado no emite transacción → no llega purchaseUpdated/purchaseError.
 // Lo resolvemos con este motivo para distinguirlo de un cancel real y NO
 // mostrar sheet de error. El feedback lo da el banner optimista + el server.
 export const DEFERRED_REASON = '__deferred_change__'
-const BOUND_TO_OTHER_FAMILY_REASON =
-  'Tu suscripción está asociada a otro hogar. Contactanos.'
+const boundToOtherFamilyReason = () => i18n.t('billing:errors.boundToOtherFamily')
 
 /** Promesa pendiente de una compra en curso (single-flight). */
 interface PendingPurchase {
@@ -148,7 +154,7 @@ interface PendingPurchase {
  */
 function reasonForPurchaseError(error: IapPurchaseError): string {
   if (error?.code === 'user-cancelled') return CANCELLED_REASON
-  return error?.message?.trim() || PURCHASE_FALLBACK_REASON
+  return error?.message?.trim() || purchaseFallbackReason()
 }
 
 /**
@@ -310,7 +316,7 @@ export function useBilling() {
       active = false
       subscriptions.forEach((s) => s.remove())
       // Resolvemos cualquier pendiente para no dejar una promesa colgada.
-      resolvePending({ ok: false, reason: PURCHASE_FALLBACK_REASON })
+      resolvePending({ ok: false, reason: purchaseFallbackReason() })
       iap.endConnection().catch(() => {
         // No-fatal en teardown.
       })
@@ -337,7 +343,7 @@ export function useBilling() {
       if (!iap) return
       const jws = purchase.purchaseToken
       if (!jws) {
-        resolvePending({ ok: false, reason: PURCHASE_FALLBACK_REASON })
+        resolvePending({ ok: false, reason: purchaseFallbackReason() })
         return
       }
 
@@ -353,12 +359,12 @@ export function useBilling() {
           } catch {
             // no-fatal: si falla, reaparecerá y se cerrará en el próximo intento.
           }
-          resolvePending({ ok: false, reason: BOUND_TO_OTHER_FAMILY_REASON })
+          resolvePending({ ok: false, reason: boundToOtherFamilyReason() })
           return
         }
         // No hacemos finishTransaction: el recibo queda en la cola y se
         // reintentará en el próximo arranque (replay de StoreKit).
-        resolvePending({ ok: false, reason: PURCHASE_FALLBACK_REASON })
+        resolvePending({ ok: false, reason: purchaseFallbackReason() })
         return
       }
 
@@ -394,12 +400,12 @@ export function useBilling() {
       if (!familyId) {
         return {
           ok: false,
-          reason: 'No pudimos identificar tu hogar. Reintenta en un momento.',
+          reason: i18n.t('billing:errors.noFamily'),
         }
       }
       // Single-flight: si ya hay una compra en vuelo, no abrimos otra.
       if (pendingRef.current) {
-        return { ok: false, reason: 'Ya hay una compra en curso.' }
+        return { ok: false, reason: i18n.t('billing:errors.purchaseInProgress') }
       }
 
       setIsPurchasing(true)
@@ -433,7 +439,7 @@ export function useBilling() {
             const reason =
               error instanceof Error && error.message
                 ? error.message
-                : PURCHASE_FALLBACK_REASON
+                : purchaseFallbackReason()
             resolvePending({ ok: false, reason })
           })
       })
@@ -453,7 +459,7 @@ export function useBilling() {
       if (withTokens.length === 0) {
         return {
           ok: false,
-          reason: 'No encontramos compras para restaurar con esta cuenta.',
+          reason: i18n.t('billing:errors.noPurchasesToRestore'),
         }
       }
 
@@ -473,7 +479,7 @@ export function useBilling() {
           await queryClient.invalidateQueries({
             queryKey: entitlementQueryKey(userId),
           })
-          return { ok: false, reason: BOUND_TO_OTHER_FAMILY_REASON }
+          return { ok: false, reason: boundToOtherFamilyReason() }
         }
         // Otros errores: seguimos probando las demás compras.
       }
@@ -486,14 +492,14 @@ export function useBilling() {
       if (!anyValidated) {
         return {
           ok: false,
-          reason: 'No pudimos restaurar tu suscripción. Reintenta en un momento.',
+          reason: i18n.t('billing:errors.restoreFailed'),
         }
       }
       return { ok: true }
     } catch {
       return {
         ok: false,
-        reason: 'No pudimos restaurar tus compras. Reintenta en un momento.',
+        reason: i18n.t('billing:errors.restoreFailedGeneric'),
       }
     }
   }, [queryClient, userId])

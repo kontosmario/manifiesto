@@ -28,6 +28,7 @@ import {
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
@@ -113,13 +114,15 @@ export function NumericEditSheet({
   numpadCollapsedByDefault = false,
   maxIntegerDigits,
   maxDecimalDigits,
-  saveLabel = 'Guardar',
+  saveLabel,
   saveDisabled = false,
   isSaving = false,
   onSave,
   onClose,
   secondaryAction,
 }: NumericEditSheetProps) {
+  const { t } = useTranslation()
+  const resolvedSaveLabel = saveLabel ?? t('common:actions.save')
   const { theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
@@ -245,7 +248,7 @@ export function NumericEditSheet({
       <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}>
           <Pressable
-            accessibilityLabel="Cerrar editor"
+            accessibilityLabel={t('states:numericEditor.closeLabel')}
             accessibilityRole="button"
             onPress={handleDismiss}
             style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
@@ -300,8 +303,8 @@ export function NumericEditSheet({
                 accessibilityRole="button"
                 accessibilityLabel={
                   numpadExpanded
-                    ? `Editar monto. Valor actual ${displayText}`
-                    : `Toca para editar el monto. Valor actual ${displayText}`
+                    ? t('states:numericEditor.editAmount', { value: displayText })
+                    : t('states:numericEditor.editAmountTap', { value: displayText })
                 }
                 accessibilityState={{ expanded: numpadExpanded }}
                 disabled={numpadDisabled}
@@ -367,7 +370,7 @@ export function NumericEditSheet({
                           { color: theme.colors.textMuted },
                         ]}
                       >
-                        Editar
+                        {t('states:numericEditor.editChip')}
                       </Text>
                     </View>
                   ) : null}
@@ -397,7 +400,7 @@ export function NumericEditSheet({
             <View style={styles.saveButton}>
               <AppButton
                 variant="primary"
-                label={saveLabel}
+                label={resolvedSaveLabel}
                 onPress={onSave}
                 disabled={saveDisabled}
                 loading={isSaving}

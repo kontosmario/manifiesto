@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import type { AppHapticTone } from '@/lib/haptics'
 import type { ControlAction } from '@/features/insights/control-action'
 
@@ -13,22 +14,35 @@ export interface AsesorActionMeta {
    *  acknowledging is `success`, navigating is `selection`, alerting a
    *  family member is `warning`. */
   haptic: AppHapticTone
-  /** When the builder's CTA copy is the generic "Entendido" / "Ver
-   *  detalle" / "Ver fijos" / etc., we fall back to this kind-specific
-   *  label instead so the button reads as a real, unique verb. The
+  /** i18n key for the kind-specific fallback label. When the builder's
+   *  CTA copy is the generic "Entendido" / "Ver detalle" / etc., we fall
+   *  back to this label instead so the button reads as a real, unique
+   *  verb. Resolved to text by `resolveCtaLabel` via `i18n.t`. The
    *  builder copy always wins when it's already specific (e.g. "Mover
    *  $42k", "Cancelar", "Avisar"). */
-  fallbackLabel?: string
+  fallbackLabelKey?: string
 }
 
-const GENERIC_LABELS = new Set([
-  'Entendido',
-  'Ver',
-  'Ver detalle',
-  'Ver fijos',
-  'Ver meta',
-  'Ver gastos',
-])
+// CTAs "genéricas" que los builders emiten cuando NO tienen un verbo
+// específico. Se identifican por su i18n KEY (no por el texto) y se
+// resuelven en el idioma ACTIVO para comparar — sino, en inglés el
+// builderCta ("View"/"Got it") nunca matchearía un Set en español y el
+// fallback kind-specific dejaría de dispararse.
+const GENERIC_CTA_KEYS = [
+  'insights:cta.entendido',
+  'insights:cta.verDetalle',
+  'insights:cta.verFijos',
+  'insights:cta.verMeta',
+  'insights:cta.verGastos',
+  'home:alerts.view',
+] as const
+
+function isGenericCta(builderCta: string): boolean {
+  for (const key of GENERIC_CTA_KEYS) {
+    if (i18n.t(key) === builderCta) return true
+  }
+  return false
+}
 
 /**
  * Map every `action.kind` to a unique visual identity (icon + haptic +
@@ -40,77 +54,77 @@ const META_BY_KIND: Record<ControlAction['kind'], AsesorActionMeta> = {
   navigate: {
     icon: 'north-east',
     haptic: 'selection',
-    fallbackLabel: 'Abrir',
+    fallbackLabelKey: 'control:advisorAction.fallbackAbrir',
   },
   'open-fixed-expense': {
     icon: 'tune',
     haptic: 'selection',
-    fallbackLabel: 'Ajustar',
+    fallbackLabelKey: 'control:advisorAction.fallbackAjustar',
   },
   'open-expenses-filtered': {
     icon: 'filter-list',
     haptic: 'selection',
-    fallbackLabel: 'Explorar',
+    fallbackLabelKey: 'control:advisorAction.fallbackExplorar',
   },
   'open-add-fixed-prefilled': {
     icon: 'add-circle-outline',
     haptic: 'selection',
-    fallbackLabel: 'Registrar',
+    fallbackLabelKey: 'control:advisorAction.fallbackRegistrar',
   },
   'open-savings-goal': {
     icon: 'flag',
     haptic: 'selection',
-    fallbackLabel: 'Ver meta',
+    fallbackLabelKey: 'control:advisorAction.fallbackVerMeta',
   },
   'open-streak-sheet': {
     icon: 'local-fire-department',
     haptic: 'success',
-    fallbackLabel: 'Ver racha',
+    fallbackLabelKey: 'control:advisorAction.fallbackVerRacha',
   },
   'scroll-to-section': {
     icon: 'south',
     haptic: 'selection',
-    fallbackLabel: 'Ir a sección',
+    fallbackLabelKey: 'control:advisorAction.fallbackIrSeccion',
   },
   'send-member-warning': {
     icon: 'campaign',
     haptic: 'warning',
-    fallbackLabel: 'Avisar',
+    fallbackLabelKey: 'control:advisorAction.fallbackAvisar',
   },
   'quick-savings-contribution': {
     icon: 'savings',
     haptic: 'success',
-    fallbackLabel: 'Mover ahora',
+    fallbackLabelKey: 'control:advisorAction.fallbackMoverAhora',
   },
   dismiss: {
     icon: 'check-circle',
     haptic: 'success',
-    fallbackLabel: 'Entendido',
+    fallbackLabelKey: 'control:advisorAction.fallbackEntendido',
   },
   'open-external-url': {
     icon: 'open-in-new',
     haptic: 'selection',
-    fallbackLabel: 'Abrir enlace',
+    fallbackLabelKey: 'control:advisorAction.fallbackAbrirEnlace',
   },
   'open-coach-mode': {
     icon: 'auto-awesome',
     haptic: 'selection',
-    fallbackLabel: 'Profundizar',
+    fallbackLabelKey: 'control:advisorAction.fallbackProfundizar',
   },
   'open-settings-modal': {
     icon: 'tune',
     haptic: 'selection',
-    fallbackLabel: 'Configurar',
+    fallbackLabelKey: 'control:advisorAction.fallbackConfigurar',
   },
   'sub-usage-answer': {
     icon: 'check',
     haptic: 'success',
-    fallbackLabel: 'Responder',
+    fallbackLabelKey: 'control:advisorAction.fallbackResponder',
   },
   'sub-usage-cancel': {
     icon: 'cancel',
     haptic: 'warning',
-    fallbackLabel: 'Cancelar',
+    fallbackLabelKey: 'control:advisorAction.fallbackCancelar',
   },
 }
 
@@ -139,7 +153,7 @@ export function resolveCtaLabel(
   builderCta: string,
   action: ControlAction | undefined,
 ): string {
-  if (!GENERIC_LABELS.has(builderCta)) return builderCta
+  if (!isGenericCta(builderCta)) return builderCta
   const meta = getActionMeta(action)
-  return meta.fallbackLabel ?? builderCta
+  return meta.fallbackLabelKey ? i18n.t(meta.fallbackLabelKey) : builderCta
 }

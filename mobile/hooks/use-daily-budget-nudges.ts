@@ -7,6 +7,7 @@ import { useFamily } from '@/features/family/use-family'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
+import i18n from '@/lib/i18n'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 
 const CHECKIN_NOTIFICATION_KEY = 'daily-budget-checkin'
@@ -109,11 +110,11 @@ export function useDailyBudgetNudges() {
       if (!hasThresholdLog && hasCrossedThreshold && hour < 18 && !isCancelled) {
         await Notifications.scheduleNotificationAsync({
           content: {
-            title: 'Cierra tu día',
+            title: i18n.t('home:dailyBudgetNudge.closeDayTitle'),
             // Sprint Q · Q-1: no amounts on the lock screen. The
             // contextual amount/projection lives in `data` so the
             // in-app surface can still tailor the message.
-            body: 'Mira cómo te fue hoy.',
+            body: i18n.t('home:dailyBudgetNudge.closeDayBody'),
             data: {
               kind: THRESHOLD_NOTIFICATION_KEY,
               url: '/expenses',

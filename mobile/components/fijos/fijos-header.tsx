@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -36,13 +37,16 @@ interface FijosHeaderProps {
 const BUTTON_SIZE = CIRCLE_BUTTON_SIZE
 
 export function FijosHeader({
-  title = 'Fijos',
-  subtitle = 'Todo lo recurrente en un solo lugar',
+  title: titleProp,
+  subtitle: subtitleProp,
   onPressAdd,
   familyId,
   addButtonRef,
 }: FijosHeaderProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
+  const title = titleProp ?? t('fijos:header.title')
+  const subtitle = subtitleProp ?? t('fijos:header.subtitle')
 
   // Two staggered halo rings ping outward — sonar style. Each ring
   // animates scale 1 → 1.55 + opacity 0.45 → 0 in 1800ms, with the
@@ -122,7 +126,7 @@ export function FijosHeader({
             onPressIn={press.onPressIn}
             onPressOut={press.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Agregar fijo"
+            accessibilityLabel={t('fijos:header.addButton')}
           >
             <Animated.View
               style={[

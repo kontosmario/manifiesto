@@ -14,6 +14,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { useRouter } from 'expo-router'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   FadeIn,
@@ -94,6 +95,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const t = useAsistenteTheme()
+  const { t: translate } = useTranslation()
   const reduced = useReducedMotion()
   // `signals` ya viene filtrado (blocklist + dismissed) y vacío hasta que los
   // filtros cargaron (signalsReady) — el filtrado es central en useControlV2Data,
@@ -169,20 +171,20 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
       const family = signalFamilyOf(task.id)
       Alert.alert(
         task.title,
-        '¿Qué quieres hacer con esta sugerencia?',
+        translate('insights:asistente.longPress.question'),
         [
           {
-            text: '¿Por qué veo esto?',
+            text: translate('insights:asistente.longPress.why'),
             onPress: () => {
               Alert.alert(
-                '¿Por qué veo esto?',
+                translate('insights:asistente.longPress.why'),
                 task.dummyExplanation ??
-                  'Esta sugerencia se basa en patrones detectados en tus gastos del mes. La acción del CTA es la palanca más directa para mover el número.',
+                  translate('insights:asistente.longPress.whyDefault'),
               )
             },
           },
           {
-            text: 'No mostrar más esta familia',
+            text: translate('insights:asistente.longPress.blockFamily'),
             style: 'destructive',
             onPress: () => {
               if (!userId) return
@@ -192,27 +194,29 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
                   onSuccess: () => {
                     void triggerHaptic('success')
                     Alert.alert(
-                      'Listo',
-                      `No vas a ver más señales de tipo "${family}" hasta que las desbloquees desde Ajustes.`,
+                      translate('insights:asistente.longPress.blockSuccessTitle'),
+                      translate('insights:asistente.longPress.blockSuccessBody', {
+                        family,
+                      }),
                     )
                   },
                   onError: () => {
                     void triggerHaptic('error')
                     Alert.alert(
-                      'No pudimos guardar',
-                      'Prueba de nuevo en unos segundos.',
+                      translate('insights:asistente.longPress.blockErrorTitle'),
+                      translate('insights:asistente.longPress.blockErrorBody'),
                     )
                   },
                 },
               )
             },
           },
-          { text: 'Cancelar', style: 'cancel' },
+          { text: translate('insights:asistente.longPress.cancel'), style: 'cancel' },
         ],
         { cancelable: true },
       )
     },
-    [userId, blockMutation],
+    [userId, blockMutation, translate],
   )
 
   const handleAction = useCallback(
@@ -397,11 +401,12 @@ function Header({
   // theme-dependent colors come from `t` (the asistente token set);
   // styles below carry only the layout/typography that doesn't change
   // between light and dark.
+  const { t: translate } = useTranslation()
   return (
     <View style={styles.header}>
       <View style={styles.headerTopRow}>
         <Text style={[styles.headerTitle, { color: t.headerTitle }]} numberOfLines={1}>
-          Asistente
+          {translate('insights:asistente.header.title')}
         </Text>
         {totalImpact > 0 ? (
           <View
@@ -415,7 +420,7 @@ function Header({
               +{formatMoneyShort(totalImpact)}
             </Text>
             <Text style={[styles.headerPillSuffix, { color: t.pillSuffix }]}>
-              /mes potencial
+              {translate('insights:asistente.header.potentialSuffix')}
             </Text>
           </View>
         ) : null}
@@ -425,8 +430,8 @@ function Header({
         numberOfLines={1}
       >
         {count > 0
-          ? `${count} ${count === 1 ? 'acción' : 'acciones'} que pueden mover la aguja`
-          : 'Al día por ahora'}
+          ? translate('insights:asistente.header.subtitle', { count })
+          : translate('insights:asistente.header.subtitleIdle')}
       </Text>
     </View>
   )
@@ -502,6 +507,7 @@ function InsightCard({
   onDismiss: () => void
   t: AsistenteTokens
 }) {
+  const { t: translate } = useTranslation()
   const type = bubbleType(task)
   const tone = TYPE_TONES[type]
   const isCritical = task.urgency === 'alta'
@@ -596,7 +602,7 @@ function InsightCard({
           onLongPress={onLongPressBubble}
           delayLongPress={350}
           accessibilityRole="button"
-          accessibilityLabel={`${task.title}. Mantén presionado para opciones.`}
+          accessibilityLabel={`${task.title}. ${translate('insights:asistente.card.longPressHint')}`}
         >
           <View style={styles.head}>
             {/* Materialized icon tile — keeps the per-signal icon as
@@ -662,7 +668,10 @@ function InsightCard({
                 <PressScale
                   key={r.label}
                   accessibilityRole="button"
-                  accessibilityLabel={`${r.label} para ${task.title}`}
+                  accessibilityLabel={translate('insights:asistente.card.replyA11y', {
+                    label: r.label,
+                    title: task.title,
+                  })}
                   onPress={() => handlePickReply(r.label, r.action)}
                   style={[
                     styles.scaleBtn,
@@ -707,7 +716,10 @@ function InsightCard({
           <View style={styles.replies}>
             <PressScale
               accessibilityRole="button"
-              accessibilityLabel={`${ctaLabel} para ${task.title}`}
+              accessibilityLabel={translate('insights:asistente.card.ctaA11y', {
+                cta: ctaLabel,
+                title: task.title,
+              })}
               onPress={onAction}
               style={[
                 styles.replyCta,
@@ -728,7 +740,7 @@ function InsightCard({
             {!isDismissAction ? (
               <PressScale
                 accessibilityRole="button"
-                accessibilityLabel="Marcar como visto"
+                accessibilityLabel={translate('insights:asistente.card.seenA11y')}
                 onPress={onDismiss}
                 hitSlop={4}
                 style={[
@@ -740,7 +752,7 @@ function InsightCard({
                 ]}
               >
                 <Text style={[styles.replySeenText, { color: t.vistoText }]}>
-                  Visto
+                  {translate('insights:asistente.card.seen')}
                 </Text>
               </PressScale>
             ) : null}
@@ -782,11 +794,12 @@ function EmptyState({
 // Loading mientras los filtros (blocklist + dismissals) cargan — evita
 // mostrar la lista sin filtrar que después se achica.
 function LoadingState({ t }: { t: AsistenteTokens }) {
+  const { t: translate } = useTranslation()
   return (
     <Animated.View entering={FadeIn.duration(220)} style={styles.emptyState}>
       <ActivityIndicator color={t.headerSubtitle} />
       <Text style={[styles.emptyBody, { color: t.headerSubtitle, marginTop: 12 }]}>
-        Revisando tus señales…
+        {translate('insights:asistente.loading')}
       </Text>
     </Animated.View>
   )

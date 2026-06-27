@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
   runOnJS,
@@ -78,6 +79,7 @@ export function AuthLaunchSplash({
   exitMode,
   reducedMotion,
 }: AuthLaunchSplashProps) {
+  const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { width, height } = useWindowDimensions()
   const systemReduced = useReducedMotion()
@@ -195,7 +197,7 @@ export function AuthLaunchSplash({
             </RiseView>
 
             <RiseView delay={1300} duration={900} translateY={12}>
-              <Text style={styles.tagline}>Finanzas para tu familia</Text>
+              <Text style={styles.tagline}>{t('auth:welcome.tagline')}</Text>
             </RiseView>
           </View>
 
@@ -231,10 +233,10 @@ export function AuthLaunchSplash({
                 fern del welcome aterriza ~20px más arriba que el del
                 splash — el "saltito" reportado 2026-06-11. */}
             <Text style={styles.ctaReserveDisclosure}>
-              Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.
+              {t('auth:welcome.dataDisclosure')}
             </Text>
             <Text style={styles.ctaReserveFineprint}>
-              Al continuar aceptas los Términos y la Privacidad
+              {`${t('auth:welcome.fineprintPrefix')} ${t('auth:welcome.fineprintTerms')} ${t('auth:welcome.fineprintAnd')} ${t('auth:welcome.fineprintPrivacy')}`}
             </Text>
           </View>
         </View>

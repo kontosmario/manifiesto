@@ -1,5 +1,6 @@
 import { memo, useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
@@ -11,6 +12,7 @@ import { StatTile } from '@/components/ui/stat-tile'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
+import { goalEmojiText } from '@/features/savings-goals/goal-icon'
 import { useStreak } from '@/features/streaks/use-streak'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
@@ -95,6 +97,7 @@ function ControlV2AlcanciaCardImpl({
   monthlyReserveAmount = 0,
 }: ControlV2AlcanciaCardProps) {
   const { theme } = useAppTheme()
+  const { t } = useTranslation()
   const isDark = theme.isDark
   const streakQuery = useStreak(familyId, userId)
   const globalStreak = streakQuery.data?.currentStreak ?? 0
@@ -172,12 +175,12 @@ function ControlV2AlcanciaCardImpl({
   const hasGoal = hasActiveGoal // alias para el resto del código existente
   const canMove = hasActiveGoal && vault > 0
   const ctaLabel = hasInactiveGoal
-    ? `Activar meta · ${goal.emoji} ${goal.title}`
+    ? t('control:alcancia.ctaActivar', { emoji: goalEmojiText(goal.emoji), title: goal.title }).replace(/\s{2,}/g, ' ').trim()
     : !hasActiveGoal
-      ? 'Crear meta de ahorro'
+      ? t('control:alcancia.ctaCrear')
       : vault > 0
-        ? `Mover ${formatMoneyShort(vault)} a tu meta`
-        : 'Sumar a tu meta'
+        ? t('control:alcancia.ctaMover', { amount: formatMoneyShort(vault) })
+        : t('control:alcancia.ctaSumar')
 
   const handleCtaPress = () => {
     if (hasInactiveGoal && goal != null) {
@@ -224,21 +227,24 @@ function ControlV2AlcanciaCardImpl({
         onError: (err) => {
           void triggerHaptic('error')
           Alert.alert(
-            'No pudimos sumar el aporte',
-            err instanceof Error ? err.message : 'Reintenta en un momento.',
+            t('control:alcancia.errorSumarTitle'),
+            err instanceof Error ? err.message : t('control:alcancia.errorRetry'),
           )
         },
       },
     )
   }
 
-  const subSpendDays = `${diasGanadores} de ${Math.max(closedDays, diasGanadores)} días`
+  const subSpendDays = t('control:alcancia.subSpendDays', {
+    ganadores: diasGanadores,
+    total: Math.max(closedDays, diasGanadores),
+  })
   const subSpendCopy =
     vault > 0
-      ? `Gasto debajo del cupo en ${subSpendDays} cerrados de este mes.`
+      ? t('control:alcancia.subSpendOver', { range: subSpendDays })
       : closedDays === 0
-        ? 'Aún no hay días cerrados — empezamos a calcular mañana.'
-        : `Esta semana el gasto superó el cupo casi todos los días. Cuando bajes, lo guardamos aquí.`
+        ? t('control:alcancia.subSpendNoClosed')
+        : t('control:alcancia.subSpendUnder')
 
   return (
     <RiseView delay={180}>
@@ -248,7 +254,7 @@ function ControlV2AlcanciaCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={accentFg} glow={accentFg} />
           <Text style={[styles.eyebrow, { color: accentFg }]} numberOfLines={1}>
-            TU ALCANCÍA · ESTE CICLO
+            {t('control:alcancia.eyebrow')}
           </Text>
           {hasGoal ? (
             <View
@@ -262,7 +268,7 @@ function ControlV2AlcanciaCardImpl({
                 style={[styles.metaChipText, { color: accentFg }]}
                 numberOfLines={1}
               >
-                META · {goalPct}%
+                {t('control:alcancia.metaChip', { pct: goalPct })}
               </Text>
             </View>
           ) : hasInactiveGoal ? (
@@ -285,7 +291,7 @@ function ControlV2AlcanciaCardImpl({
                 style={[styles.metaChipText, { color: muted }]}
                 numberOfLines={1}
               >
-                META · INACTIVA
+                {t('control:alcancia.metaInactiva')}
               </Text>
             </View>
           ) : null}
@@ -365,9 +371,9 @@ function ControlV2AlcanciaCardImpl({
               numberOfLines={1}
             >
               {addMutation.isPending
-                ? 'Sumando…'
+                ? t('control:alcancia.ctaSumando')
                 : upsertGoal.isPending
-                  ? 'Activando…'
+                  ? t('control:alcancia.ctaActivando')
                   : ctaLabel}
             </Text>
             {hasActiveGoal && vault > 0 ? (
@@ -380,12 +386,15 @@ function ControlV2AlcanciaCardImpl({
           <StatTile
             iconName="eco"
             iconColor={accentFg}
-            label="Sin gastos"
+            label={t('control:alcancia.tileSinGastos')}
             value={String(noSpendCount)}
             sub={
               closedDays > 0
-                ? `${noSpendCount} de ${closedDays} días`
-                : 'días del mes'
+                ? t('control:alcancia.tileSinGastosSub', {
+                    count: noSpendCount,
+                    total: closedDays,
+                  })
+                : t('control:alcancia.tileSinGastosSubDefault')
             }
             bg={tileBg}
             border={tileBorder}
@@ -395,12 +404,12 @@ function ControlV2AlcanciaCardImpl({
           <StatTile
             iconName="trending-down"
             iconColor={accentFg}
-            label="Bajo cupo"
+            label={t('control:alcancia.tileBajoCupo')}
             value={`${diasGanadores}`}
             sub={
               rachaBajoCupo > 0
-                ? `racha ${rachaBajoCupo}d`
-                : 'días respetando'
+                ? t('control:alcancia.tileBajoCupoRacha', { count: rachaBajoCupo })
+                : t('control:alcancia.tileBajoCupoSub')
             }
             bg={tileBg}
             border={tileBorder}
@@ -412,12 +421,12 @@ function ControlV2AlcanciaCardImpl({
             iconColor={
               isDark ? 'rgba(242,181,138,0.95)' : 'rgba(194,90,62,0.95)'
             }
-            label="Racha"
-            value={`${globalStreak}d`}
+            label={t('control:alcancia.tileRacha')}
+            value={t('control:alcancia.tileRachaValue', { count: globalStreak })}
             sub={
               freezeTokens > 0
-                ? `${freezeTokens} ${freezeTokens === 1 ? 'escudo' : 'escudos'}`
-                : 'con registro'
+                ? t('control:alcancia.tileRachaEscudos', { count: freezeTokens })
+                : t('control:alcancia.tileRachaSub')
             }
             bg={tileBg}
             border={tileBorder}
