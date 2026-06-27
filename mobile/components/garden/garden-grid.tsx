@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Svg, { Circle } from 'react-native-svg'
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { Sprout } from './sprout'
+import { CardParticles } from '@/components/ui/card-particles'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
 import { weekdayLongFromMondayIndex } from '@/utils/date-format'
@@ -121,7 +122,12 @@ function GardenGridImpl({
       </View>
 
       <View style={styles.grid}>
-        {weeks.map((week, wi) => (
+        {weeks.map((week, wi) => {
+          // Semana FLORECIDA (perfecta 7/7): toda la fila se cubre de
+          // luciérnagas — la floración = la grilla de la semana con partículas.
+          const weekBloomed =
+            week.length === GARDEN_COLS && week.every((c) => c.stage === 'bloom')
+          return (
           <View key={wi} style={styles.week}>
             {week.map((cell) => {
               // Hueco recuperable: celda tappable con afiche "planta el día que faltó".
@@ -179,8 +185,18 @@ function GardenGridImpl({
                 </View>
               )
             })}
+            {weekBloomed && (
+              <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <CardParticles
+                  count={9}
+                  color="#FFFBF2"
+                  accentColor={theme.colors.heroAccent}
+                />
+              </View>
+            )}
           </View>
-        ))}
+          )
+        })}
       </View>
 
       {showLegend && (

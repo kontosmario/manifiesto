@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { FernMark } from '@/components/billing/fern-mark'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
+import { useAppTheme } from '@/theme/theme-provider'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import type { BroteStage } from '@/features/garden/garden-model'
 
@@ -68,6 +69,7 @@ function SproutGlyph({
   fernSize?: number
   tone?: SproutTone
 }) {
+  const { theme } = useAppTheme()
   const c = GLYPH[tone]
   switch (stage) {
     case 'seed':
@@ -90,7 +92,17 @@ function SproutGlyph({
         />
       )
     case 'fern':
-      return <FernMark variant="cream" size={fernSize} style={styles.fern} />
+      // Ícono de la app (brote grande, 3er step). Variante por TEMA: 'cream'
+      // (casi blanco) se PERDÍA sobre la tierra clara del light mode → 'forest'
+      // (verde oscuro, visible). En dark mode / celebración (fondo oscuro)
+      // 'cream' se ve bien (no se toca).
+      return (
+        <FernMark
+          variant={theme.isDark || tone === 'dark' ? 'cream' : 'forest'}
+          size={fernSize}
+          style={styles.fern}
+        />
+      )
     case 'bloom':
       // Semana perfecta: planta arraigada con flor coral (5 pétalos + centro).
       return (
