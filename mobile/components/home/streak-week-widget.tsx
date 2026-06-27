@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
+import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
 import { useGarden } from '@/features/garden/use-garden'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -16,9 +17,10 @@ interface StreakWeekWidgetProps {
 
 /**
  * Widget compacto de Home: tira semanal (L-M-M-J-V-S-D, un punto por día según
- * estado) + el número de racha inline. Refleja el jardín de forma glanceable;
- * tocarlo abre "Mi jardín". El brote se planta solo al registrar — el widget lee.
- * Diseñado para baja altura (se ve muchas veces al día → calmo y compacto).
+ * estado) + chevron. Refleja el jardín de forma glanceable; tocarlo abre "Mi
+ * jardín". El brote se planta solo al registrar — el widget lee. NO muestra el
+ * número de racha (confundía: el jardín es indulgente con huecos). Diseñado
+ * para baja altura (se ve muchas veces al día → calmo y compacto).
  */
 function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
   const { theme } = useAppTheme()
@@ -76,14 +78,13 @@ function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
           ))}
         </View>
 
-        <View style={[styles.divider, { backgroundColor: theme.colors.line }]} />
-
-        <View style={styles.count}>
-          <Text style={[styles.countNumber, { color: theme.colors.text }]}>
-            {data.currentStreak}
-          </Text>
-          <Text style={[styles.countLabel, { color: theme.colors.textMuted }]}>{t('home:streakWidget.daysLabel')}</Text>
-        </View>
+        {/* Sin número de racha (confundía): la tira semanal alcanza para el
+            glance. El chevron indica que es tappable → abre "Mi jardín". */}
+        <MaterialIcons
+          name="chevron-right"
+          size={20}
+          color={theme.colors.textMuted}
+        />
       </Animated.View>
     </Pressable>
   )
@@ -145,24 +146,6 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 999,
-  },
-  divider: {
-    width: 1,
-    alignSelf: 'stretch',
-  },
-  count: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 3,
-  },
-  countNumber: {
-    fontSize: 19,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  countLabel: {
-    fontSize: 10,
-    fontWeight: '700',
   },
 })
 
