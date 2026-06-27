@@ -11,6 +11,7 @@
     "paymentReverted": "Payment reverted.",
     "undoNotReadyYet": "We couldn't undo it yet — try again in 1s.",
     "paymentRecorded": "{{name}} payment recorded",
+    "fallbackName": "your fixed expense",
     "undo": "Undo"
   },
   "alerts": {

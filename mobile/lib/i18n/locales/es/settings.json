@@ -499,6 +499,14 @@
       "racha": "Check-ins diarios, rachas y escudos.",
       "meta": "Hitos y aportes a tu meta.",
       "otros": "Avisos generales y limpieza de suscripciones."
+    },
+    "groupLabel": {
+      "gastos": "Gastos",
+      "ingresos": "Ingresos",
+      "fijos": "Fijos",
+      "racha": "Racha y check-ins",
+      "meta": "Metas",
+      "otros": "Otros"
     }
   },
   "member": {

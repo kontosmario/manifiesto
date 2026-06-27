@@ -121,6 +121,7 @@
   },
   "accountDeletion": {
     "title": "Account deletion scheduled",
+    "dateFormat": "{{month}} {{day}}, {{year}}",
     "bodyDated": "Your account will be deleted on {{date}}. Cancel if this wasn't you.",
     "bodyUndated": "Your account has a deletion scheduled. Cancel if this wasn't you.",
     "a11yDated": "Your account will be deleted on {{date}}. Tap to cancel.",

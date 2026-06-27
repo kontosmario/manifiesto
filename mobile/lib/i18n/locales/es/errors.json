@@ -4,6 +4,12 @@
   "noSession": "No encontramos una sesión activa.",
   "network": "No pudimos conectarnos. Revisa tu conexión.",
   "rateLimited": "Demasiados intentos. Espera un momento y prueba de nuevo.",
+  "rateLimit": {
+    "retryGeneric": "Espera un rato antes de volver a intentar.",
+    "retrySeconds": "Prueba de nuevo en {{seconds}} segundos.",
+    "retryMinutes": "Prueba de nuevo en {{minutes}} min.",
+    "retryHours": "Prueba de nuevo en {{hours}}h."
+  },
   "family": {
     "ownerOnlyBlock": "Solo el dueño del hogar puede bloquear integrantes.",
     "ownerOnlyUnblock": "Solo el dueño del hogar puede desbloquear integrantes.",

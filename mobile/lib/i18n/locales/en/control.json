@@ -165,6 +165,8 @@
   },
   "vsmes": {
     "eyebrow": "HOW THIS MONTH IS GOING",
+    "prevMonthFallback": "Last month",
+    "unnamedCategory": "Unnamed",
     "stateSinCierre": "No close yet",
     "emptyHeadline": "You haven't closed a month yet.",
     "emptyBody": "When you confirm your next payday, we'll close the month and you'll see here how your spending compares to the previous month.",

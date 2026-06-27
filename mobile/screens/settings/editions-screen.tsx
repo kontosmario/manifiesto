@@ -20,6 +20,7 @@ import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
+import { monthShort } from '@/utils/date-format'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 
@@ -349,21 +350,17 @@ function parseISO(iso: string | null | undefined): ParsedISO | null {
   return { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) }
 }
 
-const MES_ABBR = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-] as const
-
 /** Display range — solo si el ciclo no es calendario (1→1). */
 function buildShortRange(start: string, end: string): string | null {
   const s = parseISO(start)
   const e = parseISO(end)
   if (!s || !e) return null
   if (s.day === 1 && e.day === 1) return null
+  const startDate = new Date(s.year, s.month - 1, s.day)
   // periodEnd es exclusivo → display restando un día.
   const lastDay = new Date(e.year, e.month - 1, e.day)
   lastDay.setDate(lastDay.getDate() - 1)
-  return `${s.day} ${MES_ABBR[s.month - 1]} – ${lastDay.getDate()} ${MES_ABBR[lastDay.getMonth()]}`
+  return `${s.day} ${monthShort(startDate)} – ${lastDay.getDate()} ${monthShort(lastDay)}`
 }
 
 // ── Styles ───────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import Animated, {
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
+import { weekdayShort } from '@/utils/date-format'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
 
 const TILE_WIDTH = 48
@@ -17,7 +18,11 @@ const TILE_HEIGHT = 58
 const TILE_GAP = 6
 const TILE_TOTAL_WIDTH = TILE_WIDTH + TILE_GAP
 
-const WEEKDAY_LABELS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'] as const
+// Abreviatura del día indexada por Date.getDay() (0=Domingo … 6=Sábado),
+// derivada del idioma activo (NO un array ES fijo). 2024-01-07 fue domingo,
+// así que sumar el índice da el día correcto.
+const weekdayLabel = (dowSunday0: number): string =>
+  weekdayShort(new Date(2024, 0, 7 + dowSunday0))
 
 interface Props {
   /** Selected day ISO (YYYY-MM-DD). */
@@ -173,7 +178,7 @@ function DayTile({
             { color: isSelected ? primary : mutedColor },
           ]}
         >
-          {WEEKDAY_LABELS[day.weekday]}
+          {weekdayLabel(day.weekday)}
         </Text>
         <View
           style={[

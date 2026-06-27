@@ -165,6 +165,8 @@
   },
   "vsmes": {
     "eyebrow": "CÓMO VAS ESTE MES",
+    "prevMonthFallback": "Mes anterior",
+    "unnamedCategory": "Sin nombre",
     "stateSinCierre": "Sin cierre todavía",
     "emptyHeadline": "Todavía no cerraste un mes.",
     "emptyBody": "Cuando confirmes tu próximo cobro, vamos a cerrar el mes y vas a ver aquí cómo vas gastando comparado con el mes anterior.",

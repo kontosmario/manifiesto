@@ -8,6 +8,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
+import { weekdayLongFromMondayIndex } from '@/utils/date-format'
 
 interface GastosMonthCalendarProps {
   dayMoods: Record<number, GastosDayMood>
@@ -60,7 +61,12 @@ interface GastosMonthCalendarProps {
   noSpendMarkedDates?: Set<string>
 }
 
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+// Inicial de cada día (Lunes=0 … Domingo=6). La letra se deriva del idioma
+// activo (NO un array ES fijo) para que el encabezado siga al locale.
+const weekdayInitials = (): string[] =>
+  Array.from({ length: 7 }, (_, i) =>
+    weekdayLongFromMondayIndex(i).charAt(0).toUpperCase(),
+  )
 
 /**
  * Finds the concrete Date for a calendar day-of-month within the
@@ -295,7 +301,7 @@ function GridMode({
             : t('gastos:calendar.hintTap')}
         </Text>
         <View style={styles.weekdaysRow}>
-          {WEEKDAYS.map((d, i) => (
+          {weekdayInitials().map((d, i) => (
             <View key={i} style={styles.weekdayCell}>
               <Text style={[styles.weekdayText, { color: theme.colors.textSoft }]}>{d}</Text>
             </View>

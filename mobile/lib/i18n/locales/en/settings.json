@@ -499,6 +499,14 @@
       "racha": "Daily check-ins, streaks and shields.",
       "meta": "Milestones and contributions to your goal.",
       "otros": "General alerts and subscription cleanup."
+    },
+    "groupLabel": {
+      "gastos": "Expenses",
+      "ingresos": "Income",
+      "fijos": "Fixed expenses",
+      "racha": "Streak & check-ins",
+      "meta": "Goals",
+      "otros": "Other"
     }
   },
   "member": {

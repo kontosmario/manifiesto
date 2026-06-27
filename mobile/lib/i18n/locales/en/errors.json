@@ -4,6 +4,12 @@
   "noSession": "We couldn't find an active session.",
   "network": "We couldn't connect. Check your connection.",
   "rateLimited": "Too many attempts. Wait a moment and try again.",
+  "rateLimit": {
+    "retryGeneric": "Wait a bit before trying again.",
+    "retrySeconds": "Try again in {{seconds}} seconds.",
+    "retryMinutes": "Try again in {{minutes}} min.",
+    "retryHours": "Try again in {{hours}}h."
+  },
   "family": {
     "ownerOnlyBlock": "Only the household owner can block members.",
     "ownerOnlyUnblock": "Only the household owner can unblock members.",

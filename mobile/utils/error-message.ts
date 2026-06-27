@@ -97,21 +97,21 @@ function parseRateLimitMessage(
   hint: string | undefined,
 ): string | null {
   if (!message.includes('rate_limit_exceeded')) return null
-  if (!hint) return 'Espera un rato antes de volver a intentar.'
+  if (!hint) return i18n.t('errors:rateLimit.retryGeneric')
 
   const match = /retry_after_(\d+)/.exec(hint)
-  if (!match) return 'Espera un rato antes de volver a intentar.'
+  if (!match) return i18n.t('errors:rateLimit.retryGeneric')
 
   const seconds = parseInt(match[1]!, 10)
   if (!Number.isFinite(seconds) || seconds <= 0) {
-    return 'Espera un rato antes de volver a intentar.'
+    return i18n.t('errors:rateLimit.retryGeneric')
   }
 
-  if (seconds < 60) return `Prueba de nuevo en ${seconds} segundos.`
+  if (seconds < 60) return i18n.t('errors:rateLimit.retrySeconds', { seconds })
   const minutes = Math.ceil(seconds / 60)
-  if (minutes < 60) return `Prueba de nuevo en ${minutes} min.`
+  if (minutes < 60) return i18n.t('errors:rateLimit.retryMinutes', { minutes })
   const hours = Math.ceil(minutes / 60)
-  return `Prueba de nuevo en ${hours}h.`
+  return i18n.t('errors:rateLimit.retryHours', { hours })
 }
 
 /**

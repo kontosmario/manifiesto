@@ -55,5 +55,8 @@
     "missing": "Fill in {{fields}} to continue.",
     "join2": "{{a}} and {{b}}",
     "joinN": "{{list}} and {{last}}"
+  },
+  "placeholders": {
+    "noBase": "No baseline"
   }
 }

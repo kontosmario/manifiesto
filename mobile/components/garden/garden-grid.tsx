@@ -6,6 +6,7 @@ import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated
 import { Sprout } from './sprout'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
+import { weekdayLongFromMondayIndex } from '@/utils/date-format'
 import { GARDEN_COLS, type BroteStage, type GardenCell } from '@/features/garden/garden-model'
 
 interface GardenGridProps {
@@ -23,8 +24,12 @@ interface GardenGridProps {
 const CORAL = '#E2935E'
 
 const GAP = 7
-// Letras de los días (L→D, Lunes=0) — espejo de deriveGardenCells / deriveWeekStrip.
-const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+// Inicial de cada día (Lunes=0 … Domingo=6) — espejo de deriveGardenCells /
+// deriveWeekStrip. La letra se deriva del idioma activo (NO un array ES fijo).
+const WEEKDAY_INITIALS = (): string[] =>
+  Array.from({ length: 7 }, (_, i) =>
+    weekdayLongFromMondayIndex(i).charAt(0).toUpperCase(),
+  )
 
 // Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
 // `key` resuelve el label vía i18n (garden:legend.*).
@@ -97,7 +102,7 @@ function GardenGridImpl({
   return (
     <View>
       <View style={styles.weekdayRow}>
-        {WEEKDAYS.map((d, i) => (
+        {WEEKDAY_INITIALS().map((d, i) => (
           <Text
             key={i}
             style={[

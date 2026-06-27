@@ -55,5 +55,8 @@
     "missing": "Completa {{fields}} para continuar.",
     "join2": "{{a}} y {{b}}",
     "joinN": "{{list}} y {{last}}"
+  },
+  "placeholders": {
+    "noBase": "Sin base"
   }
 }

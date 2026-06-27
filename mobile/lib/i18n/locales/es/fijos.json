@@ -11,6 +11,7 @@
     "paymentReverted": "Pago revertido.",
     "undoNotReadyYet": "No pudimos deshacer todavía — prueba de nuevo en 1s.",
     "paymentRecorded": "Pago de {{name}} registrado",
+    "fallbackName": "fijo",
     "undo": "Deshacer"
   },
   "alerts": {

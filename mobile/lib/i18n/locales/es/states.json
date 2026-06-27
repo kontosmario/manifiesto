@@ -121,6 +121,7 @@
   },
   "accountDeletion": {
     "title": "Baja de cuenta agendada",
+    "dateFormat": "{{day}} de {{month}}. {{year}}",
     "bodyDated": "Tu cuenta se eliminará el {{date}}. Cancela si no fuiste tú.",
     "bodyUndated": "Tu cuenta tiene una baja agendada. Cancela si no fuiste tú.",
     "a11yDated": "Tu cuenta se eliminará el {{date}}. Toca para cancelar.",

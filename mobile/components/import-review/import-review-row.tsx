@@ -26,6 +26,7 @@ import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { TextField } from '@/components/ui/text-field'
 import { parsePrice, serializePrice } from '@/utils/money'
+import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { Category } from '@/features/categories/use-categories'
 import type {
   IncomeKind,
@@ -482,9 +483,7 @@ function formatDayLabel(iso: string): string {
   if (diff === 0) return i18n.t('gastos:import.relativeDate.today')
   if (diff === -1) return i18n.t('gastos:import.relativeDate.yesterday')
   if (diff === 1) return i18n.t('gastos:import.relativeDate.tomorrow')
-  const wd = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-  const mo = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-  return `${wd[d.getDay()]} ${d.getDate()} ${mo[d.getMonth()]}`
+  return formatWeekdayDayMonth(d)
 }
 
 function warningLabel(w: ReviewRow['warnings'][number]): string {

@@ -20,6 +20,7 @@
 
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
+import i18n from '@/lib/i18n'
 
 export interface MomentumImpact {
   /** Raw amount used for ranking + total impact banner. */
@@ -37,6 +38,6 @@ function fmt(n: number): string {
 export function composeMomentumImpact(positive: ControlAdvisorTask): MomentumImpact {
   const impactRaw = Math.max(0, Math.round(positive.impactRaw))
   const impactScope = positive.impactScope ?? 'oneTime'
-  const label = `+${fmt(impactRaw)} a favor en el ciclo`
+  const label = i18n.t('insights:signals.superSavings.impact', { amount: fmt(impactRaw) })
   return { impactRaw, impactScope, label }
 }

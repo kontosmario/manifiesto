@@ -244,7 +244,8 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         // 1er pago: registro directo. El amount del commitment fue
         // capturado al crear el fijo, asumimos que es correcto.
         const fijoName =
-          controller.allItems.find((i) => i.id === fixedExpenseId)?.name ?? 'fijo'
+          controller.allItems.find((i) => i.id === fixedExpenseId)?.name ??
+          t('fijos:toast.fallbackName')
         recordPaymentMutation.mutate(
           { fixedExpenseId },
           {
@@ -283,7 +284,8 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
       if (!id) return
       void triggerHaptic('success')
       const fijoName =
-        controller.allItems.find((i) => i.id === id)?.name ?? 'fijo'
+        controller.allItems.find((i) => i.id === id)?.name ??
+        t('fijos:toast.fallbackName')
       recordPaymentMutation.mutate(
         { fixedExpenseId: id, amountOverride: newAmount },
         {

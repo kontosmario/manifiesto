@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import i18n from '@/lib/i18n'
+import { formatWeekdayDayMonth } from '@/utils/date-format'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { Category } from '@/features/categories/use-categories'
@@ -221,9 +222,7 @@ function formatRelativeDate(iso: string): string {
   if (diffDays === 0) return i18n.t('gastos:import.relativeDate.today')
   if (diffDays === -1) return i18n.t('gastos:import.relativeDate.yesterday')
   if (diffDays === 1) return i18n.t('gastos:import.relativeDate.tomorrow')
-  const weekdays = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-  return `${weekdays[target.getDay()]} ${target.getDate()} ${months[target.getMonth()]}`
+  return formatWeekdayDayMonth(target)
 }
 
 const styles = StyleSheet.create({

@@ -53,15 +53,6 @@ export const NOTIFICATION_KIND_GROUPS: Record<NotificationGroup, string[]> = {
   otros: ['zombie_detected'],
 }
 
-export const NOTIFICATION_GROUP_LABELS: Record<NotificationGroup, string> = {
-  gastos: 'Gastos',
-  ingresos: 'Ingresos',
-  fijos: 'Fijos',
-  racha: 'Racha y check-ins',
-  meta: 'Metas',
-  otros: 'Otros',
-}
-
 export function groupForKind(kind: string): NotificationGroup {
   switch (kind) {
     case 'expense':

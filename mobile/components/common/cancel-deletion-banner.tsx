@@ -21,6 +21,7 @@ import { Alert, Platform, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { AppButton } from '@/components/ui/button'
+import i18n from '@/lib/i18n'
 import { useCancelAccountDeletion } from '@/features/auth/use-delete-account'
 import { triggerHaptic } from '@/lib/haptics'
 import { radii } from '@/theme/palette'
@@ -39,7 +40,7 @@ function formatScheduledDate(iso: string): string {
   const day = d.getDate()
   const month = monthShort(d)
   const year = d.getFullYear()
-  return `${day} de ${month}. ${year}`
+  return i18n.t('states:accountDeletion.dateFormat', { day, month, year })
 }
 
 export function CancelDeletionBanner({

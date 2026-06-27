@@ -118,6 +118,7 @@
     },
     "superSavings": {
       "cat": "Racha",
+      "impact": "+{{amount}} a favor en el ciclo",
       "title": "Racha positiva",
       "body": "Llevas racha sostenida, el mes cierra con plata de sobra, y hay categorías a favor. Es el momento de aprovechar: subir la meta o reasignar lo que sobra.",
       "explanation": "La combinación de tres señales positivas a la vez — racha, plata que sobra y win por categoría — sostiene un cambio real. Buen momento para subir la meta o destinar lo que sobra."

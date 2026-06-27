@@ -118,6 +118,7 @@
     },
     "superSavings": {
       "cat": "Streak",
+      "impact": "+{{amount}} in your favor this cycle",
       "title": "Positive streak",
       "body": "You've got a sustained streak, the month closes with money to spare, and there are categories in your favor. Now's the time to take advantage: raise the goal or reassign the leftover.",
       "explanation": "The combination of three positive signals at once — streak, leftover money and a category win — sustains real change. Good moment to raise the goal or put the leftover to work."

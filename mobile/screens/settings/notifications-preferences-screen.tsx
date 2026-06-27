@@ -13,7 +13,7 @@ import {
   useUpdateNotificationPreferences,
   type NotificationPreferences,
 } from '@/features/notifications/use-notification-preferences'
-import { NOTIFICATION_GROUP_LABELS, type NotificationGroup } from '@/utils/notifications'
+import { type NotificationGroup } from '@/utils/notifications'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
@@ -227,7 +227,7 @@ export function NotificationsPreferencesScreen() {
               return (
                 <SettingsSwitchRow
                   key={group}
-                  label={NOTIFICATION_GROUP_LABELS[group]}
+                  label={t(`settings:notif.groupLabel.${group}`)}
                   description={t(`settings:notif.groupDescription.${group}`)}
                   value={!isMuted}
                   onValueChange={(enabled) => handleToggleGroupMuted(group, enabled)}

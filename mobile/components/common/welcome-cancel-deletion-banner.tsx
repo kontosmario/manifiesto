@@ -25,6 +25,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import i18n from '@/lib/i18n'
 import { getLastUserProfile } from '@/lib/last-user-cache'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -41,7 +42,7 @@ function formatScheduledDate(iso: string): string {
   const day = d.getDate()
   const month = monthShort(d)
   const year = d.getFullYear()
-  return `${day} de ${month}. ${year}`
+  return i18n.t('states:accountDeletion.dateFormat', { day, month, year })
 }
 
 export function WelcomeCancelDeletionBanner({

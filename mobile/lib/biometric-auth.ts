@@ -90,15 +90,15 @@ function getDefaultBiometricLabel() {
 
 function resolveBiometricLabel(types: LocalAuthentication.AuthenticationType[]) {
   if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-    return Platform.OS === 'ios' ? 'Face ID' : 'reconocimiento facial'
+    return Platform.OS === 'ios' ? 'Face ID' : i18n.t('auth:biometric.methods.facialRecognition')
   }
 
   if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-    return Platform.OS === 'ios' ? 'Touch ID' : 'huella digital'
+    return Platform.OS === 'ios' ? 'Touch ID' : i18n.t('auth:biometric.methods.fingerprint')
   }
 
   if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
-    return 'iris'
+    return i18n.t('auth:biometric.methods.iris')
   }
 
   return getDefaultBiometricLabel()
