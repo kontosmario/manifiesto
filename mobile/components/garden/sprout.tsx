@@ -10,7 +10,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { FernMark } from '@/components/billing/fern-mark'
-import { FilledAchievementIcon } from '@/components/achievements/achievement-icon-filled'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -93,10 +92,12 @@ function SproutGlyph({
         />
       )
     case 'fern':
-      // Ícono de la app (brote grande, 3er step). Variante por TEMA: 'cream'
-      // (casi blanco) se PERDÍA sobre la tierra clara del light mode → 'forest'
-      // (verde oscuro, visible). En dark mode / celebración (fondo oscuro)
-      // 'cream' se ve bien (no se toca).
+    case 'bloom':
+      // Ícono de la app (brote grande, 3er step). En semana PERFECTA (bloom) es
+      // el MISMO fern — lo especial de la floración son las luciérnagas que
+      // cubren la fila (garden-grid), no un ícono distinto. Variante por TEMA:
+      // 'cream' (casi blanco) se PERDÍA sobre la tierra clara del light mode →
+      // 'forest' (verde oscuro, visible). Dark mode / celebración: 'cream'.
       return (
         <FernMark
           variant={theme.isDark || tone === 'dark' ? 'cream' : 'forest'}
@@ -104,13 +105,6 @@ function SproutGlyph({
           style={styles.fern}
         />
       )
-    case 'bloom':
-      // Semana perfecta: ícono "Meta florecida" de logros (goal_completed) —
-      // reemplaza la flor SVG. La fila además se cubre de luciérnagas (grid).
-      // size 26 (no 36): el badge es un cuadrado de esquinas RECTAS; a tamaño
-      // casi-celda sus esquinas se recortaban contra el borde redondeado. Más
-      // chico → centrado, fully adentro, sin tocar los bordes de la celda.
-      return <FilledAchievementIcon code="goal_completed" size={26} />
     case 'recovered':
       // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
       // No florece — distinto de creciendo (sin coral) y de floración (flor llena).

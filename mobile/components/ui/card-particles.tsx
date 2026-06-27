@@ -164,12 +164,15 @@ export function CardParticles({
       const ay = (i * 0.618 + 0.05) % 1
       // Mix 1 and 2 across particles. Picking by (i % …) so every
       // mount produces the same field.
-      const fx = (i % 3 === 0 ? 2 : 1) as 1 | 2
-      const fy = (i % 2 === 0 ? 1 : 2) as 1 | 2
-      const fb = (1 + (i % 3)) as 1 | 2 | 3
       // Offset PEACH_EVERY-1 para no colisionar con la regla del accent (i%3===0).
       // Guard count>=4 protege las cards chicas (plan-tiles usa count=4).
       const isPeach = count >= 4 && i % PEACH_EVERY === PEACH_EVERY - 1
+      // Las peach (accent cálido + más grandes) BAILAN más: frecuencia 2 (oscilan
+      // ~2× más rápido) — antes muchas caían en freq 1 (drift de 10s) y se veían
+      // quietas. Combina con la amplitud 1.8× de abajo → movimiento notorio.
+      const fx = (isPeach ? 2 : i % 3 === 0 ? 2 : 1) as 1 | 2
+      const fy = (isPeach ? 2 : i % 2 === 0 ? 1 : 2) as 1 | 2
+      const fb = (1 + (i % 3)) as 1 | 2 | 3
       out.push({
         key: i,
         x: ax * size.width,
@@ -184,8 +187,14 @@ export function CardParticles({
         phaseB: (i * 0.317 + 0.6) * TWO_PI,
         // Vary amplitudes ±20% so the field has a natural shimmer of
         // motion sizes.
-        ampX: X_AMPLITUDE_BASE * (0.8 + ((i * 7) % 5) * 0.1),
-        ampY: Y_AMPLITUDE_BASE * (0.8 + ((i * 11) % 5) * 0.1),
+        // Peach: amplitud 1.8× (driftean más lejos; su tamaño mayor hacía que
+        // el drift normal se viera ínfimo). El resto, variación ±20%.
+        ampX: isPeach
+          ? X_AMPLITUDE_BASE * 1.8
+          : X_AMPLITUDE_BASE * (0.8 + ((i * 7) % 5) * 0.1),
+        ampY: isPeach
+          ? Y_AMPLITUDE_BASE * 1.8
+          : Y_AMPLITUDE_BASE * (0.8 + ((i * 11) % 5) * 0.1),
         // Larger particles glow a touch brighter at peak; smaller ones
         // hold a softer ceiling so they read as "background" twinkles.
         brightCeil: BRIGHT_PEAK - ((i % 4) * 0.06),
