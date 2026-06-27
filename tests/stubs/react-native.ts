@@ -31,3 +31,14 @@ export const Platform = {
     return obj[key] ?? (obj as Record<string, unknown>)['default'] as T[keyof T]
   },
 }
+
+// AppState: lo leen supabase.ts (listener de refresh) y expo-web-browser
+// (`AppState.currentState` al cargar el módulo). Sin esto, cualquier test
+// que importe social-sign-in / supabase crashea al importar.
+export const AppState = {
+  currentState: 'active' as 'active' | 'background' | 'inactive',
+  addEventListener: (_event: string, _handler: (state: string) => void) => ({
+    remove: () => {},
+  }),
+  removeEventListener: (_event: string, _handler: (state: string) => void) => {},
+}

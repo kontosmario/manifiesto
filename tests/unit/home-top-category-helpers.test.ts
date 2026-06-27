@@ -6,6 +6,7 @@ import {
   type TopCategoryResult,
 } from '@/components/home/home-top-category-helpers'
 import type { Expense } from '@/features/expenses/use-expenses'
+import i18n from '@/lib/i18n'
 
 function expense(args: {
   id: string
@@ -48,10 +49,12 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
     })
     expect(out).toEqual({
       categoryId: 'cat-food',
       name: 'Comida',
+      rawName: 'Comida',
       total: 8000,
       share: 8000 / 11500,
     })
@@ -71,6 +74,7 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
     })
     expect(out?.categoryId).toBe('cat-food')
   })
@@ -87,6 +91,7 @@ describe('computeTopCategory', () => {
         cycleStart,
         cycleEnd,
         categoryNameById: categories,
+        categoryRawNameById: categories,
       }),
     ).toBeNull()
   })
@@ -110,6 +115,7 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
     })
     expect(out?.categoryId).toBe('cat-food')
   })
@@ -127,6 +133,7 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
     })
     expect(out?.total).toBe(9500) // not 109_500
   })
@@ -143,8 +150,9 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
     })
-    expect(out?.name).toBe('Sin categoría')
+    expect(out?.name).toBe(i18n.t('home:topCategory.uncategorized'))
     expect(out?.categoryId).toBe('')
   })
 
@@ -155,6 +163,7 @@ describe('computeTopCategory', () => {
         cycleStart,
         cycleEnd,
         categoryNameById: categories,
+        categoryRawNameById: categories,
       }),
     ).toBeNull()
   })
@@ -169,6 +178,7 @@ describe('computeTopCategory', () => {
       cycleStart,
       cycleEnd,
       categoryNameById: categories,
+      categoryRawNameById: categories,
       minTransactions: 2,
     })
     expect(out?.categoryId).toBe('cat-food')
@@ -188,6 +198,7 @@ describe('computeTopCategoryFallback', () => {
   const present: TopCategoryResult = {
     categoryId: 'c1',
     name: 'Mercado',
+    rawName: 'Mercado',
     total: 12_000,
     share: 0.32,
   }

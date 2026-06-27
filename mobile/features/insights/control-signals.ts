@@ -133,10 +133,6 @@ interface BuildSignalsArgs {
   now?: Date
 }
 
-const DOW_NAMES_FULL = [
-  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo',
-] as const
-
 /** Minimum confidence under which a task is dropped entirely. */
 const MIN_CONFIDENCE = 0.4
 

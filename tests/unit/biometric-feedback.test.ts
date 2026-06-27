@@ -5,13 +5,13 @@ describe('biometricFeedbackForError', () => {
   // ── Lockout ──────────────────────────────────────────────────────────────
   it('lockout → copy diferenciada con el label', () => {
     expect(biometricFeedbackForError('lockout', 'Face ID')).toEqual({
-      message: 'Face ID está bloqueado por varios intentos. Usá tu contraseña para entrar.',
+      message: 'Face ID está bloqueado por varios intentos. Usa tu contraseña para entrar.',
     })
   })
 
   it('lockout_permanent → misma copy', () => {
     expect(biometricFeedbackForError('lockout_permanent', 'Touch ID')).toEqual({
-      message: 'Touch ID está bloqueado por varios intentos. Usá tu contraseña para entrar.',
+      message: 'Touch ID está bloqueado por varios intentos. Usa tu contraseña para entrar.',
     })
   })
 
@@ -35,32 +35,32 @@ describe('biometricFeedbackForError', () => {
   // ── Unavailability ────────────────────────────────────────────────────────
   it('not_available → mensaje de ajustes con el label', () => {
     expect(biometricFeedbackForError('not_available', 'Face ID')).toEqual({
-      message: 'Face ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+      message: 'Face ID no está disponible. Revisa Ajustes → Manifiesto → Face ID o usa tu contraseña.',
     })
   })
 
   it('not_enrolled → mensaje de ajustes con el label', () => {
     expect(biometricFeedbackForError('not_enrolled', 'Touch ID')).toEqual({
-      message: 'Touch ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+      message: 'Touch ID no está disponible. Revisa Ajustes → Manifiesto → Face ID o usa tu contraseña.',
     })
   })
 
   it('passcode_not_set → mensaje de ajustes con el label', () => {
     expect(biometricFeedbackForError('passcode_not_set', 'Face ID')).toEqual({
-      message: 'Face ID no está disponible. Revisá Ajustes → Manifiesto → Face ID o usá tu contraseña.',
+      message: 'Face ID no está disponible. Revisa Ajustes → Manifiesto → Face ID o usa tu contraseña.',
     })
   })
 
   // ── Catch-all / undefined ─────────────────────────────────────────────────
   it('authentication_failed (error desconocido) → mensaje genérico de fallback', () => {
     expect(biometricFeedbackForError('authentication_failed', 'Face ID')).toEqual({
-      message: 'No pudimos iniciar Face ID. Usá tu contraseña para entrar.',
+      message: 'No pudimos iniciar Face ID. Usa tu contraseña para entrar.',
     })
   })
 
   it('cualquier otro código no reconocido → mensaje genérico de fallback', () => {
     expect(biometricFeedbackForError('unknown_error_code', 'Touch ID')).toEqual({
-      message: 'No pudimos iniciar Touch ID. Usá tu contraseña para entrar.',
+      message: 'No pudimos iniciar Touch ID. Usa tu contraseña para entrar.',
     })
   })
 

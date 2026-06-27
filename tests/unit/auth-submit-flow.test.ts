@@ -21,7 +21,7 @@ describe('auth-submit-flow', () => {
       }),
     ).toEqual({
       // Copy refreshed during V1 refactor.
-      infoMessage: 'Revisá tu email para confirmar la cuenta y después ingresa.',
+      infoMessage: 'Revisa tu email para confirmar la cuenta y después ingresa.',
       type: 'email-confirmation',
     })
   })
