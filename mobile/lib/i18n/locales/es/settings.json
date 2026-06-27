@@ -322,7 +322,15 @@
     "browserErrorTitle": "No pudimos abrir el navegador",
     "browserErrorMessage": "Prueba copiar el enlace manualmente: {{url}}",
     "mailErrorTitle": "No pudimos abrir tu mail",
-    "mailErrorMessage": "Escríbenos a {{email}} desde la app de correo que prefieras."
+    "mailErrorMessage": "Escríbenos a {{email}} desde la app de correo que prefieras.",
+    "supportMailto": {
+      "subject": "Soporte Manifiesto",
+      "intro": "Cuéntanos qué pasó:",
+      "doNotDelete": "— No borrar ↓ —",
+      "version": "Versión: {{value}}",
+      "platform": "Plataforma: {{value}}",
+      "user": "Usuario: {{value}}"
+    }
   },
   "deleteAccount": {
     "title": "Eliminar cuenta",

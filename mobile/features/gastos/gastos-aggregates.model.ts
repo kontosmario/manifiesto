@@ -1,4 +1,5 @@
 import i18n from '@/lib/i18n'
+import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { Expense } from '@/features/expenses/use-expenses'
 
 // ─── Types still consumed by the controller / endpoints ─────────────
@@ -56,9 +57,6 @@ export interface GastosGroup {
   total: number
   items: Expense[]
 }
-
-const WEEKDAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 /**
  * Format a Date as a local-time `YYYY-MM-DD` string. Local — not
@@ -124,7 +122,7 @@ export function groupGastosByDay(input: { expenses: Expense[]; today: Date }): G
     else if (diffDays === 1) label = i18n.t('gastos:dayGroup.yesterday')
     else {
       const d = new Date(value.sortKey)
-      label = `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`
+      label = formatWeekdayDayMonth(d)
     }
     groups.push({ label, day: value.day, total: value.total, items: value.items })
   }

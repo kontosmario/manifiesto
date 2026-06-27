@@ -322,7 +322,15 @@
     "browserErrorTitle": "We couldn't open the browser",
     "browserErrorMessage": "Try copying the link manually: {{url}}",
     "mailErrorTitle": "We couldn't open your mail",
-    "mailErrorMessage": "Email us at {{email}} from whichever mail app you prefer."
+    "mailErrorMessage": "Email us at {{email}} from whichever mail app you prefer.",
+    "supportMailto": {
+      "subject": "Manifiesto Support",
+      "intro": "Tell us what happened:",
+      "doNotDelete": "— Don't delete ↓ —",
+      "version": "Version: {{value}}",
+      "platform": "Platform: {{value}}",
+      "user": "User: {{value}}"
+    }
   },
   "deleteAccount": {
     "title": "Delete account",

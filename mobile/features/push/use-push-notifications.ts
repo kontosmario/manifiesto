@@ -5,6 +5,7 @@ import * as Device from 'expo-device'
 import Constants from 'expo-constants'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import { supabase } from '@/lib/supabase'
+import i18n from '@/lib/i18n'
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 
@@ -12,14 +13,14 @@ const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
 // trae el entitlement aps-environment (Apple ID gratis o cuenta sin
 // Apple Developer Program), el error es estructural y la única salida
 // es pagar los $99 + rebuild firmado. Lo distinguimos para mostrar
-// un copy explicativo en vez de un toast genérico.
-const APS_ENTITLEMENT_MISSING_MESSAGE =
-  'Push en iOS requiere Apple Developer Program ($99/año) y un build firmado. Sin eso el binario no trae el entitlement aps-environment.'
-
+// un copy explicativo en vez de un toast genérico. El mensaje se
+// resuelve en el momento del throw (no a module-load) para tomar el
+// idioma activo. El matcher (looksLikeApsEntitlementFailure) inspecciona
+// el mensaje del OS, no este copy → localizarlo es seguro.
 export class MissingApsEntitlementError extends Error {
   readonly code = 'missing_aps_entitlement' as const
   constructor() {
-    super(APS_ENTITLEMENT_MISSING_MESSAGE)
+    super(i18n.t('errors:push.missingApsEntitlement'))
     this.name = 'MissingApsEntitlementError'
   }
 }
@@ -59,13 +60,11 @@ function isMissingPushSubscriptionsTableError(error: PostgrestError): boolean {
 
 async function getExpoPushToken(): Promise<string> {
   if (!supportsRemotePushNotifications) {
-    throw new Error(
-      'Las notificaciones push remotas requieren un development build. Expo Go ya no las soporta desde SDK 53.',
-    )
+    throw new Error(i18n.t('errors:push.needsDevBuild'))
   }
 
   if (!Device.isDevice) {
-    throw new Error('Las notificaciones push requieren un dispositivo físico.')
+    throw new Error(i18n.t('errors:push.needsPhysicalDevice'))
   }
 
   const Notifications = await import('expo-notifications')
@@ -108,7 +107,7 @@ async function getExpoPushToken(): Promise<string> {
     throw error
   }
   if (!tokenResponse.data) {
-    throw new Error('No se pudo obtener un token push válido.')
+    throw new Error(i18n.t('errors:push.tokenUnavailable'))
   }
 
   return tokenResponse.data
@@ -155,7 +154,7 @@ export function useEnablePushNotifications() {
   return useMutation({
     mutationFn: async ({ familyId, userId }: EnablePushInput) => {
       if (!familyId || !userId) {
-        throw new Error('No hay familia o sesión activa para activar push.')
+        throw new Error(i18n.t('errors:push.noFamilyOrSession'))
       }
 
       const token = await getExpoPushToken()
@@ -169,7 +168,7 @@ export function useEnablePushNotifications() {
       const sessionResponse = await supabase.auth.getSession()
       const accessToken = sessionResponse.data.session?.access_token
       if (!accessToken) {
-        throw new Error('No hay sesión activa para registrar push.')
+        throw new Error(i18n.t('errors:push.noSessionRegister'))
       }
 
       const { error } = await supabase.functions.invoke('register-push-subscription', {

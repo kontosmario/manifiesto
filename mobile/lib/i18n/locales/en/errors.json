@@ -54,5 +54,13 @@
     "contributionPositive": "The contribution must be greater than zero.",
     "goalNotFound": "We couldn't find that goal.",
     "exceedsReserve": "The amount exceeds the available reserve."
+  },
+  "push": {
+    "needsDevBuild": "Remote push notifications need a development build. Expo Go no longer supports them as of SDK 53.",
+    "needsPhysicalDevice": "Push notifications need a physical device.",
+    "tokenUnavailable": "We couldn't get a valid push token.",
+    "noFamilyOrSession": "There's no active household or session to enable push.",
+    "noSessionRegister": "There's no active session to register push.",
+    "missingApsEntitlement": "Push on iOS requires the Apple Developer Program ($99/year) and a signed build. Without it the binary lacks the aps-environment entitlement."
   }
 }

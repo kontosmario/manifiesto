@@ -86,6 +86,7 @@ export function useConfirmImport(ctx: ConfirmContext) {
       if (insertedIncomes >= 1) {
         void sendFamilyPush({
           familyId: ctx.familyId,
+          // @i18n-ignore (server-bound: push se localiza por idioma del RECEPTOR, no del emisor — wrap con t() del emisor sería incorrecto; localización server-side es follow-up)
           title:
             insertedIncomes === 1
               ? '{actor} registró un ingreso'

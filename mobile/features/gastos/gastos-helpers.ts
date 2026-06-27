@@ -3,6 +3,7 @@
 // estado UI, render). Cero side effects: todos los exports son
 // funciones puras + constantes. Testeables aislados sin renderer.
 import i18n from '@/lib/i18n'
+import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { IncomeEvent } from '@/features/income/use-income-events'
 import type { Expense } from '@/features/expenses/use-expenses'
 
@@ -38,13 +39,6 @@ export interface MovimientosSection {
    *  lee `data`. */
   incomes: IncomeEvent[]
 }
-
-// ─── Constantes de fechas ────────────────────────────────────────
-export const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-export const MONTHS_ES = [
-  'ene', 'feb', 'mar', 'abr', 'may', 'jun',
-  'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
-]
 
 // ─── Helpers de income ───────────────────────────────────────────
 //
@@ -111,7 +105,7 @@ export function sectionMetaCopy(expenseCount: number, incomeCount: number): stri
 /** Etiqueta para una sección que existe solo por un income-event (sin
  *  expenses ese día). Coincide con el formato de `groupGastosByDay`. */
 export function formatStandaloneIncomeDay(d: Date): string {
-  return `${WEEKDAYS_ES[d.getDay()]} ${d.getDate()} ${MONTHS_ES[d.getMonth()]}`
+  return formatWeekdayDayMonth(d)
 }
 
 // ─── Helpers de calendario / ciclo ────────────────────────────────
