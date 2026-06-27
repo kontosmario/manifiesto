@@ -10,10 +10,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
-import { CardParticles } from '@/components/ui/card-particles'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { Sprout } from '@/components/garden/sprout'
-import { CoralBloom } from '@/components/garden/coral-bloom'
+import { BroteFireflies } from '@/components/garden/brote-fireflies'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import type { BroteStage, WeekClose } from '@/features/garden/garden-model'
@@ -75,9 +74,9 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
         onPress={onContinue}
         style={StyleSheet.absoluteFill}
       />
-      {/* Campo de fondo, sutil (atmósfera). Las luciérnagas protagonistas viven
-          en la zona de los brotes (abajo), no dispersas por toda la pantalla. */}
-      <CardParticles count={8} color="#FFFBF2" accentColor="#F0B488" />
+      {/* (Sin campo full-screen: las luciérnagas grandes que flotaban arriba de
+          los ferns y arrancaban estáticas se reemplazaron por las órbitas
+          por-brote, que ENTRAN animadas y rodean cada fern.) */}
       {perfect && <ConfettiBurst pulseToken={1} originY={120} />}
 
       <Animated.View style={[styles.content, contentStyle]}>
@@ -97,9 +96,6 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
             los brotes (no dispersas por la pantalla). En este contenedor chico
             la misma amplitud de drift se percibe MUCHO más grande. */}
         <View style={styles.brotesZone}>
-          <View style={StyleSheet.absoluteFill} pointerEvents="none">
-            <CardParticles count={10} color="#FFFBF2" accentColor="#F0B488" />
-          </View>
           <View style={styles.brotesRow}>
           {weekClose.days.map((day, i) => {
             const stage = stageForDay(day.registered, weekClose.stage)
@@ -113,9 +109,9 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
                     animateIn
                     animateInDelay={i * 70}
                   />
-                  {perfect && day.registered && (
-                    <CoralBloom size={9} color="#E2935E" left="24%" top="6%" durationMs={11000} />
-                  )}
+                  {/* Luciérnagas que ORBITAN este brote (entran escalonadas con
+                      su growIn + rodean el fern de forma dinámica). */}
+                  {day.registered && <BroteFireflies delay={i * 70 + 240} />}
                 </View>
                 <Text
                   style={[
