@@ -107,7 +107,10 @@ function SproutGlyph({
     case 'bloom':
       // Semana perfecta: ícono "Meta florecida" de logros (goal_completed) —
       // reemplaza la flor SVG. La fila además se cubre de luciérnagas (grid).
-      return <FilledAchievementIcon code="goal_completed" size={36} />
+      // size 26 (no 36): el badge es un cuadrado de esquinas RECTAS; a tamaño
+      // casi-celda sus esquinas se recortaban contra el borde redondeado. Más
+      // chico → centrado, fully adentro, sin tocar los bordes de la celda.
+      return <FilledAchievementIcon code="goal_completed" size={26} />
     case 'recovered':
       // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
       // No florece — distinto de creciendo (sin coral) y de floración (flor llena).
