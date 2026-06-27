@@ -187,10 +187,14 @@ function GardenGridImpl({
             })}
             {weekBloomed && (
               <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                {/* Colores theme-aware: en LIGHT mode las luciérnagas crema se
+                    perdían sobre la tierra clara → cálidos saturados (gold/coral)
+                    que contrastan. En dark, crema/heroAccent como siempre. */}
                 <CardParticles
                   count={9}
-                  color="#FFFBF2"
-                  accentColor={theme.colors.heroAccent}
+                  color={theme.isDark ? '#FFFBF2' : '#D6961F'}
+                  accentColor={theme.isDark ? theme.colors.heroAccent : '#C2603A'}
+                  peachColor={theme.isDark ? undefined : '#E0954A'}
                 />
               </View>
             )}

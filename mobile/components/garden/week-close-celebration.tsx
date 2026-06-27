@@ -75,7 +75,9 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
         onPress={onContinue}
         style={StyleSheet.absoluteFill}
       />
-      <CardParticles count={14} color="#FFFBF2" accentColor="#F0B488" />
+      {/* Campo de fondo, sutil (atmósfera). Las luciérnagas protagonistas viven
+          en la zona de los brotes (abajo), no dispersas por toda la pantalla. */}
+      <CardParticles count={8} color="#FFFBF2" accentColor="#F0B488" />
       {perfect && <ConfettiBurst pulseToken={1} originY={120} />}
 
       <Animated.View style={[styles.content, contentStyle]}>
@@ -91,8 +93,14 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
           </Text>
         </View>
 
-        {/* Fila de 7 brotes que crecen escalonados. */}
-        <View style={styles.brotesRow}>
+        {/* Zona de brotes — las luciérnagas protagonistas viven ACÁ, cerca de
+            los brotes (no dispersas por la pantalla). En este contenedor chico
+            la misma amplitud de drift se percibe MUCHO más grande. */}
+        <View style={styles.brotesZone}>
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <CardParticles count={10} color="#FFFBF2" accentColor="#F0B488" />
+          </View>
+          <View style={styles.brotesRow}>
           {weekClose.days.map((day, i) => {
             const stage = stageForDay(day.registered, weekClose.stage)
             return (
@@ -120,6 +128,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
               </View>
             )
           })}
+          </View>
         </View>
 
         <Text style={styles.sub}>{weekClose.sub}</Text>
@@ -180,11 +189,18 @@ const styles = StyleSheet.create({
   chipLabel: { fontSize: 13, fontWeight: '800' },
   chipDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
   chipCount: { fontSize: 13, fontWeight: '700', color: '#C4D6BC' },
+  // Zona que contiene la fila de brotes + el cluster de luciérnagas. El
+  // paddingTop da el espacio donde las luciérnagas "flotan" sobre los brotes.
+  brotesZone: {
+    alignSelf: 'stretch',
+    marginTop: 14,
+    paddingTop: 22,
+    position: 'relative',
+  },
   brotesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignSelf: 'stretch',
-    marginTop: 30,
   },
   broteCol: { alignItems: 'center', gap: 10, flex: 1 },
   broteSlot: {

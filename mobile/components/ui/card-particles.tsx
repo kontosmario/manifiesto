@@ -24,6 +24,9 @@ interface CardParticlesProps {
   color?: string
   /** Optional warm accent for 1/3 of the particles (every 3rd index). */
   accentColor?: string
+  /** Color de las luciérnagas "peach" (cada 5ª, más grandes). Default #F2B58A
+   *  (claro): sobre fondos CLAROS se pierde → pasar un peach más oscuro. */
+  peachColor?: string
   /** Pass-through style if the consumer wants to override absolute fill. */
   style?: StyleProp<ViewStyle>
 }
@@ -125,6 +128,7 @@ export function CardParticles({
   count = 6,
   color = '#FFFBF2',
   accentColor,
+  peachColor = PEACH_GLOW,
   style,
 }: CardParticlesProps) {
   const reduced = useReducedMotion()
@@ -199,11 +203,11 @@ export function CardParticles({
         // hold a softer ceiling so they read as "background" twinkles.
         brightCeil: BRIGHT_PEAK - ((i % 4) * 0.06),
         size: isPeach ? SIZE_PEACH : 2.4 + (i % 3) * 0.8,
-        color: isPeach ? PEACH_GLOW : i % 3 === 0 && accentColor ? accentColor : color,
+        color: isPeach ? peachColor : i % 3 === 0 && accentColor ? accentColor : color,
       })
     }
     return out
-  }, [size, count, color, accentColor])
+  }, [size, count, color, accentColor, peachColor])
 
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout
