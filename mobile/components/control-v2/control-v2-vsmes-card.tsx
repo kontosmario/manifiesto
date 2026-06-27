@@ -486,7 +486,12 @@ function CompareBar({
           style={[styles.barFill, { width: `${Math.max(3, pct)}%`, backgroundColor: fillColor }]}
         />
       </View>
-      <Text style={[styles.barValue, { color: text }]} numberOfLines={1}>
+      <Text
+        style={[styles.barValue, { color: text }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+      >
         {value}
       </Text>
     </View>
@@ -561,6 +566,7 @@ const styles = StyleSheet.create({
   },
   barValue: {
     width: 56,
+    flexShrink: 0,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.3,

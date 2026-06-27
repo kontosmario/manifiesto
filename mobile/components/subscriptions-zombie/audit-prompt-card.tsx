@@ -64,7 +64,9 @@ export function AuditPromptCard({
       style={[styles.card, { backgroundColor: cardBg }]}
       accessibilityRole="summary"
     >
-      <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
+      <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={2}>
+        {fijoName}
+      </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {t('insights:subscriptions.prompt.perMonth', {
           amount: `$${fijoAmount.toLocaleString(getIntlLocale())}`,

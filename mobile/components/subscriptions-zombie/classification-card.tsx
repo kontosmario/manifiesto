@@ -34,7 +34,9 @@ export function ClassificationCard({
   if (classification === 'uso_desigual') {
     return (
       <View style={[styles.card, { backgroundColor: cardBg }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>{fijoName}</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={2}>
+          {fijoName}
+        </Text>
         <Text style={[styles.body, { color: theme.colors.textMuted }]}>
           {t('insights:subscriptions.classification.unevenBody')}
         </Text>

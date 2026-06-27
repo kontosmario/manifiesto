@@ -241,6 +241,9 @@ const styles = StyleSheet.create({
   },
   rowBody: {
     flex: 1,
+    // minWidth:0 deja que el texto encoja en la fila flex (sino empuja el monto
+    // fuera de la card cuando la descripción es larga). Bug clásico de RN.
+    minWidth: 0,
     gap: 1,
   },
   rowTitle: {
@@ -256,6 +259,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
+    // El monto no se comprime: el label cede primero (rowBody minWidth:0).
+    flexShrink: 0,
   },
   moreText: {
     fontSize: 11,

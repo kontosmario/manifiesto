@@ -512,7 +512,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
   },
-  heroFlex: { flex: 1 },
+  // minWidth:0 → la columna del monto encoge en la fila flex (el glyph de la
+  // derecha queda fijo; el monto no lo empuja afuera de la card).
+  heroFlex: { flex: 1, minWidth: 0 },
   amountRow: {
     flexDirection: 'row',
     alignItems: 'baseline',

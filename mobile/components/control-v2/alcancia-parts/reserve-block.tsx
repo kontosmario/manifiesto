@@ -292,6 +292,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     letterSpacing: -0.3,
+    // El label (reserveLabel flexShrink:1) cede primero; el monto entero se
+    // mantiene aunque la reserva acumulada llegue a millones.
+    flexShrink: 0,
   },
   reserveActionsRow: {
     flexDirection: 'row',

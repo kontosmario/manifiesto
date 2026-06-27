@@ -62,11 +62,22 @@ export function ControlSignalTile({
         >
           <MaterialIcons color={palette.accentColor} name={icon} size={16} />
         </View>
-        <Text style={[styles.signalLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+        <Text style={[styles.signalLabel, { color: theme.colors.textMuted }]} numberOfLines={1}>
+          {label}
+        </Text>
       </View>
 
-      <Text style={[styles.signalValue, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={[styles.signalHelper, { color: theme.colors.textSoft }]}>{helper}</Text>
+      <Text
+        style={[styles.signalValue, { color: theme.colors.text }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
+      <Text style={[styles.signalHelper, { color: theme.colors.textSoft }]} numberOfLines={2}>
+        {helper}
+      </Text>
     </View>
   )
 }
