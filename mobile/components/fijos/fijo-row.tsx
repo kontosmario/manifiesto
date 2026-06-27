@@ -6,7 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -103,7 +103,8 @@ function FijoRowReal({
   // colapsar y para add/delete de fijos.
   const rowLayout = useGatedLayout(LinearTransition.duration(240))
   // Ícono por nombre CRUDO (matcher ES); el display sigue en `categoryName`.
-  const emoji = pickIconForFixedExpenseCategory(categoryRawName ?? categoryName)
+  // CategoryIcon rendea el sticker si hay slug mapeado, sino cae al emoji.
+  const iconName = categoryRawName ?? categoryName
   // FijoRowReal is only rendered for non-placeholder rows, where `item`
   // is always supplied by the parent. The non-null assertion keeps the
   // downstream code unchanged while letting the prop be optional for the
@@ -234,7 +235,12 @@ function FijoRowReal({
                     },
                   ]}
                 >
-                  <Text style={styles.iconText}>{emoji}</Text>
+                  <CategoryIcon
+                    name={iconName}
+                    scope="fixed_expense"
+                    size={24}
+                    emojiStyle={styles.iconText}
+                  />
                 </View>
                 {/* Status overlay (slot del WhoPaidAvatar en GastoRow). */}
                 <View

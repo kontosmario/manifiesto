@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
-import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { AmountCard } from '@/components/home/amount-card'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { DescriptionRow } from '@/components/home/description-row'
@@ -33,17 +34,19 @@ interface AddIncomeScreenProps {
 interface KindMeta {
   key: IncomeEventKind
   labelKey: string
-  icon: keyof typeof MaterialIcons.glyphMap
+  // Key into CATEGORY_ICONS (sticker PNG registry).
+  icon: string
 }
 
 // Four constrained kinds — keeps server-side analytics tractable
 // while covering the realistic mental model. Open-text `description`
-// captures the rest.
+// captures the rest. Icons are sticker PNGs from the category
+// registry (matching the add-expense / fijos look).
 const KINDS: KindMeta[] = [
-  { key: 'transfer', labelKey: 'gastos:import.incomeKind.transfer',  icon: 'swap-horiz' },
-  { key: 'bonus',    labelKey: 'gastos:import.incomeKind.bonus',     icon: 'workspace-premium' },
-  { key: 'gift',     labelKey: 'gastos:import.incomeKind.gift',      icon: 'card-giftcard' },
-  { key: 'other',    labelKey: 'gastos:import.incomeKind.other',     icon: 'attach-money' },
+  { key: 'transfer', labelKey: 'gastos:import.incomeKind.transfer',  icon: 'finanzas/transferencia' },
+  { key: 'bonus',    labelKey: 'gastos:import.incomeKind.bonus',     icon: 'finanzas/bonus' },
+  { key: 'gift',     labelKey: 'gastos:import.incomeKind.gift',      icon: 'servicios-general/regalos' },
+  { key: 'other',    labelKey: 'gastos:import.incomeKind.other',     icon: 'finanzas/billetera' },
 ]
 
 const SUGGESTED_DELTAS = [5000, 15000, 30000, 50000, 100000]
@@ -296,17 +299,25 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                         },
                       ]}
                     >
-                      <MaterialIcons
-                        name={k.icon}
-                        size={20}
-                        color={
-                          selected
-                            ? theme.isDark
-                              ? '#12211A'
-                              : '#FFFFFF'
-                            : theme.colors.textMuted
-                        }
-                      />
+                      {CATEGORY_ICONS[k.icon] ? (
+                        <Image
+                          source={CATEGORY_ICONS[k.icon]}
+                          style={styles.kindIconImage}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <MaterialIcons
+                          name="attach-money"
+                          size={20}
+                          color={
+                            selected
+                              ? theme.isDark
+                                ? '#12211A'
+                                : '#FFFFFF'
+                              : theme.colors.textMuted
+                          }
+                        />
+                      )}
                     </View>
                     <Text
                       numberOfLines={1}
@@ -472,6 +483,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  kindIconImage: {
+    width: 28,
+    height: 28,
   },
   kindLabel: {
     fontSize: 12,

@@ -6,7 +6,7 @@ import { ErrorState } from '@/components/ui/error-state'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { ActivityRowV2 } from '@/components/home/activity-row-v2'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
 import type { IncomeEvent, IncomeEventKind } from '@/features/income/use-income-events'
@@ -218,7 +218,7 @@ function HomeActivitySectionImpl({
             isProcessing={pendingExpenseId === expense.id}
           >
             <ActivityRowV2
-              icon={pickIconForCategory(categoryRawName)}
+              icon={<CategoryIcon name={categoryRawName} scope="expense" size={24} />}
               title={expense.description || categoryName}
               category={categoryName}
               categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}

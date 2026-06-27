@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
@@ -7,7 +7,13 @@ import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface ActivityRowV2Props {
-  icon: string
+  /**
+   * Ícono del tile. Acepta un string (emoji — back-compat, p.ej. los
+   * ingresos pasan un emoji por kind) que se rendea en un `<Text>`, o un
+   * ReactNode ya construido (p.ej. `<CategoryIcon>` para los gastos, que
+   * rendea el sticker PNG con fallback al emoji).
+   */
+  icon: ReactNode
   title: string
   category: string
   /** Color (hex) de la categoría — tinta el icon tile igual que en
@@ -54,7 +60,11 @@ function ActivityRowV2Impl({ icon, title, category, categoryColor, whoName, whoC
       >
         <View style={styles.iconWrap}>
           <View style={iconTileStyle}>
-            <Text style={styles.iconText}>{icon}</Text>
+            {typeof icon === 'string' ? (
+              <Text style={styles.iconText}>{icon}</Text>
+            ) : (
+              icon
+            )}
           </View>
           <WhoPaidAvatar name={whoName} color={whoColor} />
         </View>

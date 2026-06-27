@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, {
@@ -19,7 +19,12 @@ interface GastosFilterPillProps {
   active: boolean
   label: string
   count?: number
+  /** Emoji string (back-compat) renderizado en un `<Text>` a la izquierda
+   *  del label. Si se pasa `iconNode`, este se ignora. */
   emoji?: string
+  /** Ícono ya construido (p.ej. `<CategoryIcon>` que rendea el sticker PNG
+   *  con fallback al emoji). Tiene prioridad sobre `emoji`. */
+  iconNode?: ReactNode
   color?: string
   small?: boolean
   /**
@@ -40,6 +45,7 @@ function GastosFilterPillImpl({
   label,
   count,
   emoji,
+  iconNode,
   color,
   small = false,
   selectId = null,
@@ -218,7 +224,7 @@ function GastosFilterPillImpl({
               : null,
           ]}
         >
-          {emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null}
+          {iconNode ?? (emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null)}
           <Animated.Text style={[styles.label, { fontSize: small ? 11 : 12 }, labelStyle]}>
             {label}
           </Animated.Text>

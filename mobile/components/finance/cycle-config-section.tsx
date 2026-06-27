@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/lib/i18n'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { MonthDayPicker } from '@/components/ui/month-day-picker'
 import { BaseMonthCalendar } from '@/components/ui/base-month-calendar'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -16,6 +17,15 @@ const CYCLE_TYPE_ORDER: FinanceCycleConfig['cycle_type'][] = [
   'weekly',
   'custom',
 ]
+
+// Sticker PNG (from the category icon registry) shown beside each
+// cycle-type chip title — maps each cadence to its "frecuencias" sticker.
+const CYCLE_TYPE_ICON: Record<FinanceCycleConfig['cycle_type'], string> = {
+  monthly: 'frecuencias/mensual',
+  biweekly: 'frecuencias/quincenal',
+  weekly: 'frecuencias/semanal',
+  custom: 'frecuencias/cuotas',
+}
 
 const CUSTOM_LENGTH_MIN = 1
 const CUSTOM_LENGTH_MAX = 365
@@ -102,7 +112,16 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
               accessibilityRole="button"
               accessibilityState={{ selected }}
             >
-              <Text style={[styles.chipTitle, { color: theme.colors.text }]}>{t(`settings:cycleConfig.type.${type}.title`)}</Text>
+              <View style={styles.chipTitleRow}>
+                {CATEGORY_ICONS[CYCLE_TYPE_ICON[type]] ? (
+                  <Image
+                    source={CATEGORY_ICONS[CYCLE_TYPE_ICON[type]]}
+                    style={styles.chipIcon}
+                    resizeMode="contain"
+                  />
+                ) : null}
+                <Text style={[styles.chipTitle, { color: theme.colors.text }]}>{t(`settings:cycleConfig.type.${type}.title`)}</Text>
+              </View>
               <Text style={[styles.chipSubtitle, { color: theme.colors.textMuted }]}>{t(`settings:cycleConfig.type.${type}.subtitle`)}</Text>
             </Pressable>
           )
@@ -226,7 +245,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
   },
-  chipTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  chipTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  chipIcon: { width: 24, height: 24 },
+  chipTitle: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
   chipSubtitle: { fontSize: 11 },
   fieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6, marginBottom: 8 },
   rollingStack: { gap: 16 },

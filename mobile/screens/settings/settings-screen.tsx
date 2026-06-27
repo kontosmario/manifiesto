@@ -77,6 +77,7 @@ import {
   useHasPushSubscription,
 } from '@/features/push/use-push-notifications'
 import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
+import { goalEmojiText } from '@/features/savings-goals/goal-icon'
 import { ALL_TOUR_KEYS, resetAllTours, TOUR_KEYS } from '@/features/tours'
 import { useResetTourSeen } from '@/features/tours/use-reset-tour-seen'
 import {
@@ -836,11 +837,11 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           })
   const savingsGoalSubtitle = savingsGoalQuery.data
     ? savingsGoalQuery.data.isActive
-      ? `${savingsGoalQuery.data.emoji} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`
+      ? `${goalEmojiText(savingsGoalQuery.data.emoji)} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`.replace(/\s{2,}/g, ' ').trim()
       : t('settings:savingsGoal.inactiveSubtitle', {
-          emoji: savingsGoalQuery.data.emoji,
+          emoji: goalEmojiText(savingsGoalQuery.data.emoji),
           title: savingsGoalQuery.data.title,
-        })
+        }).replace(/\s{2,}/g, ' ').trim()
     : t('settings:savingsGoal.noGoal')
   const pushValue = !supportsPushActivation
     ? t('settings:push.devBuildValue')

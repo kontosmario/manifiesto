@@ -22,7 +22,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -40,7 +40,8 @@ export function CalendarDropImpact({
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
-  const emoji = pickIconForFixedExpenseCategory(category.name)
+  // category.name es el nombre CRUDO de la categoría. CategoryIcon rendea
+  // el sticker si hay slug mapeado, sino cae al emoji.
   const color = category.color
   const TOTAL_DAYS = 31
 
@@ -120,9 +121,12 @@ export function CalendarDropImpact({
                       } as unknown as object,
                     ]}
                   />
-                  <Text allowFontScaling={false} style={styles.calendarCellEmoji}>
-                    {emoji}
-                  </Text>
+                  <CategoryIcon
+                    name={category.name}
+                    scope="fixed_expense"
+                    size={24}
+                    emojiStyle={styles.calendarCellEmoji}
+                  />
                   <View
                     style={[
                       styles.calendarCellDayBadge,

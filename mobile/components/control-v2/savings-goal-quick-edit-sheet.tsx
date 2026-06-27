@@ -6,6 +6,7 @@ import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+import { goalEmojiText } from '@/features/savings-goals/goal-icon'
 
 interface SavingsGoalQuickEditSheetProps {
   visible: boolean
@@ -80,7 +81,7 @@ export function SavingsGoalQuickEditSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
-      title={t('control:goalEdit.title', { emoji: goalEmoji, title: goalTitle })}
+      title={t('control:goalEdit.title', { emoji: goalEmojiText(goalEmoji), title: goalTitle }).replace(/\s{2,}/g, ' ').trim()}
       subtitle={t('control:goalEdit.subtitle')}
     >
       <View style={styles.body}>

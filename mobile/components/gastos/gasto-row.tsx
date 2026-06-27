@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
+import { CategoryIcon } from '@/components/category/category-icon'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -65,8 +65,9 @@ function GastoRowReal({
 }: GastoRowProps) {
   const theme = useThemeTokens()
   // Ícono por nombre CRUDO (no localizado) — el matcher es ES; si no se
-  // pasa el crudo, cae al display localizado (back-compat).
-  const icon = pickIconForCategory(categoryRawName ?? categoryName)
+  // pasa el crudo, cae al display localizado (back-compat). CategoryIcon
+  // rendea el sticker si hay slug mapeado, sino cae al emoji.
+  const iconName = categoryRawName ?? categoryName
   const trimmedNotes = typeof notes === 'string' ? notes.trim() : ''
   // catChipText hue-preserved en ambos modos. Antes el pastel original
   // sobre los chip backgrounds fallaba WCAG:
@@ -123,7 +124,7 @@ function GastoRowReal({
     >
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
-          <Text style={styles.iconText}>{icon}</Text>
+          <CategoryIcon name={iconName} scope="expense" size={24} emojiStyle={styles.iconText} />
         </View>
         <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
       </View>

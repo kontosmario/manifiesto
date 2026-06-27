@@ -8,6 +8,8 @@ import { RiseView } from '@/components/home/animated/rise-view'
 // Reusamos los mismos constantes que el wizard de creación de meta de Settings
 // para que onboarding y Settings queden sincronizados (un solo source of truth).
 import { EMOJI_PALETTE } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
+import { GoalIcon } from '@/components/savings-goals/goal-icon'
+import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 import { MONTH_OPTIONS } from '@/components/savings-goals/wizard-steps/step-3-months'
 import { TextField } from '@/components/ui/text-field'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -207,18 +209,18 @@ export function StepSavings({
               contentContainerStyle={styles.emojiScrollContent}
               accessibilityLabel={t('onboarding:savings.iconScrollA11y')}
             >
-              {EMOJI_PALETTE.map((glyph) => {
-                const on = glyph === firstGoalEmoji
+              {[...GOAL_STICKER_KEYS, ...EMOJI_PALETTE].map((value) => {
+                const on = value === firstGoalEmoji
                 return (
                   <Pressable
-                    key={glyph}
+                    key={value}
                     onPress={() => {
                       void triggerHaptic('selection')
-                      onChangeFirstGoalEmoji(glyph)
+                      onChangeFirstGoalEmoji(value)
                     }}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    accessibilityLabel={t('onboarding:savings.iconItemA11y', { glyph })}
+                    accessibilityLabel={t('onboarding:savings.iconItemA11y', { glyph: value })}
                     style={[
                       styles.emojiCard,
                       {
@@ -230,7 +232,7 @@ export function StepSavings({
                       },
                     ]}
                   >
-                    <Text style={styles.emojiGlyph}>{glyph}</Text>
+                    <GoalIcon value={value} size={28} emojiStyle={styles.emojiGlyph} />
                   </Pressable>
                 )
               })}
@@ -420,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiGlyph: { fontSize: 24, lineHeight: 30 },
+  emojiGlyph: { fontSize: 24 },
   monthsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   monthChipWrap: {
     flexGrow: 1,

@@ -3,12 +3,19 @@ import { useTranslation } from 'react-i18next'
 import { TextField } from '@/components/ui/text-field'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
+import { GoalIcon } from '../goal-icon'
+import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 
 export const EMOJI_PALETTE = [
   '🎯', '✈️', '🏠', '🚗',
   '🎓', '💍', '🌅', '💻',
   '🎁', '🏖️', '📱', '💰',
 ] as const
+
+// Stickers sugeridos (PNG del owner) — primeras opciones del picker,
+// junto a los emojis. El valor guardado para un sticker es su KEY del
+// registry (ej. "metas/playa"); para un emoji, el glyph literal.
+const STICKER_OPTIONS = GOAL_STICKER_KEYS
 
 export const MAX_TITLE = 40
 
@@ -59,15 +66,17 @@ export function Step1Title({
           contentContainerStyle={styles.emojiScrollContent}
           accessibilityLabel={t('settings:savingsWizard.iconScrollA11y')}
         >
-          {EMOJI_PALETTE.map((glyph) => {
-            const isActive = glyph === selectedEmoji
+          {/* Stickers sugeridos primero, luego los emojis — todos como
+              opciones equivalentes en la misma fila scrolleable. */}
+          {[...STICKER_OPTIONS, ...EMOJI_PALETTE].map((value) => {
+            const isActive = value === selectedEmoji
             return (
               <Pressable
-                key={glyph}
+                key={value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={t('settings:savingsWizard.iconA11y', { glyph })}
-                onPress={() => onSelectEmoji(glyph)}
+                accessibilityLabel={t('settings:savingsWizard.iconA11y', { glyph: value })}
+                onPress={() => onSelectEmoji(value)}
                 style={({ pressed }) => [
                   styles.emojiCard,
                   {
@@ -84,7 +93,7 @@ export function Step1Title({
                   },
                 ]}
               >
-                <Text style={styles.emojiGlyph}>{glyph}</Text>
+                <GoalIcon value={value} size={30} emojiStyle={styles.emojiGlyph} />
               </Pressable>
             )
           })}
@@ -124,6 +133,5 @@ const styles = StyleSheet.create({
   },
   emojiGlyph: {
     fontSize: 26,
-    lineHeight: 32,
   },
 })

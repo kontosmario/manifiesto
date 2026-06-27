@@ -1,7 +1,8 @@
 import { memo, useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Image, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
@@ -20,6 +21,15 @@ const KIND_EMOJI: Record<IncomeEventKind, string> = {
   bonus: '⭐',
   gift: '🎁',
   other: '💵',
+}
+
+// Sticker por tipo de ingreso — mismo mapeo que el picker de add-income.
+// Si la key faltara en el registry, el render cae al emoji (KIND_EMOJI).
+const KIND_ICON: Record<IncomeEventKind, string> = {
+  transfer: 'finanzas/transferencia',
+  bonus: 'finanzas/bonus',
+  gift: 'servicios-general/regalos',
+  other: 'finanzas/billetera',
 }
 
 const KIND_PILL_KEY: Record<IncomeEventKind, string> = {
@@ -97,7 +107,15 @@ function IncomeRowImpl({
     >
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
-          <Text style={styles.iconText}>{emoji}</Text>
+          {CATEGORY_ICONS[KIND_ICON[kind]] ? (
+            <Image
+              source={CATEGORY_ICONS[KIND_ICON[kind]]}
+              style={styles.iconImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <Text style={styles.iconText}>{emoji}</Text>
+          )}
         </View>
         <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
       </View>
@@ -165,6 +183,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: { fontSize: 18 },
+  iconImage: { width: 24, height: 24 },
   body: { flex: 1 },
   title: { fontSize: 14, fontWeight: '700' },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

@@ -16,6 +16,7 @@ import { FloatView } from '@/components/home/animated/float-view'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ShineOverlay } from '@/components/home/animated/shine-overlay'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
+import { GoalIcon } from '@/components/savings-goals/goal-icon'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -213,7 +214,7 @@ function MetaCardImpl({
                 </Text>
               </View>
               <FloatView amplitude={4} periodMs={3000}>
-                <Text style={styles.emoji}>{goal.emoji}</Text>
+                <GoalIcon value={goal.emoji} size={34} emojiStyle={styles.emoji} />
               </FloatView>
             </View>
           </RiseView>

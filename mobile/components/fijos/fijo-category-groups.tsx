@@ -13,7 +13,7 @@ import Svg, { Path } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { FijoRow } from '@/components/fijos/fijo-row'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import type { FijoCategoryGroup, FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -103,7 +103,7 @@ function CategoryGroup({
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(true)
   // Ícono por nombre CRUDO (matcher ES); el header sigue en `group.label`.
-  const emoji = pickIconForFixedExpenseCategory(group.rawLabel)
+  // CategoryIcon rendea el sticker si hay slug mapeado, sino cae al emoji.
   // Press scale subtle 0.98 — toda la row es tap-target grande, escala
   // sutil para no competir con la rotation del chevron.
   const press = usePressScale({ pressedScale: 0.98 })
@@ -131,7 +131,12 @@ function CategoryGroup({
               },
             ]}
           >
-            <Text style={styles.iconText}>{emoji}</Text>
+            <CategoryIcon
+              name={group.rawLabel}
+              scope="fixed_expense"
+              size={22}
+              emojiStyle={styles.iconText}
+            />
           </View>
           <View>
             <Text style={[styles.title, { color: theme.colors.text }]}>{group.label}</Text>

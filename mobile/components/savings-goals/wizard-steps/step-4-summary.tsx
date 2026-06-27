@@ -5,6 +5,7 @@ import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
+import { GoalIcon } from '../goal-icon'
 
 export interface StepSummaryProps {
   emoji: string
@@ -36,7 +37,7 @@ export function StepSummary({
           { backgroundColor: cardBg, borderColor: theme.colors.line },
         ]}
       >
-        <Text style={styles.summaryEmoji}>{emoji}</Text>
+        <GoalIcon value={emoji} size={52} emojiStyle={styles.summaryEmoji} />
         <Text
           style={[
             typography.sectionTitle,

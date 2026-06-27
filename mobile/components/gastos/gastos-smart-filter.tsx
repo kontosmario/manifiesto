@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { GastosFilterPill } from '@/components/gastos/gastos-filter-pill'
-import { pickIconForCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import type { CategoryLite } from '@/features/gastos/gastos-aggregates.model'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -85,7 +85,9 @@ export function GastosSmartFilter({
                   key={c.id}
                   active={selectedCategoryId === c.id}
                   label={c.name}
-                  emoji={pickIconForCategory(c.rawName ?? c.name)}
+                  iconNode={
+                    <CategoryIcon name={c.rawName ?? c.name} scope="expense" size={18} />
+                  }
                   color={c.color}
                   count={c.count}
                   selectId={c.id}
@@ -101,7 +103,9 @@ export function GastosSmartFilter({
                     key={c.id}
                     active={selectedCategoryId === c.id}
                     label={c.name}
-                    emoji={pickIconForCategory(c.rawName ?? c.name)}
+                    iconNode={
+                      <CategoryIcon name={c.rawName ?? c.name} scope="expense" size={18} />
+                    }
                     color={c.color}
                     count={c.count}
                     selectId={c.id}

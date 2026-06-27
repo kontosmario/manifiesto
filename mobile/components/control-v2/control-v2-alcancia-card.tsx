@@ -12,6 +12,7 @@ import { StatTile } from '@/components/ui/stat-tile'
 import { useAddSavingsContribution } from '@/features/savings-goals/use-add-savings-contribution'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
+import { goalEmojiText } from '@/features/savings-goals/goal-icon'
 import { useStreak } from '@/features/streaks/use-streak'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
@@ -174,7 +175,7 @@ function ControlV2AlcanciaCardImpl({
   const hasGoal = hasActiveGoal // alias para el resto del código existente
   const canMove = hasActiveGoal && vault > 0
   const ctaLabel = hasInactiveGoal
-    ? t('control:alcancia.ctaActivar', { emoji: goal.emoji, title: goal.title })
+    ? t('control:alcancia.ctaActivar', { emoji: goalEmojiText(goal.emoji), title: goal.title }).replace(/\s{2,}/g, ' ').trim()
     : !hasActiveGoal
       ? t('control:alcancia.ctaCrear')
       : vault > 0

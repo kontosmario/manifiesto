@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
+import { CategoryIcon } from '@/components/category/category-icon'
 import {
   FREQ_OPTIONS,
   hexAlpha,
@@ -124,11 +124,20 @@ export function Step2Summary(props: Step2SummaryProps) {
               },
             ]}
           >
-            <Text style={styles.summaryIconText}>
-              {selectedCategory
-                ? pickIconForFixedExpenseCategory(selectedCategory.name)
-                : t('fijos:wizard.summaryFallbackIcon')}
-            </Text>
+            {selectedCategory ? (
+              // selectedCategory.name es el nombre CRUDO de la categoría.
+              // CategoryIcon rendea el sticker si hay slug mapeado, sino el emoji.
+              <CategoryIcon
+                name={selectedCategory.name}
+                scope="fixed_expense"
+                size={30}
+                emojiStyle={styles.summaryIconText}
+              />
+            ) : (
+              <Text style={styles.summaryIconText}>
+                {t('fijos:wizard.summaryFallbackIcon')}
+              </Text>
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.summaryName, { color: theme.colors.text }]}>{name}</Text>
