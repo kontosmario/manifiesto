@@ -84,5 +84,36 @@ aislada) antes de aplicar a prod. Code review (agentes) hasta OK.
 Toca el flujo núcleo de gasto. Pre-launch (TestFlight) → aceptable, pero el build
 nuevo debe shipearse junto con la migración (el build viejo manda `category_id`
 viejos; EXPAND mantiene `categories_legacy` por compat durante la transición).
+
+## Acciones pendientes (runbook) — actualizado 2026-06-27
+
+El cutover está APLICADO a prod + mergeado a `main`. Lo que queda:
+
+### 1. 🔴 Reship del build (urgente, owner)
+La base está en el modelo nuevo pero el build de TestFlight instalado es el viejo
+→ manda `category_id` viejos → agregar/editar gasto falla. Buildar desde `main`:
 ```
+eas build --platform ios --profile production   # o preview
+# subir a TestFlight → los testers updatean → vuelve a andar
 ```
+
+### 2. 🟡 CONTRACT (tras confirmar adopción del build nuevo)
+Cuando ya nadie use el build viejo, limpiar el backup:
+```sql
+drop table if exists public.categories_legacy;
+drop table if exists public._migration_category_id_backup;
+```
+
+### 3. ⏪ Rollback (sólo si hace falta ANTES de rebuildar)
+`categories_legacy` (451 filas) + `_migration_category_id_backup` (399 ids viejos)
+permiten revertir. Pasos: restaurar `category_id` desde el backup en las 3 tablas,
+`drop view categories`, `alter table categories_legacy rename to categories`,
+re-crear las 3 FKs, y restaurar el trigger/bootstrap/RPCs viejos (están en el
+historial de migraciones < 20260627030000). Pedir a Claude que la arme.
+
+### 4. ⏳ UX de categorías custom (futuro, no urgente)
+La tabla `family_custom_categories` + las mutations ya están cableadas (crear/
+renombrar/borrar custom funciona, gateado a custom en `expense-categories-screen`).
+Falta la experiencia completa: soporte de scope `fixed_expense` en el create,
+selector de color/ícono para la custom, y pulido de la pantalla. "Preparado para
+el futuro" según pedido del owner.
