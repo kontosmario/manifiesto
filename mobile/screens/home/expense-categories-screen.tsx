@@ -82,7 +82,11 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   )
   const managedCategory = categoryById.get(managedCategoryId) ?? null
   const selectedCount = managedCategory ? categoryExpenseCountById.get(managedCategory.id) ?? 0 : 0
-  const canDeleteManagedCategory = Boolean(managedCategory) && selectedCount === 0
+  // Solo las categorías CUSTOM (sin template_id) se editan/borran. Las standard
+  // son del catálogo global (read-only). Ver category-architecture-refactor.md.
+  const isManagedCustom = Boolean(managedCategory) && managedCategory?.template_id == null
+  const canRenameManagedCategory = isManagedCustom
+  const canDeleteManagedCategory = isManagedCustom && selectedCount === 0
   const isBusy =
     createCategoryMutation.isPending ||
     renameCategoryMutation.isPending ||
@@ -220,11 +224,11 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   variant="secondary"
                 />
                 <AppButton
-                  disabled={!managedCategory}
+                  disabled={!canRenameManagedCategory}
                   label={t('gastos:categoriesScreen.renameSelected')}
                   loading={renameCategoryMutation.isPending}
                   onPress={() => {
-                    if (!managedCategory) {
+                    if (!managedCategory || !canRenameManagedCategory) {
                       return
                     }
 

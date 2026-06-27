@@ -96,10 +96,13 @@ export function useCategories(familyId?: string, scope: CategoryScope = 'expense
         return []
       }
 
+      // `categories` es una VIEW (templates globales ∪ custom per-familia).
+      // Los templates standard vienen con family_id NULL → se incluyen para
+      // TODA familia; los custom matchean por family_id.
       const query = supabase
         .from('categories')
         .select('id, family_id, name, color, template_id, scope, created_at')
-        .eq('family_id', familyId)
+        .or(`family_id.eq.${familyId},family_id.is.null`)
         .eq('scope', scope)
         .order('created_at', { ascending: true })
 
@@ -178,7 +181,10 @@ export function useCreateCategory(familyId?: string, userId?: string) {
         throw new Error(i18n.t('gastos:categories.errors.nameEmpty'))
       }
 
-      const { error } = await supabase.from('categories').insert({
+      // Las categorías CUSTOM viven en family_custom_categories (per-familia).
+      // Las standard son globales (category_templates, read-only via la view).
+      // scope default = 'expense' en la tabla.
+      const { error } = await supabase.from('family_custom_categories').insert({
         family_id: familyId,
         name,
       })
@@ -221,8 +227,10 @@ export function useRenameCategory(familyId?: string, userId?: string) {
         throw new Error(i18n.t('gastos:categories.errors.nameEmpty'))
       }
 
+      // Solo categorías CUSTOM se renombran (las standard son globales
+      // read-only); si el id no es custom, no afecta filas (no-op seguro).
       const { error } = await supabase
-        .from('categories')
+        .from('family_custom_categories')
         .update({ name: normalizedName })
         .eq('id', categoryId)
         .eq('family_id', familyId)
@@ -266,8 +274,11 @@ export function useDeleteCategory(familyId?: string, userId?: string) {
         throw new Error(i18n.t('gastos:categories.errors.hasExpenses'))
       }
 
+      // Solo categorías CUSTOM se borran (las standard son globales). Ahora
+      // funciona de verdad: family_custom_categories no tiene el trigger
+      // prevent_categories_delete que bloqueaba el delete en la tabla vieja.
       const { error } = await supabase
-        .from('categories')
+        .from('family_custom_categories')
         .delete()
         .eq('id', categoryId)
         .eq('family_id', familyId)
