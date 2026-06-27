@@ -74,7 +74,7 @@ function createInitialDraft(): OnboardingDraft {
     savingsGoalPercent: 20,
     createFirstGoal: false,
     firstGoalTitle: '',
-    firstGoalEmoji: '🎯',
+    firstGoalEmoji: 'metas/objetivo',
     firstGoalTargetRaw: '',
     firstGoalMonths: 12,
     contributesIncome: null,

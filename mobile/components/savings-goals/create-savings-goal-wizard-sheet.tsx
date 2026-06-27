@@ -64,7 +64,8 @@ export interface CreateSavingsGoalWizardSheetProps {
 }
 
 const STEP_COUNT = 4
-const DEFAULT_EMOJI = '🎯'
+// Default = sticker "objetivo" (antes 🎯). GoalIcon lo rendea como sticker.
+const DEFAULT_EMOJI = 'metas/objetivo'
 
 const DISMISS_DISTANCE = 100
 const DISMISS_VELOCITY = 650

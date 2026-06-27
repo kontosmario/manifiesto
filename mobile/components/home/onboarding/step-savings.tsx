@@ -7,7 +7,7 @@ import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 // Reusamos los mismos constantes que el wizard de creación de meta de Settings
 // para que onboarding y Settings queden sincronizados (un solo source of truth).
-import { EMOJI_PALETTE } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
+import { GOAL_EXTRA_ICONS } from '@/components/savings-goals/wizard-steps/step-1-title-emoji'
 import { GoalIcon } from '@/components/savings-goals/goal-icon'
 import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 import { MONTH_OPTIONS } from '@/components/savings-goals/wizard-steps/step-3-months'
@@ -197,7 +197,7 @@ export function StepSavings({
             accessibilityLabel={t('onboarding:savings.goalTitleA11y')}
           />
 
-          {/* Emoji — mismo set que el wizard de Settings (EMOJI_PALETTE). */}
+          {/* Íconos de meta (stickers) — mismo set que el wizard de Settings. */}
           <View style={styles.emojiSection}>
             <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
               {t('onboarding:savings.iconEyebrow')}
@@ -209,7 +209,7 @@ export function StepSavings({
               contentContainerStyle={styles.emojiScrollContent}
               accessibilityLabel={t('onboarding:savings.iconScrollA11y')}
             >
-              {[...GOAL_STICKER_KEYS, ...EMOJI_PALETTE].map((value) => {
+              {[...GOAL_STICKER_KEYS, ...GOAL_EXTRA_ICONS].map((value) => {
                 const on = value === firstGoalEmoji
                 return (
                   <Pressable

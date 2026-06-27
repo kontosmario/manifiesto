@@ -54,7 +54,7 @@ export function validateSavingsGoalInput(input: SavingsGoalInput): SavingsGoalIn
   const title = input.title.trim()
   if (!title) throw new Error(i18n.t('settings:savingsGoalValidation.titleRequired'))
   if (title.length > 40) throw new Error(i18n.t('settings:savingsGoalValidation.titleTooLong'))
-  const emoji = input.emoji.trim() || '🎯'
+  const emoji = input.emoji.trim() || 'metas/objetivo'
   if (!Number.isFinite(input.goalAmount) || input.goalAmount <= 0) {
     throw new Error(i18n.t('settings:savingsGoalValidation.goalAmountPositive'))
   }

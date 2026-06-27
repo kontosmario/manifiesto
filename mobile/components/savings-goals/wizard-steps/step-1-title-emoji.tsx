@@ -6,16 +6,25 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { GoalIcon } from '../goal-icon'
 import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 
-export const EMOJI_PALETTE = [
-  '🎯', '✈️', '🏠', '🚗',
-  '🎓', '💍', '🌅', '💻',
-  '🎁', '🏖️', '📱', '💰',
+// Íconos de meta ADICIONALES a los 5 stickers de `metas/*` (GOAL_STICKER_KEYS).
+// Todos stickers del set del owner — reemplazan a los emojis viejos del picker
+// (✈️→avión, 🏠→casa, 🚗→auto, 🎓→educación, 💻→compu, 🎁→regalo, 📱→celular,
+// 💰→ahorro). Los redundantes (🎯≈objetivo, 💍≈anillo, 🏖️≈playa) ya están en
+// GOAL_STICKER_KEYS. El valor guardado es la KEY del registry. Metas viejas con
+// un emoji literal siguen rendeando por el fallback de GoalIcon.
+export const GOAL_EXTRA_ICONS = [
+  'transporte/avion',
+  'vivienda/vivienda',
+  'transporte/automovil',
+  'educacion/educacion',
+  'extra/computadora',
+  'servicios-general/regalos',
+  'tecnologia/celular',
+  'finanzas/ahorro',
 ] as const
 
-// Stickers sugeridos (PNG del owner) — primeras opciones del picker,
-// junto a los emojis. El valor guardado para un sticker es su KEY del
-// registry (ej. "metas/playa"); para un emoji, el glyph literal.
-const STICKER_OPTIONS = GOAL_STICKER_KEYS
+// Picker completo: 5 stickers `metas/*` + los 8 adicionales = 13 íconos.
+const STICKER_OPTIONS = [...GOAL_STICKER_KEYS, ...GOAL_EXTRA_ICONS]
 
 export const MAX_TITLE = 40
 
@@ -66,9 +75,8 @@ export function Step1Title({
           contentContainerStyle={styles.emojiScrollContent}
           accessibilityLabel={t('settings:savingsWizard.iconScrollA11y')}
         >
-          {/* Stickers sugeridos primero, luego los emojis — todos como
-              opciones equivalentes en la misma fila scrolleable. */}
-          {[...STICKER_OPTIONS, ...EMOJI_PALETTE].map((value) => {
+          {/* 13 íconos de meta (todos stickers) en una fila scrolleable. */}
+          {STICKER_OPTIONS.map((value) => {
             const isActive = value === selectedEmoji
             return (
               <Pressable

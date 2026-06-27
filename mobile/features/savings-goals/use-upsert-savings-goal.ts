@@ -56,7 +56,7 @@ export function useUpsertSavingsGoal(familyId: string, userId?: string) {
         id: existingId ?? `temp-${Date.now()}`,
         familyId,
         title: '',
-        emoji: '🎯',
+        emoji: 'metas/objetivo',
         goalAmount: 0,
         currentAmount: 0,
         targetMonths: null,
