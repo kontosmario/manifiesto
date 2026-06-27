@@ -27,7 +27,9 @@ export type CategoryScope = 'expense' | 'fixed_expense'
 
 interface RawCategory {
   id: string
-  family_id: string
+  // null para las categorías STANDARD (templates globales, expuestos por la
+  // view `categories` con family_id NULL). Las custom traen el family_id.
+  family_id: string | null
   name: string
   color?: string | null
   template_id?: string | null
@@ -56,7 +58,8 @@ function fallbackCategoryColor(categoryId: string): string {
 
 export interface Category {
   id: string
-  family_id: string
+  /** null para categorías STANDARD (catálogo global); set para las custom. */
+  family_id: string | null
   /**
    * Nombre CRUDO guardado en DB. Load-bearing: es la fuente para el
    * matching de rename contra `category_templates`. NO mostrar este

@@ -144,7 +144,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                     {t('gastos:categoriesScreen.selectedLabel')}
                   </Text>
                   <Text style={[styles.selectionValue, { color: theme.colors.text }]}>
-                    {managedCategory?.name ?? t('gastos:categoriesScreen.pickToManage')}
+                    {managedCategory?.displayName ?? t('gastos:categoriesScreen.pickToManage')}
                   </Text>
                   <Text style={[styles.selectionMeta, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
                     {managedCategory
@@ -164,7 +164,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   <View style={styles.categoryList}>
                     {categories.map((category) => (
                       <Pressable
-                        accessibilityLabel={t('gastos:categoriesScreen.manageCategoryA11y', { name: category.name })}
+                        accessibilityLabel={t('gastos:categoriesScreen.manageCategoryA11y', { name: category.displayName })}
                         accessibilityRole="button"
                         android_ripple={{
                           color: withAlpha(theme.colors.primary, 0.12),
@@ -193,7 +193,7 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                         <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
                         <View style={styles.categoryCopy}>
                           <Text style={[styles.categoryName, { color: theme.colors.text }]}>
-                            {category.name}
+                            {category.displayName}
                           </Text>
                           <Text style={[styles.categoryMeta, { color: theme.colors.textMuted }]}>
                             {t('gastos:categoriesScreen.categoryMeta', {

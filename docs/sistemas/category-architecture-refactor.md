@@ -69,7 +69,9 @@ se revierten restaurando la FK. Backup de los `category_id` viejos en una tabla
 - `home_snapshot`/`gastos_*` ya devuelven arrays de categoría → cambia la fuente, mismo shape.
 - Mutations: `useCreateCategory` → `family_custom_categories`; rename/delete solo customs.
 - `localizeCategoryName`/icon/hue: sin cambio (resuelven por name crudo/template_id).
-- Tests golden (home-snapshot-shape, category-display-name-seed) actualizados.
+- Tests golden (home-snapshot-shape, category-display-name-seed, variable-expense-
+  categories) pasan SIN cambios: el shape de los RPCs se preserva (la view + los
+  tweaks no alteran las columnas/keys de salida).
 
 ## Verificación
 tsc + bundle + suite vitest + tests de integración en un **Supabase branch** (DB
