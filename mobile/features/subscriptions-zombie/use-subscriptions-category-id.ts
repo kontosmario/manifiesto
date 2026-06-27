@@ -17,6 +17,9 @@ export function useSubscriptionsCategoryId(familyId?: string) {
         .or(`family_id.eq.${familyId},family_id.is.null`)
         .eq('name', 'Suscripciones')
         .eq('scope', 'fixed_expense')
+        // limit(1): si una familia creara un custom "Suscripciones" la view
+        // devolvería 2 filas y maybeSingle() tiraría. El template alcanza.
+        .limit(1)
         .maybeSingle()
       if (error) throw error
       return data?.id ?? null

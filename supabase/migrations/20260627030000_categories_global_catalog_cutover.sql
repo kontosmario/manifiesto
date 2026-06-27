@@ -21,7 +21,7 @@
 insert into public.family_custom_categories (id, family_id, name, color, scope, created_at)
   select id, family_id, name, color, scope, created_at
   from public.categories where template_id is null
-on conflict (id) do nothing;
+on conflict do nothing;  -- cubre PK e índice único (family,scope,nombre)
 
 -- 1. Backup de los category_id viejos (rollback).
 create table if not exists public._migration_category_id_backup as
@@ -31,46 +31,17 @@ create table if not exists public._migration_category_id_backup as
   union all
   select 'category_limits', id, category_id from public.category_limits;
 
--- 2. Migrar category_id := template_id (standard). Las custom (template_id null)
---    ya están en family_custom_categories con el mismo id → no se tocan.
-update public.expenses e set category_id = c.template_id
-  from public.categories c where c.id = e.category_id and c.template_id is not null;
-update public.fixed_expenses fe set category_id = c.template_id
-  from public.categories c where c.id = fe.category_id and c.template_id is not null;
-update public.category_limits cl set category_id = c.template_id
-  from public.categories c where c.id = cl.category_id and c.template_id is not null;
-
--- 3. Drop FKs duras a categories (pasan a referencia blanda + trigger).
+-- 2. Drop FKs duras a categories ANTES del UPDATE — sino el FK viejo
+--    (category_id REFERENCES categories) rechaza el template_id (no es una fila
+--    de la tabla vieja). Pasan a referencia blanda validada por trigger.
 alter table public.expenses        drop constraint if exists expenses_category_id_fkey;
 alter table public.fixed_expenses  drop constraint if exists fixed_expenses_category_id_fkey;
 alter table public.category_limits drop constraint if exists category_limits_category_id_fkey;
 
--- 4. Renombrar la tabla per-familia a _legacy (backup) y crear la VIEW.
-alter table public.categories rename to categories_legacy;
-
-create view public.categories with (security_invoker = true) as
-  -- Standard: templates globales, family_id NULL, una sola vez (no dup en joins).
-  select t.id,
-         null::uuid          as family_id,
-         t.name,
-         coalesce(t.color, '#8A8A8A') as color,
-         t.created_at,
-         t.id                as template_id,
-         t.scope
-  from public.category_templates t
-  union all
-  -- Custom: per-familia.
-  select fcc.id,
-         fcc.family_id,
-         fcc.name,
-         coalesce(fcc.color, '#8A8A8A') as color,
-         fcc.created_at,
-         null::uuid          as template_id,
-         fcc.scope
-  from public.family_custom_categories fcc;
-
--- 5. Validación: category_id de un gasto/fijo debe ser un template global O un
---    custom de la familia. Reemplaza el join a categories per-familia.
+-- 3. Reemplazar el trigger de validación ANTES del UPDATE. El viejo busca el
+--    category_id por id en la tabla categories per-familia → rechazaría el
+--    template_id durante el UPDATE (el trigger corre on UPDATE). El nuevo
+--    acepta template global O custom de la familia, y maneja null.
 create or replace function public.ensure_expense_category_belongs_family()
  returns trigger
  language plpgsql
@@ -94,6 +65,41 @@ begin
   raise exception 'Category does not belong to selected family.';
 end;
 $function$;
+
+-- 4. Migrar category_id := template_id (standard). Ahora SÍ: ya sin FK dura y
+--    con el trigger nuevo que acepta templates. Lee de la tabla `categories`
+--    (aún no renombrada) para mapear id viejo → template_id. Las custom
+--    (template_id null) ya están en family_custom_categories con el mismo id.
+update public.expenses e set category_id = c.template_id
+  from public.categories c where c.id = e.category_id and c.template_id is not null;
+update public.fixed_expenses fe set category_id = c.template_id
+  from public.categories c where c.id = fe.category_id and c.template_id is not null;
+update public.category_limits cl set category_id = c.template_id
+  from public.categories c where c.id = cl.category_id and c.template_id is not null;
+
+-- 5. Renombrar la tabla per-familia a _legacy (backup) y crear la VIEW.
+alter table public.categories rename to categories_legacy;
+
+create view public.categories with (security_invoker = true) as
+  -- Standard: templates globales, family_id NULL, una sola vez (no dup en joins).
+  select t.id,
+         null::uuid          as family_id,
+         t.name,
+         coalesce(t.color, '#8A8A8A') as color,
+         t.created_at,
+         t.id                as template_id,
+         t.scope
+  from public.category_templates t
+  union all
+  -- Custom: per-familia.
+  select fcc.id,
+         fcc.family_id,
+         fcc.name,
+         coalesce(fcc.color, '#8A8A8A') as color,
+         fcc.created_at,
+         null::uuid          as template_id,
+         fcc.scope
+  from public.family_custom_categories fcc;
 
 -- 6. Lista de categorías con counts: la lista incluye templates globales
 --    (family_id null) + customs de la familia. Tweak parentizado.
