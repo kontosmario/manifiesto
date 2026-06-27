@@ -68,5 +68,9 @@ nuevas a familias nuevas. Agregar i18n en `categoryTemplates.expense.<slug>`
 icon-map. `categories.color` queda NULL (hue por nombre).
 
 Catálogo actual: **30 expense** (18 consolidadas + 12 curadas 2026-06-27) +
-**8 fixed**. De los 89 íconos, 4 quedan sin asignar a propósito (arte duplicado
-+ `crecimiento/brote-bebe` como swap del jardín).
+**11 fixed** (8 + Educación/Salud/Gimnasio 2026-06-27). ⚠️ El scope `fixed_expense`
+usa el color GUARDADO de la categoría (fijo-row/grupos), por eso una categoría
+fija nueva necesita color en el CASE de `bootstrap_family` (familias nuevas) +
+en el backfill (existentes) — a diferencia de expense, que deriva el hue del
+nombre. De los 89 íconos, 4 quedan sin asignar a propósito (arte duplicado +
+`crecimiento/brote-bebe` como swap del jardín).

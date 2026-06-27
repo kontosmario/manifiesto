@@ -934,6 +934,36 @@
           "Acciones",
           "Aporte mensual"
         ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Educación",
+        "quickDescriptions": [
+          "Colegio",
+          "Universidad",
+          "Cuota",
+          "Curso"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Salud",
+        "quickDescriptions": [
+          "Prepaga",
+          "Obra social",
+          "Plan médico",
+          "Cobertura"
+        ]
+      },
+      "gimnasio": {
+        "default": "Gimnasio",
+        "name": "Gimnasio",
+        "quickDescriptions": [
+          "Membresía",
+          "Cuota mensual",
+          "Club",
+          "Entrenamiento"
+        ]
       }
     }
   }

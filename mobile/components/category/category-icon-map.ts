@@ -203,6 +203,7 @@ const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   netflix: 'extra/streaming',
   spotify: 'entretenimiento/musica',
   gimnasio: 'salud/gimnasio',
+  salud: 'salud/medico',
   prepaga: 'salud/medico',
   obra_social: 'salud/medico',
   educacion: 'educacion/educacion',

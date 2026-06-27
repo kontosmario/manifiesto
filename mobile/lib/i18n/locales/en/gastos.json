@@ -934,6 +934,36 @@
           "Stocks",
           "Monthly contribution"
         ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Education",
+        "quickDescriptions": [
+          "School",
+          "University",
+          "Tuition",
+          "Course"
+        ]
+      },
+      "salud": {
+        "default": "Salud",
+        "name": "Health",
+        "quickDescriptions": [
+          "Health plan",
+          "Insurance",
+          "Medical plan",
+          "Coverage"
+        ]
+      },
+      "gimnasio": {
+        "default": "Gimnasio",
+        "name": "Gym",
+        "quickDescriptions": [
+          "Membership",
+          "Monthly fee",
+          "Club",
+          "Training"
+        ]
       }
     }
   }
