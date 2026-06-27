@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { FernMark } from '@/components/billing/fern-mark'
+import { FilledAchievementIcon } from '@/components/achievements/achievement-icon-filled'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -104,20 +105,9 @@ function SproutGlyph({
         />
       )
     case 'bloom':
-      // Semana perfecta: planta arraigada con flor coral (5 pétalos + centro).
-      return (
-        <Svg viewBox="0 0 40 44" width={32} height={32} style={[styles.bloom]}>
-          <Path d="M20 40 V19" stroke={c.germStem} strokeWidth={2.4} strokeLinecap="round" />
-          <Ellipse cx={13} cy={26} rx={6} ry={3.4} rotation={-32} originX={13} originY={26} fill={c.germLeaf1} />
-          <Ellipse cx={27} cy={24} rx={6} ry={3.4} rotation={32} originX={27} originY={24} fill={c.germLeaf2} />
-          <Circle cx={20} cy={8} r={3.8} fill={c.bloomPetal} />
-          <Circle cx={14.5} cy={11.5} r={3.8} fill={c.bloomPetal} />
-          <Circle cx={25.5} cy={11.5} r={3.8} fill={c.bloomPetal} />
-          <Circle cx={16.3} cy={17} r={3.8} fill={c.bloomPetal} />
-          <Circle cx={23.7} cy={17} r={3.8} fill={c.bloomPetal} />
-          <Circle cx={20} cy={13} r={3.4} fill={c.bloomCenter} />
-        </Svg>
-      )
+      // Semana perfecta: ícono "Meta florecida" de logros (goal_completed) —
+      // reemplaza la flor SVG. La fila además se cubre de luciérnagas (grid).
+      return <FilledAchievementIcon code="goal_completed" size={36} />
     case 'recovered':
       // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
       // No florece — distinto de creciendo (sin coral) y de floración (flor llena).
