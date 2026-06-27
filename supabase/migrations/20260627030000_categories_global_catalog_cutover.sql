@@ -597,4 +597,25 @@ begin
 end;
 $function$;
 
+-- 9. Auto-verificación: si la migración dejó algún gasto/fijo apuntando a un
+--    category_id que la view nueva no resuelve, ABORTA (rollback completo).
+--    apply_migration es transaccional → prod queda intacto si algo salió mal.
+do $verify$
+declare v_orphan_exp int; v_orphan_fix int; v_view int;
+begin
+  select count(*) into v_orphan_exp from public.expenses e
+    where not exists (select 1 from public.categories c where c.id = e.category_id);
+  select count(*) into v_orphan_fix from public.fixed_expenses fe
+    where fe.category_id is not null
+      and not exists (select 1 from public.categories c where c.id = fe.category_id);
+  select count(*) into v_view from public.categories;
+  if v_orphan_exp > 0 or v_orphan_fix > 0 then
+    raise exception 'cutover abort: % expenses + % fixed huérfanos', v_orphan_exp, v_orphan_fix;
+  end if;
+  if v_view < (select count(*) from public.category_templates) then
+    raise exception 'cutover abort: view (%) < templates', v_view;
+  end if;
+end;
+$verify$;
+
 
