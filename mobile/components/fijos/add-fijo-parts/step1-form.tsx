@@ -8,7 +8,6 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
-import { pickIconForFixedExpenseCategory } from '@/features/gastos/category-icons'
 import {
   CUOTA_OPTIONS,
   FREQ_OPTIONS,
@@ -131,7 +130,7 @@ export function Step1Form(props: Step1FormProps) {
         selectedCategoryId={categoryId ?? ''}
         onSelect={onSelectCategory}
         rows={2}
-        iconResolver={pickIconForFixedExpenseCategory}
+        iconScope="fixed_expense"
         tileWidth={fijosTileWidth}
         tileHeight={fijosTileHeight}
         warning={flagCategory}

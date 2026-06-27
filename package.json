@@ -117,6 +117,7 @@
     "postinstall-postinstall": "^2.1.0",
     "sharp": "^0.34.5",
     "supabase": "^2.92.1",
+    "svgo": "^4.0.1",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.48.0",
     "vitest": "^3.2.4"
