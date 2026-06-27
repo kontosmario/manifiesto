@@ -9,14 +9,17 @@ export type FreqChoice = FixedExpenseFrequency | 'cuotas'
 
 // `labelKey` se resuelve con `t()` en el consumidor (los ids son
 // identificadores estables; las labels viven en el namespace `fijos`).
+// `icon` = key del registry de stickers (frecuencias/*). El FreqTile rendea
+// el sticker si la key existe en CATEGORY_ICONS, sino cae al string como emoji
+// (back-compat).
 export const FREQ_OPTIONS: Array<{ id: FreqChoice; labelKey: string; icon: string }> = [
-  { id: 'monthly',    labelKey: 'fijos:frequency.monthly',    icon: '🗓' },
-  { id: 'biweekly',   labelKey: 'fijos:frequency.biweekly',   icon: '🔁' },
-  { id: 'weekly',     labelKey: 'fijos:frequency.weekly',     icon: '⏰' },
-  { id: 'quarterly',  labelKey: 'fijos:frequency.quarterly',  icon: '🌱' },
-  { id: 'semiannual', labelKey: 'fijos:frequency.semiannual', icon: '🌗' },
-  { id: 'annual',     labelKey: 'fijos:frequency.annual',     icon: '🎉' },
-  { id: 'cuotas',     labelKey: 'fijos:kind.installment',     icon: '💳' },
+  { id: 'monthly',    labelKey: 'fijos:frequency.monthly',    icon: 'frecuencias/mensual' },
+  { id: 'biweekly',   labelKey: 'fijos:frequency.biweekly',   icon: 'frecuencias/quincenal' },
+  { id: 'weekly',     labelKey: 'fijos:frequency.weekly',     icon: 'frecuencias/semanal' },
+  { id: 'quarterly',  labelKey: 'fijos:frequency.quarterly',  icon: 'frecuencias/trimestral' },
+  { id: 'semiannual', labelKey: 'fijos:frequency.semiannual', icon: 'frecuencias/semestral' },
+  { id: 'annual',     labelKey: 'fijos:frequency.annual',     icon: 'frecuencias/anual' },
+  { id: 'cuotas',     labelKey: 'fijos:kind.installment',     icon: 'frecuencias/cuotas' },
 ]
 
 export const CUOTA_OPTIONS = [3, 6, 12, 18, 24, 36] as const
