@@ -266,7 +266,7 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
         accessibilityRole="radio"
         accessibilityState={{ selected }}
         accessibilityLabel={t('home:categoryRail.selectAccessibility', {
-          name: category.displayName,
+          name: category.displayName || category.name,
         })}
         hitSlop={4}
         onPressIn={() => {
@@ -301,7 +301,9 @@ function CategoryTile({ category, selected, iconResolver, width, height, onPress
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
-            {category.displayName}
+            {/* fallback al name crudo: defensa contra un seed del cache
+                que no haya derivado displayName (nunca debe quedar vacío) */}
+            {category.displayName || category.name}
           </Text>
         </Animated.View>
       </Pressable>

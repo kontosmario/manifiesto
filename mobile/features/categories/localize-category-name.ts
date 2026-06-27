@@ -117,3 +117,25 @@ export function localizeQuickDescriptions(
     return localized || raw
   })
 }
+
+/**
+ * Adjunta el `displayName` localizado a categorías crudas que vienen SIN
+ * él. `displayName` se deriva en el cliente (i18n) — el servidor no puede
+ * computarlo. Por eso TODO seed del cache `categoriesQueryKey` vía
+ * `setQueryData` (p.ej. el payload de `home_snapshot`) DEBE pasar por
+ * acá: si no, el cache se reseedea sin `displayName` y los nombres salen
+ * VACÍOS en la UI (el rail/picker rendea `category.displayName`).
+ * Espeja la derivación de la queryFn de `useCategories`.
+ */
+export function withCategoryDisplayNames<
+  T extends { name: string; template_id?: string | null },
+>(categories: T[], scope: CategoryScope | string): Array<T & { displayName: string }> {
+  return categories.map((category) => ({
+    ...category,
+    displayName: localizeCategoryName({
+      name: category.name,
+      template_id: category.template_id,
+      scope,
+    }),
+  }))
+}
