@@ -33,7 +33,14 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
 }
 
 const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
-  // batch 2 (fijos)
+  servicios: 'vivienda/electricidad',
+  vivienda: 'vivienda/vivienda',
+  suscripciones: 'extra/subscripciones',
+  seguros: 'finanzas/seguros',
+  cuotas: 'frecuencias/cuotas',
+  impuestos: 'finanzas/impuestos',
+  deudas: 'finanzas/deuda',
+  inversiones: 'finanzas/inversiones',
 }
 
 export type CategoryIconScope = 'expense' | 'fixed_expense'
