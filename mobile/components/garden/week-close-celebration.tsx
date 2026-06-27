@@ -100,7 +100,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
                 <View style={styles.broteSlot}>
                   <Sprout
                     stage={stage}
-                    fernSize={40}
+                    fernSize={46}
                     tone="dark"
                     animateIn
                     animateInDelay={i * 70}
@@ -188,7 +188,8 @@ const styles = StyleSheet.create({
   },
   broteCol: { alignItems: 'center', gap: 10, flex: 1 },
   broteSlot: {
-    height: 50,
+    // 50 → 58 para alojar los brotes más grandes (fernSize 46 + stickers).
+    height: 58,
     alignItems: 'center',
     justifyContent: 'flex-end',
     position: 'relative',

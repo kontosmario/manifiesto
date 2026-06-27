@@ -468,7 +468,8 @@ const styles = StyleSheet.create({
   },
   kindTile: {
     width: '48%',
-    minHeight: 76,
+    // 76 → 88 para alojar el badge más grande (42) sin apretar el label.
+    minHeight: 88,
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 12,
@@ -478,15 +479,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   kindIconBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    // 34 → 42: unificado con el badge del rail de categorías (add-gasto).
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   kindIconImage: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
   },
   kindLabel: {
     fontSize: 12,

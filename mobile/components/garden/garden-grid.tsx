@@ -219,8 +219,8 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 4,
+    // Centrado en el casillero (antes flex-end + paddingBottom → anclado abajo).
+    justifyContent: 'center',
     overflow: 'hidden',
   },
   plantable: {

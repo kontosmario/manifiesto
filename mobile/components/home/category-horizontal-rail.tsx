@@ -58,21 +58,19 @@ interface CategoryHorizontalRailProps {
   warning?: boolean
 }
 
-const DEFAULT_TILE_WIDTH = 60
-// Bumped from 68 → 76pt to improve aspect ratio against the wider
-// stretched tiles (~88pt) the static grid uses — the old 0.77 ratio
-// felt squat. 76pt keeps tiles comfortably under thumb without
-// inflating overall picker height beyond ~248pt for 3 rows.
-const DEFAULT_TILE_HEIGHT = 76
+// Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
+// consistentes con el kind-picker de add-ingreso (badge 42 en ambos).
+const DEFAULT_TILE_WIDTH = 68
+// Bumped 76 → 86pt para alojar el badge más grande (42) + label sin apretar.
+const DEFAULT_TILE_HEIGHT = 86
 const TILE_GAP = 8
 // Wider gap for the static grid — without horizontal overflow to use
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
 // keeps them comfortably separated on a 4-column layout.
 export const STATIC_TILE_GAP = 12
-// Bumped from 30 → 34pt so the icon reads as the focal point of the
-// tile, not a small badge floating in whitespace. Pairs with the
-// taller tileHeight above.
-const BADGE_SIZE = 34
+// Bumped 34 → 42pt: el ícono es el foco del tile. Mismo tamaño que el
+// kindIconBadge de add-ingreso → lenguaje visual unificado entre ambos flujos.
+const BADGE_SIZE = 42
 
 export function CategoryHorizontalRail({
   categories,
@@ -294,7 +292,7 @@ function CategoryTile({ category, selected, iconScope, width, height, onPress }:
             <CategoryIcon
               name={category.name}
               scope={iconScope}
-              size={28}
+              size={32}
               emojiStyle={styles.emoji}
             />
           </View>
@@ -359,18 +357,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
-    // Bumped 16 → 18pt to match the larger badge (34pt) and keep
-    // the emoji visually filling the disc.
-    fontSize: 18,
-    lineHeight: 20,
+    // 21pt para llenar el badge de 42pt (fallback cuando no hay sticker).
+    fontSize: 21,
+    lineHeight: 23,
     textAlign: 'center',
     includeFontPadding: false,
   },
   label: {
-    // Bumped 9.5 → 11pt — the previous size was below the mobile
-    // legibility floor and looked cramped at default Dynamic Type.
-    // 11pt with weight 700 stays compact but reads cleanly.
-    fontSize: 11,
+    // 12pt: legible y consistente con el kindLabel de add-ingreso.
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0,
     textAlign: 'center',

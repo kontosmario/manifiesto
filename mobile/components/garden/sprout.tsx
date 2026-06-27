@@ -94,7 +94,7 @@ function SproutGlyph({
     case 'bloom':
       // Semana perfecta: planta arraigada con flor coral (5 pétalos + centro).
       return (
-        <Svg viewBox="0 0 40 44" width={28} height={28} style={[styles.bloom]}>
+        <Svg viewBox="0 0 40 44" width={32} height={32} style={[styles.bloom]}>
           <Path d="M20 40 V19" stroke={c.germStem} strokeWidth={2.4} strokeLinecap="round" />
           <Ellipse cx={13} cy={26} rx={6} ry={3.4} rotation={-32} originX={13} originY={26} fill={c.germLeaf1} />
           <Ellipse cx={27} cy={24} rx={6} ry={3.4} rotation={32} originX={27} originY={24} fill={c.germLeaf2} />
@@ -110,7 +110,7 @@ function SproutGlyph({
       // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
       // No florece — distinto de creciendo (sin coral) y de floración (flor llena).
       return (
-        <Svg viewBox="0 0 40 44" width={24} height={24} style={[styles.recovered]}>
+        <Svg viewBox="0 0 40 44" width={28} height={28} style={[styles.recovered]}>
           <Path d="M20 40 V24" stroke={c.germStem} strokeWidth={2.2} strokeLinecap="round" />
           <Ellipse cx={13.5} cy={28} rx={5.5} ry={3.2} rotation={-34} originX={13.5} originY={28} fill={c.germLeaf1} />
           <Ellipse cx={26.5} cy={26.5} rx={5.5} ry={3.2} rotation={34} originX={26.5} originY={26.5} fill={c.germLeaf2} />
@@ -119,15 +119,15 @@ function SproutGlyph({
       )
     case 'missed':
       return (
-        <Svg viewBox="0 0 40 44" width={24} height={24} style={[styles.missed, { opacity: c.missOpacity }]}>
+        <Svg viewBox="0 0 40 44" width={26} height={26} style={[styles.missed, { opacity: c.missOpacity }]}>
           <Path d="M20 40 Q19 30 24 26" stroke={c.missStroke} strokeWidth={2.2} fill="none" strokeLinecap="round" />
           <Ellipse cx={27} cy={25} rx={6.5} ry={3.6} rotation={58} originX={27} originY={25} fill={c.missFill} />
         </Svg>
       )
     case 'pending':
       return (
-        <Svg width={22} height={22}>
-          <Circle cx={11} cy={11} r={9} stroke="#7FC56A" strokeWidth={2} strokeDasharray="3 3" fill="none" />
+        <Svg width={24} height={24}>
+          <Circle cx={12} cy={12} r={10} stroke="#7FC56A" strokeWidth={2} strokeDasharray="3 3" fill="none" />
         </Svg>
       )
     case 'pre':
@@ -171,15 +171,17 @@ function SproutImpl({ stage, fernSize, tone = 'light', animateIn, animateInDelay
 }
 
 const styles = StyleSheet.create({
-  seed: { marginBottom: 7 },
-  germ: { marginBottom: 4 },
-  fern: { marginBottom: 2 },
-  bloom: { marginBottom: 3 },
-  recovered: { marginBottom: 5 },
-  missed: { marginBottom: 5 },
-  // Tamaños fijos para los stickers PNG (el <Svg> los tomaba por prop width/height).
-  seedImg: { width: 22, height: 22 },
-  germImg: { width: 27, height: 27 },
+  // Sin marginBottom: el glyph se CENTRA en su casillero (garden-grid) y en el
+  // broteSlot de la celebración. (Antes había lift para el anclaje al piso.)
+  seed: {},
+  germ: {},
+  fern: {},
+  bloom: {},
+  recovered: {},
+  missed: {},
+  // Stickers PNG más grandes (pedido del owner: apreciar más el jardín).
+  seedImg: { width: 28, height: 28 },
+  germImg: { width: 32, height: 32 },
 })
 
 export const Sprout = memo(SproutImpl)
