@@ -13,6 +13,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { Sprout } from '@/components/garden/sprout'
 import { BroteFireflies } from '@/components/garden/brote-fireflies'
+import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import type { BroteStage, WeekClose } from '@/features/garden/garden-model'
@@ -74,9 +75,10 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
         onPress={onContinue}
         style={StyleSheet.absoluteFill}
       />
-      {/* (Sin campo full-screen: las luciérnagas grandes que flotaban arriba de
-          los ferns y arrancaban estáticas se reemplazaron por las órbitas
-          por-brote, que ENTRAN animadas y rodean cada fern.) */}
+      {/* Campo de luciérnagas AMBIENTE (atmósfera) — siempre presente, además de
+          las órbitas por-brote. Es hijo del scrim → hereda su fade-in (no popea
+          estático) y las peach ya driftean más con el boost global. */}
+      <CardParticles count={12} color="#FFFBF2" accentColor="#F0B488" />
       {perfect && <ConfettiBurst pulseToken={1} originY={120} />}
 
       <Animated.View style={[styles.content, contentStyle]}>
