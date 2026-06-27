@@ -1,6 +1,9 @@
 # Refactor: catálogo global de categorías + custom per-familia
 
-**Estado:** EN PROGRESO (branch `feat/category-global-catalog`).
+**Estado:** ✅ CUTOVER APLICADO A PROD (2026-06-27), mergeado a `main`. Verificado:
+categories=view, home_snapshot 30/11, 0 huérfanos, `categories_legacy` +
+`_migration_category_id_backup` (399) intactos. **Requiere reship del build** (el
+build viejo manda category_id viejos que el modelo nuevo rechaza).
 **Motivo:** hoy `bootstrap_family` copia las 41 categorías del catálogo a CADA
 familia (`categories` per-familia). 0 familias crearon custom o renombraron →
 es 100% duplicación. Objetivo del owner: catálogo global compartido + tabla
