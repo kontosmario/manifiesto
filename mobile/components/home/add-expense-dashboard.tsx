@@ -181,11 +181,15 @@ export function AddExpenseDashboard({
       </RiseView>
 
       <RiseView delay={forDate ? 180 : 120}>
+        {/* Scroll horizontal (rows=2, como el picker de fijos): con el
+            catálogo expandido a 30 categorías la grilla estática recortaba
+            las columnas que desbordaban. rankedCategories deja las más
+            usadas al inicio; el resto se alcanza scrolleando. */}
         <CategoryHorizontalRail
           categories={rankedCategories}
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
-          staticGrid
+          rows={2}
           warning={flagCategory}
         />
       </RiseView>
