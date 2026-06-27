@@ -39,7 +39,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   verduleria: 'alimentacion/supermercado',
   carniceria: 'alimentacion/supermercado',
   comida: 'alimentacion/comida-rapida',
-  'comida-rapida': 'alimentacion/comida-rapida',
+  comida_rapida: 'alimentacion/comida-rapida',
   cafeteria: 'alimentacion/cafeteria',
   cafe: 'alimentacion/cafeteria',
   delivery: 'alimentacion/delivery',
@@ -52,7 +52,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   salidas: 'alimentacion/salida',
 
   // — Transporte —
-  'transporte-publico': 'transporte/transporte-publico',
+  transporte_publico: 'transporte/transporte-publico',
   colectivo: 'transporte/transporte-publico',
   sube: 'transporte/transporte-publico',
   combustible: 'transporte/combustible',
@@ -95,7 +95,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
 
   // — Cuidado personal —
   peluqueria: 'cuidado-personal/corte-de-pelo',
-  'corte-de-pelo': 'cuidado-personal/corte-de-pelo',
+  corte_de_pelo: 'cuidado-personal/corte-de-pelo',
   perfume: 'cuidado-personal/perfume',
   perfumeria: 'cuidado-personal/perfume',
   calzado: 'cuidado-personal/calzado',
@@ -110,7 +110,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   materiales: 'educacion/utiles',
   curso: 'educacion/educacion',
   colegio: 'educacion/educacion',
-  'clases-virtuales': 'extra/clases-virtuales',
+  clases_virtuales: 'extra/clases-virtuales',
   clases: 'extra/clases-virtuales',
 
   // — Entretenimiento —
@@ -165,7 +165,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   donaciones: 'servicios-general/donaciones',
   donacion: 'servicios-general/donaciones',
   tarjeta: 'finanzas/tarjeta-de-credito',
-  'tarjeta-de-credito': 'finanzas/tarjeta-de-credito',
+  tarjeta_de_credito: 'finanzas/tarjeta-de-credito',
   ahorro: 'finanzas/ahorro',
   banco: 'finanzas/banco',
   cajero: 'finanzas/cajero',
@@ -188,7 +188,7 @@ const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   hipoteca: 'vivienda/hipoteca',
   luz: 'vivienda/electricidad',
   electricidad: 'vivienda/electricidad',
-  'luz-y-gas': 'vivienda/electricidad',
+  luz_y_gas: 'vivienda/electricidad',
   gas: 'vivienda/gas',
   agua: 'vivienda/agua',
   internet: 'vivienda/internet',
@@ -204,11 +204,11 @@ const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   spotify: 'entretenimiento/musica',
   gimnasio: 'salud/gimnasio',
   prepaga: 'salud/medico',
-  'obra-social': 'salud/medico',
+  obra_social: 'salud/medico',
   educacion: 'educacion/educacion',
   colegio: 'educacion/educacion',
   tarjeta: 'finanzas/tarjeta-de-credito',
-  'tarjeta-de-credito': 'finanzas/tarjeta-de-credito',
+  tarjeta_de_credito: 'finanzas/tarjeta-de-credito',
   prestamo: 'finanzas/deuda',
   ahorro: 'finanzas/ahorro',
 }
