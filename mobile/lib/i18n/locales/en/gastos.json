@@ -736,6 +736,126 @@
           "Unexpected",
           "Adjustment"
         ]
+      },
+      "combustible": {
+        "default": "Combustible",
+        "name": "Fuel",
+        "quickDescriptions": [
+          "Gas",
+          "Diesel",
+          "Fill-up",
+          "Station"
+        ]
+      },
+      "delivery": {
+        "default": "Delivery",
+        "name": "Delivery",
+        "quickDescriptions": [
+          "Order",
+          "Food",
+          "Shipping",
+          "App"
+        ]
+      },
+      "cafeteria": {
+        "default": "Cafetería",
+        "name": "Coffee",
+        "quickDescriptions": [
+          "Coffee",
+          "Breakfast",
+          "Snack",
+          "Bar"
+        ]
+      },
+      "farmacia": {
+        "default": "Farmacia",
+        "name": "Pharmacy",
+        "quickDescriptions": [
+          "Meds",
+          "Prescription",
+          "Care",
+          "Pharmacy"
+        ]
+      },
+      "peluqueria": {
+        "default": "Peluquería",
+        "name": "Hair salon",
+        "quickDescriptions": [
+          "Haircut",
+          "Color",
+          "Styling",
+          "Beard"
+        ]
+      },
+      "taxi": {
+        "default": "Taxi",
+        "name": "Taxi",
+        "quickDescriptions": [
+          "Taxi",
+          "Uber",
+          "Rideshare",
+          "Cab"
+        ]
+      },
+      "estacionamiento": {
+        "default": "Estacionamiento",
+        "name": "Parking",
+        "quickDescriptions": [
+          "Garage",
+          "Toll",
+          "Lot",
+          "Parking"
+        ]
+      },
+      "libros": {
+        "default": "Libros",
+        "name": "Books",
+        "quickDescriptions": [
+          "Book",
+          "Bookstore",
+          "eBook",
+          "Magazine"
+        ]
+      },
+      "conciertos": {
+        "default": "Conciertos",
+        "name": "Concerts",
+        "quickDescriptions": [
+          "Show",
+          "Gig",
+          "Ticket",
+          "Festival"
+        ]
+      },
+      "donaciones": {
+        "default": "Donaciones",
+        "name": "Donations",
+        "quickDescriptions": [
+          "Donation",
+          "Contribution",
+          "Charity",
+          "Collection"
+        ]
+      },
+      "hobbies": {
+        "default": "Hobbies",
+        "name": "Hobbies",
+        "quickDescriptions": [
+          "Art",
+          "Pastime",
+          "Workshop",
+          "Hobby"
+        ]
+      },
+      "streaming": {
+        "default": "Streaming",
+        "name": "Streaming",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney",
+          "HBO"
+        ]
       }
     },
     "fixed_expense": {
