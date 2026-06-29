@@ -1,5 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
-import { Alert, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
+import {
+  Alert,
+  Keyboard,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -19,7 +27,12 @@ import {
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
 import { INCOME_KINDS } from '@/features/income/income-kinds'
-import { TileRail, type RailTile } from '@/components/home/category-horizontal-rail'
+import {
+  TileRail,
+  type RailTile,
+  railTileWidth,
+  RAIL_TILE_HEIGHT,
+} from '@/components/home/category-horizontal-rail'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
@@ -62,6 +75,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const router = useRouter()
   const { t } = useTranslation()
   const { theme } = useAppTheme()
+  const { width: windowWidth } = useWindowDimensions()
   const headerPalette = buildScreenHeaderPalette(theme)
   const quickDescriptions = useMemo(
     () => QUICK_DESCRIPTION_KEYS.map((key) => t(key)),
@@ -266,6 +280,8 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                 : t('gastos:addIncome.fromWhere')
             }
             rows={2}
+            tileWidth={railTileWidth(windowWidth)}
+            tileHeight={RAIL_TILE_HEIGHT}
             warning={flagKind}
           />
         </RiseView>

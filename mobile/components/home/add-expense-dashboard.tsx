@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react'
-import { Keyboard, StyleSheet, Text, View } from 'react-native'
+import { Keyboard, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AddExpenseAdvisorBanner } from '@/components/home/add-expense-advisor-banner'
 import { AmountCard } from '@/components/home/amount-card'
-import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
+import {
+  CategoryHorizontalRail,
+  railTileWidth,
+  RAIL_TILE_HEIGHT,
+} from '@/components/home/category-horizontal-rail'
 import { DescriptionRow } from '@/components/home/description-row'
 import { NotesRow } from '@/components/home/notes-row'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
@@ -84,6 +88,7 @@ export function AddExpenseDashboard({
 }: AddExpenseDashboardProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
+  const { width: windowWidth } = useWindowDimensions()
   const [numpadVisible, setNumpadVisible] = useState(false)
 
   // Flagged once the user nudges Guardar with required fields empty.
@@ -190,6 +195,8 @@ export function AddExpenseDashboard({
           selectedCategoryId={selectedCategoryId}
           onSelect={handleSelectCategory}
           rows={2}
+          tileWidth={railTileWidth(windowWidth)}
+          tileHeight={RAIL_TILE_HEIGHT}
           warning={flagCategory}
         />
       </RiseView>

@@ -36,6 +36,18 @@ const TILE_GAP = 8
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
 // keeps them comfortably separated on a 4-column layout.
 export const STATIC_TILE_GAP = 12
+
+/**
+ * Ancho de tile que llena la fila con ~4 columnas. MISMO criterio en los 3
+ * flujos (add-gasto / add-fijo / add-ingreso) para una selección consistente.
+ * Resta los paddings del Screen (40) + el padding interno del rail (8) + los 3
+ * gaps de 8pt entre las 4 columnas (24).
+ */
+export function railTileWidth(windowWidth: number): number {
+  return Math.max(64, Math.floor((windowWidth - 40 - 8 - 24) / 4))
+}
+/** Alto de tile unificado (igual que add-fijo). */
+export const RAIL_TILE_HEIGHT = 80
 /**
  * Item genérico del rail de selección. Desacopla la presentación (tile +
  * scroll horizontal 2-filas + animaciones) del modelo de datos: lo usan tanto

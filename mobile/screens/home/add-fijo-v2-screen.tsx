@@ -27,6 +27,7 @@ import { Step1Form } from '@/components/fijos/add-fijo-parts/step1-form'
 import { Step2Summary } from '@/components/fijos/add-fijo-parts/step2-summary'
 import { StepDots, StepHeader } from '@/components/fijos/add-fijo-parts/step-header'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
+import { railTileWidth, RAIL_TILE_HEIGHT } from '@/components/home/category-horizontal-rail'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import {
   useCreateFixedExpense,
@@ -76,15 +77,9 @@ export function AddFijoV2Screen({
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
-  // Compute un tile width que llene la row exactamente cuando las 8
-  // fijo categories layout como 4 cols × 2 rows. Screen tiene paddingH=20
-  // each side; el rail agrega paddingH=4 dentro de su scroll content; 3
-  // gaps de 8pt entre las 4 cols. Lo que queda se reparte en tiles.
-  const fijosTileWidth = Math.max(
-    64,
-    Math.floor((windowWidth - 40 - 8 - 24) / 4),
-  )
-  const fijosTileHeight = 80
+  // Ancho/alto de tile unificados con add-gasto y add-ingreso (mismo helper).
+  const fijosTileWidth = railTileWidth(windowWidth)
+  const fijosTileHeight = RAIL_TILE_HEIGHT
   const isEditing = Boolean(fixedExpenseId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categories = categoriesQuery.data ?? []
