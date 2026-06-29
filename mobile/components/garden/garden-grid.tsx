@@ -2,7 +2,6 @@ import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Svg, { Circle } from 'react-native-svg'
-import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { Sprout } from './sprout'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -14,8 +13,6 @@ interface GardenGridProps {
   cells: GardenCell[]
   /** Anima la entrada del brote de HOY (solo al recién plantar). */
   justPlantedToday?: boolean
-  /** Muestra la leyenda (controlada por el toggle del header del card). */
-  showLegend?: boolean
   /** ISO del hueco recuperable de la semana cerrada (6/7 + escudo) — null si no hay. */
   recoverableGapIso?: string | null
   /** Tap en la celda del hueco recuperable → abre la confirmación de plantar. */
@@ -31,16 +28,6 @@ const WEEKDAY_INITIALS = (): string[] =>
   Array.from({ length: 7 }, (_, i) =>
     weekdayLongFromMondayIndex(i).charAt(0).toUpperCase(),
   )
-
-// Puntos de color de la leyenda (matchean los fills del glyph de cada estado).
-// `key` resuelve el label vía i18n (garden:legend.*).
-const LEGEND: Array<{ key: string; color: string }> = [
-  { key: 'seed', color: '#C29A5E' },
-  { key: 'growing', color: '#A9D57F' },
-  { key: 'rooted', color: '#4F9E45' },
-  { key: 'bloom', color: '#E2935E' },
-  { key: 'skipped', color: '#CBC6B6' },
-]
 
 function isPlanted(stage: BroteStage): boolean {
   return (
@@ -89,7 +76,6 @@ function toWeeks(cells: GardenCell[]): GardenCell[][] {
 function GardenGridImpl({
   cells,
   justPlantedToday,
-  showLegend,
   recoverableGapIso,
   onPlantGap,
 }: GardenGridProps) {
@@ -202,29 +188,6 @@ function GardenGridImpl({
           )
         })}
       </View>
-
-      {showLegend && (
-        <Animated.View
-          entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
-          exiting={FadeOut.duration(150).reduceMotion(ReduceMotion.System)}
-          style={styles.legend}
-        >
-          {LEGEND.map((l) => (
-            <View
-              key={l.key}
-              style={[
-                styles.chip,
-                { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.05)' : '#F2EFE6' },
-              ]}
-            >
-              <View style={[styles.dot, { backgroundColor: l.color }]} />
-              <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>
-                {t(`garden:legend.${l.key}`)}
-              </Text>
-            </View>
-          ))}
-        </Animated.View>
-      )}
     </View>
   )
 }
@@ -269,31 +232,6 @@ const styles = StyleSheet.create({
   cellPressed: {
     transform: [{ scale: 0.94 }],
     opacity: 0.85,
-  },
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 7,
-    marginTop: 18,
-    paddingBottom: 4,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  dot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-  },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '700',
   },
 })
 

@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { MaterialIcons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -34,7 +33,6 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const { data } = useGarden(familyId, userId)
   const recover = useRecoverGardenDay(familyId, userId)
   const [showWeekClose, setShowWeekClose] = useState(false)
-  const [showLegend, setShowLegend] = useState(false)
 
   const handleOpenWeekClose = useCallback(() => {
     void triggerHaptic('selection')
@@ -122,32 +120,15 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
                 <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>
                   {t('garden:card.title')}
                 </Text>
-                <Pressable
-                  onPress={() => setShowLegend((v) => !v)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('garden:card.legendToggleLabel')}
-                  style={styles.legendToggle}
-                >
-                  <Text style={[styles.legendToggleText, { color: theme.colors.textMuted }]}>
-                    {t('garden:card.legendToggle')}
-                  </Text>
-                  <MaterialIcons
-                    name={showLegend ? 'expand-less' : 'expand-more'}
-                    size={16}
-                    color={theme.colors.textMuted}
-                  />
-                </Pressable>
+                <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
+                  {data.weeksShown <= 1
+                    ? t('garden:card.firstWeek')
+                    : t('garden:card.weeksShown', { count: data.weeksShown })}
+                </Text>
               </View>
-              <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
-                {data.weeksShown <= 1
-                  ? t('garden:card.firstWeek')
-                  : t('garden:card.weeksShown', { count: data.weeksShown })}
-              </Text>
               <View style={styles.gridWrap}>
                 <GardenGrid
                   cells={data.cells}
-                  showLegend={showLegend}
                   recoverableGapIso={data.recoverableGapIso}
                   onPlantGap={handlePlantGap}
                 />
@@ -174,8 +155,8 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
 
 const styles = StyleSheet.create({
   body: {
-    gap: 14,
-    paddingBottom: 32,
+    gap: 12,
+    paddingBottom: 28,
   },
   avatar: {
     width: 40,
@@ -186,10 +167,10 @@ const styles = StyleSheet.create({
     boxShadow: '0 3px 10px rgba(28,58,35,0.08)',
   },
   gardenCard: {
-    borderRadius: 30,
-    paddingTop: 22,
-    paddingHorizontal: 22,
-    paddingBottom: 8,
+    borderRadius: 28,
+    paddingTop: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
     borderWidth: 1,
     boxShadow: '0 6px 24px rgba(28,58,35,0.07)',
   },
@@ -205,19 +186,9 @@ const styles = StyleSheet.create({
   gardenMeta: {
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 2,
-  },
-  legendToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  legendToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   gridWrap: {
-    marginTop: 16,
+    marginTop: 12,
   },
   footnote: {
     fontSize: 12.5,

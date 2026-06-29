@@ -67,8 +67,6 @@ function GardenHeroImpl({ streak, total, record, seeds }: GardenHeroProps) {
             {t('garden:hero.unit')}
           </Text>
         </View>
-        <Text style={[styles.sub, { color: theme.colors.heroMuted }]}>{t('garden:hero.sub')}</Text>
-
         <View style={[styles.divider, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
         <View style={styles.statStrip}>
           <HeroStat label={t('garden:hero.statGarden')} value={String(total)} />
@@ -84,9 +82,9 @@ function GardenHeroImpl({ streak, total, record, seeds }: GardenHeroProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 28,
-    padding: 22,
-    paddingBottom: 18,
+    borderRadius: 26,
+    padding: 18,
+    paddingBottom: 14,
     overflow: 'hidden',
   },
   fern: {
@@ -111,32 +109,25 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   number: {
-    fontSize: 60,
+    fontSize: 48,
     fontWeight: '900',
-    lineHeight: 58,
-    letterSpacing: -2.2,
+    lineHeight: 46,
+    letterSpacing: -1.6,
   },
   unit: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
-    paddingBottom: 9,
-    lineHeight: 18,
-  },
-  sub: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 13,
-    lineHeight: 19,
-    maxWidth: '82%',
+    paddingBottom: 7,
+    lineHeight: 17,
   },
   divider: {
     height: 1,
-    marginTop: 18,
+    marginTop: 14,
   },
   statStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 12,
   },
   stat: {
     flex: 1,
@@ -147,7 +138,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   statValue: {
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '900',
     letterSpacing: -0.4,
     marginTop: 3,
