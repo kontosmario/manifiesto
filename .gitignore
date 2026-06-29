@@ -42,6 +42,10 @@ expo-env.d.ts
 
 .superpowers/
 
+# Claude Code local agent config (skills, settings, session state) — local to
+# each machine, not shared via git.
+.claude/
+
 # Playwright
 /test-results/
 /playwright-report/
