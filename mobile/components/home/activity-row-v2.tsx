@@ -4,6 +4,7 @@ import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { formatMoneyWithSign } from '@/utils/money'
 import { withAlpha } from '@/theme/color-utils'
+import { lightenForDarkBg } from '@/utils/category-color'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface ActivityRowV2Props {
@@ -32,15 +33,19 @@ function ActivityRowV2Impl({ icon, title, category, categoryColor, whoName, whoC
   // Icon tile tinted por categoría — mismo patrón que GastoRow (bg 14% +
   // borde 22% del color de la categoría). Memoizado: el row vive en lista
   // y se re-renderea seguido; sin esto se parsea el hex en cada render.
+  // En dark el icon tile va CLARO (versión lightened del color de la categoría)
+  // → el sticker se lee directo, sin el "cuadradito" extra, igual que en light.
   const iconTileStyle = useMemo(
     () => [
       styles.iconTile,
       {
-        backgroundColor: withAlpha(categoryColor, 0.14),
+        backgroundColor: theme.isDark
+          ? lightenForDarkBg(categoryColor)
+          : withAlpha(categoryColor, 0.14),
         borderColor: withAlpha(categoryColor, 0.22),
       },
     ],
-    [categoryColor],
+    [categoryColor, theme.isDark],
   )
   return (
     <SlideInView delay={delay}>

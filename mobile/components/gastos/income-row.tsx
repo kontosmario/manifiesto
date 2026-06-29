@@ -70,9 +70,13 @@ function IncomeRowImpl({
     }),
     [accent, theme.isDark],
   )
+  // En dark el icon tile usa el pastel CLARO del hue del kind → el sticker se
+  // lee directo (sin el "cuadradito"); en light queda el tinte actual. El pill
+  // de texto sigue con tile.bg.
+  const iconTileBg = theme.isDark ? resolveCategoryHueByName(kind).light.surface : tile.bg
   const iconTileStyle = useMemo(
-    () => [styles.iconTile, { backgroundColor: tile.bg, borderColor: tile.border }],
-    [tile.bg, tile.border],
+    () => [styles.iconTile, { backgroundColor: iconTileBg, borderColor: tile.border }],
+    [iconTileBg, tile.border],
   )
   const kindPillStyle = useMemo(
     () => [styles.catChip, { backgroundColor: tile.bg, borderColor: tile.border }],
@@ -93,11 +97,7 @@ function IncomeRowImpl({
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
           {CATEGORY_ICONS[meta.icon] ? (
-            <CategorySticker
-              source={CATEGORY_ICONS[meta.icon]}
-              size={24}
-              plateColor={resolveCategoryHueByName(kind).light.surface}
-            />
+            <CategorySticker source={CATEGORY_ICONS[meta.icon]} size={24} onLightSurface />
           ) : (
             <Text style={styles.iconText}>{emoji}</Text>
           )}

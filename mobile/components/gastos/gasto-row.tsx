@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 
@@ -103,9 +104,17 @@ function GastoRowReal({
   // También memoizamos los style arrays para que la identity sea
   // estable across renders → permite que children (View) memo skip
   // re-render cuando el row no cambió de props.
+  // Fondo del icon tile: en dark usa el pastel CLARO del hue (mismo color que
+  // antes tenía la placa del sticker) → el sticker se lee directo, sin el
+  // "cuadradito" extra; mismo comportamiento que en light. El chip de texto
+  // sigue con tile.bg (su texto ink necesita ese fondo).
+  const iconTileBg = useMemo(
+    () => (theme.isDark ? resolveCategoryHueByName(iconName).light.surface : tile.bg),
+    [theme.isDark, iconName, tile.bg],
+  )
   const iconTileStyle = useMemo(
-    () => [styles.iconTile, { backgroundColor: tile.bg, borderColor: tile.border }],
-    [tile.bg, tile.border],
+    () => [styles.iconTile, { backgroundColor: iconTileBg, borderColor: tile.border }],
+    [iconTileBg, tile.border],
   )
   const catChipStyle = useMemo(
     () => [styles.catChip, { backgroundColor: tile.bg, borderColor: tile.border }],
@@ -124,7 +133,7 @@ function GastoRowReal({
     >
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
-          <CategoryIcon name={iconName} scope="expense" size={24} emojiStyle={styles.iconText} />
+          <CategoryIcon name={iconName} scope="expense" size={24} emojiStyle={styles.iconText} onLightSurface />
         </View>
         <WhoPaidAvatar name={whoName} color={whoColor} size={16} />
       </View>

@@ -7,6 +7,7 @@ import {
   Text,
   View,
 } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   Easing,
   useSharedValue,
@@ -326,13 +327,21 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
     transform: [{ scale: reduceMotion ? 1 : scale.value }],
   }))
 
+  // Selección bien diferenciable también en dark: borde grueso (1→3pt) en el
+  // INK oscuro del hue (contrasta fuerte sobre el pastel claro del tile, en
+  // ambos modos) + un check badge en la esquina.
   const borderStyle = useAnimatedStyle(() => ({
     borderColor: interpolateColor(
       selectedProgress.value,
       [0, 1],
-      [theme.colors.border, theme.colors.primary],
+      [theme.colors.border, hue.ink],
     ),
-    borderWidth: 1 + selectedProgress.value,
+    borderWidth: 1 + selectedProgress.value * 2,
+  }))
+
+  const checkStyle = useAnimatedStyle(() => ({
+    opacity: selectedProgress.value,
+    transform: [{ scale: 0.5 + selectedProgress.value * 0.5 }],
   }))
 
   return (
@@ -371,6 +380,12 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
           >
             {tile.label}
           </Text>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.checkBadge, { backgroundColor: hue.ink }, checkStyle]}
+          >
+            <MaterialIcons name="check" size={11} color={hue.surface} />
+          </Animated.View>
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -420,5 +435,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0,
     textAlign: 'center',
     width: '100%',
+  },
+  checkBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 17,
+    height: 17,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })

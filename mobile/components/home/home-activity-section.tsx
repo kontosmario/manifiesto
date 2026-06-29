@@ -209,7 +209,7 @@ function HomeActivitySectionImpl({
             isProcessing={pendingExpenseId === expense.id}
           >
             <ActivityRowV2
-              icon={<CategoryIcon name={categoryRawName} scope="expense" size={24} />}
+              icon={<CategoryIcon name={categoryRawName} scope="expense" size={24} onLightSurface />}
               title={expense.description || categoryName}
               category={categoryName}
               categoryColor={categoryColorById.get(expense.category_id) ?? NO_CATEGORY_COLOR}

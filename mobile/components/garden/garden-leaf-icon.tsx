@@ -39,7 +39,7 @@ function GardenLeafIconImpl({ data, onPress }: GardenLeafIconProps) {
     >
       <Animated.View style={[styles.container, { backgroundColor: surface }, press.animatedStyle]}>
         <FernMark variant={theme.isDark ? 'mint' : 'forest'} size={24} />
-        <View style={[styles.badge, { backgroundColor: theme.colors.primary, borderColor: surface }]}>
+        <View style={[styles.badge, { backgroundColor: theme.colors.peach, borderColor: surface }]}>
           <Text style={[styles.badgeText, { color: theme.isDark ? theme.colors.canvas : '#FFFFFF' }]}>
             {badgeText}
           </Text>
