@@ -8,11 +8,21 @@ import { useGarden } from '@/features/garden/use-garden'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import type { WeekDayState } from '@/features/garden/garden-model'
+import type { WeekDayState, WeekStripDay } from '@/features/garden/garden-model'
 
 interface StreakWeekWidgetProps {
-  familyId: string
+  /** Requerido en Home; se omite en modo `preview` (pre-auth, sin familia). */
+  familyId?: string
   userId?: string
+  /**
+   * Pre-auth onboarding PREVIEW: render the exact same widget with
+   * illustrative week data instead of fetching the real garden. When
+   * set, `useGarden` is called with empty args (its queries are gated
+   * off → no network) and the row is non-interactive (there's no
+   * `/(app)/garden` route before signup). Default `undefined` keeps the
+   * real Home behaviour untouched.
+   */
+  preview?: { weekStrip: WeekStripDay[]; currentStreak: number }
 }
 
 /**
@@ -22,28 +32,34 @@ interface StreakWeekWidgetProps {
  * número de racha (confundía: el jardín es indulgente con huecos). Diseñado
  * para baja altura (se ve muchas veces al día → calmo y compacto).
  */
-function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
+function StreakWeekWidgetImpl({ familyId, userId, preview }: StreakWeekWidgetProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const router = useRouter()
   const press = usePressScale({ pressedScale: 0.98 })
-  const { data } = useGarden(familyId, userId)
+  // En preview (pre-auth) pasamos args vacíos → useGarden no fetchea
+  // (sus queries están gated por `enabled: Boolean(familyId && userId)`).
+  const garden = useGarden(preview ? undefined : familyId, preview ? undefined : userId)
+  const data = preview ?? garden.data
 
   if (!data) return null
 
-  const onPress = () => {
-    void triggerHaptic('selection')
-    router.push('/(app)/garden')
-  }
+  const onPress = preview
+    ? undefined
+    : () => {
+        void triggerHaptic('selection')
+        router.push('/(app)/garden')
+      }
 
   const dotColors = dotColorsFor(theme.isDark)
 
   return (
     <Pressable
       onPress={onPress}
-      onPressIn={press.onPressIn}
-      onPressOut={press.onPressOut}
-      accessibilityRole="button"
+      onPressIn={onPress ? press.onPressIn : undefined}
+      onPressOut={onPress ? press.onPressOut : undefined}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : 'image'}
       accessibilityLabel={t('home:streakWidget.accessibility', {
         count: data.currentStreak,
       })}
@@ -80,11 +96,13 @@ function StreakWeekWidgetImpl({ familyId, userId }: StreakWeekWidgetProps) {
 
         {/* Sin número de racha (confundía): la tira semanal alcanza para el
             glance. El chevron indica que es tappable → abre "Mi jardín". */}
-        <MaterialIcons
-          name="chevron-right"
-          size={20}
-          color={theme.colors.textMuted}
-        />
+        {!preview ? (
+          <MaterialIcons
+            name="chevron-right"
+            size={20}
+            color={theme.colors.textMuted}
+          />
+        ) : null}
       </Animated.View>
     </Pressable>
   )

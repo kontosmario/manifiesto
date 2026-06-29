@@ -21,6 +21,7 @@ import {
   AuroraLayer,
   ParticleLayer,
 } from '@/components/auth/auth-launch-splash'
+import { CardParticles } from '@/components/ui/card-particles'
 import { WelcomeCancelDeletionBanner } from '@/components/common/welcome-cancel-deletion-banner'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { RiseView } from '@/components/home/animated/rise-view'
@@ -39,7 +40,8 @@ interface WelcomeScreenProps {
 /**
  * Welcome screen — the first thing an unauthenticated visitor sees in the
  * (auth) stack. Full-bleed dark green background with two breathing aurora
- * blobs and 8 drifting particle dots. Hero stack centered low: Fern logo,
+ * blobs, the drifting `ParticleLayer` dots AND a denser glowing firefly field
+ * (`CardParticles`, same as the onboarding intro). Hero stack centered low: Fern logo,
  * "Manifiesto." wordmark with a peach period, tagline. Two CTAs at the
  * bottom (Empezar / Ya tengo cuenta) plus a fine-print footer.
  *
@@ -66,6 +68,10 @@ export function WelcomeScreen({ onCreate, onLogin, isBusy = false }: WelcomeScre
       <StatusBar style="light" />
       <AuroraLayer width={width} height={height} />
       <ParticleLayer width={width} height={height} reduced={reduced} />
+      {/* Campo denso de luciérnagas (mismo que el onboarding intro) — suma
+          glow + flicker + peach sobre los 24 puntos planos del ParticleLayer.
+          1 solo driver para las 28 (CardParticles usa un único shared wave). */}
+      <CardParticles count={28} color="#B2E08A" peachColor="#F0B488" />
 
       <View
         style={[

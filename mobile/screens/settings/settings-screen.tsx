@@ -4,6 +4,7 @@ import {
   runDevJourney,
   type DevJourney,
 } from '@/features/auth-flow/dev-journeys'
+import { resetIntroSeen } from '@/features/onboarding-intro/intro-seen'
 import { useFocusEffect } from '@react-navigation/native'
 import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -768,6 +769,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handleForceResetAuthFlow = useCallback(() => {
     void triggerHaptic('selection')
     forceResetAuthFlow()
+  }, [])
+
+  // Reinicia el flag device-local del intro pre-auth → el showcase de 5
+  // slides vuelve a mostrarse en el próximo arranque SIN sesión (cerrar
+  // sesión y volver como guest lo dispara). No cierra sesión por sí solo.
+  const handleResetIntroSeen = useCallback(() => {
+    void triggerHaptic('selection')
+    void resetIntroSeen().then(() => {
+      Alert.alert(
+        'Intro pre-auth reiniciado',
+        'El showcase de 5 slides se mostrará en el próximo arranque sin sesión. Cerrá sesión para verlo ahora.',
+      )
+    })
   }, [])
 
   // TESTING flag: when ON, the Asistente returns a curated fixture
@@ -1630,6 +1644,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     icon="auto-stories"
                     label="Preview · Cierre de ciclo"
                     onPress={() => router.push('/(app)/settings/dev/cycle-wrapped' as never)}
+                  />
+                  <SettingsRow
+                    helper="Previsualiza el intro pre-auth (5 slides) estando logueado, sin pasar por el gate de guest. Los CTA y Cerrar vuelven acá; no toca el flag."
+                    icon="slideshow"
+                    label="Preview · Onboarding intro"
+                    onPress={() => router.push('/(app)/settings/dev/intro-preview' as never)}
+                  />
+                  <SettingsRow
+                    helper="Reinicia 'intro visto' → el showcase de 5 slides se muestra de nuevo en el próximo arranque sin sesión (cerrá sesión para verlo)."
+                    icon="restart-alt"
+                    label="Reiniciar intro pre-auth"
+                    onPress={handleResetIntroSeen}
                   />
                   <SettingsRow
                     helper="Abre el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."

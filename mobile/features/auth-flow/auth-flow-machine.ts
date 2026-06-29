@@ -22,6 +22,12 @@ export interface ProbesResult {
    * boot se re-entra post-login: va directo al bridge.
    */
   isUnlocked: boolean
+  /**
+   * Intro pre-auth (5 slides) ya visto en este dispositivo. Cuando hay
+   * sesión es irrelevante; cuando NO hay sesión y todavía no se vio, el
+   * guest arranca en `/(auth)/intro` en vez de `/(auth)/welcome`.
+   */
+  introSeen: boolean
 }
 
 interface BridgingState {
@@ -159,9 +165,13 @@ export function transition(state: AuthFlowState, event: AuthFlowEvent): Transiti
       if (state.phase !== 'probing') return NOOP(state)
       const { probes } = event
       if (!probes.hasSession) {
+        // Returning user con biometría guardada → directo al login Face ID.
+        // First-run sin intro visto → el showcase de 5 slides. Si no, welcome.
         const to = probes.shouldUseBiometric && probes.hasSavedCredentials
           ? '/(auth)/login?autoBiometric=1'
-          : '/(auth)/welcome'
+          : probes.introSeen
+            ? '/(auth)/welcome'
+            : '/(auth)/intro'
         return { state: { phase: 'guest' }, effects: [{ kind: 'navigate', to }] }
       }
       if (probes.isUnlocked) {

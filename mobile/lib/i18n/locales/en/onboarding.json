@@ -1,4 +1,36 @@
 {
+  "intro": {
+    "slide1": {
+      "eyebrow": "Household finances",
+      "titleLead": "Your household money,",
+      "titleAccent": "at peace.",
+      "subtitle": "Your whole household sees the same month: how much there is, how much you can spend today, and what's coming."
+    },
+    "slide2": {
+      "title": "One clear number for the whole household.",
+      "subtitle": "Whether you run it alone or with someone, everyone sees the same thing. No more spreadsheets or arguments over different numbers."
+    },
+    "slide3": {
+      "title": "Fixed, income and the day-to-day.",
+      "subtitle": "Add your fixed expenses once and we show how much they swing and how much they weigh on your pay. Plus any income that comes in."
+    },
+    "slide4": {
+      "title": "Every day you log, you plant a sprout.",
+      "subtitle": "A full week and your garden blooms. And if one day you can't, that's okay: the garden waits for you, no guilt."
+    },
+    "slide5": {
+      "titleLead": "Start with 30 full",
+      "titleAccent": "days.",
+      "subtitle": "You get the whole app from day one. Then you choose whether to keep going. No card to start."
+    },
+    "cta": {
+      "create": "Create my household",
+      "login": "I already have an account",
+      "next": "Continue",
+      "begin": "Get started"
+    },
+    "dotLabel": "Go to screen {{n}}"
+  },
   "chrome": {
     "title": {
       "name": "Your name",

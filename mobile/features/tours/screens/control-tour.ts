@@ -5,8 +5,12 @@ import type { TourStepCopy } from './home-tour'
 export const CONTROL_TOUR = TOUR_KEYS.control
 
 /**
- * Control tour — 8 stops covering every analytics card top-to-bottom
+ * Control tour — 7 stops covering every analytics card top-to-bottom
  * so the user understands what each one tells them.
+ *
+ * (El paso `asesor` se removió: la ControlV2AsesorCard ya no existe —
+ * las señales del asesor se movieron al ícono de Home. No re-agregar
+ * sin una card en Control que registre el target.)
  *
  * `text` vía getter para reaccionar al cambio de idioma en runtime.
  */
@@ -17,44 +21,38 @@ export const CONTROL_TOUR_STEPS = {
       return i18n.t('states:tour.control.hoy')
     },
   },
-  asesor: {
-    order: 1,
-    get text() {
-      return i18n.t('states:tour.control.asesor')
-    },
-  },
   alcanza: {
-    order: 2,
+    order: 1,
     get text() {
       return i18n.t('states:tour.control.alcanza')
     },
   },
   alcancia: {
-    order: 3,
+    order: 2,
     get text() {
       return i18n.t('states:tour.control.alcancia')
     },
   },
   semana: {
-    order: 4,
+    order: 3,
     get text() {
       return i18n.t('states:tour.control.semana')
     },
   },
   vsMes: {
-    order: 5,
+    order: 4,
     get text() {
       return i18n.t('states:tour.control.vsMes')
     },
   },
   patron: {
-    order: 6,
+    order: 5,
     get text() {
       return i18n.t('states:tour.control.patron')
     },
   },
   cobertura: {
-    order: 7,
+    order: 6,
     get text() {
       return i18n.t('states:tour.control.cobertura')
     },

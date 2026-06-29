@@ -41,6 +41,7 @@ import {
   useScreenTour,
   useTourTargetRef,
 } from '@/features/tours'
+import { useGarden } from '@/features/garden/use-garden'
 import type { Expense } from '@/features/expenses/use-expenses'
 import type { IncomeEvent } from '@/features/income/use-income-events'
 import {
@@ -252,6 +253,10 @@ export function HomeDashboard({
   const membersQuery = useFamilyMembers(familyId)
   const homeMetrics = useHomeMetrics(familyId)
   const savingsGoalQuery = useSavingsGoal(familyId)
+  // Gate del paso `streak` del tour: solo registramos el target cuando
+  // StreakWeekWidget realmente renderiza (hay datos de jardín). Es la
+  // misma query cacheada que usa el widget → sin fetch extra.
+  const gardenForTour = useGarden(familyId, sessionUserId)
   // Memoize array fallbacks. Sin esto cada `?? []` crea un new array
   // reference por render, rompiendo el `React.memo` de FamilyStrip y
   // HomeActivitySection — los hijos memo'd reciben new array y
@@ -1009,8 +1014,18 @@ export function HomeDashboard({
       ) : null}
 
       {/* Racha del jardín — pegada a Actividad: la racha es tu hábito de registrar,
-          y así no interrumpe el par saldo↔variables/fijos. */}
-      <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
+          y así no interrumpe el par saldo↔variables/fijos. El TourTarget solo
+          envuelve cuando hay datos (igual que `meta`), para no registrar un
+          target vacío cuando el widget se renderiza como null. */}
+      {gardenForTour.data ? (
+        <TourTarget
+          tour={HOME_TOUR}
+          order={HOME_TOUR_STEPS.streak.order}
+          text={HOME_TOUR_STEPS.streak.text}
+        >
+          <StreakWeekWidget familyId={familyId} userId={sessionUserId} />
+        </TourTarget>
+      ) : null}
       <View style={styles.activityHeader}>
         <Text style={[styles.activityLabel, { color: theme.colors.textMuted }]}>{t('home:dashboard.activity')}</Text>
         {recentExpenses.length > 0 || cycleIncome.length > 0 ? (

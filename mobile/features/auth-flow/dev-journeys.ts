@@ -40,6 +40,7 @@ export function runDevJourney(journey: DevJourney) {
       pinSet: false,
       hasSavedCredentials: true,
       isUnlocked: false,
+      introSeen: true,
     }),
     promptBiometric: async () => {
       await wait(2200) // tiempo típico de FaceID

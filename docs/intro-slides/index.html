@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Manifiesto — Intro (3 slides)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root{
+    --ink:#12140E;        /* warm green-charcoal */
+    --ink-2:#191C13;
+    --cream:#F4ECDE;
+    --muted:#A9A491;
+    --terra:#E59B6E;
+    --green:#73C295;
+    --gold:#DCB75F;
+    --line:rgba(244,236,222,.12);
+    --accent:var(--terra);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--ink);
+    color:var(--cream);
+    font-family:"Hanken Grotesk",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;overflow:hidden;
+  }
+  /* atmosphere */
+  .deck{
+    position:relative;
+    width:min(96vw,1180px);
+    aspect-ratio:16/10;
+    max-height:94vh;
+    border-radius:26px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 90% at 12% 8%, rgba(229,155,110,.10), transparent 55%),
+      radial-gradient(120% 90% at 92% 96%, rgba(115,194,149,.08), transparent 55%),
+      linear-gradient(170deg,#181B12,#0F120C 70%);
+    border:1px solid var(--line);
+    box-shadow:0 40px 120px -40px rgba(0,0,0,.8);
+  }
+  .grain{position:absolute;inset:0;opacity:.05;pointer-events:none;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  .slide{position:absolute;inset:0;display:grid;grid-template-columns:1.05fr 1fr;
+    align-items:center;gap:24px;padding:clamp(28px,4.4vw,64px);
+    opacity:0;visibility:hidden;pointer-events:none;}
+  .slide.active{opacity:1;visibility:visible;pointer-events:auto;}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:clamp(12px,1.15vw,15px);
+    letter-spacing:.02em;color:var(--muted);font-weight:600;margin:0 0 18px;}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent);display:inline-block;}
+  .eyebrow em{font-style:normal;color:var(--cream);opacity:.85}
+
+  h1{font-family:"Fraunces",serif;font-weight:600;
+    font-size:clamp(30px,4.7vw,60px);line-height:1.02;letter-spacing:-.015em;
+    margin:0 0 20px;color:var(--cream);}
+  h1 .hl{color:var(--accent);font-style:italic;font-weight:500;}
+  .lede{font-size:clamp(15px,1.45vw,19px);line-height:1.5;color:#D9D2C2;max-width:30ch;margin:0;}
+  .step{position:absolute;top:clamp(24px,3.6vw,46px);left:clamp(28px,4.4vw,64px);
+    font-family:"Fraunces",serif;font-size:13px;color:var(--muted);letter-spacing:.18em;}
+  .pillar{margin-top:26px;font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;opacity:.9}
+
+  .stage{position:relative;height:100%;display:flex;align-items:center;justify-content:center;}
+  .stage svg{width:100%;height:auto;max-height:78%;overflow:visible;}
+
+  /* chrome */
+  .brand{position:absolute;left:clamp(28px,4.4vw,64px);bottom:clamp(22px,3vw,40px);
+    display:flex;align-items:center;gap:9px;font-family:"Fraunces",serif;font-size:16px;color:var(--cream);opacity:.9;z-index:5}
+  .brand i{width:9px;height:9px;border-radius:50%;background:var(--accent);display:inline-block}
+  .nav{position:absolute;right:clamp(22px,3vw,40px);bottom:clamp(22px,3vw,40px);
+    display:flex;align-items:center;gap:14px;z-index:5}
+  .dots{display:flex;gap:8px}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(244,236,222,.22);border:0;padding:0;cursor:pointer;transition:.3s}
+  .dot.on{background:var(--accent);width:22px;border-radius:5px}
+  .arrow{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:transparent;
+    color:var(--cream);cursor:pointer;font-size:16px;display:grid;place-items:center;transition:.2s}
+  .arrow:hover{background:rgba(244,236,222,.08);border-color:rgba(244,236,222,.3)}
+  .progress{position:absolute;left:0;top:0;height:3px;width:100%;background:transparent;z-index:6}
+  .progress > i{display:block;height:100%;width:0;background:var(--accent);opacity:.85}
+
+  @media (max-width:720px){
+    .slide{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+    .stage{order:-1}.lede{max-width:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .grain{display:none} }
+</style>
+</head>
+<body>
+<main class="deck" id="deck" aria-label="Introducción a Manifiesto en 3 pantallas">
+  <div class="grain"></div>
+  <div class="progress"><i id="bar"></i></div>
+
+  <!-- ░░░ SLIDE 1 · REGISTRAR ░░░ -->
+  <section class="slide active" data-accent="var(--terra)">
+    <div class="step">01 — 03</div>
+    <div class="copy">
+      <p class="eyebrow">El día a día · <em>¿en qué se te va la plata?</em></p>
+      <h1>Registra cada gasto<br><span class="hl">en segundos.</span></h1>
+      <p class="lede">Un toque, eliges la categoría y listo. Sin planillas, sin sentarte a hacer cuentas: anotas en el momento y sigues con tu vida.</p>
+      <div class="pillar">Paso 1 · Registrar</div>
+    </div>
+    <div class="stage">
+      <svg viewBox="0 0 420 460" id="scene1" role="img" aria-label="Un teléfono donde se registran gastos con un toque">
+        <!-- phone -->
+        <rect class="s1-phone" x="70" y="26" width="280" height="408" rx="34" fill="#1C2016" stroke="rgba(244,236,222,.14)"/>
+        <rect x="70" y="26" width="280" height="64" rx="34" fill="#20251A"/>
+        <text x="96" y="64" font-family="Fraunces,serif" font-size="20" fill="#F4ECDE">Hoy</text>
+        <text x="324" y="64" text-anchor="end" font-family="Hanken Grotesk" font-size="13" fill="#A9A491">jun</text>
+        <!-- rows -->
+        <g class="s1-row" font-family="Hanken Grotesk">
+          <rect x="92" y="110" width="236" height="56" rx="14" fill="#343D27" stroke="rgba(244,236,222,.08)"/>
+          <circle cx="122" cy="138" r="16" fill="#E59B6E"/><text x="122" y="143" text-anchor="middle" font-size="15">🛒</text>
+          <text x="150" y="133" font-size="14" fill="#F4ECDE">Mercado</text>
+          <text x="150" y="152" font-size="11" fill="#A9A491">Supermercado</text>
+          <text class="s1-amt" data-to="4500" x="312" y="144" text-anchor="end" font-size="15" font-weight="600" fill="#F4ECDE">$0</text>
+        </g>
+        <g class="s1-row" font-family="Hanken Grotesk">
+          <rect x="92" y="178" width="236" height="56" rx="14" fill="#343D27" stroke="rgba(244,236,222,.08)"/>
+          <circle cx="122" cy="206" r="16" fill="#73C295"/><text x="122" y="211" text-anchor="middle" font-size="15">🚌</text>
+          <text x="150" y="201" font-size="14" fill="#F4ECDE">Transporte</text>
+          <text x="150" y="220" font-size="11" fill="#A9A491">Pasaje</text>
+          <text class="s1-amt" data-to="1200" x="312" y="212" text-anchor="end" font-size="15" font-weight="600" fill="#F4ECDE">$0</text>
+        </g>
+        <g class="s1-row" font-family="Hanken Grotesk">
+          <rect x="92" y="246" width="236" height="56" rx="14" fill="#343D27" stroke="rgba(244,236,222,.08)"/>
+          <circle cx="122" cy="274" r="16" fill="#DCB75F"/><text x="122" y="279" text-anchor="middle" font-size="15">☕</text>
+          <text x="150" y="269" font-size="14" fill="#F4ECDE">Cafetería</text>
+          <text x="150" y="288" font-size="11" fill="#A9A491">Café con leche</text>
+          <text class="s1-amt" data-to="2300" x="312" y="280" text-anchor="end" font-size="15" font-weight="600" fill="#F4ECDE">$0</text>
+        </g>
+        <!-- FAB + ripple -->
+        <circle class="s1-ripple" cx="300" cy="392" r="26" fill="none" stroke="#E59B6E" stroke-width="2" opacity="0"/>
+        <circle class="s1-fab" cx="300" cy="392" r="26" fill="#E59B6E"/>
+        <path class="s1-fab" d="M300 380 v24 M288 392 h24" stroke="#12140E" stroke-width="3.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ░░░ SLIDE 2 · CONTROLAR ░░░ -->
+  <section class="slide" data-accent="var(--green)">
+    <div class="step">02 — 03</div>
+    <div class="copy">
+      <p class="eyebrow">A fin de mes · <em>¿vas a llegar?</em></p>
+      <h1>Sabe cuánto puedes<br><span class="hl">gastar hoy.</span></h1>
+      <p class="lede">Manifiesto reparte lo que te queda en tu cupo diario y te avisa antes de pasarte. En verde vas bien; nada de sorpresas el día 28.</p>
+      <div class="pillar">Paso 2 · Controlar</div>
+    </div>
+    <div class="stage">
+      <svg viewBox="0 0 420 460" id="scene2" role="img" aria-label="Un medidor de cupo diario disponible">
+        <g transform="translate(210,210)">
+          <circle r="120" fill="none" stroke="rgba(244,236,222,.10)" stroke-width="18"/>
+          <circle class="s2-ring" r="120" fill="none" stroke="#73C295" stroke-width="18" stroke-linecap="round"
+                  transform="rotate(-90)" stroke-dasharray="754" stroke-dashoffset="754"/>
+          <text y="-18" text-anchor="middle" font-family="Hanken Grotesk" font-size="14" fill="#A9A491">puedes gastar hoy</text>
+          <text class="s2-num" data-to="3450" y="22" text-anchor="middle" font-family="Fraunces,serif" font-size="48" font-weight="600" fill="#F4ECDE">$0</text>
+          <g class="s2-chip" opacity="0">
+            <rect x="-52" y="44" width="104" height="30" rx="15" fill="rgba(115,194,149,.16)"/>
+            <circle cx="-34" cy="59" r="4.5" fill="#73C295"/>
+            <text x="-22" y="63" font-family="Hanken Grotesk" font-size="13" fill="#73C295">vas en ritmo</text>
+          </g>
+        </g>
+        <!-- week baseline bars -->
+        <g class="s2-bars" transform="translate(96,392)" font-family="Hanken Grotesk">
+          <rect class="s2-bar" x="0"   y="-30" width="20" height="30" rx="5" fill="#3A4330"/>
+          <rect class="s2-bar" x="34"  y="-48" width="20" height="48" rx="5" fill="#3A4330"/>
+          <rect class="s2-bar" x="68"  y="-22" width="20" height="22" rx="5" fill="#3A4330"/>
+          <rect class="s2-bar" x="102" y="-40" width="20" height="40" rx="5" fill="#73C295"/>
+          <rect class="s2-bar" x="136" y="-16" width="20" height="16" rx="5" fill="#3A4330"/>
+          <rect class="s2-bar" x="170" y="-34" width="20" height="34" rx="5" fill="#3A4330"/>
+          <rect class="s2-bar" x="204" y="-12" width="20" height="12" rx="5" fill="#3A4330"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ░░░ SLIDE 3 · AHORRAR ░░░ -->
+  <section class="slide" data-accent="var(--gold)">
+    <div class="step">03 — 03</div>
+    <div class="copy">
+      <p class="eyebrow">El resultado · <em>ahorrar nunca sobra</em></p>
+      <h1>Lo que no gastas,<br><span class="hl">se ahorra solo.</span></h1>
+      <p class="lede">Cada día que terminas bajo tu cupo, la diferencia cae en tu alcancía. Y tu hogar avanza junto, mirando los mismos números.</p>
+      <div class="pillar">Paso 3 · Ahorrar — en familia</div>
+    </div>
+    <div class="stage">
+      <svg viewBox="0 0 420 460" id="scene3" role="img" aria-label="Una alcancía que se llena mientras crece un brote">
+        <!-- jar -->
+        <defs><clipPath id="jarclip"><path d="M126 196 q0 -14 14 -14 h140 q14 0 14 14 v150 q0 26 -26 26 h-116 q-26 0 -26 -26 z"/></clipPath></defs>
+        <rect x="150" y="166" width="120" height="20" rx="8" fill="#2A3120"/>
+        <g clip-path="url(#jarclip)">
+          <rect x="120" y="180" width="180" height="220" fill="rgba(244,236,222,.05)"/>
+          <rect class="s3-fill" x="120" y="372" width="180" height="0" fill="#DCB75F" opacity=".92"/>
+        </g>
+        <path d="M126 196 q0 -14 14 -14 h140 q14 0 14 14 v150 q0 26 -26 26 h-116 q-26 0 -26 -26 z"
+              fill="none" stroke="rgba(244,236,222,.22)" stroke-width="2.5"/>
+        <!-- coins -->
+        <g>
+          <circle class="s3-coin" cx="172" cy="120" r="12" fill="#DCB75F"/>
+          <circle class="s3-coin" cx="210" cy="120" r="12" fill="#E59B6E"/>
+          <circle class="s3-coin" cx="248" cy="120" r="12" fill="#DCB75F"/>
+        </g>
+        <!-- sprout -->
+        <g transform="translate(210,196)">
+          <path class="s3-stem" d="M0 56 C0 30 0 18 0 -4" fill="none" stroke="#73C295" stroke-width="5" stroke-linecap="round" stroke-dasharray="72" stroke-dashoffset="72"/>
+          <path class="s3-leaf" d="M0 18 C-26 14 -34 -8 -10 -16 C-6 4 0 6 0 18 Z" fill="#73C295" transform="scale(0)" transform-origin="0 6"/>
+          <path class="s3-leaf" d="M0 6 C26 2 34 -22 10 -30 C6 -10 0 -8 0 6 Z" fill="#8AD0A6" transform="scale(0)" transform-origin="0 -6"/>
+        </g>
+        <!-- family avatars -->
+        <g class="s3-fam" transform="translate(150,418)">
+          <circle class="s3-av" cx="0" cy="0" r="15" fill="#E59B6E"/>
+          <circle class="s3-av" cx="30" cy="0" r="15" fill="#73C295"/>
+          <circle class="s3-av" cx="60" cy="0" r="15" fill="#DCB75F"/>
+          <circle class="s3-av" cx="90" cy="0" r="15" fill="#7FA9D6"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <div class="brand"><i></i> Manifiesto</div>
+  <nav class="nav" aria-label="Navegación de pantallas">
+    <button class="arrow" id="prev" aria-label="Anterior">‹</button>
+    <div class="dots" id="dots"></div>
+    <button class="arrow" id="next" aria-label="Siguiente">›</button>
+  </nav>
+</main>
+
+<script>
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const deck = document.getElementById('deck');
+const slides = [...document.querySelectorAll('.slide')];
+const dotsWrap = document.getElementById('dots');
+const bar = document.getElementById('bar');
+let cur = 0, timer = null, AUTO = 5200;
+
+slides.forEach((_, i) => {
+  const b = document.createElement('button');
+  b.className = 'dot' + (i === 0 ? ' on' : '');
+  b.setAttribute('aria-label', 'Ir a la pantalla ' + (i + 1));
+  b.onclick = () => go(i);
+  dotsWrap.appendChild(b);
+});
+const dots = [...dotsWrap.children];
+
+const fmt = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+function countUp(el){
+  const to = +el.dataset.to;
+  if (reduce){ el.textContent = fmt(to); return; }
+  const o = {v:0};
+  gsap.to(o, {v:to, duration:1.1, ease:'power1.out', onUpdate:()=> el.textContent = fmt(o.v)});
+}
+
+const scenes = {
+  0(){
+    const tl = gsap.timeline();
+    gsap.set('#scene1 .s1-row',{opacity:0,y:18});
+    gsap.set('#scene1 .s1-fab',{transformOrigin:'300px 392px'});
+    tl.from('#scene1 .s1-phone',{scale:.96,opacity:0,duration:.5,ease:'power2.out',transformOrigin:'210px 230px'})
+      .to('#scene1 .s1-row',{opacity:1,y:0,stagger:.16,duration:.5,ease:'power2.out'},'-=.1')
+      .add(()=> document.querySelectorAll('#scene1 .s1-amt').forEach(countUp),'-=.4')
+      .fromTo('#scene1 .s1-ripple',{opacity:.7,scale:.3},{opacity:0,scale:2.4,duration:.7,ease:'power2.out',transformOrigin:'300px 392px'},'-=.2')
+      .to('#scene1 .s1-fab',{scale:.86,duration:.12,yoyo:true,repeat:1,ease:'power2.inOut'},'<');
+    return tl;
+  },
+  1(){
+    const tl = gsap.timeline();
+    gsap.set('#scene2 .s2-bar',{transformOrigin:'center bottom', scaleY:0});
+    tl.to('#scene2 .s2-ring',{strokeDashoffset:754*0.30,duration:1.2,ease:'power2.out'})
+      .add(()=> countUp(document.querySelector('#scene2 .s2-num')),'-=1.0')
+      .to('#scene2 .s2-bar',{scaleY:1,stagger:.07,duration:.5,ease:'back.out(1.6)'},'-=.9')
+      .to('#scene2 .s2-chip',{opacity:1,y:0,duration:.5,ease:'power2.out'},'-=.2');
+    return tl;
+  },
+  2(){
+    const tl = gsap.timeline();
+    tl.fromTo('#scene3 .s3-coin',{y:-60,opacity:0},{y:0,opacity:1,stagger:.12,duration:.5,ease:'bounce.out'})
+      .to('#scene3 .s3-fill',{attr:{y:212,height:160},duration:1.0,ease:'power1.inOut'},'-=.2')
+      .to('#scene3 .s3-stem',{strokeDashoffset:0,duration:.7,ease:'power2.out'},'-=.5')
+      .to('#scene3 .s3-leaf',{scale:1,stagger:.14,duration:.5,ease:'back.out(2)'},'-=.2')
+      .from('#scene3 .s3-av',{scale:0,opacity:0,stagger:.1,duration:.45,ease:'back.out(2)',transformOrigin:'center'},'-=.3');
+    return tl;
+  }
+};
+
+function play(i){
+  gsap.killTweensOf('*');
+  const tl = scenes[i] && scenes[i]();
+  if (reduce && tl) tl.progress(1); // jump to final frame, no motion
+}
+
+function go(i){
+  i = (i + slides.length) % slides.length;
+  slides[cur].classList.remove('active');
+  dots[cur].classList.remove('on');
+  cur = i;
+  const accent = slides[cur].dataset.accent;
+  deck.style.setProperty('--accent', accent);
+  slides[cur].classList.add('active');
+  dots[cur].classList.add('on');
+  play(cur);
+  restart();
+}
+function next(){ go(cur + 1); }
+function prev(){ go(cur - 1); }
+
+function restart(){
+  clearInterval(timer);
+  if (reduce) return;
+  bar.style.transition = 'none'; bar.style.width = '0%';
+  void bar.offsetWidth;
+  bar.style.transition = 'width ' + AUTO + 'ms linear'; bar.style.width = '100%';
+  timer = setInterval(next, AUTO);
+}
+
+document.getElementById('next').onclick = next;
+document.getElementById('prev').onclick = prev;
+addEventListener('keydown', e => { if (e.key==='ArrowRight') next(); if (e.key==='ArrowLeft') prev(); });
+deck.addEventListener('mouseenter', ()=>{ clearInterval(timer); bar.style.transition='none'; });
+deck.addEventListener('mouseleave', restart);
+
+// kick off
+deck.style.setProperty('--accent', slides[0].dataset.accent);
+window.addEventListener('load', ()=>{ play(0); restart(); });
+</script>
+</body>
+</html>

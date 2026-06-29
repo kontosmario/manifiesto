@@ -137,6 +137,8 @@ function execute(effect: AuthFlowEffect) {
               pinSet: false,
               hasSavedCredentials: false,
               isUnlocked: false,
+              // Probe falló: default seguro = welcome (no forzar el intro).
+              introSeen: true,
             },
           }),
       )

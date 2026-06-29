@@ -10,7 +10,7 @@ import {
 function makeAdapters(overrides: Partial<AuthFlowAdapters> = {}): AuthFlowAdapters {
   return {
     runProbes: vi.fn(async () => ({
-      hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true,
+      hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false, introSeen: true,
     })),
     promptBiometric: vi.fn(async () => ({ success: true as const })),
     prefetchSnapshot: vi.fn(async () => {}),

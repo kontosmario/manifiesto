@@ -14,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { FernLogo } from '@/components/auth/fern-logo'
+import { CardParticles } from '@/components/ui/card-particles'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 import {
   SOAR_AWAY_MS,
@@ -152,6 +153,10 @@ export function AuthLaunchSplash({
       <View style={styles.root}>
         <AuroraLayer width={width} height={height} />
         <ParticleLayer width={width} height={height} reduced={reduced} />
+        {/* Mismo campo denso de luciérnagas que el welcome (y el onboarding
+            intro) → el handoff splash→welcome mantiene el campo de partículas
+            matcheado (no aparecen de golpe al revelarse el welcome). */}
+        <CardParticles count={28} color="#B2E08A" peachColor="#F0B488" />
 
         <View
           style={[

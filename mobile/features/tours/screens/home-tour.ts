@@ -9,7 +9,7 @@ export interface TourStepCopy {
 }
 
 /**
- * Home tour — 8 stops covering the bones of the screen, in
+ * Home tour — 9 stops covering the bones of the screen, in
  * top-to-bottom reading order with the FAB and header chrome
  * bracketing the content. The order field is the global order in
  * the tour; consumers reference these by name.
@@ -62,16 +62,26 @@ export const HOME_TOUR_STEPS = {
       return i18n.t('states:tour.home.meta')
     },
   },
+  // Garden streak — habit tracker just above the activity feed.
+  // Conditional like `meta`: only registers when StreakWeekWidget
+  // actually renders (i.e. there's garden data), otherwise it's
+  // skipped naturally.
+  streak: {
+    order: 6,
+    get text() {
+      return i18n.t('states:tour.home.streak')
+    },
+  },
   // Activity feed.
   activity: {
-    order: 6,
+    order: 7,
     get text() {
       return i18n.t('states:tour.home.activity')
     },
   },
   // Last: bottom chrome — FAB long-press hint.
   fab: {
-    order: 7,
+    order: 8,
     get text() {
       return i18n.t('states:tour.home.fab')
     },

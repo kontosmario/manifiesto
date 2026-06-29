@@ -97,17 +97,33 @@ export function AuthTransitionSplash({
 // is the underlying native view transform updates, which iOS's
 // rendering pipeline already does very efficiently for keyframe
 // animations.
-const FIREFLY_COUNT = 16
-const FIREFLIES = Array.from({ length: FIREFLY_COUNT }, (_, i) => ({
-  key: i,
-  leftPct: (i * 17 + 11) % 92,
-  topPct: (i * 23 + 9) % 78,
-  // Stagger duration + delay so each firefly twinkles on its own
-  // rhythm. Durations 8-11s, delays 0-7s spread.
-  durationMs: 8000 + ((i * 191) % 3000),
-  delayMs: (i * 460) % 7000,
-  color: i % 3 === 0 ? authTokens.peach : '#C7EE9C',
-}))
+//
+// Densidad 16 → 28 + glow (2026-06-29): el fern del boot/bridge se veía más
+// vacío que el welcome/onboarding (que usan CardParticles, 28 con glow). Subimos
+// el count y agregamos un boxShadow (glow ESTÁTICO, NO worklet → respeta el
+// diseño sin-worklets de arriba; la opacity del keyframe lo atenúa con la
+// luciérnaga) + las peach un poco más grandes, para que el campo lea igual de
+// denso y "vivo" que el resto de las superficies fern. Sigue siendo el MISMO
+// campo determinístico → el seam boot ↔ bridge sigue invisible.
+const FIREFLY_COUNT = 28
+const FIREFLIES = Array.from({ length: FIREFLY_COUNT }, (_, i) => {
+  const isPeach = i % 3 === 0 // ~1/3 cálidas y levemente más grandes (= CardParticles)
+  const size = isPeach ? 5 : 3
+  const color = isPeach ? authTokens.peach : '#C7EE9C'
+  return {
+    key: i,
+    leftPct: (i * 17 + 11) % 92,
+    topPct: (i * 23 + 9) % 78,
+    // Stagger duration + delay so each firefly twinkles on its own
+    // rhythm. Durations 8-11s, delays 0-7s spread.
+    durationMs: 8000 + ((i * 191) % 3000),
+    delayMs: (i * 460) % 7000,
+    size,
+    color,
+    // Halo suave (~2.5× el punto) — estático, lo atenúa la opacity del keyframe.
+    glow: `0px 0px ${(size * 2.5).toFixed(1)}px ${color}`,
+  }
+})
 
 export function FirefliesLayer({
   width,
@@ -124,15 +140,17 @@ export function FirefliesLayer({
         {FIREFLIES.map((f) => (
           <View
             key={f.key}
-            style={[
-              styles.firefly,
-              {
-                left: (f.leftPct / 100) * width,
-                top: (f.topPct / 100) * height,
-                backgroundColor: f.color,
-                opacity: 0.4,
-              },
-            ]}
+            style={{
+              position: 'absolute',
+              width: f.size,
+              height: f.size,
+              borderRadius: f.size / 2,
+              left: (f.leftPct / 100) * width,
+              top: (f.topPct / 100) * height,
+              backgroundColor: f.color,
+              boxShadow: f.glow,
+              opacity: 0.4,
+            }}
           />
         ))}
       </View>
@@ -146,12 +164,15 @@ export function FirefliesLayer({
           key={f.key}
           style={{
             position: 'absolute',
-            width: 3,
-            height: 3,
-            borderRadius: 1.5,
+            width: f.size,
+            height: f.size,
+            borderRadius: f.size / 2,
             left: (f.leftPct / 100) * width,
             top: (f.topPct / 100) * height,
             backgroundColor: f.color,
+            // Glow estático (no worklet) — la opacity del keyframe lo atenúa
+            // con la luciérnaga (RN ≥0.76: boxShadow respeta la opacity).
+            boxShadow: f.glow,
             // Keyframe animation: bell-curve opacity (firefly fades
             // in, peaks at 50%, fades out) + lissajous-style drift
             // (translateY upward at peak, slight X wiggle).
@@ -334,11 +355,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
     color: '#0E3A26',
-  },
-  firefly: {
-    position: 'absolute',
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
   },
 })

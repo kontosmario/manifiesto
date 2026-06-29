@@ -20,6 +20,7 @@ import {
 import { getPinLockState } from '@/lib/pin-lock'
 import { isAppUnlocked, markAppUnlocked, resetAppLock } from '@/features/auth/app-lock-state'
 import { getBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
+import { getIntroSeen } from '@/features/onboarding-intro/intro-seen'
 import { shouldShowBiometricSetup } from '@/features/auth/should-show-biometric-setup'
 import { prefetchHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { profileQueryKey, type Profile } from '@/features/profile/use-profile'
@@ -34,10 +35,11 @@ async function getSessionUserId(): Promise<string | null> {
 
 export const realAuthFlowAdapters: AuthFlowAdapters = {
   async runProbes() {
-    const [{ data }, bio, pin] = await Promise.all([
+    const [{ data }, bio, pin, introSeen] = await Promise.all([
       supabase.auth.getSession(),
       getBiometricLoginState(),
       getPinLockState(),
+      getIntroSeen(),
     ])
     // EXPO GO: el "prompt biométrico" degrada a la sheet de passcode
     // del sistema (el host no tiene NSFaceIDUsageDescription). Lo
@@ -57,6 +59,7 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
       pinSet: pin.isSet,
       hasSavedCredentials: bio.hasSavedCredentials,
       isUnlocked: isAppUnlocked(),
+      introSeen,
     }
   },
 

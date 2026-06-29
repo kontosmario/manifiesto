@@ -1,6 +1,7 @@
 import { memo, useEffect } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -122,6 +123,12 @@ export const BroteFireflies = memo(function BroteFireflies({
         -1,
         false,
       )
+    }
+    // Cancelar al desmontar (consistente con CoralBloom): detiene la órbita +
+    // la entrada cuando el brote se va (cierre dismisseado, o salida del intro).
+    return () => {
+      cancelAnimation(orbit)
+      cancelAnimation(enter)
     }
   }, [delay, reduced, orbit, enter])
 

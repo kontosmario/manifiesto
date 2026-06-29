@@ -8,22 +8,26 @@ import {
 } from '@/features/auth-flow/auth-flow-machine'
 
 const PROBES_LOCKED_BIO = {
-  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false,
+  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false, introSeen: true,
 }
 const PROBES_LOCKED_PIN = {
-  hasSession: true, shouldUseBiometric: false, pinSet: true, hasSavedCredentials: false, isUnlocked: false,
+  hasSession: true, shouldUseBiometric: false, pinSet: true, hasSavedCredentials: false, isUnlocked: false, introSeen: true,
 }
 const PROBES_NO_LOCK = {
-  hasSession: true, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false,
+  hasSession: true, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false, introSeen: true,
 }
 const PROBES_GUEST = {
-  hasSession: false, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false,
+  hasSession: false, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false, introSeen: true,
+}
+// First-run: sin sesión, sin creds y SIN haber visto el intro pre-auth.
+const PROBES_GUEST_FIRST_RUN = {
+  hasSession: false, shouldUseBiometric: false, pinSet: false, hasSavedCredentials: false, isUnlocked: false, introSeen: false,
 }
 const PROBES_GUEST_WITH_CREDS = {
-  hasSession: false, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false,
+  hasSession: false, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: false, introSeen: true,
 }
 const PROBES_ALREADY_UNLOCKED = {
-  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: true,
+  hasSession: true, shouldUseBiometric: true, pinSet: false, hasSavedCredentials: true, isUnlocked: true, introSeen: true,
 }
 
 /** Aplica eventos en secuencia, devolviendo estado final + todos los efectos. */
@@ -169,6 +173,24 @@ describe('V4 — login password / signup', () => {
       { type: 'PROBES_RESOLVED', probes: PROBES_GUEST_WITH_CREDS },
     )
     expect(r.effects).toEqual([{ kind: 'navigate', to: '/(auth)/login?autoBiometric=1' }])
+  })
+
+  it('guest con intro ya visto → navigate welcome', () => {
+    const r = transition(
+      transition(initialAuthFlowState, { type: 'BOOT' }).state,
+      { type: 'PROBES_RESOLVED', probes: PROBES_GUEST },
+    )
+    expect(r.state.phase).toBe('guest')
+    expect(r.effects).toEqual([{ kind: 'navigate', to: '/(auth)/welcome' }])
+  })
+
+  it('first-run (sin sesión, sin creds, intro NO visto) → navigate intro', () => {
+    const r = transition(
+      transition(initialAuthFlowState, { type: 'BOOT' }).state,
+      { type: 'PROBES_RESOLVED', probes: PROBES_GUEST_FIRST_RUN },
+    )
+    expect(r.state.phase).toBe('guest')
+    expect(r.effects).toEqual([{ kind: 'navigate', to: '/(auth)/intro' }])
   })
 
   it('sin lock configurado → bridging directo con mark-app-unlocked', () => {

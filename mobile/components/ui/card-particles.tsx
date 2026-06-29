@@ -156,16 +156,24 @@ export function CardParticles({
     [wave],
   )
 
-  // Deterministic layout — quasi-random spread (golden-ratio mods) plus
-  // per-particle frequency/phase/amplitude variation so the field reads
-  // chaotic without ever being random.
+  // Deterministic layout — R2 low-discrepancy sequence (Roberts) for an even
+  // 2D spread, plus per-particle frequency/phase/amplitude variation so the
+  // field reads chaotic without ever being random.
+  //
+  // ⚠️ El reparto anterior usaba ax=i·0.382, ay=i·0.618 — y como 0.382+0.618=1,
+  // ax+ay queda ≡ constante para todo i ⇒ TODAS las partículas caían sobre dos
+  // diagonales (se veía una franja diagonal, no un campo disperso). R2 usa dos
+  // constantes (1/g, 1/g²; g = número plástico ≈ 1.32471795) que NO suman 1 ni
+  // se relacionan, así que x e y se descorrelacionan y el campo llena la caja.
   const specs = useMemo<ParticleSpec[]>(() => {
     if (!size) return []
     const out: ParticleSpec[] = []
     const TWO_PI = Math.PI * 2
+    const R2_X = 0.7548776662466927 // 1/g
+    const R2_Y = 0.5698402909980532 // 1/g²
     for (let i = 0; i < count; i++) {
-      const ax = (i * 0.382 + 0.1) % 1
-      const ay = (i * 0.618 + 0.05) % 1
+      const ax = (0.5 + i * R2_X) % 1
+      const ay = (0.5 + i * R2_Y) % 1
       // Mix 1 and 2 across particles. Picking by (i % …) so every
       // mount produces the same field.
       // Offset PEACH_EVERY-1 para no colisionar con la regla del accent (i%3===0).

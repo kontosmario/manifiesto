@@ -1,4 +1,36 @@
 {
+  "intro": {
+    "slide1": {
+      "eyebrow": "Finanzas del hogar",
+      "titleLead": "La plata del hogar,",
+      "titleAccent": "en calma.",
+      "subtitle": "Todo tu hogar ve lo mismo del mes: cuánto hay, cuánto se puede gastar hoy y qué se viene."
+    },
+    "slide2": {
+      "title": "Un número claro para todo el hogar.",
+      "subtitle": "Lo lleves solo o con alguien, todos ven lo mismo. Se terminan las planillas y las discusiones por números distintos."
+    },
+    "slide3": {
+      "title": "Fijos, ingresos y el día a día.",
+      "subtitle": "Cargas los fijos una sola vez y te mostramos cuánto fluctúan y cuánto pesan en tu sueldo. Y también sumas los ingresos a favor."
+    },
+    "slide4": {
+      "title": "Cada día que registras, plantas un brote.",
+      "subtitle": "Una semana entera y tu jardín florece. Y si un día no puedes, no pasa nada: el jardín te espera, sin culpa."
+    },
+    "slide5": {
+      "titleLead": "Empieza con 30 días",
+      "titleAccent": "completos.",
+      "subtitle": "Tienes la app entera desde el primer día. Después eliges si seguir. Sin tarjeta para empezar."
+    },
+    "cta": {
+      "create": "Crear mi hogar",
+      "login": "Ya tengo una cuenta",
+      "next": "Seguir",
+      "begin": "Comenzar"
+    },
+    "dotLabel": "Ir a la pantalla {{n}}"
+  },
   "chrome": {
     "title": {
       "name": "Tu nombre",
