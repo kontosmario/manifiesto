@@ -36,10 +36,6 @@ const TILE_GAP = 8
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
 // keeps them comfortably separated on a 4-column layout.
 export const STATIC_TILE_GAP = 12
-// Bumped 34 → 42pt: el ícono es el foco del tile. Mismo tamaño que el
-// kindIconBadge de add-ingreso → lenguaje visual unificado entre ambos flujos.
-const BADGE_SIZE = 42
-
 /**
  * Item genérico del rail de selección. Desacopla la presentación (tile +
  * scroll horizontal 2-filas + animaciones) del modelo de datos: lo usan tanto
@@ -341,13 +337,16 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
         <Animated.View
           style={[
             styles.tile,
-            { width, height, backgroundColor: theme.colors.surface },
+            // El color de la categoría (hue) ocupa TODO el tile — una sola
+            // cápsula coloreada (antes había 2: tile neutro + badge de color).
+            // hue.surface/ink es el par con contraste AA en ambos modos.
+            { width, height, backgroundColor: hue.surface },
             borderStyle,
           ]}
         >
-          <View style={[styles.badge, { backgroundColor: hue.surface }]}>{tile.icon}</View>
+          {tile.icon}
           <Text
-            style={[styles.label, { color: theme.colors.text }]}
+            style={[styles.label, { color: hue.ink }]}
             numberOfLines={1}
             ellipsizeMode="tail"
             allowFontScaling={false}
@@ -388,13 +387,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-  },
-  badge: {
-    width: BADGE_SIZE,
-    height: BADGE_SIZE,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   emoji: {
     // 21pt para llenar el badge de 42pt (fallback cuando no hay sticker).
