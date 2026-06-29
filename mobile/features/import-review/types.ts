@@ -12,7 +12,9 @@ export type ReviewRowWarning =
   // anclamos a hoy y avisamos al usuario que la revise.
   | 'future-date'
 
-export type IncomeKind = 'transfer' | 'bonus' | 'gift' | 'other'
+// Subconjunto de IncomeEventKind que el import OCR ofrece para clasificar un
+// ingreso (set chico a propósito). "Bono" se quitó del catálogo de ingresos.
+export type IncomeKind = 'transfer' | 'gift' | 'other'
 
 export interface ReviewRow {
   id: string

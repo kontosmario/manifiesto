@@ -383,7 +383,6 @@
   "import": {
     "incomeKind": {
       "transfer": "Transfer",
-      "bonus": "Bonus",
       "gift": "Gift",
       "other": "Other",
       "incomeLabel": "Income",
@@ -392,7 +391,6 @@
       "sale": "Sale",
       "aguinaldo": "Annual bonus",
       "investment": "Investments",
-      "rental": "Rent",
       "refund": "Refund"
     },
     "field": {
@@ -706,6 +704,15 @@
           "Misc",
           "Unexpected",
           "Adjustment"
+        ]
+      },
+      "transferencia": {
+        "default": "Transferencia",
+        "name": "Transfer",
+        "quickDescriptions": [
+          "Transfer",
+          "Sent",
+          "Payment"
         ]
       }
     },

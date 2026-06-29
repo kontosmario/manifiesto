@@ -58,7 +58,7 @@ Footprint = `size` en ambos modos (sin reflow). Centralizado en `CategorySticker
 - Filas/listas: `gasto-row`, `fijo-row`, `fijo-category-groups`,
   `home-activity` (ActivityRowV2 `icon: ReactNode`), `gastos-smart-filter`
   (GastosFilterPill `iconNode`), `step2-summary`, `calendar-drop-impact`.
-- Ingresos: `income-kinds.ts` (`INCOME_KINDS`, 11 tipos — módulo puro testeable)
+- Ingresos: `income-kinds.ts` (`INCOME_KINDS`, 9 tipos — módulo puro testeable)
   renderizado por `add-income-screen` + `income-row` (`finanzas/*`, `vivienda`, `regalos`).
 - Ciclos/frecuencias: `cycle-config-section` + `FreqTile` (FREQ_OPTIONS →
   `frecuencias/*`).
@@ -89,12 +89,14 @@ nombre). Agregar i18n en `categoryTemplates.<scope>.<slug>` (ES + EN,
 ⚠️ `sort_order` tiene UNIQUE **global** (no por scope): si renumerás, vacateá
 (+10000) antes de reubicar para no colisionar (ver `20260628170200`).
 
-Catálogo actual (compactado 2026-06-29, migración `20260629120000`): **14 expense**
-(13 generales + Otros) + **11 fixed** (10 generales + Otros). Revierte la
-granularidad de fijos (`20260628170200`) y las 12 "curadas" variables
-(`20260627000000`): lo fino (Luz/Gas/Taxi/Prepaga…) se absorbe en su general y la
-especificidad la cubren los sinónimos del icon-map + categorías custom. **Ingresos**:
-11 tipos en `income-kinds.ts` (acotados por `income_events_kind_check`). De los **90
+Catálogo actual (compactado 2026-06-29, migs `20260629120000` + `…140000`): **15
+expense** (13 generales + Otros + Transferencia) + **11 fixed** (10 generales +
+Otros). Revierte la granularidad de fijos (`20260628170200`) y las 12 "curadas"
+variables (`20260627000000`): lo fino (Luz/Gas/Taxi/Prepaga…) se absorbe en su
+general y la especificidad la cubren los sinónimos del icon-map + categorías custom.
+"Transferencia" es DUAL (categoría de gasto + tipo de ingreso). **Ingresos**:
+9 tipos en `income-kinds.ts` (acotados por `income_events_kind_check`; se sacaron
+Bono y Alquiler). De los **90
 íconos**, 3 quedan sin asignar a propósito (`deportes/objetivo` y
 `entretenimiento/deportes` = arte duplicado; `crecimiento/brote-bebe` = swap del
 jardín); `finanzas/venta` (sticker del dólar) lo usa el ingreso "Venta" y

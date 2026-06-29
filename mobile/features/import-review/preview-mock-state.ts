@@ -126,7 +126,7 @@ export function buildPreviewReviewState(): ReviewState {
         // @i18n-ignore (mock data: descripción de movimiento sintético para el preview del wizard, no es copy de producción)
         description: 'Devolución impuestos',
         date: isoDaysAgo(6),
-        incomeKind: 'bonus',
+        incomeKind: 'transfer',
       }),
       // Second pre-skipped: confirms warning color renders for
       // non-adjacent skipped segments too.

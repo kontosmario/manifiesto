@@ -74,6 +74,9 @@ const EXPECTED_EXPENSE = [
   'viajes',
   'regalos_y_donaciones',
   'otros',
+  // Transferencia: categoría DUAL (también es un kind de ingreso) — un movimiento
+  // de transferencia puede ser plata que entra o que sale.
+  'transferencia',
 ]
 const EXPECTED_FIXED = [
   'servicios',

@@ -23,7 +23,6 @@ const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
   transfer: 'gastos:import.incomeKind.transfer',
-  bonus: 'gastos:import.incomeKind.bonus',
   gift: 'gastos:import.incomeKind.gift',
   other: 'gastos:import.incomeKind.other',
 }

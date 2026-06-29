@@ -177,6 +177,7 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   ahorro: 'finanzas/ahorro',
   banco: 'finanzas/banco',
   cajero: 'finanzas/cajero',
+  transferencia: 'finanzas/transferencia',
 }
 
 const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {

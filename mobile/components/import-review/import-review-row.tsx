@@ -57,10 +57,9 @@ interface Props {
   onUnskip: () => void
 }
 
-const INCOME_KINDS: IncomeKind[] = ['transfer', 'bonus', 'gift', 'other']
+const INCOME_KINDS: IncomeKind[] = ['transfer', 'gift', 'other']
 const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
   transfer: 'gastos:import.incomeKind.transfer',
-  bonus: 'gastos:import.incomeKind.bonus',
   gift: 'gastos:import.incomeKind.gift',
   other: 'gastos:import.incomeKind.other',
 }

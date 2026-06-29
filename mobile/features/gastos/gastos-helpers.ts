@@ -5,6 +5,7 @@
 import i18n from '@/lib/i18n'
 import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { IncomeEvent } from '@/features/income/use-income-events'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import type { Expense } from '@/features/expenses/use-expenses'
 
 // ─── Tipos compartidos del feed ──────────────────────────────────
@@ -46,17 +47,9 @@ export interface MovimientosSection {
 // `IncomeRow` component es dueño del mapeo kind → emoji + pill copy;
 // esto es solo un "qué mostrar como title del row" lookup.
 export function incomeKindFallback(kind: IncomeEvent['kind']): string {
-  switch (kind) {
-    case 'transfer':
-      return i18n.t('gastos:incomeRow.kind.transfer')
-    case 'bonus':
-      return i18n.t('gastos:incomeRow.kind.bonus')
-    case 'gift':
-      return i18n.t('gastos:incomeRow.kind.gift')
-    case 'other':
-    default:
-      return i18n.t('gastos:incomeRow.kind.other')
-  }
+  // Catálogo central (cubre los 9 kinds); fallback a "Otro" por si llegara un
+  // kind desconocido desde data legacy.
+  return i18n.t(INCOME_KIND_BY_KEY[kind]?.labelKey ?? 'gastos:import.incomeKind.other')
 }
 
 /**

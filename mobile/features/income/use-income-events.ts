@@ -16,7 +16,7 @@ import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
 
 export { incomeEventQueryKeys }
 
-export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other' | 'salary_extra' | 'freelance' | 'sale' | 'aguinaldo' | 'investment' | 'rental' | 'refund'
+export type IncomeEventKind = 'transfer' | 'gift' | 'other' | 'salary_extra' | 'freelance' | 'sale' | 'aguinaldo' | 'investment' | 'refund'
 
 export interface IncomeEvent {
   id: string
@@ -195,11 +195,9 @@ export function useCreateIncomeEvent(userId?: string) {
       const kindLabel =
         input.kind === 'transfer'
           ? 'Transferencia'
-          : input.kind === 'bonus'
-            ? 'Bono'
-            : input.kind === 'gift'
-              ? 'Regalo'
-              : 'Ingreso'
+          : input.kind === 'gift'
+            ? 'Regalo'
+            : 'Ingreso'
       const desc = input.description?.trim() || kindLabel
       const pushBody = `${desc} · +$${created.amount}`
       void sendFamilyPush({
