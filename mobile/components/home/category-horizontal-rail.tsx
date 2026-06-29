@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -26,38 +26,6 @@ import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme, useCategoryHueByName } from '@/theme/theme-provider'
 
-interface CategoryHorizontalRailProps {
-  categories: Category[]
-  selectedCategoryId: string
-  onSelect: (categoryId: string) => void
-  /** Number of rows to stack vertically. Columns flow horizontally
-   *  with overflow scroll. Defaults to 3 (gastos). */
-  rows?: number
-  /** Scope para resolver el ícono de categoría (sticker/emoji). 'expense'
-   *  por defecto; los pickers de fijos pasan 'fixed_expense'. */
-  iconScope?: CategoryIconScope
-  /** Override which label is shown above the rail. */
-  label?: string
-  /** Per-tile width in points. Defaults to 60. Increase from screens
-   *  where the full set of categories is small enough to fill the row
-   *  (e.g. fijos with 8 cats × 2 rows = 4 columns). */
-  tileWidth?: number
-  /** Per-tile height in points. Defaults to 68. */
-  tileHeight?: number
-  /** When true, render the columns inside a static View that
-   *  distributes them across the available width with no horizontal
-   *  scroll. Use from screens where the catalog is small enough to
-   *  always fit (add-expense after the fixed-only filter). When false
-   *  (default) the columns sit inside a horizontal ScrollView. */
-  staticGrid?: boolean
-  /** When true, the label above the rail tints to `theme.colors.warning`
-   *  and the label text overrides to "Elige una categoría". Used by
-   *  callers that need to surface "this field is required and unfilled"
-   *  without wrapping the rail in extra chrome (which would change
-   *  layout). The tint glides in smoothly via Reanimated. */
-  warning?: boolean
-}
-
 // Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
 // consistentes con el kind-picker de add-ingreso (badge 42 en ambos).
 const DEFAULT_TILE_WIDTH = 68
@@ -72,20 +40,62 @@ export const STATIC_TILE_GAP = 12
 // kindIconBadge de add-ingreso → lenguaje visual unificado entre ambos flujos.
 const BADGE_SIZE = 42
 
-export function CategoryHorizontalRail({
-  categories,
-  selectedCategoryId,
+/**
+ * Item genérico del rail de selección. Desacopla la presentación (tile +
+ * scroll horizontal 2-filas + animaciones) del modelo de datos: lo usan tanto
+ * las CATEGORÍAS (add-gasto / add-fijo, vía `CategoryHorizontalRail`) como los
+ * TIPOS DE INGRESO (add-ingreso), unificando el formato de selección.
+ *
+ * - `hueName`: string que determina el color del badge (`useCategoryHueByName`).
+ * - `icon`: nodo a renderizar dentro del badge (sticker `<CategoryIcon>` para
+ *   categorías; `<Image>` del sticker para ingresos).
+ */
+export interface RailTile {
+  id: string
+  label: string
+  hueName: string
+  icon: ReactNode
+  accessibilityLabel: string
+}
+
+interface TileRailProps {
+  tiles: RailTile[]
+  selectedId: string
+  onSelect: (id: string) => void
+  /** Texto del eyebrow sobre el rail (lo computa el caller — la copy de
+   *  "requerido/sin elegir" difiere entre categorías e ingresos). */
+  labelText: string
+  /** Number of rows to stack vertically. Columns flow horizontally
+   *  with overflow scroll. Defaults to 3 (gastos). */
+  rows?: number
+  /** Per-tile width in points. Defaults to 68. */
+  tileWidth?: number
+  /** Per-tile height in points. Defaults to 86. */
+  tileHeight?: number
+  /** Static (no horizontal scroll) layout that distributes columns across
+   *  the available width. */
+  staticGrid?: boolean
+  /** Tints the eyebrow to `theme.colors.warning` (the label TEXT is the
+   *  caller's responsibility via `labelText`). Glides in via Reanimated. */
+  warning?: boolean
+}
+
+/**
+ * Rail presentacional genérico (scroll horizontal 2-filas + tiles animadas).
+ * No conoce categorías ni ingresos — sólo `RailTile[]`.
+ */
+export function TileRail({
+  tiles,
+  selectedId,
   onSelect,
+  labelText,
   rows = 3,
-  iconScope = 'expense',
-  label,
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
   staticGrid = false,
   warning = false,
-}: CategoryHorizontalRailProps) {
+}: TileRailProps) {
   const { theme } = useAppTheme()
-  const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
   // Smooth label tint transition when `warning` toggles. iOS-cubic at
   // standard duration so the color glides in instead of snapping.
@@ -103,19 +113,16 @@ export function CategoryHorizontalRail({
       [theme.colors.textMuted, theme.colors.warning],
     ),
   }))
-  const labelText = warning
-    ? t('home:categoryRail.warningLabel')
-    : (label ?? t('home:categoryRail.label'))
 
   const columns = useMemo(() => {
-    const chunked: Category[][] = []
-    for (let i = 0; i < categories.length; i += rows) {
-      chunked.push(categories.slice(i, i + rows))
+    const chunked: RailTile[][] = []
+    for (let i = 0; i < tiles.length; i += rows) {
+      chunked.push(tiles.slice(i, i + rows))
     }
     return chunked
-  }, [categories, rows])
+  }, [tiles, rows])
 
-  const selectedIndex = categories.findIndex((c) => c.id === selectedCategoryId)
+  const selectedIndex = tiles.findIndex((tile) => tile.id === selectedId)
   const selectedColumnIndex = selectedIndex >= 0 ? Math.floor(selectedIndex / rows) : -1
 
   useEffect(() => {
@@ -127,48 +134,32 @@ export function CategoryHorizontalRail({
 
   // Measure the rail's own container width (not the screen width) so
   // we don't have to guess what padding the parent <Screen> applies.
-  // First render uses the prop default; after onLayout fires the real
-  // width takes over and tiles snap to fill exactly.
   const [measuredWidth, setMeasuredWidth] = useState<number | null>(null)
   const handleStaticLayout = useCallback((e: LayoutChangeEvent) => {
     setMeasuredWidth(e.nativeEvent.layout.width)
   }, [])
   const staticTileWidth = useMemo(() => {
     if (!staticGrid || measuredWidth == null) return tileWidth
-    // measuredWidth is the staticContent View's width. Subtract its
-    // own paddingHorizontal (4 + 4 = 8) and the gaps between
-    // columns, then divide by column count.
     const STATIC_INNER_PADDING = 8
     const totalGap = Math.max(0, columns.length - 1) * STATIC_TILE_GAP
     const available = measuredWidth - STATIC_INNER_PADDING - totalGap
     if (columns.length === 0 || available <= 0) return tileWidth
     const computed = Math.floor(available / columns.length)
-    // Clamp at the default tile width (don't shrink past readable
-    // size — let the parent overflow instead) and the iPad cap.
     return Math.max(tileWidth, Math.min(computed, 110))
   }, [staticGrid, measuredWidth, tileWidth, columns.length])
 
-  const columnTiles = (
-    <>
-      {columns.map((column, columnIndex) => (
-        <View key={columnIndex} style={styles.column}>
-          {column.map((category) => (
-            <CategoryTile
-              key={category.id}
-              category={category}
-              selected={category.id === selectedCategoryId}
-              iconScope={iconScope}
-              width={tileWidth}
-              height={tileHeight}
-              onPress={() => {
-                void triggerHaptic('selection')
-                onSelect(category.id)
-              }}
-            />
-          ))}
-        </View>
-      ))}
-    </>
+  const renderTile = (tile: RailTile, width: number) => (
+    <Tile
+      key={tile.id}
+      tile={tile}
+      selected={tile.id === selectedId}
+      width={width}
+      height={tileHeight}
+      onPress={() => {
+        void triggerHaptic('selection')
+        onSelect(tile.id)
+      }}
+    />
   )
 
   return (
@@ -185,20 +176,7 @@ export function CategoryHorizontalRail({
         >
           {columns.map((column, columnIndex) => (
             <View key={columnIndex} style={[styles.column, { gap: STATIC_TILE_GAP }]}>
-              {column.map((category) => (
-                <CategoryTile
-                  key={category.id}
-                  category={category}
-                  selected={category.id === selectedCategoryId}
-                  iconScope={iconScope}
-                  width={staticTileWidth}
-                  height={tileHeight}
-                  onPress={() => {
-                    void triggerHaptic('selection')
-                    onSelect(category.id)
-                  }}
-                />
-              ))}
+              {column.map((tile) => renderTile(tile, staticTileWidth))}
             </View>
           ))}
         </View>
@@ -212,29 +190,113 @@ export function CategoryHorizontalRail({
           snapToInterval={tileWidth + TILE_GAP}
           snapToAlignment="start"
         >
-          {columnTiles}
+          {columns.map((column, columnIndex) => (
+            <View key={columnIndex} style={styles.column}>
+              {column.map((tile) => renderTile(tile, tileWidth))}
+            </View>
+          ))}
         </ScrollView>
       )}
     </View>
   )
 }
 
-interface CategoryTileProps {
-  category: Category
+interface CategoryHorizontalRailProps {
+  categories: Category[]
+  selectedCategoryId: string
+  onSelect: (categoryId: string) => void
+  /** Number of rows to stack vertically. Defaults to 3 (gastos). */
+  rows?: number
+  /** Scope para resolver el ícono de categoría (sticker/emoji). */
+  iconScope?: CategoryIconScope
+  /** Override which label is shown above the rail. */
+  label?: string
+  /** Per-tile width in points. Defaults to 68. */
+  tileWidth?: number
+  /** Per-tile height in points. Defaults to 86. */
+  tileHeight?: number
+  /** Static (no scroll) layout. */
+  staticGrid?: boolean
+  /** Required-and-unfilled hint: tints the eyebrow + overrides the label. */
+  warning?: boolean
+}
+
+/**
+ * Rail de selección de CATEGORÍAS (add-gasto / add-fijo). Adapta `Category[]`
+ * al rail genérico `TileRail`: ícono sticker por nombre+scope, color del badge
+ * por nombre (hue), label = displayName localizado.
+ */
+export function CategoryHorizontalRail({
+  categories,
+  selectedCategoryId,
+  onSelect,
+  rows = 3,
+  iconScope = 'expense',
+  label,
+  tileWidth = DEFAULT_TILE_WIDTH,
+  tileHeight = DEFAULT_TILE_HEIGHT,
+  staticGrid = false,
+  warning = false,
+}: CategoryHorizontalRailProps) {
+  const { t } = useTranslation()
+
+  const tiles = useMemo<RailTile[]>(
+    () =>
+      categories.map((category) => {
+        const displayName = category.displayName || category.name
+        return {
+          id: category.id,
+          label: displayName,
+          hueName: category.name,
+          icon: (
+            <CategoryIcon
+              name={category.name}
+              scope={iconScope}
+              size={32}
+              emojiStyle={styles.emoji}
+            />
+          ),
+          accessibilityLabel: t('home:categoryRail.selectAccessibility', {
+            name: displayName,
+          }),
+        }
+      }),
+    [categories, iconScope, t],
+  )
+
+  const labelText = warning
+    ? t('home:categoryRail.warningLabel')
+    : (label ?? t('home:categoryRail.label'))
+
+  return (
+    <TileRail
+      tiles={tiles}
+      selectedId={selectedCategoryId}
+      onSelect={onSelect}
+      labelText={labelText}
+      rows={rows}
+      tileWidth={tileWidth}
+      tileHeight={tileHeight}
+      staticGrid={staticGrid}
+      warning={warning}
+    />
+  )
+}
+
+interface TileProps {
+  tile: RailTile
   selected: boolean
-  iconScope: CategoryIconScope
   width: number
   height: number
   onPress: () => void
 }
 
-function CategoryTile({ category, selected, iconScope, width, height, onPress }: CategoryTileProps) {
+function Tile({ tile, selected, width, height, onPress }: TileProps) {
   const { theme } = useAppTheme()
-  const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
-  const hue = useCategoryHueByName(category.name)
+  const hue = useCategoryHueByName(tile.hueName)
 
   // Animate the selected state via Reanimated so the border eases in
   // and out — same pattern AmountCard uses for its focus ring.
@@ -263,23 +325,18 @@ function CategoryTile({ category, selected, iconScope, width, height, onPress }:
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected }}
-        accessibilityLabel={t('home:categoryRail.selectAccessibility', {
-          name: category.displayName || category.name,
-        })}
+        accessibilityLabel={tile.accessibilityLabel}
         hitSlop={4}
         onPressIn={() => {
           if (reduceMotion) return
-           
+
           scale.value = withSpring(0.94, motionSprings.press)
         }}
         onPressOut={() => {
-           
           scale.value = withSpring(1, motionSprings.press)
         }}
         onPress={onPress}
-        style={({ pressed }) => [
-          { width, height, opacity: pressed ? 0.92 : 1 },
-        ]}
+        style={({ pressed }) => [{ width, height, opacity: pressed ? 0.92 : 1 }]}
       >
         <Animated.View
           style={[
@@ -288,23 +345,14 @@ function CategoryTile({ category, selected, iconScope, width, height, onPress }:
             borderStyle,
           ]}
         >
-          <View style={[styles.badge, { backgroundColor: hue.surface }]}>
-            <CategoryIcon
-              name={category.name}
-              scope={iconScope}
-              size={32}
-              emojiStyle={styles.emoji}
-            />
-          </View>
+          <View style={[styles.badge, { backgroundColor: hue.surface }]}>{tile.icon}</View>
           <Text
             style={[styles.label, { color: theme.colors.text }]}
             numberOfLines={1}
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
-            {/* fallback al name crudo: defensa contra un seed del cache
-                que no haya derivado displayName (nunca debe quedar vacío) */}
-            {category.displayName || category.name}
+            {tile.label}
           </Text>
         </Animated.View>
       </Pressable>
@@ -321,11 +369,6 @@ const styles = StyleSheet.create({
     gap: TILE_GAP,
     paddingVertical: 4,
   },
-  // Static grid: same paddings as the scroll variant, but rendered
-  // as a flex row with explicit `gap`. The tile width is measured
-  // and computed inside the component (see `staticTileWidth`) so it
-  // adapts to whatever horizontal space the parent gives us — no
-  // assumption about screen padding leaks into the API.
   staticContent: {
     paddingHorizontal: 4,
     paddingVertical: 4,
@@ -339,9 +382,6 @@ const styles = StyleSheet.create({
     // width/height are applied inline so the rail can adapt per call site.
   },
   tile: {
-    // 8/4 padding aligns the inner stack with the 4/8pt spacing
-    // rhythm used elsewhere in the app — was 6/4 before, which
-    // broke the cadence visible inside dense grids.
     paddingVertical: 8,
     paddingHorizontal: 4,
     borderRadius: radii.lg,

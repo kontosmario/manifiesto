@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Alert, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -18,6 +18,7 @@ import {
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
 import { INCOME_KINDS } from '@/features/income/income-kinds'
+import { TileRail, type RailTile } from '@/components/home/category-horizontal-rail'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
@@ -63,6 +64,29 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
   const headerPalette = buildScreenHeaderPalette(theme)
   const quickDescriptions = useMemo(
     () => QUICK_DESCRIPTION_KEYS.map((key) => t(key)),
+    [t],
+  )
+
+  // Tipos de ingreso → items del rail genérico (mismo TileRail que las
+  // categorías de add-gasto / add-fijo). El sticker es la key directa del
+  // registry; el badge se colorea por hue del kind.
+  const incomeTiles = useMemo<RailTile[]>(
+    () =>
+      INCOME_KINDS.map((k) => ({
+        id: k.key,
+        label: t(k.labelKey),
+        hueName: k.key,
+        icon: CATEGORY_ICONS[k.icon] ? (
+          <Image
+            source={CATEGORY_ICONS[k.icon]}
+            style={styles.incomeIcon}
+            resizeMode="contain"
+          />
+        ) : (
+          <Text style={styles.incomeEmoji}>{k.emoji}</Text>
+        ),
+        accessibilityLabel: t(k.labelKey),
+      })),
     [t],
   )
 
@@ -125,8 +149,9 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
     setRawAmount('')
   }
   const handleSelectKind = (next: IncomeEventKind) => {
+    // El haptic lo dispara TileRail al seleccionar (mismo patrón que el rail
+    // de categorías en add-gasto / add-fijo).
     Keyboard.dismiss()
-    void triggerHaptic('selection')
     setKind(next)
   }
   const handleSelectDescriptionSuggestion = (value: string) => {
@@ -230,99 +255,22 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
           />
         </RiseView>
 
-        {/* Kind picker — grilla de tiles (mismo look que las categorías):
-            rounded 14, creamCard bg idle, primary surface + border
-            when selected, icon centered con label debajo. Con 11 tipos
-            wrappea a 3 columnas. */}
+        {/* Kind picker — MISMO rail horizontal (2 filas) que el de categorías
+            en add-gasto / add-fijo, vía TileRail: unifica el formato de
+            selección entre los 3 flujos. TileRail rendea su propio eyebrow. */}
         <RiseView delay={dayOffset !== 0 ? 180 : 120}>
-          <View>
-            <Text
-              style={[
-                styles.sectionLabel,
-                {
-                  color: flagKind
-                    ? theme.colors.warning
-                    : theme.colors.textMuted,
-                },
-              ]}
-            >
-              {flagKind ? t('gastos:addIncome.fromWhereFlagged') : t('gastos:addIncome.fromWhere')}
-            </Text>
-            <View style={styles.kindGrid}>
-              {INCOME_KINDS.map((k) => {
-                const selected = kind === k.key
-                return (
-                  <Pressable
-                    key={k.key}
-                    onPress={() => handleSelectKind(k.key)}
-                    style={({ pressed }) => [
-                      styles.kindTile,
-                      {
-                        backgroundColor: selected
-                          ? theme.colors.primarySurface
-                          : theme.colors.creamCard,
-                        // Unselected tiles tint to warning when the
-                        // user has flagged this section as missing.
-                        // Selected tiles keep brand color so the
-                        // recovery state is unambiguous.
-                        borderColor: selected
-                          ? theme.colors.primary
-                          : flagKind
-                            ? theme.colors.warning
-                            : theme.colors.line,
-                        opacity: pressed ? 0.92 : 1,
-                      },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={t(k.labelKey)}
-                  >
-                    <View
-                      style={[
-                        styles.kindIconBadge,
-                        {
-                          backgroundColor: selected
-                            ? theme.colors.primary
-                            : theme.colors.creamSoft,
-                        },
-                      ]}
-                    >
-                      {CATEGORY_ICONS[k.icon] ? (
-                        <Image
-                          source={CATEGORY_ICONS[k.icon]}
-                          style={styles.kindIconImage}
-                          resizeMode="contain"
-                        />
-                      ) : (
-                        <MaterialIcons
-                          name="attach-money"
-                          size={20}
-                          color={
-                            selected
-                              ? theme.isDark
-                                ? '#12211A'
-                                : '#FFFFFF'
-                              : theme.colors.textMuted
-                          }
-                        />
-                      )}
-                    </View>
-                    <Text
-                      numberOfLines={2}
-                      style={[
-                        styles.kindLabel,
-                        {
-                          color: selected ? theme.colors.primary : theme.colors.text,
-                        },
-                      ]}
-                    >
-                      {t(k.labelKey)}
-                    </Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-          </View>
+          <TileRail
+            tiles={incomeTiles}
+            selectedId={kind ?? ''}
+            onSelect={(id) => handleSelectKind(id as IncomeEventKind)}
+            labelText={
+              flagKind
+                ? t('gastos:addIncome.fromWhereFlagged')
+                : t('gastos:addIncome.fromWhere')
+            }
+            rows={2}
+            warning={flagKind}
+          />
         </RiseView>
 
         <RiseView delay={dayOffset !== 0 ? 240 : 180}>
@@ -449,40 +397,17 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 8,
   },
-  kindGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  kindTile: {
-    // 3 columnas para alojar los 11 tipos de ingreso (antes 2: '48%').
-    width: '31%',
-    // 76 → 88 para alojar el badge más grande (42) sin apretar el label.
-    minHeight: 88,
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  kindIconBadge: {
-    // 34 → 42: unificado con el badge del rail de categorías (add-gasto).
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kindIconImage: {
+  incomeIcon: {
+    // Ícono dentro del badge del TileRail (badge 42 → ícono 32).
     width: 32,
     height: 32,
   },
-  kindLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+  incomeEmoji: {
+    // Fallback cuando el sticker no resuelve (los 11 kinds tienen sticker).
+    fontSize: 21,
+    lineHeight: 23,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   dayRow: {
     gap: 6,
