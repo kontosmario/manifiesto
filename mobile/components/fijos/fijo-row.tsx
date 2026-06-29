@@ -11,6 +11,7 @@ import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { InlinePayButton } from './fijo-row-parts/inline-pay-button'
@@ -170,6 +171,19 @@ function FijoRowReal({
     [categoryColor, theme.isDark],
   )
 
+  // Fondo del icon tile — mismo patrón que GastoRow: en dark usa el pastel
+  // CLARO del hue (el color que antes ponía la placa tight del sticker) →
+  // el sticker se lee a tamaño completo sobre el tile 40×40, igual que en
+  // light, sin el "cuadradito" de 24px que lo encogía. En light se mantiene
+  // el tinte translúcido del categoryColor de siempre.
+  const iconTileBg = useMemo(
+    () =>
+      theme.isDark
+        ? resolveCategoryHueByName(iconName).light.surface
+        : hexAlpha(categoryColor, 0.14),
+    [theme.isDark, iconName, categoryColor],
+  )
+
   // Swipe reveals only "Eliminar". Edit + Registrar pago live inside
   // the tap-to-expand details panel.
   const actions: SwipeAction[] = []
@@ -230,7 +244,7 @@ function FijoRowReal({
                   style={[
                     styles.iconTile,
                     {
-                      backgroundColor: hexAlpha(categoryColor, 0.14),
+                      backgroundColor: iconTileBg,
                       borderColor: hexAlpha(categoryColor, 0.22),
                     },
                   ]}
@@ -240,6 +254,7 @@ function FijoRowReal({
                     scope="fixed_expense"
                     size={24}
                     emojiStyle={styles.iconText}
+                    onLightSurface
                   />
                 </View>
                 {/* Status overlay (slot del WhoPaidAvatar en GastoRow). */}
@@ -263,24 +278,17 @@ function FijoRowReal({
               </View>
 
               <View style={styles.body}>
+                {/*
+                  El nombre del fijo es la identidad del row → tiene la
+                  línea completa para sí. El TrendBadge ("+8%") se movió al
+                  strip inferior; antes vivía acá inline y le robaba ~40px
+                  de ancho, dejando el nombre en "Coc…" / "Disne…". Hasta 2
+                  líneas para que nombres largos se lean completos.
+                */}
                 <View style={styles.nameRow}>
-                  <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.name, { color: theme.colors.text }]} numberOfLines={2}>
                     {fijo.name}
                   </Text>
-                  {fijo.trendDeltaPct != null && Math.abs(fijo.trendDeltaPct) >= 1 ? (
-                    <TrendBadge
-                      deltaPct={fijo.trendDeltaPct}
-                      // Si el último pago se cobró con mora Y el delta es
-                      // positivo, leemos como "incremento con intereses"
-                      // (el aumento puede explicarse por punitorios del
-                      // servicio). Si bajó, no hay diferencia semántica.
-                      variant={
-                        fijo.arrearsOnLastPayment && fijo.trendDeltaPct > 0
-                          ? 'arrears'
-                          : 'price'
-                      }
-                    />
-                  ) : null}
                 </View>
                 {/*
                   Body line 2: categoría como texto inline. Antes
@@ -379,6 +387,26 @@ function FijoRowReal({
                   {detail.label}
                 </Text>
               </View>
+              {/*
+                Badge de variación de precio — reubicado acá desde el lado
+                del nombre. Vive en el strip de metadata (mes · estado ·
+                variación), donde tiene aire propio y no compite con el
+                nombre por ancho.
+              */}
+              {fijo.trendDeltaPct != null && Math.abs(fijo.trendDeltaPct) >= 1 ? (
+                <TrendBadge
+                  deltaPct={fijo.trendDeltaPct}
+                  // Si el último pago se cobró con mora Y el delta es
+                  // positivo, leemos como "incremento con intereses" (el
+                  // aumento puede explicarse por punitorios del servicio).
+                  // Si bajó, no hay diferencia semántica.
+                  variant={
+                    fijo.arrearsOnLastPayment && fijo.trendDeltaPct > 0
+                      ? 'arrears'
+                      : 'price'
+                  }
+                />
+              ) : null}
             </View>
 
             {open ? (
