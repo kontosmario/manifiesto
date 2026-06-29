@@ -1,8 +1,9 @@
 import { memo, useMemo } from 'react'
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
+import { CategorySticker } from '@/components/category/category-sticker'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
@@ -91,11 +92,7 @@ function IncomeRowImpl({
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
           {CATEGORY_ICONS[meta.icon] ? (
-            <Image
-              source={CATEGORY_ICONS[meta.icon]}
-              style={styles.iconImage}
-              resizeMode="contain"
-            />
+            <CategorySticker source={CATEGORY_ICONS[meta.icon]} size={24} />
           ) : (
             <Text style={styles.iconText}>{emoji}</Text>
           )}
@@ -166,7 +163,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: { fontSize: 18 },
-  iconImage: { width: 24, height: 24 },
   body: { flex: 1 },
   title: { fontSize: 14, fontWeight: '700' },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

@@ -37,6 +37,15 @@ mapeado, sino cae al emoji legacy (`pickIconForCategory` /
 `pickIconForFixedExpenseCategory`). SIEMPRE pasar el nombre **crudo** (no el
 `displayName` localizado).
 
+**Legibilidad dark mode:** los stickers están ilustrados para fondo CLARO; sobre
+los badges oscuros del dark mode sus bordes/siluetas oscuras se funden. Por eso
+el sticker se renderiza vía `CategorySticker` (`category-sticker.tsx`), que en
+dark mode lo apoya sobre una placa clara (`#F4F0E7`) — su entorno nativo — y en
+light mode lo deja tal cual (footprint = `size` en ambos modos, sin reflow).
+Centralizado ahí porque el sticker se pinta por 2 vías: `CategoryIcon`
+(categorías) y `<Image>` directo (ingresos: picker de add-ingreso + `income-row`),
+las tres pasan por `CategorySticker`.
+
 ## Superficies cableadas
 
 - Picker (`category-horizontal-rail`, prop `iconScope`) — add-gasto y add-fijo.

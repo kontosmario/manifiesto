@@ -1,9 +1,10 @@
-import { Image, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native'
+import { StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native'
 import {
   pickIconForCategory,
   pickIconForFixedExpenseCategory,
 } from '@/features/gastos/category-icons'
 import { CATEGORY_ICONS } from './category-icon-registry'
+import { CategorySticker } from './category-sticker'
 import { resolveCategoryIconKey, type CategoryIconScope } from './category-icon-map'
 
 interface CategoryIconProps {
@@ -26,14 +27,7 @@ export function CategoryIcon({ name, scope = 'expense', size = 28, emojiStyle }:
   const source = key ? CATEGORY_ICONS[key] : undefined
 
   if (source) {
-    return (
-      <Image
-        source={source}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-        accessibilityIgnoresInvertColors
-      />
-    )
+    return <CategorySticker source={source} size={size} />
   }
 
   const emoji =

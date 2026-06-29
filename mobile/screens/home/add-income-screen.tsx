@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
-import { Alert, Image, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
+import { CategorySticker } from '@/components/category/category-sticker'
 import { AmountCard } from '@/components/home/amount-card'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { DescriptionRow } from '@/components/home/description-row'
@@ -77,11 +78,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         label: t(k.labelKey),
         hueName: k.key,
         icon: CATEGORY_ICONS[k.icon] ? (
-          <Image
-            source={CATEGORY_ICONS[k.icon]}
-            style={styles.incomeIcon}
-            resizeMode="contain"
-          />
+          <CategorySticker source={CATEGORY_ICONS[k.icon]} size={32} />
         ) : (
           <Text style={styles.incomeEmoji}>{k.emoji}</Text>
         ),
@@ -396,11 +393,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.4,
     textTransform: 'uppercase',
     marginBottom: 8,
-  },
-  incomeIcon: {
-    // Ícono dentro del badge del TileRail (badge 42 → ícono 32).
-    width: 32,
-    height: 32,
   },
   incomeEmoji: {
     // Fallback cuando el sticker no resuelve (los 11 kinds tienen sticker).
