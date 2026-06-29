@@ -30,7 +30,7 @@
 
 | Fuente | Cuándo | Gating | Valor |
 |---|---|---|---|
-| **checkin_morning** | 9h AR | cupo real del día; respeta prefs/mute; dedup diario | alto ✅ |
+| **checkin_morning** | 9h AR | cupo/saldo CANÓNICOS vía `cycle_disponible` (== disponible del Home); respeta prefs/mute; dedup diario | alto ✅ |
 | **checkin_evening** | 20:30h AR | contextual (cargaste hoy o no) | alto ✅ |
 | ~~checkin_midday~~ | — | **CORTADO 2026-06-15** (nudge genérico sin contexto) | — |
 | **fixed_upcoming** | 9h AR | fijo que vence hoy/mañana (o notify_days_before); **>2 fijos/día → 1 digest family-wide** (`fixed_upcoming_digest`, migración `20260621010000`) | medio ✅ |
@@ -47,6 +47,27 @@ zombie_detected; copy `"Gasto fijo: X vence hoy"` (desambigua el caso "Apple
 espacio") + `"Pago registrado: X"` para fijos pagados.
 
 Volumen: de ~5-8/día percibido → ~3-5 efectivas, cada una más clara y mejor timing.
+
+## Paridad cupo/saldo "Buen día" ↔ Home (migración `20260629160000`)
+
+El push `checkin_morning` calculaba el cupo/saldo con una fórmula propia
+(`monthly_income / días TOTALES`, ignorando el override de saldo de ciclo) que
+**derivó** del disponible que el usuario ve en el Home. Para una cuenta con
+override activo el push decía 172.902 mientras el Home mostraba ~256.008.
+
+Fix: la función SQL **`public.cycle_disponible(family, as_of)`** es ahora la
+cuenta CANÓNICA y el cron la consume (la rama `morning_checkins` ya no calcula
+inline). Espeja 1:1 el cálculo del Home (`family-dashboard-model` →
+`computeFixedExpenseCycleSummary.pressureTotal` + override/proración +
+`mobile/features/family/cycle-disponible.ts`). El push pasa a decir exactamente
+lo que muestra el Home: cupo diario ("para gustos") y saldo del mes ("del mes").
+
+- **Decisión:** el cálculo canónico **NO aplica `buffer`** (el hero del Home
+  tampoco; el buffer vive solo en el daily-budget-engine de Gastos). Usuarios con
+  buffer dejan de verlo descontado en el push.
+- **Anti-drift:** `tests/unit/cycle-disponible.test.ts` (golden, en CI) +
+  `tests/integration/cycle-disponible-parity.test.ts` (rpc vs TS, con DB).
+- Spec/plan: `docs/superpowers/specs/2026-06-29-cron-disponible-parity-design.md`.
 
 ## Pipeline de entrega (push) — hardening 2026-06-15
 

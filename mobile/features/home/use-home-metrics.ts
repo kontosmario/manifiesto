@@ -13,6 +13,7 @@ import {
   type CycleAcumulado,
 } from '@/features/month-close/use-current-cycle-acumulado'
 import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
+import { computeCycleDisponible } from '@/features/family/cycle-disponible'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
@@ -260,32 +261,23 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       1,
       Math.min(cycleTotalDays, dashboard.monthlyAccounting.daysIntoMonth),
     )
-    // "Disponible hoy" = plata discrecional restante del ciclo
-    // (dashboard.totalAvailable ya excluye fijos y ahorro). Le sumamos
-    // los `income_events` del ciclo (transferencias, bonos, regalos)
-    // para que el saldo positivo extra impacte de inmediato.
-    const availableToday = Math.max(
-      0,
-      Math.round(dashboard.totalAvailable + cycleExtraIncome),
-    )
-    // Cupo diario BASE — misma definición que Control adapter y
-    // Daily Budget Engine:
-    //   libreMes = ingresoEfectivo − fijos − ahorro destinado del mes
-    //   cupoDiario = libreMes / cycleDays
-    // Cuando el usuario ajustó su disponible del ciclo, el dashboard
-    // ya entrega `effectiveCycleIncome` (override prorrateado) y
-    // `effectiveCycleDays` (= días que quedan del ciclo). Sin override,
-    // ambos coinciden con los valores tradicionales y el cupo canónico
-    // queda intacto.
-    const libreMes = Math.max(
-      0,
-      Math.round(
-        dashboard.effectiveCycleIncome -
-          dashboard.fixedExpensesMonthlyTotal -
-          dashboard.savingsGoal,
-      ),
-    )
-    const dailyBudget = Math.max(0, Math.round(libreMes / Math.max(1, dashboard.effectiveCycleDays)))
+    // Disponible del ciclo — cuenta CANÓNICA, compartida 1:1 con el push
+    // "Buen día" (cron SQL `cycle_disponible`). La lógica de override /
+    // proration / gasto-desde-hoy vive en `family-dashboard-model` (que ya
+    // entregó los intermedios `effectiveCycle*` + `totalAvailable`); acá
+    // solo se compone el cupo diario ("para gustos") y el saldo del mes
+    // ("disponible hoy", que suma los income_events del ciclo). Sin override,
+    // los intermedios coinciden con los valores tradicionales.
+    const disponible = computeCycleDisponible({
+      effectiveCycleIncome: dashboard.effectiveCycleIncome,
+      effectiveCycleDays: dashboard.effectiveCycleDays,
+      commitmentPressure: dashboard.fixedExpensesMonthlyTotal,
+      effectiveSavingsGoal: dashboard.savingsGoal,
+      totalAvailable: dashboard.totalAvailable,
+      cycleExtraIncome,
+    })
+    const availableToday = disponible.availableToday
+    const dailyBudget = disponible.dailyBudget
 
     const avgDailySpend = dashboard.variableSpentInCurrentCycle / Math.max(1, cycleDay)
     const projectedTotalSpend = avgDailySpend * cycleTotalDays
