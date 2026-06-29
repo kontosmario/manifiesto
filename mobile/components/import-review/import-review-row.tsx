@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Keyboard,
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
@@ -20,7 +21,16 @@ import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
 import { motionDurations } from '@/lib/motion/tokens'
 import { AmountCard } from '@/components/home/amount-card'
-import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
+import {
+  CategoryHorizontalRail,
+  TileRail,
+  type RailTile,
+  railTileWidth,
+  RAIL_TILE_HEIGHT,
+} from '@/components/home/category-horizontal-rail'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
+import { CategorySticker } from '@/components/category/category-sticker'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import { NotesRow } from '@/components/home/notes-row'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
@@ -405,6 +415,7 @@ function CategorySection({
   warning?: boolean
 }) {
   const { t } = useTranslation()
+  const { width: windowWidth } = useWindowDimensions()
   if (categories.length === 0) return null
   // Render the rail flat — `warning` only swaps its label color + text
   // ("Elige una categoría") via the rail's own animated style. No
@@ -417,6 +428,8 @@ function CategorySection({
       onSelect={onSelect}
       label={t('gastos:import.row.category')}
       rows={1}
+      tileWidth={railTileWidth(windowWidth)}
+      tileHeight={RAIL_TILE_HEIGHT}
       warning={warning}
     />
   )
@@ -429,44 +442,39 @@ function IncomeKindSection({
   incomeKind: IncomeKind
   onSelect: (k: IncomeKind) => void
 }) {
-  const { theme } = useAppTheme()
   const { t } = useTranslation()
+  const { width: windowWidth } = useWindowDimensions()
+  // Mismo estilo que el picker de add-ingreso: cápsula con sticker + label,
+  // vía TileRail (antes eran pills de texto, estilo viejo).
+  const tiles = useMemo<RailTile[]>(
+    () =>
+      INCOME_KINDS.map((k) => {
+        const meta = INCOME_KIND_BY_KEY[k]
+        const label = t(INCOME_KIND_LABEL_KEYS[k])
+        return {
+          id: k,
+          label,
+          hueName: k,
+          icon: CATEGORY_ICONS[meta.icon] ? (
+            <CategorySticker source={CATEGORY_ICONS[meta.icon]} size={32} onLightSurface />
+          ) : (
+            <Text>{meta.emoji}</Text>
+          ),
+          accessibilityLabel: label,
+        }
+      }),
+    [t],
+  )
   return (
-    <View style={styles.field}>
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-        {t('gastos:import.row.incomeType')}
-      </Text>
-      <View style={styles.kindRow}>
-        {INCOME_KINDS.map((k) => {
-          const active = k === incomeKind
-          return (
-            <PressScale
-              key={k}
-              onPress={() => onSelect(k)}
-              accessibilityState={{ selected: active }}
-              style={[
-                styles.kindBtn,
-                {
-                  backgroundColor: active
-                    ? theme.colors.primary
-                    : 'transparent',
-                  borderColor: active ? theme.colors.primary : theme.colors.line,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.kindLabel,
-                  { color: active ? theme.colors.textOnPrimary : theme.colors.text },
-                ]}
-              >
-                {t(INCOME_KIND_LABEL_KEYS[k])}
-              </Text>
-            </PressScale>
-          )
-        })}
-      </View>
-    </View>
+    <TileRail
+      tiles={tiles}
+      selectedId={incomeKind}
+      onSelect={(id) => onSelect(id as IncomeKind)}
+      labelText={t('gastos:import.row.incomeType')}
+      rows={1}
+      tileWidth={railTileWidth(windowWidth)}
+      tileHeight={RAIL_TILE_HEIGHT}
+    />
   )
 }
 
@@ -568,12 +576,4 @@ const styles = StyleSheet.create({
   hint: { fontSize: 11, fontWeight: '500', marginTop: 6 },
   warnings: { gap: 4 },
   warning: { fontSize: 11, fontWeight: '600' },
-  kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  kindBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  kindLabel: { fontSize: 13, fontWeight: '700' },
 })
