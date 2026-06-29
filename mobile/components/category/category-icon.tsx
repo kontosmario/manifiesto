@@ -6,6 +6,7 @@ import {
 import { CATEGORY_ICONS } from './category-icon-registry'
 import { CategorySticker } from './category-sticker'
 import { resolveCategoryIconKey, type CategoryIconScope } from './category-icon-map'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 
 interface CategoryIconProps {
   /** Nombre CRUDO de la categoría (no el localizado). */
@@ -27,7 +28,15 @@ export function CategoryIcon({ name, scope = 'expense', size = 28, emojiStyle }:
   const source = key ? CATEGORY_ICONS[key] : undefined
 
   if (source) {
-    return <CategorySticker source={source} size={size} />
+    // En dark mode el sticker se apoya sobre el pastel CLARO del hue (lo
+    // resalta con su propio color, como en light mode).
+    return (
+      <CategorySticker
+        source={source}
+        size={size}
+        plateColor={resolveCategoryHueByName(name).light.surface}
+      />
+    )
   }
 
   const emoji =

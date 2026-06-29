@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CategorySticker } from '@/components/category/category-sticker'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
@@ -92,7 +93,11 @@ function IncomeRowImpl({
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
           {CATEGORY_ICONS[meta.icon] ? (
-            <CategorySticker source={CATEGORY_ICONS[meta.icon]} size={24} />
+            <CategorySticker
+              source={CATEGORY_ICONS[meta.icon]}
+              size={24}
+              plateColor={resolveCategoryHueByName(kind).light.surface}
+            />
           ) : (
             <Text style={styles.iconText}>{emoji}</Text>
           )}
