@@ -213,10 +213,12 @@ const config: ExpoConfig = {
     // archivo). Build 7 (2026-06-19) = build 6 (suscripciones + rediseño
     // de familia + contador fluido + fix de notifs) + las tabs DINÁMICAS
     // de fijos (cada bucket vencidos/pendientes/pagados se muestra solo si
-    // tiene items). El build 6 ya estaba en ASC → este es 7 (el número
+    // tiene items). El build 6 ya estaba en ASC → este es 8 (el número
     // debe ser único por versión). El OTA sigue bloqueado (la firma de
     // updates requiere EAS Enterprise) — todo cambio de JS requiere build.
-    buildNumber: '7',
+    // Build 8 (2026-06-29): UI de fijos (nombre completo + íconos dark) +
+    // paridad del cupo "Buen día" con el Home (cliente; el cron va aparte).
+    buildNumber: '8',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
