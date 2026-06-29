@@ -37,16 +37,20 @@ mapeado, sino cae al emoji legacy (`pickIconForCategory` /
 `pickIconForFixedExpenseCategory`). SIEMPRE pasar el nombre **crudo** (no el
 `displayName` localizado).
 
-**Legibilidad dark mode:** los stickers están ilustrados para fondo CLARO; sobre
-los badges oscuros del dark mode sus bordes/siluetas oscuras se funden. Por eso
-el sticker se renderiza vía `CategorySticker` (`category-sticker.tsx`), que en
-dark mode lo apoya sobre una placa con el **pastel CLARO del hue** de la categoría
-(`plateColor` = `resolveCategoryHueByName(name).light.surface`) — el mismo fondo
-que tiene el ícono en light mode, así se resalta con su propio color — y en light
-mode lo deja tal cual (footprint = `size` en ambos modos, sin reflow).
-Centralizado ahí porque el sticker se pinta por 2 vías: `CategoryIcon`
-(categorías) y `<Image>` directo (ingresos: picker de add-ingreso + `income-row`),
-las tres pasan por `CategorySticker`.
+**Legibilidad dark mode:** los stickers están ilustrados para fondo CLARO → sobre
+cualquier fondo oscuro sus siluetas se funden. NO existe "1 color OSCURO + ícono
+legible" con estos stickers. Por eso el fondo del ícono es SIEMPRE un color CLARO
+(el pastel del hue), en ambos modos:
+- **Picker (selección):** la cápsula ENTERA del tile usa el pastel claro del hue
+  (`resolveCategoryHueByName(name).light`) en light Y dark — un solo color, sin
+  placa. El sticker va directo (`CategoryIcon`/`CategorySticker` con
+  `onLightSurface`); el label en el ink oscuro (AA).
+- **Superficies oscuras (filas, filtros):** ahí el tile del ícono es oscuro, así
+  que el sticker se apoya sobre una placa con ese mismo pastel claro
+  (`CategorySticker` con `plateColor`, solo en dark).
+
+Footprint = `size` en ambos modos (sin reflow). Centralizado en `CategorySticker`
+— las 3 vías (`CategoryIcon` + picker de add-ingreso + `income-row`) pasan por ahí.
 
 ## Superficies cableadas
 

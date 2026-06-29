@@ -24,7 +24,8 @@ import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
-import { useAppTheme, useCategoryHueByName } from '@/theme/theme-provider'
+import { useAppTheme } from '@/theme/theme-provider'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 
 // Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
 // consistentes con el kind-picker de add-ingreso (badge 42 en ambos).
@@ -54,7 +55,7 @@ export const RAIL_TILE_HEIGHT = 80
  * las CATEGORÍAS (add-gasto / add-fijo, vía `CategoryHorizontalRail`) como los
  * TIPOS DE INGRESO (add-ingreso), unificando el formato de selección.
  *
- * - `hueName`: string que determina el color del badge (`useCategoryHueByName`).
+ * - `hueName`: string que resuelve el color del tile (`resolveCategoryHueByName(...).light`).
  * - `icon`: nodo a renderizar dentro del badge (sticker `<CategoryIcon>` para
  *   categorías; `<Image>` del sticker para ingresos).
  */
@@ -262,6 +263,9 @@ export function CategoryHorizontalRail({
               scope={iconScope}
               size={32}
               emojiStyle={styles.emoji}
+              // La cápsula del tile ya es el pastel CLARO del hue (ambos modos)
+              // → el sticker se lee directo, sin placa.
+              onLightSurface
             />
           ),
           accessibilityLabel: t('home:categoryRail.selectAccessibility', {
@@ -304,7 +308,10 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
-  const hue = useCategoryHueByName(tile.hueName)
+  // SIEMPRE el pastel CLARO del hue — un solo color de fondo del ícono, igual
+  // en light y dark (los stickers están ilustrados para fondo claro → así se
+  // leen en ambos modos sin placa). El label va en el ink oscuro (AA).
+  const hue = resolveCategoryHueByName(tile.hueName).light
 
   // Animate the selected state via Reanimated so the border eases in
   // and out — same pattern AmountCard uses for its focus ring.
@@ -349,9 +356,8 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
         <Animated.View
           style={[
             styles.tile,
-            // El color de la categoría (hue) ocupa TODO el tile — una sola
-            // cápsula coloreada (antes había 2: tile neutro + badge de color).
-            // hue.surface/ink es el par con contraste AA en ambos modos.
+            // Un solo color de fondo (pastel claro del hue) ocupa TODO el tile,
+            // igual en light y dark. Sin placa: el sticker va directo encima.
             { width, height, backgroundColor: hue.surface },
             borderStyle,
           ]}

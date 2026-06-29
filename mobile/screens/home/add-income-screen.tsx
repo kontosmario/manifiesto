@@ -13,7 +13,6 @@ import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CategorySticker } from '@/components/category/category-sticker'
-import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { AmountCard } from '@/components/home/amount-card'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
 import { DescriptionRow } from '@/components/home/description-row'
@@ -93,11 +92,8 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
         label: t(k.labelKey),
         hueName: k.key,
         icon: CATEGORY_ICONS[k.icon] ? (
-          <CategorySticker
-            source={CATEGORY_ICONS[k.icon]}
-            size={32}
-            plateColor={resolveCategoryHueByName(k.key).light.surface}
-          />
+          // La cápsula del picker ya es el pastel claro del hue → sin placa.
+          <CategorySticker source={CATEGORY_ICONS[k.icon]} size={32} onLightSurface />
         ) : (
           <Text style={styles.incomeEmoji}>{k.emoji}</Text>
         ),

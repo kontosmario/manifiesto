@@ -16,6 +16,9 @@ interface CategoryIconProps {
   size?: number
   /** Estilo extra para el emoji de fallback (categorías sin sticker mapeado). */
   emojiStyle?: StyleProp<TextStyle>
+  /** El caller ya pone el ícono sobre una superficie CLARA (ej. la cápsula del
+   *  picker) → el sticker no necesita placa en dark. */
+  onLightSurface?: boolean
 }
 
 /**
@@ -23,18 +26,26 @@ interface CategoryIconProps {
  * cae al emoji actual (`pickIconForCategory`/`pickIconForFixedExpenseCategory`).
  * El sticker se resuelve por slug estable, nunca por el nombre localizado.
  */
-export function CategoryIcon({ name, scope = 'expense', size = 28, emojiStyle }: CategoryIconProps) {
+export function CategoryIcon({
+  name,
+  scope = 'expense',
+  size = 28,
+  emojiStyle,
+  onLightSurface = false,
+}: CategoryIconProps) {
   const key = resolveCategoryIconKey(name, scope)
   const source = key ? CATEGORY_ICONS[key] : undefined
 
   if (source) {
-    // En dark mode el sticker se apoya sobre el pastel CLARO del hue (lo
-    // resalta con su propio color, como en light mode).
+    // En superficies oscuras (filas) el sticker se apoya sobre el pastel CLARO
+    // del hue para resaltarlo. Si el caller ya está sobre fondo claro (picker),
+    // `onLightSurface` evita la placa.
     return (
       <CategorySticker
         source={source}
         size={size}
         plateColor={resolveCategoryHueByName(name).light.surface}
+        onLightSurface={onLightSurface}
       />
     )
   }

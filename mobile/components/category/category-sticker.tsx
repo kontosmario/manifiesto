@@ -6,10 +6,13 @@ interface CategoryStickerProps {
   /** Lado del sticker en px. El footprint del componente == size en AMBOS
    *  modos, así no cambia el layout del caller. */
   size: number
-  /** Color de la placa detrás del sticker en DARK mode. Se le pasa el pastel
-   *  CLARO del hue de la categoría → el ícono queda sobre SU color (lo resalta,
-   *  igual que en light mode) en vez de un neutro. Default: off-white cálido. */
+  /** Color de la placa detrás del sticker en DARK mode (cuando la superficie
+   *  del caller es oscura — ej. filas). Default: off-white cálido. */
   plateColor?: string
+  /** El caller ya pone el sticker sobre una superficie CLARA (ej. la cápsula
+   *  del picker = pastel del hue en ambos modos) → no hace falta placa: se
+   *  rendea el Image tal cual, también en dark. */
+  onLightSurface?: boolean
 }
 
 /**
@@ -26,7 +29,12 @@ interface CategoryStickerProps {
  * categorías (`CategoryIcon`) y los ingresos (picker de add-ingreso +
  * `income-row`), que usan el sticker por key directa del registry.
  */
-export function CategorySticker({ source, size, plateColor = '#F4F0E7' }: CategoryStickerProps) {
+export function CategorySticker({
+  source,
+  size,
+  plateColor = '#F4F0E7',
+  onLightSurface = false,
+}: CategoryStickerProps) {
   const theme = useThemeTokens()
   const image = (
     <Image
@@ -37,7 +45,8 @@ export function CategorySticker({ source, size, plateColor = '#F4F0E7' }: Catego
     />
   )
 
-  if (!theme.isDark) return image
+  // Light mode, o superficie clara del caller → sin placa (Image directo).
+  if (!theme.isDark || onLightSurface) return image
 
   return (
     <View
