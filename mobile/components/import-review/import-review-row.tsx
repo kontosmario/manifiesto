@@ -30,7 +30,7 @@ import {
 } from '@/components/home/category-horizontal-rail'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CategorySticker } from '@/components/category/category-sticker'
-import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
+import { INCOME_KINDS } from '@/features/income/income-kinds'
 import { NotesRow } from '@/components/home/notes-row'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
@@ -67,12 +67,6 @@ interface Props {
   onUnskip: () => void
 }
 
-const INCOME_KINDS: IncomeKind[] = ['transfer', 'gift', 'other']
-const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
-  transfer: 'gastos:import.incomeKind.transfer',
-  gift: 'gastos:import.incomeKind.gift',
-  other: 'gastos:import.incomeKind.other',
-}
 
 /**
  * Single-movement form rendered as the current wizard step. No
@@ -448,13 +442,12 @@ function IncomeKindSection({
   // vía TileRail (antes eran pills de texto, estilo viejo).
   const tiles = useMemo<RailTile[]>(
     () =>
-      INCOME_KINDS.map((k) => {
-        const meta = INCOME_KIND_BY_KEY[k]
-        const label = t(INCOME_KIND_LABEL_KEYS[k])
+      INCOME_KINDS.map((meta) => {
+        const label = t(meta.labelKey)
         return {
-          id: k,
+          id: meta.key,
           label,
-          hueName: k,
+          hueName: meta.key,
           icon: CATEGORY_ICONS[meta.icon] ? (
             <CategorySticker source={CATEGORY_ICONS[meta.icon]} size={32} onLightSurface />
           ) : (

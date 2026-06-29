@@ -7,7 +7,8 @@ import { formatWeekdayDayMonth } from '@/utils/date-format'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { Category } from '@/features/categories/use-categories'
-import type { IncomeKind, ReviewRow } from '@/features/import-review/types'
+import type { ReviewRow } from '@/features/import-review/types'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 
 interface Props {
   rows: readonly ReviewRow[]
@@ -20,12 +21,6 @@ interface Props {
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
-
-const INCOME_KIND_LABEL_KEYS: Record<IncomeKind, string> = {
-  transfer: 'gastos:import.incomeKind.transfer',
-  gift: 'gastos:import.incomeKind.gift',
-  other: 'gastos:import.incomeKind.other',
-}
 
 /**
  * Final wizard step. A sober, scannable list of exactly what's about to
@@ -134,7 +129,7 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
     const dateLabel = formatRelativeDate(row.date)
     const sub =
       row.kind === 'income'
-        ? t(INCOME_KIND_LABEL_KEYS[row.incomeKind])
+        ? t(INCOME_KIND_BY_KEY[row.incomeKind].labelKey)
         : (categoryName ?? '—')
     return `${dateLabel} · ${sub}`
   })()

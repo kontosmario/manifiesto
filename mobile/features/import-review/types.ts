@@ -1,4 +1,5 @@
 import type { Transaction } from '@/features/activity-ocr/types'
+import type { IncomeEventKind } from '@/features/income/use-income-events'
 
 export type ReviewRowKind = 'expense' | 'income' | 'skip'
 
@@ -12,9 +13,9 @@ export type ReviewRowWarning =
   // anclamos a hoy y avisamos al usuario que la revise.
   | 'future-date'
 
-// Subconjunto de IncomeEventKind que el import OCR ofrece para clasificar un
-// ingreso (set chico a propósito). "Bono" se quitó del catálogo de ingresos.
-export type IncomeKind = 'transfer' | 'gift' | 'other'
+// El import OCR ofrece el catálogo COMPLETO de tipos de ingreso (los 9 de
+// `income-kinds.ts`), igual que el picker de add-ingreso.
+export type IncomeKind = IncomeEventKind
 
 export interface ReviewRow {
   id: string
