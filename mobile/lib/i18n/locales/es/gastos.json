@@ -386,7 +386,14 @@
       "bonus": "Bono",
       "gift": "Regalo",
       "other": "Otro",
-      "incomeLabel": "Ingreso"
+      "incomeLabel": "Ingreso",
+      "salaryExtra": "Sueldo extra",
+      "freelance": "Freelance",
+      "sale": "Venta",
+      "aguinaldo": "Aguinaldo",
+      "investment": "Inversiones",
+      "rental": "Alquiler",
+      "refund": "Reintegro"
     },
     "field": {
       "description": "descripción",
@@ -568,15 +575,6 @@
   },
   "categoryTemplates": {
     "expense": {
-      "alquiler": {
-        "default": "Alquiler",
-        "name": "Alquiler",
-        "quickDescriptions": [
-          "Alquiler",
-          "Expensas",
-          "Seña"
-        ]
-      },
       "mercado": {
         "default": "Mercado",
         "name": "Mercado",
@@ -585,6 +583,15 @@
           "Verdulería",
           "Kiosco",
           "Panadería"
+        ]
+      },
+      "comida_y_salidas": {
+        "default": "Comida y salidas",
+        "name": "Comida y salidas",
+        "quickDescriptions": [
+          "Restaurante",
+          "Café",
+          "Delivery"
         ]
       },
       "transporte": {
@@ -597,24 +604,14 @@
           "Estacionamiento"
         ]
       },
-      "ocio": {
-        "default": "Ocio",
-        "name": "Ocio",
+      "hogar": {
+        "default": "Hogar",
+        "name": "Hogar",
         "quickDescriptions": [
-          "Cine",
-          "Salida",
-          "Streaming",
-          "Juegos"
-        ]
-      },
-      "servicios": {
-        "default": "Servicios",
-        "name": "Servicios",
-        "quickDescriptions": [
-          "Luz",
-          "Gas",
-          "Agua",
-          "Internet"
+          "Limpieza",
+          "Reparaciones",
+          "Decoración",
+          "Muebles"
         ]
       },
       "salud": {
@@ -625,6 +622,43 @@
           "Consulta",
           "Prepaga",
           "Obra social"
+        ]
+      },
+      "cuidado_personal": {
+        "default": "Cuidado personal",
+        "name": "Cuidado personal",
+        "quickDescriptions": [
+          "Peluquería",
+          "Perfumería",
+          "Skincare"
+        ]
+      },
+      "ropa_y_calzado": {
+        "default": "Ropa y calzado",
+        "name": "Ropa y calzado",
+        "quickDescriptions": [
+          "Ropa",
+          "Calzado",
+          "Accesorios"
+        ]
+      },
+      "tecnologia": {
+        "default": "Tecnología",
+        "name": "Tecnología",
+        "quickDescriptions": [
+          "Electrónica",
+          "Accesorio",
+          "Reparación"
+        ]
+      },
+      "ocio": {
+        "default": "Ocio",
+        "name": "Ocio",
+        "quickDescriptions": [
+          "Cine",
+          "Salida",
+          "Streaming",
+          "Juegos"
         ]
       },
       "educacion": {
@@ -647,33 +681,6 @@
           "Peluquería"
         ]
       },
-      "ropa": {
-        "default": "Ropa",
-        "name": "Ropa",
-        "quickDescriptions": [
-          "Ropa",
-          "Calzado",
-          "Accesorios"
-        ]
-      },
-      "tecnologia": {
-        "default": "Tecnología",
-        "name": "Tecnología",
-        "quickDescriptions": [
-          "Electrónica",
-          "Accesorio",
-          "Reparación"
-        ]
-      },
-      "regalos": {
-        "default": "Regalos",
-        "name": "Regalos",
-        "quickDescriptions": [
-          "Regalo",
-          "Cumpleaños",
-          "Souvenir"
-        ]
-      },
       "viajes": {
         "default": "Viajes",
         "name": "Viajes",
@@ -683,49 +690,13 @@
           "Excursión"
         ]
       },
-      "restaurantes": {
-        "default": "Restaurantes",
-        "name": "Restaurantes",
+      "regalos_y_donaciones": {
+        "default": "Regalos y donaciones",
+        "name": "Regalos y donaciones",
         "quickDescriptions": [
-          "Restaurante",
-          "Café",
-          "Delivery"
-        ]
-      },
-      "deporte": {
-        "default": "Deporte",
-        "name": "Deporte",
-        "quickDescriptions": [
-          "Gimnasio",
-          "Yoga",
-          "Suplementos"
-        ]
-      },
-      "suscripciones": {
-        "default": "Suscripciones",
-        "name": "Suscripciones",
-        "quickDescriptions": [
-          "Netflix",
-          "Spotify",
-          "iCloud"
-        ]
-      },
-      "impuestos": {
-        "default": "Impuestos",
-        "name": "Impuestos",
-        "quickDescriptions": [
-          "ABL",
-          "Monotributo",
-          "Municipal"
-        ]
-      },
-      "belleza": {
-        "default": "Belleza",
-        "name": "Belleza",
-        "quickDescriptions": [
-          "Peluquería",
-          "Perfumería",
-          "Skincare"
+          "Regalo",
+          "Donación",
+          "Cumpleaños"
         ]
       },
       "otros": {
@@ -735,126 +706,6 @@
           "Varios",
           "Imprevisto",
           "Ajuste"
-        ]
-      },
-      "combustible": {
-        "default": "Combustible",
-        "name": "Combustible",
-        "quickDescriptions": [
-          "Nafta",
-          "Gasoil",
-          "Carga",
-          "Estación"
-        ]
-      },
-      "delivery": {
-        "default": "Delivery",
-        "name": "Delivery",
-        "quickDescriptions": [
-          "Pedido",
-          "Comida",
-          "Envío",
-          "App"
-        ]
-      },
-      "cafeteria": {
-        "default": "Cafetería",
-        "name": "Cafetería",
-        "quickDescriptions": [
-          "Café",
-          "Desayuno",
-          "Merienda",
-          "Bar"
-        ]
-      },
-      "farmacia": {
-        "default": "Farmacia",
-        "name": "Farmacia",
-        "quickDescriptions": [
-          "Remedios",
-          "Receta",
-          "Cuidado",
-          "Farmacia"
-        ]
-      },
-      "peluqueria": {
-        "default": "Peluquería",
-        "name": "Peluquería",
-        "quickDescriptions": [
-          "Corte",
-          "Color",
-          "Peinado",
-          "Barba"
-        ]
-      },
-      "taxi": {
-        "default": "Taxi",
-        "name": "Taxi",
-        "quickDescriptions": [
-          "Taxi",
-          "Uber",
-          "Remis",
-          "Cabify"
-        ]
-      },
-      "estacionamiento": {
-        "default": "Estacionamiento",
-        "name": "Estacionamiento",
-        "quickDescriptions": [
-          "Cochera",
-          "Peaje",
-          "Garage",
-          "Parking"
-        ]
-      },
-      "libros": {
-        "default": "Libros",
-        "name": "Libros",
-        "quickDescriptions": [
-          "Libro",
-          "Librería",
-          "eBook",
-          "Revista"
-        ]
-      },
-      "conciertos": {
-        "default": "Conciertos",
-        "name": "Conciertos",
-        "quickDescriptions": [
-          "Recital",
-          "Show",
-          "Entrada",
-          "Festival"
-        ]
-      },
-      "donaciones": {
-        "default": "Donaciones",
-        "name": "Donaciones",
-        "quickDescriptions": [
-          "Donación",
-          "Aporte",
-          "Caridad",
-          "Colecta"
-        ]
-      },
-      "hobbies": {
-        "default": "Hobbies",
-        "name": "Hobbies",
-        "quickDescriptions": [
-          "Arte",
-          "Pasatiempo",
-          "Taller",
-          "Hobby"
-        ]
-      },
-      "streaming": {
-        "default": "Streaming",
-        "name": "Streaming",
-        "quickDescriptions": [
-          "Netflix",
-          "Spotify",
-          "Disney",
-          "HBO"
         ]
       }
     },
@@ -878,14 +729,24 @@
           "Garage"
         ]
       },
-      "suscripciones": {
-        "default": "Suscripciones",
-        "name": "Suscripciones",
+      "salud": {
+        "default": "Salud",
+        "name": "Salud",
         "quickDescriptions": [
-          "Netflix",
-          "Spotify",
-          "Disney+",
-          "iCloud"
+          "Prepaga",
+          "Obra social",
+          "Plan médico",
+          "Cobertura"
+        ]
+      },
+      "deporte": {
+        "default": "Deporte",
+        "name": "Deporte",
+        "quickDescriptions": [
+          "Membresía",
+          "Cuota mensual",
+          "Club",
+          "Entrenamiento"
         ]
       },
       "seguros": {
@@ -898,9 +759,29 @@
           "Vida"
         ]
       },
-      "cuotas": {
-        "default": "Cuotas",
-        "name": "Cuotas",
+      "suscripciones": {
+        "default": "Suscripciones",
+        "name": "Suscripciones",
+        "quickDescriptions": [
+          "Netflix",
+          "Spotify",
+          "Disney+",
+          "iCloud"
+        ]
+      },
+      "educacion": {
+        "default": "Educación",
+        "name": "Educación",
+        "quickDescriptions": [
+          "Colegio",
+          "Universidad",
+          "Cuota",
+          "Curso"
+        ]
+      },
+      "cuotas_y_deudas": {
+        "default": "Cuotas y deudas",
+        "name": "Cuotas y deudas",
         "quickDescriptions": [
           "Tarjeta",
           "Préstamo",
@@ -916,15 +797,6 @@
           "Patente"
         ]
       },
-      "deudas": {
-        "default": "Deudas",
-        "name": "Deudas",
-        "quickDescriptions": [
-          "Préstamo personal",
-          "Tarjeta",
-          "Familiar"
-        ]
-      },
       "inversiones": {
         "default": "Inversiones",
         "name": "Inversiones",
@@ -935,34 +807,13 @@
           "Aporte mensual"
         ]
       },
-      "educacion": {
-        "default": "Educación",
-        "name": "Educación",
+      "otros": {
+        "default": "Otros",
+        "name": "Otros",
         "quickDescriptions": [
-          "Colegio",
-          "Universidad",
-          "Cuota",
-          "Curso"
-        ]
-      },
-      "salud": {
-        "default": "Salud",
-        "name": "Salud",
-        "quickDescriptions": [
-          "Prepaga",
-          "Obra social",
-          "Plan médico",
-          "Cobertura"
-        ]
-      },
-      "gimnasio": {
-        "default": "Gimnasio",
-        "name": "Gimnasio",
-        "quickDescriptions": [
-          "Membresía",
-          "Cuota mensual",
-          "Club",
-          "Entrenamiento"
+          "Varios",
+          "Imprevisto",
+          "Ajuste"
         ]
       }
     }

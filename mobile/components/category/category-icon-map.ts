@@ -32,6 +32,14 @@ const EXPENSE_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   belleza: 'cuidado-personal/maquillaje',
   otros: 'servicios-general/otros',
 
+  // — Categorías default compactadas (renombres 2026-06-29) —
+  // (los slugs viejos de arriba quedan como sinónimos para categorías custom)
+  comida_y_salidas: 'alimentacion/comida-rapida',
+  hogar: 'vivienda/vivienda',
+  cuidado_personal: 'cuidado-personal/maquillaje',
+  ropa_y_calzado: 'cuidado-personal/ropa',
+  regalos_y_donaciones: 'servicios-general/regalos',
+
   // — Alimentación — (también enciende categorías custom que matcheen)
   supermercado: 'alimentacion/supermercado',
   almacen: 'alimentacion/supermercado',
@@ -182,6 +190,11 @@ const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   deudas: 'finanzas/deuda',
   inversiones: 'finanzas/inversiones',
 
+  // — Categorías default compactadas de fijos (2026-06-29) —
+  deporte: 'salud/gimnasio',
+  cuotas_y_deudas: 'finanzas/deuda',
+  otros: 'servicios-general/otros',
+
   // — Servicios del hogar / utilities (fijos típicos) —
   alquiler: 'vivienda/vivienda',
   expensas: 'vivienda/vivienda',
@@ -212,6 +225,10 @@ const FIXED_ICON_BY_SLUG: Record<string, CategoryIconKey> = {
   tarjeta_de_credito: 'finanzas/tarjeta-de-credito',
   prestamo: 'finanzas/deuda',
   ahorro: 'finanzas/ahorro',
+
+  // — Seguros desglosados (split del fijo "Seguros"; `prepaga` ya está arriba) —
+  seguro_auto: 'transporte/automovil',
+  seguro_hogar: 'vivienda/vivienda',
 }
 
 export type CategoryIconScope = 'expense' | 'fixed_expense'

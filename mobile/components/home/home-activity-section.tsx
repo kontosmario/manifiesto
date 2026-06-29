@@ -9,7 +9,8 @@ import { ActivityRowV2 } from '@/components/home/activity-row-v2'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { type DashboardErrorKind } from '@/features/home/home-dashboard-model'
 import type { Expense } from '@/features/expenses/use-expenses'
-import type { IncomeEvent, IncomeEventKind } from '@/features/income/use-income-events'
+import type { IncomeEvent } from '@/features/income/use-income-events'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 
 interface HomeActivitySectionProps {
   expenses: Expense[]
@@ -57,19 +58,8 @@ type MovementItem =
   | { kind: 'expense'; iso: string; expense: Expense }
   | { kind: 'income'; iso: string; income: IncomeEvent }
 
-const INCOME_KIND_LABEL_KEY: Record<IncomeEventKind, string> = {
-  transfer: 'home:activitySection.incomeKind.transfer',
-  bonus: 'home:activitySection.incomeKind.bonus',
-  gift: 'home:activitySection.incomeKind.gift',
-  other: 'home:activitySection.incomeKind.other',
-}
-
-const INCOME_KIND_ICON: Record<IncomeEventKind, string> = {
-  transfer: '💸',
-  bonus: '⭐',
-  gift: '🎁',
-  other: '💵',
-}
+// Label + emoji por tipo de ingreso → catálogo central `income-kinds.ts`
+// (cubre los 11 kinds; antes había mapas locales de solo 4).
 
 // Verde de crédito para el icon tile de los ingresos — no tienen categoría,
 // así que matchean el color del monto positivo (success). Los gastos usan el
@@ -165,11 +155,12 @@ function HomeActivitySectionImpl({
         const delay = Math.min(180 + index * 40, 360)
         if (m.kind === 'income') {
           const income = m.income
-          const kindLabel = t(INCOME_KIND_LABEL_KEY[income.kind])
+          const meta = INCOME_KIND_BY_KEY[income.kind]
+          const kindLabel = t(meta.labelKey)
           const title = income.description?.trim() || kindLabel
           const row = (
             <ActivityRowV2
-              icon={INCOME_KIND_ICON[income.kind]}
+              icon={meta.emoji}
               title={title}
               category={t('home:activitySection.incomeCategory', { kind: kindLabel })}
               categoryColor={INCOME_TILE_COLOR}

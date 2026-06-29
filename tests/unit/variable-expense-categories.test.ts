@@ -15,61 +15,44 @@ function category(overrides: Partial<Category>): Category {
   }
 }
 
-describe('filterVariableExpenseCategories', () => {
-  it('removes the fixed-only categories (Alquiler, Servicios, Suscripciones, Impuestos, Educación, Salud) from the picker', () => {
+describe('filterVariableExpenseCategories (post-compactación)', () => {
+  it('NO oculta Salud ni Educación (ahora son variables legítimas)', () => {
     const input = [
       category({ name: 'Mercado' }),
-      category({ name: 'Alquiler' }),
-      category({ name: 'Transporte' }),
-      category({ name: 'Servicios' }),
-      category({ name: 'Suscripciones' }),
-      category({ name: 'Impuestos' }),
-      category({ name: 'Educación' }),
       category({ name: 'Salud' }),
+      category({ name: 'Educación' }),
       category({ name: 'Ocio' }),
     ]
     const result = filterVariableExpenseCategories(input)
     expect(result.map((c) => c.name)).toEqual([
       'Mercado',
-      'Transporte',
+      'Salud',
+      'Educación',
       'Ocio',
     ])
   })
 
-  it('matches "Educacion" without the accent (typed without diacritic)', () => {
-    const input = [
-      category({ name: 'Educacion' }),
-      category({ name: 'Mercado' }),
+  it('deja pasar todo el catálogo compactado sin filtrar', () => {
+    const names = [
+      'Mercado',
+      'Comida y salidas',
+      'Transporte',
+      'Hogar',
+      'Cuidado personal',
+      'Otros',
     ]
-    const result = filterVariableExpenseCategories(input)
-    expect(result.map((c) => c.name)).toEqual(['Mercado'])
+    const input = names.map((name) => category({ name }))
+    expect(filterVariableExpenseCategories(input).map((c) => c.name)).toEqual(names)
   })
 
-  it('matches case-insensitively and tolerates leading/trailing whitespace', () => {
+  it('deja pasar categorías custom del usuario', () => {
     const input = [
-      category({ name: '  alquiler  ' }),
-      category({ name: 'SERVICIOS' }),
-      category({ name: 'Suscripciones ' }),
+      category({ name: 'Mi categoría rara' }),
       category({ name: 'Mercado' }),
     ]
-    const result = filterVariableExpenseCategories(input)
-    expect(result.map((c) => c.name)).toEqual(['Mercado'])
-  })
-
-  it('keeps user-renamed categories that no longer match the canonical fixed names', () => {
-    // If the user renames "Alquiler" to "Alquiler de auto" they
-    // probably want it as a variable expense — the filter must not
-    // strip categories that *contain* a fixed name as a substring.
-    const input = [
-      category({ name: 'Alquiler de auto' }),
-      category({ name: 'Servicios profesionales' }),
-      category({ name: 'Suscripción única' }),
-    ]
-    const result = filterVariableExpenseCategories(input)
-    expect(result.map((c) => c.name)).toEqual([
-      'Alquiler de auto',
-      'Servicios profesionales',
-      'Suscripción única',
+    expect(filterVariableExpenseCategories(input).map((c) => c.name)).toEqual([
+      'Mi categoría rara',
+      'Mercado',
     ])
   })
 
@@ -78,10 +61,7 @@ describe('filterVariableExpenseCategories', () => {
   })
 
   it('does not mutate the input array', () => {
-    const input = [
-      category({ name: 'Alquiler' }),
-      category({ name: 'Mercado' }),
-    ]
+    const input = [category({ name: 'Salud' }), category({ name: 'Mercado' })]
     const snapshot = [...input]
     filterVariableExpenseCategories(input)
     expect(input).toEqual(snapshot)

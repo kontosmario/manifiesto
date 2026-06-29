@@ -1,7 +1,7 @@
 # Sistema de íconos de categoría (stickers)
 
 Reemplaza los emojis de categorías/ingresos/fijos/frecuencias/metas/jardín por
-**stickers PNG multicolor** (89 íconos). Diseñado para crecer sin inflar el
+**stickers PNG multicolor** (90 íconos). Diseñado para crecer sin inflar el
 bundle JS y para "encenderse" automáticamente en categorías custom.
 
 ## Pipeline
@@ -43,7 +43,8 @@ mapeado, sino cae al emoji legacy (`pickIconForCategory` /
 - Filas/listas: `gasto-row`, `fijo-row`, `fijo-category-groups`,
   `home-activity` (ActivityRowV2 `icon: ReactNode`), `gastos-smart-filter`
   (GastosFilterPill `iconNode`), `step2-summary`, `calendar-drop-impact`.
-- Ingresos: `add-income-screen` (KINDS) + `income-row` (`finanzas/*`, `regalos`).
+- Ingresos: `income-kinds.ts` (`INCOME_KINDS`, 11 tipos — módulo puro testeable)
+  renderizado por `add-income-screen` + `income-row` (`finanzas/*`, `vivienda`, `regalos`).
 - Ciclos/frecuencias: `cycle-config-section` + `FreqTile` (FREQ_OPTIONS →
   `frecuencias/*`).
 - Metas: `GoalIcon` (`goal-icon.tsx` + `goal-icon.ts`) detecta sticker-key vs
@@ -60,17 +61,26 @@ del sticker ni de `categories.color`.
 **Sumar un ícono nuevo**: dejar el SVG en `_src/<grupo>/<slug>.svg` → correr el
 generador → mapear el slug en `category-icon-map.ts`.
 
-**Sumar una categoría default nueva**: migración additiva a `category_templates`
-(sort_order libre: expense 1-18+, fixed 1001+) + backfill a familias existentes
-(patrón de `20260424160000` / `20260627000000`) — el bootstrap siembra las
-nuevas a familias nuevas. Agregar i18n en `categoryTemplates.expense.<slug>`
-(ES + EN, `default`=nombre español para el gate de localización) y el slug en el
-icon-map. `categories.color` queda NULL (hue por nombre).
+**Sumar una categoría default nueva** (post-cutover): migración aditiva a
+`category_templates` (sort_order libre: expense 1-30+, fixed 1001+). Como
+`categories` es una VIEW global (templates ∪ custom per-familia), insertar el
+template ya la expone a TODAS las familias —nuevas y existentes—: NO hay backfill
+ni CASE de `bootstrap_family` que tocar (eso era el patrón pre-cutover, ver
+`20260627051928`). Para `fixed_expense` SETEAR `color` en el template: la vista
+proyecta `COALESCE(category_templates.color,'#8A8A8A')` y la UI de fijos
+(fijo-row/grupos) usa ese color. Para `expense` el color queda NULL (hue por
+nombre). Agregar i18n en `categoryTemplates.<scope>.<slug>` (ES + EN,
+`default`=nombre español para el gate de localización) y el slug en el icon-map.
+⚠️ `sort_order` tiene UNIQUE **global** (no por scope): si renumerás, vacateá
+(+10000) antes de reubicar para no colisionar (ver `20260628170200`).
 
-Catálogo actual: **30 expense** (18 consolidadas + 12 curadas 2026-06-27) +
-**11 fixed** (8 + Educación/Salud/Gimnasio 2026-06-27). ⚠️ El scope `fixed_expense`
-usa el color GUARDADO de la categoría (fijo-row/grupos), por eso una categoría
-fija nueva necesita color en el CASE de `bootstrap_family` (familias nuevas) +
-en el backfill (existentes) — a diferencia de expense, que deriva el hue del
-nombre. De los 89 íconos, 4 quedan sin asignar a propósito (arte duplicado +
-`crecimiento/brote-bebe` como swap del jardín).
+Catálogo actual (compactado 2026-06-29, migración `20260629120000`): **14 expense**
+(13 generales + Otros) + **11 fixed** (10 generales + Otros). Revierte la
+granularidad de fijos (`20260628170200`) y las 12 "curadas" variables
+(`20260627000000`): lo fino (Luz/Gas/Taxi/Prepaga…) se absorbe en su general y la
+especificidad la cubren los sinónimos del icon-map + categorías custom. **Ingresos**:
+11 tipos en `income-kinds.ts` (acotados por `income_events_kind_check`). De los **90
+íconos**, 3 quedan sin asignar a propósito (`deportes/objetivo` y
+`entretenimiento/deportes` = arte duplicado; `crecimiento/brote-bebe` = swap del
+jardín); `finanzas/venta` (sticker del dólar) lo usa el ingreso "Venta" y
+`finanzas/bono` el "Aguinaldo".

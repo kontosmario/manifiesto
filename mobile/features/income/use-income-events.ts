@@ -16,7 +16,7 @@ import { incomeEventQueryKeys } from '@/features/income/income-event-query-keys'
 
 export { incomeEventQueryKeys }
 
-export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other'
+export type IncomeEventKind = 'transfer' | 'bonus' | 'gift' | 'other' | 'salary_extra' | 'freelance' | 'sale' | 'aguinaldo' | 'investment' | 'rental' | 'refund'
 
 export interface IncomeEvent {
   id: string

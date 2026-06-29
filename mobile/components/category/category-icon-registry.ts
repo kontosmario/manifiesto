@@ -1,5 +1,6 @@
 // AUTO-GENERADO por scripts/gen-category-icons.mjs — NO editar a mano.
 // Íconos de categoría (stickers multicolor del owner) como PNG assets.
+/* eslint-disable @typescript-eslint/no-require-imports -- los PNG entran por el require() del asset pipeline de Metro (no son imports JS). */
 import type { ImageSourcePropType } from 'react-native'
 
 export const CATEGORY_ICONS: Record<string, ImageSourcePropType> = {
@@ -50,6 +51,7 @@ export const CATEGORY_ICONS: Record<string, ImageSourcePropType> = {
   "finanzas/seguros": require("../../assets/category-icons/finanzas/seguros.png"),
   "finanzas/tarjeta-de-credito": require("../../assets/category-icons/finanzas/tarjeta-de-credito.png"),
   "finanzas/transferencia": require("../../assets/category-icons/finanzas/transferencia.png"),
+  "finanzas/venta": require("../../assets/category-icons/finanzas/venta.png"),
   "frecuencias/anual": require("../../assets/category-icons/frecuencias/anual.png"),
   "frecuencias/cuotas": require("../../assets/category-icons/frecuencias/cuotas.png"),
   "frecuencias/mensual": require("../../assets/category-icons/frecuencias/mensual.png"),
@@ -144,6 +146,7 @@ export const CATEGORY_ICON_KEYS = [
   "finanzas/seguros",
   "finanzas/tarjeta-de-credito",
   "finanzas/transferencia",
+  "finanzas/venta",
   "frecuencias/anual",
   "frecuencias/cuotas",
   "frecuencias/mensual",

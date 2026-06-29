@@ -8,7 +8,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { getStateTokens } from '@/theme/state-tokens'
 import type { IngresosCiclo } from '@/features/insights/use-control-v2-data'
-import type { IncomeEventKind } from '@/features/income/use-income-events'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { monthShort } from '@/utils/date-format'
 
@@ -18,15 +18,8 @@ interface ControlV2IngresosCardProps {
   diasMes: number
 }
 
-const KIND_META: Record<
-  IncomeEventKind,
-  { labelKey: string; icon: 'swap-horiz' | 'workspace-premium' | 'card-giftcard' | 'attach-money' }
-> = {
-  transfer: { labelKey: 'control:ingresos.kindTransfer', icon: 'swap-horiz' },
-  bonus: { labelKey: 'control:ingresos.kindBonus', icon: 'workspace-premium' },
-  gift: { labelKey: 'control:ingresos.kindGift', icon: 'card-giftcard' },
-  other: { labelKey: 'control:ingresos.kindOther', icon: 'attach-money' },
-}
+// Glyph monocromo + label por tipo de ingreso → catálogo central
+// `income-kinds.ts` (cubre los 11 kinds; antes era un mapa local de 4).
 
 const MAX_VISIBLE = 3
 
@@ -127,7 +120,7 @@ function ControlV2IngresosCardImpl({
           ]}
         >
           {visibles.map((mov, index) => {
-            const meta = KIND_META[mov.kind] ?? KIND_META.other
+            const meta = INCOME_KIND_BY_KEY[mov.kind] ?? INCOME_KIND_BY_KEY.other
             return (
               <View
                 key={mov.id}
@@ -139,7 +132,7 @@ function ControlV2IngresosCardImpl({
                   },
                 ]}
               >
-                <MaterialIcons name={meta.icon} size={15} color={tokens.fg} />
+                <MaterialIcons name={meta.materialIcon} size={15} color={tokens.fg} />
                 <View style={styles.rowBody}>
                   <Text
                     style={[styles.rowTitle, { color: theme.colors.text }]}

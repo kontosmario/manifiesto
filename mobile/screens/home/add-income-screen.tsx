@@ -17,6 +17,7 @@ import {
   useCreateIncomeEvent,
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
+import { INCOME_KINDS } from '@/features/income/income-kinds'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildScreenHeaderPalette } from '@/theme/screen-header'
@@ -31,23 +32,9 @@ interface AddIncomeScreenProps {
   userId: string
 }
 
-interface KindMeta {
-  key: IncomeEventKind
-  labelKey: string
-  // Key into CATEGORY_ICONS (sticker PNG registry).
-  icon: string
-}
-
-// Four constrained kinds — keeps server-side analytics tractable
-// while covering the realistic mental model. Open-text `description`
-// captures the rest. Icons are sticker PNGs from the category
-// registry (matching the add-expense / fijos look).
-const KINDS: KindMeta[] = [
-  { key: 'transfer', labelKey: 'gastos:import.incomeKind.transfer',  icon: 'finanzas/transferencia' },
-  { key: 'bonus',    labelKey: 'gastos:import.incomeKind.bonus',     icon: 'finanzas/bonus' },
-  { key: 'gift',     labelKey: 'gastos:import.incomeKind.gift',      icon: 'servicios-general/regalos' },
-  { key: 'other',    labelKey: 'gastos:import.incomeKind.other',     icon: 'finanzas/billetera' },
-]
+// Los 11 tipos de ingreso viven en `income-kinds.ts` (módulo puro). Open-text
+// `description` captura el detalle. Íconos = stickers PNG del registry
+// (mismo look que add-gasto / fijos).
 
 const SUGGESTED_DELTAS = [5000, 15000, 30000, 50000, 100000]
 
@@ -243,9 +230,10 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
           />
         </RiseView>
 
-        {/* Kind picker — 2×2 grid mirroring the category tile look:
+        {/* Kind picker — grilla de tiles (mismo look que las categorías):
             rounded 14, creamCard bg idle, primary surface + border
-            when selected, icon centered with label below. */}
+            when selected, icon centered con label debajo. Con 11 tipos
+            wrappea a 3 columnas. */}
         <RiseView delay={dayOffset !== 0 ? 180 : 120}>
           <View>
             <Text
@@ -261,7 +249,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
               {flagKind ? t('gastos:addIncome.fromWhereFlagged') : t('gastos:addIncome.fromWhere')}
             </Text>
             <View style={styles.kindGrid}>
-              {KINDS.map((k) => {
+              {INCOME_KINDS.map((k) => {
                 const selected = kind === k.key
                 return (
                   <Pressable
@@ -320,7 +308,7 @@ export function AddIncomeScreen({ familyId }: AddIncomeScreenProps) {
                       )}
                     </View>
                     <Text
-                      numberOfLines={1}
+                      numberOfLines={2}
                       style={[
                         styles.kindLabel,
                         {
@@ -467,7 +455,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   kindTile: {
-    width: '48%',
+    // 3 columnas para alojar los 11 tipos de ingreso (antes 2: '48%').
+    width: '31%',
     // 76 → 88 para alojar el badge más grande (42) sin apretar el label.
     minHeight: 88,
     borderRadius: 14,

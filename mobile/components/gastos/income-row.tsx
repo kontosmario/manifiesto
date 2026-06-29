@@ -6,6 +6,7 @@ import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 
 export interface IncomeRowProps {
   title?: string
@@ -16,28 +17,9 @@ export interface IncomeRowProps {
   time?: string
 }
 
-const KIND_EMOJI: Record<IncomeEventKind, string> = {
-  transfer: '💸',
-  bonus: '⭐',
-  gift: '🎁',
-  other: '💵',
-}
-
-// Sticker por tipo de ingreso — mismo mapeo que el picker de add-income.
-// Si la key faltara en el registry, el render cae al emoji (KIND_EMOJI).
-const KIND_ICON: Record<IncomeEventKind, string> = {
-  transfer: 'finanzas/transferencia',
-  bonus: 'finanzas/bonus',
-  gift: 'servicios-general/regalos',
-  other: 'finanzas/billetera',
-}
-
-const KIND_PILL_KEY: Record<IncomeEventKind, string> = {
-  transfer: 'gastos:incomeRow.kind.transfer',
-  bonus: 'gastos:incomeRow.kind.bonus',
-  gift: 'gastos:incomeRow.kind.gift',
-  other: 'gastos:incomeRow.kind.other',
-}
+// Sticker / emoji / label por tipo de ingreso → catálogo central
+// `income-kinds.ts` (cubre los 11 kinds). Si la key faltara en el registry,
+// el render cae al emoji.
 
 /**
  * Movement row for income events — mirrors `GastoRow`'s chrome exactly
@@ -71,8 +53,9 @@ function IncomeRowImpl({
 }: IncomeRowProps) {
   const theme = useThemeTokens()
   const { t } = useTranslation()
-  const emoji = KIND_EMOJI[kind]
-  const pillLabel = t(KIND_PILL_KEY[kind])
+  const meta = INCOME_KIND_BY_KEY[kind]
+  const emoji = meta.emoji
+  const pillLabel = t(meta.labelKey)
   const accent = theme.colors.primary
 
   // Same memoization shape as GastoRow so the row stays cheap during
@@ -107,9 +90,9 @@ function IncomeRowImpl({
     >
       <View style={styles.iconWrap}>
         <View style={iconTileStyle}>
-          {CATEGORY_ICONS[KIND_ICON[kind]] ? (
+          {CATEGORY_ICONS[meta.icon] ? (
             <Image
-              source={CATEGORY_ICONS[KIND_ICON[kind]]}
+              source={CATEGORY_ICONS[meta.icon]}
               style={styles.iconImage}
               resizeMode="contain"
             />

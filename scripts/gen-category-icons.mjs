@@ -88,6 +88,7 @@ async function main() {
   const lines = [
     '// AUTO-GENERADO por scripts/gen-category-icons.mjs — NO editar a mano.',
     '// Íconos de categoría (stickers multicolor del owner) como PNG assets.',
+    '/* eslint-disable @typescript-eslint/no-require-imports -- los PNG entran por el require() del asset pipeline de Metro (no son imports JS). */',
     "import type { ImageSourcePropType } from 'react-native'",
     '',
     'export const CATEGORY_ICONS: Record<string, ImageSourcePropType> = {',

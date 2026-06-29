@@ -24,15 +24,16 @@ import type { Category } from '@/features/categories/use-categories'
  * therefore hidden from the variable-expense picker. Stored lowercase
  * AND diacritic-stripped so the match works whether the user typed
  * "Educación" or "Educacion".
+ *
+ * Post-compactación (2026-06-29): el catálogo variable se compactó a 13
+ * categorías generales + Otros y ya NO incluye nombres solo-fijo
+ * (Alquiler/Suscripciones/Impuestos se eliminaron, "Servicios" se renombró
+ * a "Hogar"). Salud y Educación AHORA son categorías variables legítimas
+ * (consulta puntual, un libro/curso) y deben mostrarse. Por eso el set
+ * queda vacío — el filtro es identidad hoy, pero se conserva como punto de
+ * extensión por si en el futuro hay que volver a ocultar algún nombre.
  */
-const FIXED_ONLY_CATEGORY_NAMES = new Set<string>([
-  'alquiler',
-  'servicios',
-  'suscripciones',
-  'impuestos',
-  'educacion',
-  'salud',
-])
+const FIXED_ONLY_CATEGORY_NAMES = new Set<string>([])
 
 function normalize(name: string): string {
   return name
