@@ -152,6 +152,13 @@ export function useConsumeFamilyInvite(userId?: string) {
         queryClient.invalidateQueries({ queryKey: familyQueryKey(userId) }),
         queryClient.invalidateQueries({ queryKey: categoriesQueryKey(result.family_id) }),
         queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all }),
+        // Al unirte sos un miembro nuevo: refrescar la lista de miembros (Home +
+        // admin) y el home_snapshot. Sin esto, el Home muestra solo al dueño hasta
+        // el próximo refresh manual (mismo set que convert/leave family).
+        queryClient.invalidateQueries({ queryKey: familyMembersKey(result.family_id) }),
+        queryClient.invalidateQueries({ queryKey: familyMembersDetailKey(result.family_id) }),
+        queryClient.invalidateQueries({ queryKey: familyAdminMemberStatsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
         // El entitlement se resuelve con la familia (trial nuevo o cobertura del
         // hogar). Sin esto, el snapshot BLOCKED cacheado durante la ventana
         // sin-familia del reset quedaba pegado (staleTime 60s) y el paywall duro

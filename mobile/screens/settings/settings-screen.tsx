@@ -1451,12 +1451,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             <>
             <RiseView delay={420}>
               <SettingsGroup title={t('settings:family.groupTitle')}>
-                <SettingsRow
-                  icon="person-add"
-                  label={t('settings:family.invite')}
-                  helper={t('settings:family.inviteHelper')}
-                  onPress={handleOpenShareInvite}
-                />
+                {/* Invitar + gestionar miembros = solo el dueño. Un miembro
+                    no-dueño solo ve "Salir del hogar" (el backend
+                    create_family_invite también es owner-only — sin bypass). */}
+                {isOwner ? (
+                  <SettingsRow
+                    icon="person-add"
+                    label={t('settings:family.invite')}
+                    helper={t('settings:family.inviteHelper')}
+                    onPress={handleOpenShareInvite}
+                  />
+                ) : null}
                 {isOwner ? (
                   <SettingsRow
                     icon="group"
