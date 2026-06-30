@@ -400,6 +400,20 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       const financePayload = buildFamilyFinanceInput(baseSnapshot)
       await upsertFinance.mutateAsync(financePayload)
 
+      // El ingreso del dueño debe vivir como su monthly_income_contribution: el
+      // total del hogar (family_finance.monthly_income) es DERIVADO = Σ de las
+      // contribuciones (trigger recompute_family_income). Si el ingreso del dueño
+      // quedara solo en family_finance, el primer miembro que se una lo borraría
+      // (recompute pisa monthly_income con la suma, que excluía al dueño). Con esto
+      // el dueño entra en la suma y los que se unan se agregan encima.
+      const { error: ownerIncomeError } = await supabase.rpc(
+        'update_my_income_contribution',
+        { p_amount: monthlyIncome },
+      )
+      // supabase.rpc NO tira: si no chequeamos el error, un fallo dejaría al dueño
+      // con contribución 0 (ingreso del hogar 0) — justo lo que este fix evita.
+      if (ownerIncomeError) throw ownerIncomeError
+
       if (state.createFirstGoal) {
         const parsedGoal = parsePrice(state.firstGoalTargetRaw)
         const goalAmount = Number.isFinite(parsedGoal) && parsedGoal > 0 ? parsedGoal : 0

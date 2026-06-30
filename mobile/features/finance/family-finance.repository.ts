@@ -64,12 +64,21 @@ export async function upsertFamilyFinance(
   const payload = validateFamilyFinanceInput(input)
   await writeFallbackFinance(familyId, payload)
 
-  // Build the upsert body, then strip `monthly_reserve_amount`: la
-  // UI no la edita y enviarla en cada upsert (con default 0) pisaría
-  // la reserva acumulada que escribe el RPC de cierre de mes.
-  const { monthly_reserve_amount: _omitReserve, ...storagePayload } =
-    financeInputToStoragePayload(input)
+  // Build the upsert body, then strip columnas que NO son editables vía la UI:
+  //  · `monthly_reserve_amount`: la escribe el RPC de cierre de mes; enviarla
+  //    pisaría la reserva acumulada.
+  //  · `monthly_income`: es DERIVADA (= Σ de monthly_income_contribution de los
+  //    miembros, vía trigger recompute_family_income). Escribirla desde la UI la
+  //    pisaría con un valor que excluye a otros miembros. El ingreso se setea vía
+  //    el RPC update_my_income_contribution. La columna tiene DEFAULT 0, así que
+  //    omitirla del INSERT es seguro y el trigger la recalcula.
+  const {
+    monthly_reserve_amount: _omitReserve,
+    monthly_income: _omitIncome,
+    ...storagePayload
+  } = financeInputToStoragePayload(input)
   void _omitReserve
+  void _omitIncome
   const upsertBody: Record<string, unknown> = {
     family_id: familyId,
     ...storagePayload,

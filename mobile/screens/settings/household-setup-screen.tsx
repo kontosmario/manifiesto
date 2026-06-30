@@ -24,6 +24,7 @@ import {
   useFamilyFinance,
   useUpsertFamilyFinance,
 } from '@/features/finance/use-family-finance'
+import { useUpdateMyIncomeContribution } from '@/features/family/use-family-actions'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import {
   deriveSavingsGoalAmount,
@@ -140,6 +141,7 @@ function HouseholdSetupWizardContent({
   // review screens-B3.
   const sessionUserId = useAuthSession().data?.user?.id
   const upsertFinanceMutation = useUpsertFamilyFinance(familyId, sessionUserId)
+  const updateMyContributionMutation = useUpdateMyIncomeContribution(sessionUserId, familyId)
   const [currentStep, setCurrentStep] = useState(0)
   const [drafts, setDrafts] = useState(() => buildHouseholdSetupDraftState(initialSnapshot))
 
@@ -208,6 +210,21 @@ function HouseholdSetupWizardContent({
         )
       },
       onSuccess: async () => {
+        // El ingreso del dueño debe vivir como su monthly_income_contribution:
+        // family_finance.monthly_income es DERIVADO (= Σ de contribuciones, vía
+        // recompute_family_income). El upsert ya no escribe monthly_income (lo
+        // strippea el repo), así que persistimos el ingreso editado acá. Sin esto
+        // el ingreso se perdía (escrito a ningún lado).
+        try {
+          await updateMyContributionMutation.mutateAsync(monthlyIncome)
+        } catch (error) {
+          await triggerHaptic('error')
+          Alert.alert(
+            t('settings:householdSetup.saveErrorTitle'),
+            getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')),
+          )
+          return
+        }
         await triggerHaptic('success')
         router.replace(isInitialFlow ? '/(app)/(tabs)/home' : '/(app)/settings')
       },
