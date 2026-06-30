@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   FadeIn,
   ReduceMotion,
+  type CSSAnimationKeyframes,
 } from 'react-native-reanimated'
 import { WarmFernLogo } from '@/components/auth/warm-fern-logo'
 import {
@@ -98,30 +99,99 @@ export function AuthTransitionSplash({
 // rendering pipeline already does very efficiently for keyframe
 // animations.
 //
-// Densidad 16 → 28 + glow (2026-06-29): el fern del boot/bridge se veía más
-// vacío que el welcome/onboarding (que usan CardParticles, 28 con glow). Subimos
-// el count y agregamos un boxShadow (glow ESTÁTICO, NO worklet → respeta el
-// diseño sin-worklets de arriba; la opacity del keyframe lo atenúa con la
-// luciérnaga) + las peach un poco más grandes, para que el campo lea igual de
-// denso y "vivo" que el resto de las superficies fern. Sigue siendo el MISMO
-// campo determinístico → el seam boot ↔ bridge sigue invisible.
-const FIREFLY_COUNT = 28
+// Campo de luciérnagas que REPLICA el look del campo de partículas del
+// cold-start/welcome — el mejor que tenemos (`ParticleLayer` + `CardParticles`,
+// ver welcome-screen.tsx). Aquellos son worklet; esta superficie corre mientras
+// iOS monta Home, así que acá lo reproducimos en CSS declarativo (el runtime
+// nativo interpola los keyframes — sin per-frame JS ni shared values). Las
+// claves que copiamos del "look CardParticles":
+//
+//  • Órbita 2D (no solo vertical): tx = ampX·sin(fx·θ), ty = ampY·cos(fy·θ)
+//    traza una elipse / figura-8 — el mismo modelo de movimiento de CardParticles.
+//  • La opacity PULSA entre un PISO (>0, nunca apagada del todo — "las
+//    luciérnagas laten, no estroboscopian") y un techo 0.74–0.92, a una
+//    frecuencia (fb) DISTINTA de la del movimiento → el brillo respira
+//    independiente de la posición (= flicker desacoplado de CardParticles).
+//  • Piso + glow (boxShadow size·2.5) → siempre hay un campo suave de luz,
+//    denso y vivo, igual que el welcome (no el blink-a-negro de antes).
+//  • Colores y tamaños = CardParticles (#B2E08A/#C7EE9C verdes, #F0B488 peach;
+//    puntos 2.4/3.2/4.0 + peach 5, con halo).
+//  • Cada órbita arranca en una FASE distinta vía animationDelay NEGATIVO →
+//    animada desde el frame 0, nunca estática, nunca en sincronía. (Un delay
+//    POSITIVO dejaba la View en su estilo base = opacity 1 = punto fijo
+//    brillante durante el delay; ése era el bug de "partículas estáticas".)
+//
+// Determinístico (fórmulas por índice, sin Math.random) → boot y bridge
+// renderizan el MISMO campo, así el seam boot ↔ bridge sigue invisible.
+const TWO_PI = Math.PI * 2
+// Spread R2 (Roberts): secuencia de baja discrepancia que llena la caja sin las
+// bandas diagonales del reparto naïve (el mismo fix que usa CardParticles).
+const R2_X = 0.7548776662466927 // 1/g  (g ≈ 1.32471795, número plástico)
+const R2_Y = 0.5698402909980532 // 1/g²
+const FIREFLY_PEACH = '#F0B488'
+const FIREFLY_GREENS = ['#B2E08A', '#C7EE9C'] as const
+
+// Construye el keyframe CSS de UNA luciérnaga: 21 stops (cada 5%) que muestrean
+// la órbita + el pulso de brillo. Linear entre stops aproxima las sinusoides;
+// con puntos de 3-5px el facetado es imperceptible. Las fórmulas usan múltiplos
+// ENTEROS de θ ∈ [0, 2π] → posición Y velocidad coinciden en el wrap 100%→0%
+// (sin "salto" en el loop, igual que el modelo de CardParticles).
+function buildFireflyKeyframes(p: {
+  ampX: number
+  ampY: number
+  fx: number
+  fy: number
+  fb: number
+  floor: number
+  peak: number
+}): CSSAnimationKeyframes {
+  const frames: CSSAnimationKeyframes = {}
+  for (let s = 0; s <= 20; s++) {
+    const theta = TWO_PI * (s / 20)
+    const tx = p.ampX * Math.sin(p.fx * theta)
+    const ty = p.ampY * Math.cos(p.fy * theta)
+    const brightness =
+      p.floor + (p.peak - p.floor) * (0.5 - 0.5 * Math.cos(p.fb * theta))
+    frames[`${s * 5}%`] = {
+      opacity: Math.round(brightness * 1000) / 1000,
+      transform: [
+        { translateX: Math.round(tx * 100) / 100 },
+        { translateY: Math.round(ty * 100) / 100 },
+      ],
+    }
+  }
+  return frames
+}
+
+const FIREFLY_COUNT = 36
 const FIREFLIES = Array.from({ length: FIREFLY_COUNT }, (_, i) => {
-  const isPeach = i % 3 === 0 // ~1/3 cálidas y levemente más grandes (= CardParticles)
-  const size = isPeach ? 5 : 3
-  const color = isPeach ? authTokens.peach : '#C7EE9C'
+  const isPeach = i % 5 === 4 // ~1/5 cálidas + más grandes (= CardParticles)
+  const size = isPeach ? 5 : 2.4 + (i % 3) * 0.8 // 2.4 / 3.2 / 4.0
+  const color = isPeach ? FIREFLY_PEACH : FIREFLY_GREENS[i % 2]
+  // Las peach bailan más (amplitud mayor + freq 2 en ambos ejes); el resto
+  // varía amplitud y mezcla freq 1/2 → trayectorias Lissajous distintas.
+  const ampX = isPeach ? 20 : 10 + (i % 4) * 1.5 // 10–14.5
+  const ampY = isPeach ? 18 : 11 + (i % 3) * 1.5 // 11–14
+  const fx = isPeach ? 2 : i % 2 === 0 ? 1 : 2
+  const fy = isPeach ? 2 : i % 3 === 0 ? 2 : 1
+  const fb = 2 + (i % 2) // 2 ó 3 pulsos de brillo por órbita (≠ la del movimiento)
+  const floor = 0.16 + (i % 3) * 0.02 // 0.16–0.20 (nunca apagada del todo)
+  const peak = isPeach ? 0.9 : 0.92 - (i % 4) * 0.06 // 0.74–0.92 (= brightCeil)
+  const ax = (0.5 + i * R2_X) % 1
+  const ay = (0.5 + i * R2_Y) % 1
+  const durationMs = 9000 + (i % 6) * 1200 // 9–15s — drift lento y meditativo
+  const phaseMs = (i * 617) % durationMs // fase inicial ∈ [0, duración)
   return {
     key: i,
-    leftPct: (i * 17 + 11) % 92,
-    topPct: (i * 23 + 9) % 78,
-    // Stagger duration + delay so each firefly twinkles on its own
-    // rhythm. Durations 8-11s, delays 0-7s spread.
-    durationMs: 8000 + ((i * 191) % 3000),
-    delayMs: (i * 460) % 7000,
+    leftPct: 5 + ax * 90, // margen interior → el glow no se corta en los bordes
+    topPct: 6 + ay * 86,
     size,
     color,
-    // Halo suave (~2.5× el punto) — estático, lo atenúa la opacity del keyframe.
+    durationMs,
+    phaseMs,
     glow: `0px 0px ${(size * 2.5).toFixed(1)}px ${color}`,
+    keyframes: buildFireflyKeyframes({ ampX, ampY, fx, fy, fb, floor, peak }),
+    restOpacity: floor + 0.22, // reduced-motion: piso suave visible + glow
   }
 })
 
@@ -149,7 +219,7 @@ export function FirefliesLayer({
               top: (f.topPct / 100) * height,
               backgroundColor: f.color,
               boxShadow: f.glow,
-              opacity: 0.4,
+              opacity: f.restOpacity,
             }}
           />
         ))}
@@ -173,37 +243,18 @@ export function FirefliesLayer({
             // Glow estático (no worklet) — la opacity del keyframe lo atenúa
             // con la luciérnaga (RN ≥0.76: boxShadow respeta la opacity).
             boxShadow: f.glow,
-            // Keyframe animation: bell-curve opacity (firefly fades
-            // in, peaks at 50%, fades out) + lissajous-style drift
-            // (translateY upward at peak, slight X wiggle).
-            //
-            // Reanimated 4 supports keyframe percentage stops directly
-            // in `animationName`. The native runtime interpolates
-            // between them — no per-frame JS or worklet involvement.
-            animationName: {
-              '0%': {
-                opacity: 0,
-                transform: [{ translateY: 0 }, { translateX: 0 }],
-              },
-              '25%': {
-                opacity: 0.45,
-                transform: [{ translateY: -16 }, { translateX: 5 }],
-              },
-              '50%': {
-                opacity: 0.65,
-                transform: [{ translateY: -22 }, { translateX: -3 }],
-              },
-              '75%': {
-                opacity: 0.45,
-                transform: [{ translateY: -16 }, { translateX: 5 }],
-              },
-              '100%': {
-                opacity: 0,
-                transform: [{ translateY: 0 }, { translateX: 0 }],
-              },
-            },
+            // Keyframe por-luciérnaga (órbita 2D elíptica + pulso de brillo
+            // desacoplado): replica el campo worklet del welcome/CardParticles
+            // en CSS declarativo. Ver buildFireflyKeyframes + el comentario del
+            // array FIREFLIES. El runtime nativo interpola los stops — sin
+            // per-frame JS ni worklets.
+            animationName: f.keyframes,
             animationDuration: `${f.durationMs}ms`,
-            animationDelay: `${f.delayMs}ms`,
+            // Delay NEGATIVO → la animación arranca a mitad de ciclo (fase
+            // phaseMs) desde el frame 0, sin ventana estática (ver el
+            // comentario del array FIREFLIES). Soportado nativamente por
+            // Reanimated 4 (AnimationProgressProvider maneja delay < 0).
+            animationDelay: `-${f.phaseMs}ms`,
             animationIterationCount: 'infinite',
             animationTimingFunction: 'linear',
           }}
