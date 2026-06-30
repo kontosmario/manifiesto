@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
   },
-  freqTileImage: { width: 28, height: 28 },
+  freqTileImage: { width: 32, height: 32 },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',
