@@ -651,6 +651,8 @@ function InsightCard({
             <Text
               style={[styles.impactRowValue, { color: impactColor }]}
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
             >
               {task.impact}
             </Text>
@@ -1078,12 +1080,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+    // El label es corto y fijo: nunca se comprime.
+    flexShrink: 0,
   },
   impactRowValue: {
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
+    // Puede comprimirse dentro de la card: un monto en millones
+    // ("+$1.250.000 por mes") escala su fuente (adjustsFontSizeToFit)
+    // en vez de desbordar horizontalmente. Los montos cortos quedan a
+    // tamaño completo, pegados al label como antes (no se fuerza shrink
+    // si no hace falta).
+    flexShrink: 1,
   },
   // Action row sits inside the card so the theme-aware button colors
   // render on the card surface (instead of on the shell, where the
