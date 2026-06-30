@@ -167,8 +167,9 @@ export function useConsumeFamilyInvite(userId?: string) {
  *  contribution amounts, goal amounts, cycle stats and the
  *  blocked flag are only available after `consume_family_invite`.
  *  The peek surfaces just enough for the joiner to confirm "is this
- *  the right family?" — names, avatars, the household income total,
- *  and the active goal title (no progress figures). */
+ *  the right family?" — names, avatars + member count only. NO se expone
+ *  información financiera de la familia (ingreso / meta) a un no-miembro con
+ *  un código de invite (security hardening audit 2026-06-30). */
 export interface FamilyPeek {
   family_id: string
   family_code: string
@@ -178,8 +179,6 @@ export interface FamilyPeek {
     role: string
   }>
   member_count: number
-  monthly_income: number
-  active_goal_title: string | null
   invite_expires_at: string
 }
 

@@ -2,7 +2,6 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
-import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { formatMoneyShort, parsePrice } from '@/utils/money'
 import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
@@ -14,9 +13,9 @@ interface StepFamilySummaryProps {
   /** Snapshot fetched in step 3 via `peek_family_invite`. The user is
    *  NOT a member yet — the actual `consume_family_invite` insert
    *  happens when they tap "Confirmar y unirme". The payload is
-   *  intentionally narrow (security hardening 2026-05-10): names +
-   *  avatars + household income aggregate + goal title only. Per-
-   *  member breakdown lands after consume. */
+   *  intentionally narrow (security hardening audit 2026-06-30): solo
+   *  nombres + avatares + conteo de miembros. NO expone datos financieros
+   *  de la familia (ingreso/meta) a un no-miembro con un código de invite. */
   pendingFamily: FamilyPeek
   contributesIncome: boolean | null
   monthlyIncomeRaw: string
@@ -34,7 +33,6 @@ export function StepFamilySummary({
   const { theme } = useAppTheme()
   const { t } = useTranslation()
 
-  const householdIncome = pendingFamily.monthly_income
   const parsedContribution = parsePrice(monthlyIncomeRaw)
   const pendingContribution =
     contributesIncome === true &&
@@ -42,8 +40,6 @@ export function StepFamilySummary({
     parsedContribution > 0
       ? parsedContribution
       : 0
-  const projectedTotal = householdIncome + pendingContribution
-  const activeGoalTitle = pendingFamily.active_goal_title
 
   return (
     <View style={styles.stack}>
@@ -54,40 +50,6 @@ export function StepFamilySummary({
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
           {t('onboarding:familySummary.subcopy')}
         </Text>
-      </RiseView>
-
-      <RiseView delay={80}>
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: theme.colors.creamCard,
-              borderColor: theme.colors.line,
-            },
-          ]}
-        >
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-            {t('onboarding:familySummary.householdIncomeEyebrow')}
-          </Text>
-          <CountUpText
-            value={householdIncome}
-            format={formatMoneyShort}
-            duration={600}
-            style={[styles.heroValue, { color: theme.colors.text }]}
-          />
-          {pendingContribution > 0 ? (
-            <Text style={[styles.heroDelta, { color: theme.colors.primary }]}>
-              {t('onboarding:familySummary.contributionDelta', {
-                contribution: formatMoneyShort(pendingContribution),
-                total: formatMoneyShort(projectedTotal),
-              })}
-            </Text>
-          ) : contributesIncome === false ? (
-            <Text style={[styles.heroDelta, { color: theme.colors.textMuted }]}>
-              {t('onboarding:familySummary.noContribution')}
-            </Text>
-          ) : null}
-        </View>
       </RiseView>
 
       <RiseView delay={140}>
@@ -177,29 +139,6 @@ export function StepFamilySummary({
         </View>
       </RiseView>
 
-      {activeGoalTitle ? (
-        <RiseView delay={200}>
-          <View
-            style={[
-              styles.goalCard,
-              {
-                backgroundColor: theme.colors.creamCard,
-                borderColor: theme.colors.line,
-              },
-            ]}
-          >
-            <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
-              {t('onboarding:familySummary.activeGoalEyebrow')}
-            </Text>
-            <Text style={[styles.goalTitle, { color: theme.colors.text }]}>
-              {activeGoalTitle}
-            </Text>
-            <Text style={[styles.goalProgress, { color: theme.colors.textMuted }]}>
-              {t('onboarding:familySummary.goalProgress')}
-            </Text>
-          </View>
-        </RiseView>
-      ) : null}
     </View>
   )
 }
@@ -208,29 +147,11 @@ const styles = StyleSheet.create({
   stack: { gap: 18 },
   title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 6, lineHeight: 18 },
-  card: {
-    padding: 16,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    gap: 4,
-  },
   eyebrow: {
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 1.4,
     marginBottom: 8,
-  },
-  heroValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-    fontVariant: ['tabular-nums'],
-  },
-  heroDelta: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 4,
-    fontVariant: ['tabular-nums'],
   },
   membersList: { gap: 8 },
   memberRow: {
@@ -248,17 +169,4 @@ const styles = StyleSheet.create({
   memberText: { flex: 1, minWidth: 0, gap: 2 },
   memberName: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
   memberContribution: { fontSize: 12, fontWeight: '500' },
-  goalCard: {
-    marginTop: 12,
-    padding: 14,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: 4,
-  },
-  goalTitle: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
-  goalProgress: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontVariant: ['tabular-nums'],
-  },
 })
