@@ -1,6 +1,5 @@
 import { memo, useEffect } from 'react'
 import { Image, StyleSheet } from 'react-native'
-import Svg, { Circle, Ellipse, Path } from 'react-native-svg'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -29,37 +28,12 @@ interface SproutProps {
   animateInDelay?: number
 }
 
-// Fills del glyph por tono. El handoff usa colores más claros/desaturados sobre
-// el verde profundo de la celebración (Frame 4) que sobre la crema (Frame 1).
-const GLYPH = {
-  light: {
-    seedFill: '#C29A5E',
-    seedStem: '#8FA86A',
-    germStem: '#3C7D34',
-    germLeaf1: '#9FD580',
-    germLeaf2: '#A9D57F',
-    bloomPetal: '#E2935E',
-    bloomCenter: '#F4D58A',
-    missStroke: '#B7B2A2',
-    missFill: '#CBC6B6',
-    missOpacity: 0.62,
-  },
-  dark: {
-    seedFill: '#D8B27A',
-    seedStem: '#A9C28A',
-    germStem: '#6FB35E',
-    germLeaf1: '#9FD580',
-    germLeaf2: '#B7DD8E',
-    bloomPetal: '#E8A57C',
-    bloomCenter: '#F6DC9A',
-    missStroke: '#7E8C76',
-    missFill: '#6F7E68',
-    missOpacity: 0.45,
-  },
-} as const
-
-// Glyph estático por estado. Calca los paths del prototipo hifi
-// (Jardin Manifiesto.dc.html). viewBox 0 0 40 44 con preserveAspectRatio default.
+// Glyph estático por estado. TODOS los íconos son stickers PNG del owner vía
+// CATEGORY_ICONS['crecimiento/*'] (generados desde los SVG de _src por
+// scripts/gen-category-icons.mjs), salvo el brote grande, que es el FernMark de
+// marca. Crecimiento: semilla → mini-brote → brote grande. Estados restantes:
+// recuperado / marchito (sin registrar) / pending (hoy sin registrar). El hueco
+// recuperable usa el sticker `crecimiento/recuperable` desde garden-grid.
 function SproutGlyph({
   stage,
   fernSize = 26,
@@ -70,34 +44,31 @@ function SproutGlyph({
   tone?: SproutTone
 }) {
   const { theme } = useAppTheme()
-  const c = GLYPH[tone]
   switch (stage) {
     case 'seed':
-      // Sticker del owner — semilla (estado más temprano). Mismo box 22×22 que
-      // el glyph SVG anterior; el growIn lo aplica el Animated.View que envuelve.
+      // Semilla (estado más temprano).
       return (
         <Image
           source={CATEGORY_ICONS['crecimiento/semilla']}
-          style={[styles.seedImg, styles.seed]}
+          style={styles.seedImg}
           resizeMode="contain"
         />
       )
     case 'germ':
-      // Sticker del owner — mini brote (etapa intermedia, 2 hojas). Box 27×27.
+      // Mini brote (etapa intermedia, 2 hojas).
       return (
         <Image
           source={CATEGORY_ICONS['crecimiento/mini-brote']}
-          style={[styles.germImg, styles.germ]}
+          style={styles.germImg}
           resizeMode="contain"
         />
       )
     case 'fern':
     case 'bloom':
-      // Ícono de la app (brote grande, 3er step). En semana PERFECTA (bloom) es
-      // el MISMO fern — lo especial de la floración son las luciérnagas que
-      // cubren la fila (garden-grid), no un ícono distinto. Variante por TEMA:
-      // 'cream' (casi blanco) se PERDÍA sobre la tierra clara del light mode →
-      // 'forest' (verde oscuro, visible). Dark mode / celebración: 'cream'.
+      // Brote grande (3er step). En semana PERFECTA (bloom) es el MISMO fern — lo
+      // especial de la floración son las luciérnagas (garden-grid), no un ícono
+      // distinto. Variante por tema: 'forest' (verde, visible sobre la tierra
+      // clara) en light; 'cream' en dark / celebración.
       return (
         <FernMark
           variant={theme.isDark || tone === 'dark' ? 'cream' : 'forest'}
@@ -106,28 +77,31 @@ function SproutGlyph({
         />
       )
     case 'recovered':
-      // Plantado con ayuda (1 escudo): brote modesto + semilla coral de "ayuda".
-      // No florece — distinto de creciendo (sin coral) y de floración (flor llena).
+      // Plantado con ayuda (1 escudo): brote + semilla coral.
       return (
-        <Svg viewBox="0 0 40 44" width={28} height={28} style={[styles.recovered]}>
-          <Path d="M20 40 V24" stroke={c.germStem} strokeWidth={2.2} strokeLinecap="round" />
-          <Ellipse cx={13.5} cy={28} rx={5.5} ry={3.2} rotation={-34} originX={13.5} originY={28} fill={c.germLeaf1} />
-          <Ellipse cx={26.5} cy={26.5} rx={5.5} ry={3.2} rotation={34} originX={26.5} originY={26.5} fill={c.germLeaf2} />
-          <Circle cx={20} cy={18} r={3} fill={c.bloomPetal} />
-        </Svg>
+        <Image
+          source={CATEGORY_ICONS['crecimiento/recuperado']}
+          style={styles.recoveredImg}
+          resizeMode="contain"
+        />
       )
     case 'missed':
+      // Día sin registrar (brote marchito).
       return (
-        <Svg viewBox="0 0 40 44" width={26} height={26} style={[styles.missed, { opacity: c.missOpacity }]}>
-          <Path d="M20 40 Q19 30 24 26" stroke={c.missStroke} strokeWidth={2.2} fill="none" strokeLinecap="round" />
-          <Ellipse cx={27} cy={25} rx={6.5} ry={3.6} rotation={58} originX={27} originY={25} fill={c.missFill} />
-        </Svg>
+        <Image
+          source={CATEGORY_ICONS['crecimiento/marchito']}
+          style={styles.missedImg}
+          resizeMode="contain"
+        />
       )
     case 'pending':
+      // Hoy, todavía sin registrar (círculo punteado).
       return (
-        <Svg width={24} height={24}>
-          <Circle cx={12} cy={12} r={10} stroke="#7FC56A" strokeWidth={2} strokeDasharray="3 3" fill="none" />
-        </Svg>
+        <Image
+          source={CATEGORY_ICONS['crecimiento/pending']}
+          style={styles.pendingImg}
+          resizeMode="contain"
+        />
       )
     case 'pre':
     default:
@@ -170,17 +144,14 @@ function SproutImpl({ stage, fernSize, tone = 'light', animateIn, animateInDelay
 }
 
 const styles = StyleSheet.create({
-  // Sin marginBottom: el glyph se CENTRA en su casillero (garden-grid) y en el
-  // broteSlot de la celebración. (Antes había lift para el anclaje al piso.)
-  seed: {},
-  germ: {},
+  // El glyph se CENTRA en su casillero (garden-grid) / broteSlot (celebración).
   fern: {},
-  bloom: {},
-  recovered: {},
-  missed: {},
-  // Stickers PNG más grandes (pedido del owner: apreciar más el jardín).
+  // Stickers PNG (tamaños grandes para apreciar el jardín — pedido del owner).
   seedImg: { width: 28, height: 28 },
   germImg: { width: 32, height: 32 },
+  recoveredImg: { width: 32, height: 32 },
+  missedImg: { width: 30, height: 30 },
+  pendingImg: { width: 28, height: 28 },
 })
 
 export const Sprout = memo(SproutImpl)

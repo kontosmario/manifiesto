@@ -1,8 +1,8 @@
 import { memo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import Svg, { Circle } from 'react-native-svg'
 import { Sprout } from './sprout'
+import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
@@ -131,10 +131,11 @@ function GardenGridImpl({
                       pressed && styles.cellPressed,
                     ]}
                   >
-                    <Svg width={20} height={20}>
-                      <Circle cx={10} cy={10} r={8} stroke={CORAL} strokeWidth={1.6} strokeDasharray="3 3" fill="none" />
-                      <Circle cx={10} cy={10} r={2.4} fill={CORAL} />
-                    </Svg>
+                    <Image
+                      source={CATEGORY_ICONS['crecimiento/recuperable']}
+                      style={styles.gapImg}
+                      resizeMode="contain"
+                    />
                   </Pressable>
                 )
               }
@@ -233,6 +234,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.94 }],
     opacity: 0.85,
   },
+  gapImg: { width: 26, height: 26 },
 })
 
 export const GardenGrid = memo(GardenGridImpl)
