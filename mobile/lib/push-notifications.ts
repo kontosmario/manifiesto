@@ -86,6 +86,35 @@ export async function requestNotificationPermissions(): Promise<PermissionReques
   }
 }
 
+export type NotificationPermissionStatus =
+  | 'granted'
+  | 'denied'
+  | 'undetermined'
+  | 'unsupported'
+
+/**
+ * Lee el estado del permiso SIN disparar el prompt nativo. `unsupported`
+ * cuando el build no puede recibir push (web / Expo Go / simulador). Lo
+ * usa el re-prompt del Home para decidir si mostrar el priming sheet.
+ */
+export async function getNotificationPermission(): Promise<{
+  status: NotificationPermissionStatus
+  canAskAgain: boolean
+}> {
+  if (!canUseNativePushNotifications || !Device.isDevice) {
+    return { status: 'unsupported', canAskAgain: false }
+  }
+  const Notifications = await import('expo-notifications')
+  const existing = await Notifications.getPermissionsAsync()
+  const status: NotificationPermissionStatus =
+    existing.status === 'granted'
+      ? 'granted'
+      : existing.status === 'denied'
+        ? 'denied'
+        : 'undetermined'
+  return { status, canAskAgain: existing.canAskAgain ?? true }
+}
+
 async function fetchExpoPushToken(): Promise<string | null> {
   if (!canUseNativePushNotifications || !Device.isDevice) return null
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
@@ -12,13 +12,8 @@ import { PermissionPrimeSheet } from '@/components/permissions/permission-prime-
 import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { onboardingSuccessCopy } from '@/features/onboarding/success-copy'
-import { requestNotificationPermissions } from '@/lib/push-notifications'
+import { usePushPermissionPrime } from '@/features/push/use-push-permission-prime'
 import { triggerHaptic } from '@/lib/haptics'
-import {
-  markPrimeDismissed,
-  shouldPrimePermission,
-} from '@/lib/permission-prime-cooldown'
-import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import { authTokens } from '@/theme/palette'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
@@ -40,12 +35,20 @@ const TEXT_ON_CREAM_SOFT = 'rgba(14,58,38,0.72)'    // soft @72% alpha (5.2:1 AA
 export function OnboardingSuccessScreen() {
   return (
     <RequireAuth>
-      {({ userId }) => <OnboardingSuccessBody userId={userId} />}
+      {({ userId, familyId }) => (
+        <OnboardingSuccessBody userId={userId} familyId={familyId} />
+      )}
     </RequireAuth>
   )
 }
 
-function OnboardingSuccessBody({ userId }: { userId: string }) {
+function OnboardingSuccessBody({
+  userId,
+  familyId,
+}: {
+  userId: string
+  familyId: string
+}) {
   const router = useRouter()
   const { t } = useTranslation()
   const isSolo = useIsSolo(userId)
@@ -80,7 +83,10 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
   //   - Si entra al sheet → Dismiss marca cooldown y navega.
   //   - Si no entra al sheet → navega directo (cooldown activo o
   //     build sin push).
-  const [primeVisible, setPrimeVisible] = useState(false)
+  // Lógica de priming compartida con el re-prompt del Home — un solo
+  // lugar marca el cooldown, dispara el prompt y registra el token.
+  const prime = usePushPermissionPrime({ userId, familyId })
+  const { showIfEligible, onAllow, onDismiss } = prime
 
   const navigateNext = useCallback(() => {
     // Antes de Home pasamos por la bienvenida al acceso completo (trial-welcome).
@@ -92,38 +98,23 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
 
   const handleContinue = useCallback(async () => {
     void triggerHaptic('selection')
-    if (!canUseNativePushNotifications) {
-      navigateNext()
-      return
-    }
-    const shouldPrime = await shouldPrimePermission('notifications')
-    if (!shouldPrime) {
-      navigateNext()
-      return
-    }
-    setPrimeVisible(true)
-  }, [navigateNext])
+    // El sheet se muestra sólo si corresponde (build soporta push, sin
+    // permiso aún, cooldown vencido); si no, navegamos directo.
+    const shown = await showIfEligible()
+    if (!shown) navigateNext()
+  }, [showIfEligible, navigateNext])
 
   const handlePrimeAllow = useCallback(async () => {
-    setPrimeVisible(false)
-    // Disparamos el prompt nativo. El token se va a registrar más
-    // tarde (next mount) vía `setupPushNotifications` en el shell —
-    // aquí sólo nos interesa el flujo de permiso. Si el user rechaza
-    // o no responde, no bloqueamos la navegación a Home.
-    try {
-      await requestNotificationPermissions()
-    } catch {
-      // Cualquier error en el prompt nativo lo tragamos: el usuario
-      // ya verá el banner "Activar push" en Ajustes si quiso.
-    }
+    // onAllow marca el cooldown, dispara el prompt nativo y registra el
+    // token si concede. No bloqueamos la navegación a Home pase lo que pase.
+    await onAllow()
     navigateNext()
-  }, [navigateNext])
+  }, [onAllow, navigateNext])
 
   const handlePrimeDismiss = useCallback(async () => {
-    setPrimeVisible(false)
-    await markPrimeDismissed('notifications')
+    await onDismiss()
     navigateNext()
-  }, [navigateNext])
+  }, [onDismiss, navigateNext])
 
   return (
     <View style={[styles.root, { backgroundColor: CREAM }]}>
@@ -185,7 +176,7 @@ function OnboardingSuccessBody({ userId }: { userId: string }) {
       </RiseView>
 
       <PermissionPrimeSheet
-        visible={primeVisible}
+        visible={prime.visible}
         type="notifications"
         onAllow={() => {
           void handlePrimeAllow()

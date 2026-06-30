@@ -43,6 +43,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { FreePeriodNudge } from '@/components/billing/free-period-nudge'
+import { PushPermissionPrompt } from '@/components/permissions/push-permission-prompt'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface HomeScreenProps {
@@ -489,6 +490,14 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
           }
           isSavingSalary={upsertFamilyFinanceMutation.isPending}
           salaryErrorMessage={salaryErrorMessage}
+        />
+        {/* Re-prompt de permiso de push para cuentas que no pasaron por el
+            priming de onboarding (login a cuenta existente / "Más tarde"
+            vencido). Self-gateado: no se duplica con onboarding. */}
+        <PushPermissionPrompt
+          userId={userId}
+          familyId={familyId}
+          ready={Boolean(snapshot.data)}
         />
         </>
       )}

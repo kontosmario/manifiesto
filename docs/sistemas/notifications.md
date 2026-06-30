@@ -162,6 +162,28 @@ fue un fallback para "sin push": si tenías permiso llegaban las DOS. Se retiró
 (cancela las agendadas existentes + no re-agenda). Se conserva **"Cerrá tu día"**
 (umbral 70% del cupo, contextual, no se pisa con nada server-side).
 
+## Priming del permiso de push (2026-06-29)
+
+Nada de esto llega si el device no tiene el permiso de notifs concedido + un
+token registrado. El **pre-prompt** (`PermissionPrimeSheet`) explica el valor y
+sólo entonces dispara el prompt nativo de iOS (que es de un solo tiro: si el
+user dice que no, la única salida es Ajustes). Cooldown device-local de 7 días
+para "Más tarde" (decisión: por-dispositivo, no por-usuario).
+
+- **Onboarding** (`onboarding-success-screen`): se muestra al cerrar el alta.
+- **Home** (`PushPermissionPrompt`, 2026-06-29): re-prompt para cuentas que NO
+  pasaron por onboarding — **login a una cuenta existente en un device nuevo**, o
+  "Más tarde" vencido. Antes de esto, esos usuarios nunca veían el prompt ni
+  registraban token. Self-gateado por elegibilidad (build soporta push + sin
+  permiso + cooldown vencido) → no se duplica con onboarding.
+- Lógica compartida fail-safe en `features/push/push-permission-actions.ts`
+  (`isPushPrimeEligible` / `applyPushPermissionAllow` / `applyPushPermissionDismiss`,
+  nunca throwean) + hook `usePushPermissionPrime`. "Permitir": marca el cooldown
+  **tras** la respuesta del OS (no antes → sin lockout por error transitorio),
+  registra el token al conceder, y abre Ajustes sólo en hard-deny (no en un deny
+  fresco). Gotcha de plataforma: **Expo Go no registra push remoto** — sólo
+  dev/standalone builds.
+
 ## Pushes sociales (client-driven) — gasto/ingreso/fijo de un familiar
 
 Distinto del pipeline cron/orchestrator de arriba. Cuando un miembro
