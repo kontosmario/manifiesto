@@ -205,32 +205,32 @@
       "hero": "Your main card: what you have left available in the cycle, how much you can spend per day to finish the month on track and what you'll close with. If you haven't set up your income yet, here's the shortcut to do it.",
       "variables": "The variable-expenses side: what you've spent this cycle and the category where most of it goes. These are your day-to-day expenses (groceries, transport, going out). Tap to see the detail in Expenses.",
       "fixed": "The fixed-expenses side: how many you've already paid and which one is due next, so none slips by. These are payments that repeat every cycle (rent, utilities, subscriptions). Tap to see the detail in Fixed.",
-      "meta": "Your savings goal as a digital piggy bank: see how much you've saved, add a quick contribution and adjust the target right here.",
+      "meta": "Your savings goal as a digital piggy bank: see how much you've saved and add a quick contribution right here. You adjust the target in Settings.",
       "streak": "Your garden week: one dot per day based on whether you logged an expense (or marked a no-spend day). Logging daily grows your garden. Tap to open My garden.",
       "activity": "Your recent movements this month, sorted by date. Swipe a row left to edit or delete it, or tap \"See all\" to open the full screen.",
-      "fab": "The quick actions button. One tap logs an expense instantly. Press and hold to open a menu with three options: expense, fixed expense or income. It's the fastest way to add movements."
+      "fab": "The quick actions button. One tap opens the form to log an expense. Press and hold to open a menu with more shortcuts: expense, import a receipt, mark a no-spend day, income or fixed expense. It's the fastest way to add movements."
     },
     "gastos": {
       "hero": "The month's summary: how much you've spent, which categories lead and your daily average. One glance and you understand how the month is going.",
-      "streak": "Your streak of days logging expenses. Every day you log at least one expense (or mark a no-spend day) adds a day to the flame. The streak unlocks shields and rewards.",
+      "streak": "Your streak of days logging expenses. Every day you log at least one expense (or mark a no-spend day) adds a day to your garden. The streak unlocks shields and rewards.",
       "calendar": "The month's calendar with your expenses day by day. Each day's color reflects how much you spent. Tap a day to filter the list and see only that date's movements.",
       "filters": "Quick filters by category. Tap a chip and the list below adjusts instantly — handy to see, for example, how much you've spent on groceries or transport.",
       "list": "Your list of movements this month, grouped by day. Tap a row to open the detail, or swipe it left to edit or delete it. The list respects the filter and the day selected above."
     },
     "fijos": {
       "hero": "Your fixed expenses this month: how many you already paid, how much is left to pay and when each one is due. Rent, subscriptions and utilities go here.",
-      "calendar": "What's due soon, from nearest to furthest. Each bubble is a payment with its day and category; in red, the ones already past due that are worth catching up on.",
-      "list": "Your fixed expenses grouped by category (electricity, rent, subscriptions…). Tap one to mark it paid, or swipe it left to edit, delete or pause it (keep it from counting while you're not using it).",
+      "calendar": "What's due to pay this cycle, from nearest to furthest. Each ticket shows the payment, its amount and how long is left; in red, the ones due in one or two days that are worth catching up on.",
+      "list": "Your fixed expenses grouped by category (electricity, rent, subscriptions…). Tap one to open it and mark it paid, or swipe it left to delete it.",
       "addButton": "Here you add a new fixed expense. Add rent, a subscription or any recurring commitment — you set how often it's due and the app adds it to the cycle automatically."
     },
     "control": {
       "hoy": "Your daily pulse: how much you have left today and how you're doing against your daily allowance. In green you're on pace; if you go red, you've crossed the ceiling.",
       "alcanza": "Will it last until the end of the cycle? We estimate how you'll close if you keep this spending pace. If it falls short, it tells you the day you'd run out of money and how much to cut back per day.",
-      "alcancia": "Your piggy bank for the month: what you DIDN'T spend each day accumulates here. It's the automatic savings you generate by staying below the daily allowance. Tap the card to see the detail.",
+      "alcancia": "Your piggy bank for the month: what you have left each day by spending less than your allowance accumulates here as a savings suggestion. With one tap on the button you move it to your goal.",
       "semana": "Summary of the current week versus the previous one. If a category spiked this week, you'll notice it here before the cycle breaks.",
-      "vsMes": "Comparison against previous months. It tells you whether your current month is above, below or in line with the historical average — useful to spot whether the month is unusual.",
+      "vsMes": "Comparison against last month. It tells you whether you're spending above, below or in line with your last closed cycle — useful to spot whether the month is unusual.",
       "patron": "Your spending pattern by day of the week. If you always overspend on Wednesdays or take care on Mondays, you'll see it here as your own fingerprint.",
-      "cobertura": "Your cushion: how many days you could cover your expenses if your income stopped today. The higher it is, the calmer your month. It's one of the most important numbers for your financial health."
+      "cobertura": "Your salary in days: of the cycle's days, how many pay your fixed expenses, how many go to your savings and how many are left free. The less your fixed expenses take, the more real margin you have. It's one of the most important numbers for your financial health."
     }
   }
 }
