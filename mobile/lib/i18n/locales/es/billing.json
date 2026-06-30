@@ -77,7 +77,7 @@
     "annualA11y": "{{plan}}, recomendado, {{price}} por año"
   },
   "savingsRibbon": {
-    "text": "Ahorrás ${{amount}} al año · −{{percent}}%"
+    "text": "Ahorras ${{amount}} al año · −{{percent}}%"
   },
   "changePlan": {
     "title": "Cambiar de plan",

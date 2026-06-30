@@ -301,7 +301,7 @@
       "titlePositive": "Vienes administrando bien el ciclo",
       "titleNegative": "El arrastre te está apretando hoy",
       "detailPositive": "Traes {{amount}} de aire acumulado por debajo del ritmo.",
-      "detailNegative": "Arrastrás {{amount}} de exceso desde días anteriores."
+      "detailNegative": "Arrastras {{amount}} de exceso desde días anteriores."
     },
     "buffer": {
       "titleIntact": "Tu colchón sigue defendiendo el cierre",

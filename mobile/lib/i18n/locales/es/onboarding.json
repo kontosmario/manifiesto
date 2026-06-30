@@ -58,7 +58,7 @@
   "errors": {
     "logoutTitle": "No pudimos cerrar la sesión",
     "missingFamilyTitle": "Falta la familia",
-    "missingFamilyMessage": "Crea o uníte a una familia antes de terminar.",
+    "missingFamilyMessage": "Crea o únete a una familia antes de terminar.",
     "finishTitle": "No pudimos terminar el setup",
     "saveTitle": "No pudimos guardar",
     "saveNameTitle": "No pudimos guardar tu nombre",
@@ -155,7 +155,7 @@
     "title": "¿Quieres arrancar con una meta?",
     "subcopy": "Puedes agregarla después si prefieres.",
     "percentEyebrow": "% DEL SUELDO A AHORRAR",
-    "savePrefix": "Ahorrás ",
+    "savePrefix": "Ahorras ",
     "savePerMonth": " por mes",
     "noAutoSavings": "Sin ahorro automático — lo puedes activar luego.",
     "enterIncomeFirst": "Ingresa tu sueldo en el paso anterior para ver el equivalente.",

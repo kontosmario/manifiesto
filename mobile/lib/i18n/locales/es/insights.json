@@ -436,9 +436,9 @@
       },
       "overdue": {
         "eyebrow": "Ojo del mes",
-        "title": "Tenes pagos fijos vencidos",
-        "detail_one": "Tenes {{count}} pago fijo vencido y {{amount}} todavia sin pagar.",
-        "detail_other": "Tenes {{count}} pagos fijos vencidos y {{amount}} todavia sin pagar."
+        "title": "Tienes pagos fijos vencidos",
+        "detail_one": "Tienes {{count}} pago fijo vencido y {{amount}} todavia sin pagar.",
+        "detail_other": "Tienes {{count}} pagos fijos vencidos y {{amount}} todavia sin pagar."
       },
       "adjustDaily": {
         "eyebrow": "Ajuste chico",
@@ -453,7 +453,7 @@
       },
       "zeroStreak": {
         "eyebrow": "Buena noticia",
-        "title": "Venis sumando plata sin gastar",
+        "title": "Vienes sumando plata sin gastar",
         "detail": "Llevas {{count}} dias seguidos sin gastar — asi te queda mas plata para el resto del mes."
       },
       "steady": {
@@ -540,7 +540,7 @@
         "detail": "Los fines de semana vienen {{pct}}% arriba del promedio de lunes a viernes."
       },
       "steady": {
-        "title": "Manten el ritmo actual y segui registrando",
+        "title": "Manten el ritmo actual y sigue registrando",
         "detail": "Hoy todavia te quedan {{remaining}} y la proyeccion no marca alertas fuertes."
       }
     }

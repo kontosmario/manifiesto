@@ -299,7 +299,7 @@
     "unexpectedSupabase": "Ocurrio un error inesperado en Supabase.",
     "nameEmpty": "El nombre del gasto fijo no puede estar vacio.",
     "amountInvalid": "El monto del gasto fijo debe ser valido (> 0).",
-    "categoryRequired": "Elegi una categoria para poder integrar el pago al historial.",
+    "categoryRequired": "Elige una categoria para poder integrar el pago al historial.",
     "kindInvalid": "Tipo de gasto fijo invalido.",
     "statusInvalid": "Estado de gasto fijo invalido.",
     "frequencyInvalid": "Frecuencia invalida.",

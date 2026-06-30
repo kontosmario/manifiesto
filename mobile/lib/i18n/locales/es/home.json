@@ -211,7 +211,7 @@
     "delete": "Borrar"
   },
   "historyRow": {
-    "editHint": "Doble toque para editar. Tambien podes deslizar hacia la izquierda para acciones.",
+    "editHint": "Doble toque para editar. Tambien puedes deslizar hacia la izquierda para acciones.",
     "noCategory": "Sin categoria",
     "swipe": "Desliza"
   },
@@ -282,7 +282,7 @@
     "loading": "Cargando gastos...",
     "emptySubtitle": "Carga el primer gasto del hogar para empezar a construir el historial.",
     "emptyTitle": "No hay movimientos",
-    "noResultsSubtitle": "Proba otro periodo, otra categoria o limpia la busqueda.",
+    "noResultsSubtitle": "Prueba otro periodo, otra categoria o limpia la busqueda.",
     "noResultsTitle": "No encontramos resultados",
     "clearFilters": "Limpiar filtros"
   },
