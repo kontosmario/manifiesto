@@ -779,6 +779,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     void resetIntroSeen().then(() => {
       Alert.alert(
         'Intro pre-auth reiniciado',
+        // @i18n-ignore: alert de acción dev-only (botón gateado por __DEV__, no user-facing)
         'El showcase de 5 slides se mostrará en el próximo arranque sin sesión. Cerrá sesión para verlo ahora.',
       )
     })

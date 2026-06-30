@@ -100,7 +100,7 @@ export function getStateTokens(state: SemanticState, theme: AppTheme): StateToke
         border: hexAlpha(theme.colors.textMuted, 0.20),
         fillSoft: hexAlpha(theme.colors.textMuted, 0.40),
         icon: 'schedule',
-        // Reusa la key canónica del empty-state "Sin datos" (states:empty.noData.title).
+        // Reusa la key canónica del empty-state noData (states:empty.noData.title).
         label: i18n.t('states:empty.noData.title'),
       }
   }

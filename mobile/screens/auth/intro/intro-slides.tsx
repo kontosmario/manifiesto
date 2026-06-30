@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FC, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type FC, type ReactNode } from 'react'
 import {
   ScrollView,
   StyleSheet,
@@ -65,11 +65,15 @@ const CREAM_DIM = '#AEC7A6'
  * off-screen, sin worklets desperdiciados).
  */
 function usePlayOnActive(active: boolean): number {
-  const [seen, setSeen] = useState(active)
-  useEffect(() => {
-    if (active) setSeen(true)
-  }, [active])
-  return seen ? 1 : 0
+  // Latch monotónico calculado EN RENDER (no en effect): una vez que la slide
+  // se activó, queda en 1 para siempre. Mutar el ref durante el render es
+  // idempotente y no dispara renders en cascada — cuando `active` pasa a true
+  // el padre ya re-renderiza este slide (es un prop), así que el ref se lee
+  // correcto en ese mismo render sin necesidad de un setState extra. Evita el
+  // anti-patrón react-hooks/set-state-in-effect.
+  const seenRef = useRef(active)
+  if (active) seenRef.current = true
+  return seenRef.current ? 1 : 0
 }
 
 /**

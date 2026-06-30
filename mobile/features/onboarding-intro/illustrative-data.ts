@@ -77,7 +77,7 @@ export const INTRO_WEEK_CLOSE: WeekClose = {
   stage: 'fern',
   bloom: true,
   label: 'Semana floreciente',
-  title: 'Tu jardín floreció',
+  title: 'Tu jardín floreció', // @i18n-ignore: valor del tipo WeekClose que el preview NO renderiza (ver comentario arriba)
   sub: 'Mantén el ritmo y cada semana cierra en flor.',
   days: [
     { letter: 'L', registered: true },
