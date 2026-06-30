@@ -4,6 +4,7 @@
 > **Tipo**: milestone canónico — termina el security journey con audit-saturated verdict.
 > **Status**: 🟢 **TRULY 100% clean** — Apple submit ready, 0 owner action items pendientes.
 > **Reemplaza**: [`2026-06-10-security-hardening-DONE.md`](2026-06-10-security-hardening-DONE.md) (cubría solo E→I, ahora histórico).
+> **Follow-up (2026-06-30)**: una clase de exposición se coló pese al "audit-saturated" verdict — funciones `SECURITY DEFINER` internas ejecutables por `authenticated` vía grant explícito **o vía PUBLIC**. Cerrada en [`2026-06-30-secdef-function-grants-leak-fix.md`](2026-06-30-secdef-function-grants-leak-fix.md) (migraciones `20260630010000` + `20260630020000`).
 
 ## TL;DR · Métricas finales
 
