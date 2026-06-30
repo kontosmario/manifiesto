@@ -188,7 +188,12 @@ const config: ExpoConfig = {
     typedRoutes: true,
   },
   ios: {
-    supportsTablet: true,
+    // iPhone-only para v1.0 (2026-06-30): el binario universal (supportsTablet
+    // true) obligaba a subir screenshots de iPad 13" en App Store Connect, y la
+    // UI es phone-first (no está optimizada para iPad). Para el launch salimos
+    // solo-iPhone. Volver a soportar iPad = poner true + assets de iPad + build
+    // nuevo (es atributo del binario UIDeviceFamily, no se cambia desde ASC).
+    supportsTablet: false,
     // Sprint P · Audit #9 P-1 (2026-06-10): Universal Links so iOS routes
     // auth callbacks (magic link, OAuth redirect, password reset) through
     // https://manifiestoapp.com/auth/* instead of the custom
