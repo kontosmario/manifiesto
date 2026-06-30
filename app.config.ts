@@ -229,7 +229,13 @@ const config: ExpoConfig = {
     // ("dormido"), endurecimiento de validez del asistente, revokes de
     // seguridad (SECURITY DEFINER), reescritura del campo de luciérnagas del
     // splash y los fixes de CI (lint + guards).
-    buildNumber: '9',
+    // Build 10 (2026-06-30): build 9 ya en TestFlight → bump. Incluye, sobre el 9:
+    // jardín con auto-recuperación por escudo (reemplaza el plantado manual) +
+    // íconos sticker de estados + cadencia de escudo semanal; auditoría de
+    // seguridad backend (peek_family_invite sin datos financieros del hogar, etc.);
+    // familia: invitar es owner-only + refresco de miembros del Home al unirse;
+    // fix del ingreso del hogar (suma los aportes de todos los miembros).
+    buildNumber: '10',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
