@@ -13,6 +13,7 @@ const SAFE_PUSH_ROUTES = [
   '/(app)/(tabs)/home',
   '/(app)/(tabs)/expenses',
   '/(app)/(tabs)/fixed-expenses',
+  '/(app)/(tabs)/control',
   '/(app)/(tabs)/insights',
   '/(app)/notifications',
   '/(app)/settings',
@@ -54,6 +55,9 @@ export function normalizeAppRoute(rawPath?: string | null): string {
     case '/notifications':
     case 'notifications':
       return '/(app)/notifications'
+    case '/control':
+    case 'control':
+      return '/(app)/(tabs)/control'
     case '/insights':
     case 'insights':
       return '/(app)/(tabs)/insights'

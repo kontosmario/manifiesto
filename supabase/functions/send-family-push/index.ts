@@ -224,6 +224,7 @@ const ALLOWED_PUSH_KINDS = new Set([
   'member_nudge',
   'member_left',
   'cycle_close',
+  'assistant_dormant',
 ])
 
 function isExpoPushToken(value: string): boolean {
