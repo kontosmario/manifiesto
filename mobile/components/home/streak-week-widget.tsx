@@ -112,6 +112,7 @@ interface DotColors {
   logged: string
   ring: string
   missed: string
+  recovered: string
   future: string
 }
 
@@ -120,6 +121,8 @@ function dotColorsFor(isDark: boolean): DotColors {
     logged: isDark ? '#A6EF8F' : '#3C9A3D',
     ring: isDark ? '#A6EF8F' : '#3C9A3D',
     missed: isDark ? 'rgba(255,255,255,0.14)' : '#DAD6C8',
+    // Coral = día que un escudo recuperó (espejo del brote 'recovered' del jardín).
+    recovered: isDark ? '#F0B488' : '#E2935E',
     future: isDark ? 'rgba(255,255,255,0.05)' : '#E7E5DA',
   }
 }
@@ -130,6 +133,8 @@ function dotStyle(state: WeekDayState, c: DotColors) {
       return { backgroundColor: c.logged }
     case 'pending':
       return { backgroundColor: 'transparent', borderWidth: 2, borderColor: c.ring }
+    case 'recovered':
+      return { backgroundColor: c.recovered }
     case 'missed':
       return { backgroundColor: c.missed }
     case 'future':

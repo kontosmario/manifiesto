@@ -30,7 +30,7 @@ export interface WeekClose {
   label: string
   title: string
   sub: string
-  days: Array<{ letter: string; registered: boolean }>
+  days: Array<{ letter: string; registered: boolean; recovered: boolean }>
 }
 
 export const GARDEN_COLS = 7
@@ -121,7 +121,10 @@ export function deriveGardenCells(
     const isPre = firstActivityIso !== null && iso < firstActivityIso
     let stage: BroteStage
     if (isFuture || isPre) stage = 'pre'
-    else if (recovered) stage = 'recovered'
+    // Orden logged-first (igual que deriveWeekStrip/deriveWeekClose): si un día
+    // quedó recuperado por escudo PERO luego back-dateás un gasto real ahí, gana
+    // el brote orgánico (el día recuperado nunca se borra de garden_recovered_days).
+    else if (recovered && !logged) stage = 'recovered'
     else if (isToday && !logged) stage = 'pending'
     else if (!logged) stage = 'missed'
     else if (ageDays <= 1) stage = 'seed'
@@ -155,36 +158,6 @@ export function deriveGardenCells(
   }
 
   return cells
-}
-
-/**
- * Hueco RECUPERABLE de la semana recién cerrada (espejo cliente de
- * `recover_garden_day`). Devuelve el ISO del único día faltante si la semana
- * anterior está EXACTAMENTE 6/7 (gasto ∪ marca ∪ recuperado), el hueco es un día
- * real post-inicio, y tienes ≥1 escudo. Si no, `null` (no hay oferta de plantar).
- * El server revalida todo — esto es solo para la UI.
- */
-export function deriveRecoverableGap(
-  activityIso: ReadonlySet<string>,
-  recoveredIso: ReadonlySet<string>,
-  todayIso: string,
-  firstActivityIso: string | null,
-  freezeTokens: number,
-): string | null {
-  if (freezeTokens < 1 || firstActivityIso === null) return null
-  const todayN = utcDays(todayIso)
-  const prevMonday = todayN - dowMonday0(todayIso) - 7
-  let filled = 0
-  let gap: string | null = null
-  for (let i = 0; i < GARDEN_COLS; i++) {
-    const iso = isoFromUtcDays(prevMonday + i)
-    if (activityIso.has(iso) || recoveredIso.has(iso)) filled++
-    else gap = iso
-  }
-  if (filled !== 6 || gap === null) return null
-  // El hueco debe ser un día real (post-inicio), no pre-cuenta.
-  if (gap < firstActivityIso) return null
-  return gap
 }
 
 // Score 0–7 de la semana L→D → madurez + copy. Tabla del handoff.
@@ -239,20 +212,27 @@ export function weekCloseCopy(score: number): {
 /** `weekDayIso(i)` devuelve el ISO del día i de la semana (0=Lunes..6=Domingo). */
 export function deriveWeekClose(
   activityIso: ReadonlySet<string>,
+  recoveredIso: ReadonlySet<string>,
   weekDayIso: (dayIndexMonday0: number) => string,
 ): WeekClose {
   const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-  const days = letters.map((letter, i) => ({
-    letter,
-    registered: activityIso.has(weekDayIso(i)),
-  }))
+  const days = letters.map((letter, i) => {
+    const iso = weekDayIso(i)
+    const registered = activityIso.has(iso)
+    // Día recuperado por un escudo: NO es actividad orgánica, pero tampoco un
+    // salteado — se muestra distinto (coral) en la celebración.
+    return { letter, registered, recovered: !registered && recoveredIso.has(iso) }
+  })
+  // El score cuenta SOLO días orgánicos: 6 orgánicos + 1 recuperado es "gran
+  // semana" (6/7), nunca "perfecta" — el escudo salva la racha, no fabrica una
+  // floración (la floración sigue exigiendo 7/7 orgánico en deriveGardenCells).
   const score = days.filter((d) => d.registered).length
   const copy = weekCloseCopy(score)
   return { score, ...copy, days }
 }
 
 // ── Tira semanal (widget de Home) ──────────────────────────────────────
-export type WeekDayState = 'logged' | 'pending' | 'missed' | 'future'
+export type WeekDayState = 'logged' | 'pending' | 'missed' | 'recovered' | 'future'
 
 export interface WeekStripDay {
   letter: string
@@ -263,12 +243,14 @@ export interface WeekStripDay {
 
 /**
  * Semana calendario L→D para el widget de Home. Cada día: registrado (logged),
- * hoy-sin-registrar (pending), pasado-sin-registrar (missed), o futuro (future).
- * `weekDayIso(i)` devuelve el ISO del día i (0=Lunes..6=Domingo). Los ISO
- * `YYYY-MM-DD` se comparan lexicográficamente = cronológicamente.
+ * recuperado por un escudo (recovered), hoy-sin-registrar (pending),
+ * pasado-sin-registrar (missed), o futuro (future). `weekDayIso(i)` devuelve el
+ * ISO del día i (0=Lunes..6=Domingo). Los ISO `YYYY-MM-DD` se comparan
+ * lexicográficamente = cronológicamente.
  */
 export function deriveWeekStrip(
   activityIso: ReadonlySet<string>,
+  recoveredIso: ReadonlySet<string>,
   todayIso: string,
   weekDayIso: (dayIndexMonday0: number) => string,
   startIso?: string | null,
@@ -280,6 +262,8 @@ export function deriveWeekStrip(
     // Días previos a tu inicio = tenues (no "salteados"): no eras usuario aún.
     if (startIso && iso < startIso) state = 'future'
     else if (activityIso.has(iso)) state = 'logged'
+    // Día que un escudo recuperó: coral (ni "logged" orgánico ni "salteado").
+    else if (recoveredIso.has(iso)) state = 'recovered'
     else if (iso > todayIso) state = 'future'
     else if (iso === todayIso) state = 'pending'
     else state = 'missed'

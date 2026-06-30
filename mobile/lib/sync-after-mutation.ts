@@ -14,6 +14,7 @@ import {
   streakQueryKey,
   markedDaysQueryKey,
 } from '@/features/streaks/streak-query-keys'
+import { gardenRecoveredQueryKey } from '@/features/garden/garden-query-keys'
 import { achievementsEarnedQueryKey } from '@/features/achievements/use-achievements'
 import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
 // Keys re-declaradas inline para evitar transitive imports pesados
@@ -87,6 +88,11 @@ export async function syncAllAfterMutation(
     if (userId) {
       keys.push(streakQueryKey(familyId, userId))
       keys.push(markedDaysQueryKey(familyId, userId))
+      // Registrar un gasto puede disparar el auto-bridge del jardín (Case 3 de
+      // _advance_streak_internal escribe garden_recovered_days al consumir un
+      // escudo), así que refrescamos el set de días recuperados para que el
+      // brote 'recuperado' aparezca de inmediato.
+      keys.push(gardenRecoveredQueryKey(userId))
     }
   }
 

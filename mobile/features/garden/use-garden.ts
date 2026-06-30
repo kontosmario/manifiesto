@@ -1,13 +1,12 @@
 import { useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useStreak } from '@/features/streaks/use-streak'
-import { streakQueryKey } from '@/features/streaks/streak-query-keys'
 import { useMyProfile } from '@/features/profile/use-profile'
+import { gardenRecoveredQueryKey } from './garden-query-keys'
 import {
   deriveGardenCells,
-  deriveRecoverableGap,
   deriveWeekClose,
   deriveWeekStrip,
   gardenFirstActivity,
@@ -17,8 +16,7 @@ import {
   type WeekStripDay,
 } from './garden-model'
 
-export const gardenRecoveredQueryKey = (userId: string | undefined) =>
-  ['garden_recovered_days', userId] as const
+export { gardenRecoveredQueryKey }
 
 async function fetchRecoveredDays(userId: string): Promise<string[]> {
   const { data, error } = await supabase
@@ -44,8 +42,6 @@ export interface GardenData {
   weekCloseId: string
   weekStrip: WeekStripDay[]
   firstActivityIso: string | null
-  /** Día faltante recuperable de la semana cerrada (6/7 + escudo), o null. */
-  recoverableGapIso: string | null
 }
 
 // Día local del usuario — DEBE coincidir con el trigger server
@@ -82,7 +78,12 @@ export function useGarden(
   const recoveredQuery = useQuery<string[]>({
     queryKey: gardenRecoveredQueryKey(userId),
     enabled: Boolean(familyId && userId),
-    staleTime: 5 * 60_000,
+    // staleTime corto (30s = default global): el auto-bridge del cron (medianoche)
+    // escribe garden_recovered_days SIN mutación cliente, así que al re-montar el
+    // jardín/Home con datos rancios el refetchOnMount default (true) trae el día
+    // recién recuperado en vez de mostrarlo 'missed'. El path de gasto (Case 3)
+    // además invalida esta key vía syncAllAfterMutation → refresco inmediato.
+    staleTime: 30_000,
     queryFn: () => fetchRecoveredDays(userId!),
   })
 
@@ -131,18 +132,11 @@ export function useGarden(
       hasLoggedToday: streak.data.hasLoggedToday,
       cells: deriveGardenCells(activity, todayIso, firstActivityIso, recoveredIso),
       weeksShown: weeksToShow(firstActivityIso, todayIso),
-      weekClose: deriveWeekClose(activity, prevWeekDayIso),
+      weekClose: deriveWeekClose(activity, recoveredIso, prevWeekDayIso),
       weekCloseAvailable,
       weekCloseId,
-      weekStrip: deriveWeekStrip(activity, todayIso, weekDayIso, accountCreatedIso),
+      weekStrip: deriveWeekStrip(activity, recoveredIso, todayIso, weekDayIso, accountCreatedIso),
       firstActivityIso,
-      recoverableGapIso: deriveRecoverableGap(
-        activity,
-        recoveredIso,
-        todayIso,
-        firstActivityIso,
-        streak.data.freezeTokens,
-      ),
     }
   }, [familyId, userId, streak.data, expensesQuery.data, profileQuery.data, recoveredQuery.data])
 
@@ -150,33 +144,4 @@ export function useGarden(
     data,
     isLoading: streak.isLoading || expensesQuery.isLoading || recoveredQuery.isLoading,
   }
-}
-
-/**
- * Planta el día que faltó (6/7) de la semana cerrada, consumiendo 1 escudo.
- * El server (`recover_garden_day`) revalida todo. Invalida el set de días
- * recuperados + la racha (cambió el conteo de escudos).
- */
-export function useRecoverGardenDay(
-  familyId: string | undefined,
-  userId: string | undefined,
-) {
-  const queryClient = useQueryClient()
-  return useMutation<{ status: string; day: string; freeze_tokens: number }, Error, string>({
-    mutationFn: async (dayIso) => {
-      if (!familyId) throw new Error('No family selected')
-      const { data, error } = await supabase.rpc('recover_garden_day', {
-        p_family_id: familyId,
-        p_day: dayIso,
-      })
-      if (error) throw error
-      return data as { status: string; day: string; freeze_tokens: number }
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: gardenRecoveredQueryKey(userId) }),
-        queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId, userId) }),
-      ])
-    },
-  })
 }

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   fernSizeForAge,
   deriveGardenCells,
-  deriveRecoverableGap,
   deriveWeekClose,
   deriveWeekStrip,
   gardenFirstActivity,
@@ -130,34 +129,16 @@ describe('deriveGardenCells (semanas calendario dinámicas)', () => {
     }
     expect(cells.find((c) => c.iso === '2026-06-15')!.stage).toBe('fern')
   })
-})
-
-describe('deriveRecoverableGap (espejo cliente del RPC)', () => {
-  const today = '2026-06-24' // mié; semana cerrada = 2026-06-15..21 (L→D)
-  const sixDays = [
-    '2026-06-15', '2026-06-16', '2026-06-17',
-    '2026-06-18', '2026-06-19', '2026-06-20',
-  ]
-
-  it('6/7 + escudo → devuelve el hueco', () => {
-    expect(deriveRecoverableGap(new Set(sixDays), new Set(), today, '2026-06-01', 1)).toBe('2026-06-21')
-  })
-  it('7/7 → null (no hay hueco)', () => {
-    expect(deriveRecoverableGap(new Set([...sixDays, '2026-06-21']), new Set(), today, '2026-06-01', 1)).toBeNull()
-  })
-  it('5/7 → null (más de un hueco)', () => {
-    expect(deriveRecoverableGap(new Set(sixDays.slice(0, 5)), new Set(), today, '2026-06-01', 1)).toBeNull()
-  })
-  it('6/7 sin escudo → null', () => {
-    expect(deriveRecoverableGap(new Set(sixDays), new Set(), today, '2026-06-01', 0)).toBeNull()
-  })
-  it('hueco ya recuperado → null (cuenta como lleno = 7/7)', () => {
-    expect(deriveRecoverableGap(new Set(sixDays), new Set(['2026-06-21']), today, '2026-06-01', 1)).toBeNull()
-  })
-  it('hueco pre-cuenta → null (no es un salteado real)', () => {
-    // 06-16..06-21 registrados (6), hueco = 06-15, pero la cuenta arrancó 06-16.
-    const six = ['2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19', '2026-06-20', '2026-06-21']
-    expect(deriveRecoverableGap(new Set(six), new Set(), today, '2026-06-16', 1)).toBeNull()
+  it('día logged Y recuperado → gana el brote orgánico (logged-first), no coral', () => {
+    // Back-dateás un gasto real sobre un día que un escudo recuperó antes: el día
+    // es orgánico → stage por edad (germ), NO 'recovered'. Coherente con
+    // deriveWeekStrip/deriveWeekClose (logged gana a recovered).
+    const organic = new Set(['2026-06-21'])
+    const recovered = new Set(['2026-06-21'])
+    const cells = deriveGardenCells(organic, today, '2026-06-15', recovered)
+    const cell = cells.find((c) => c.iso === '2026-06-21')!
+    expect(cell.stage).toBe('germ') // age 3 → germinando, orgánico
+    expect(cell.stage).not.toBe('recovered')
   })
 })
 
@@ -165,9 +146,10 @@ describe('deriveWeekClose', () => {
   // Monday..Sunday of a reference week
   const weekDayIso = (i: number) =>
     new Date(Date.UTC(2026, 5, 16) + i * 86_400_000).toISOString().slice(0, 10)
+  const NONE = new Set<string>()
   it('score 7 = perfect week, fern + bloom', () => {
     const all = new Set(Array.from({ length: 7 }, (_, i) => weekDayIso(i)))
-    const wc = deriveWeekClose(all, weekDayIso)
+    const wc = deriveWeekClose(all, NONE, weekDayIso)
     expect(wc.score).toBe(7)
     expect(wc.stage).toBe('fern')
     expect(wc.bloom).toBe(true)
@@ -175,10 +157,20 @@ describe('deriveWeekClose', () => {
   })
   it('score thresholds map to stages', () => {
     const mk = (n: number) => new Set(Array.from({ length: n }, (_, i) => weekDayIso(i)))
-    expect(deriveWeekClose(mk(6), weekDayIso).stage).toBe('fern')
-    expect(deriveWeekClose(mk(4), weekDayIso).stage).toBe('germ')
-    expect(deriveWeekClose(mk(2), weekDayIso).stage).toBe('seed')
-    expect(deriveWeekClose(mk(0), weekDayIso).stage).toBe('none')
+    expect(deriveWeekClose(mk(6), NONE, weekDayIso).stage).toBe('fern')
+    expect(deriveWeekClose(mk(4), NONE, weekDayIso).stage).toBe('germ')
+    expect(deriveWeekClose(mk(2), NONE, weekDayIso).stage).toBe('seed')
+    expect(deriveWeekClose(mk(0), NONE, weekDayIso).stage).toBe('none')
+  })
+  it('día recuperado por escudo NO suma al score ni florece (6 orgánicos + 1 recuperado = 6/7)', () => {
+    const organic = new Set(Array.from({ length: 6 }, (_, i) => weekDayIso(i))) // L..S
+    const recovered = new Set([weekDayIso(6)]) // Dom recuperado por escudo
+    const wc = deriveWeekClose(organic, recovered, weekDayIso)
+    expect(wc.score).toBe(6) // el recuperado NO cuenta al score → "gran semana", no "perfecta"
+    expect(wc.bloom).toBe(false) // un escudo nunca fabrica floración
+    expect(wc.days[6].registered).toBe(false)
+    expect(wc.days[6].recovered).toBe(true) // pero se marca recuperado (coral en la celebración)
+    expect(wc.days[0].recovered).toBe(false)
   })
 })
 
@@ -187,10 +179,11 @@ describe('deriveWeekStrip', () => {
   const weekDayIso = (i: number) =>
     new Date(Date.UTC(2026, 5, 16) + i * 86_400_000).toISOString().slice(0, 10)
   const todayIso = '2026-06-19'
+  const NONE = new Set<string>()
 
   it('clasifica logged / missed / pending / future', () => {
     const activity = new Set(['2026-06-16', '2026-06-17']) // Lun, Mar registrados
-    const strip = deriveWeekStrip(activity, todayIso, weekDayIso)
+    const strip = deriveWeekStrip(activity, NONE, todayIso, weekDayIso)
     expect(strip[0].state).toBe('logged') // Lun
     expect(strip[1].state).toBe('logged') // Mar
     expect(strip[2].state).toBe('missed') // Mié (pasado, sin registrar)
@@ -201,13 +194,21 @@ describe('deriveWeekStrip', () => {
   })
 
   it('hoy registrado = logged (no pending)', () => {
-    const strip = deriveWeekStrip(new Set(['2026-06-19']), todayIso, weekDayIso)
+    const strip = deriveWeekStrip(new Set(['2026-06-19']), NONE, todayIso, weekDayIso)
     expect(strip[3].state).toBe('logged')
+  })
+
+  it('día recuperado por escudo = recovered (coral, no missed)', () => {
+    // 06-17 (pasado, sin gasto) recuperado por un escudo → 'recovered'; 06-18 sin
+    // recuperar sigue 'missed'. El recuperado gana al missed en el orden de checks.
+    const strip = deriveWeekStrip(new Set(), new Set(['2026-06-17']), todayIso, weekDayIso)
+    expect(strip[1].state).toBe('recovered') // 06-17 recuperado
+    expect(strip[2].state).toBe('missed') // 06-18 sin recuperar
   })
 
   it('días previos al inicio (startIso) = future tenue, no missed', () => {
     // inicio de cuenta 06-18 → Lun 06-16 y Mar 06-17 (antes) = future, no missed
-    const strip = deriveWeekStrip(new Set(), todayIso, weekDayIso, '2026-06-18')
+    const strip = deriveWeekStrip(new Set(), NONE, todayIso, weekDayIso, '2026-06-18')
     expect(strip[0].state).toBe('future')
     expect(strip[1].state).toBe('future')
     expect(strip[3].state).toBe('pending') // hoy 06-19

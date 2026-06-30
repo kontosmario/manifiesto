@@ -1,8 +1,6 @@
 import { memo } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useTranslation } from 'react-i18next'
+import { StyleSheet, Text, View } from 'react-native'
 import { Sprout } from './sprout'
-import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AppTheme } from '@/theme/palette'
@@ -13,10 +11,6 @@ interface GardenGridProps {
   cells: GardenCell[]
   /** Anima la entrada del brote de HOY (solo al recién plantar). */
   justPlantedToday?: boolean
-  /** ISO del hueco recuperable de la semana cerrada (6/7 + escudo) — null si no hay. */
-  recoverableGapIso?: string | null
-  /** Tap en la celda del hueco recuperable → abre la confirmación de plantar. */
-  onPlantGap?: (iso: string) => void
 }
 
 const CORAL = '#E2935E'
@@ -76,11 +70,8 @@ function toWeeks(cells: GardenCell[]): GardenCell[][] {
 function GardenGridImpl({
   cells,
   justPlantedToday,
-  recoverableGapIso,
-  onPlantGap,
 }: GardenGridProps) {
   const { theme } = useAppTheme()
-  const { t } = useTranslation()
   const weeks = toWeeks(cells)
   // Columna de HOY (0..6) → resaltamos su letra en el encabezado ("estás aquí").
   const todayIndex = cells.findIndex((c) => c.isToday)
@@ -116,29 +107,6 @@ function GardenGridImpl({
           return (
           <View key={wi} style={styles.week}>
             {week.map((cell) => {
-              // Hueco recuperable: celda tappable con afiche "planta el día que faltó".
-              if (cell.iso === recoverableGapIso && onPlantGap) {
-                return (
-                  <Pressable
-                    key={cell.iso}
-                    onPress={() => onPlantGap(cell.iso)}
-                    accessibilityRole="button"
-                    accessibilityLabel={t('garden:grid.plantGapLabel')}
-                    style={({ pressed }) => [
-                      styles.cell,
-                      styles.plantable,
-                      { backgroundColor: theme.isDark ? 'rgba(226,147,94,0.18)' : 'rgba(226,147,94,0.12)' },
-                      pressed && styles.cellPressed,
-                    ]}
-                  >
-                    <Image
-                      source={CATEGORY_ICONS['crecimiento/recuperable']}
-                      style={styles.gapImg}
-                      resizeMode="contain"
-                    />
-                  </Pressable>
-                )
-              }
               const planted = isPlanted(cell.stage)
               return (
                 <View
@@ -226,15 +194,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: CORAL,
   },
-  plantable: {
-    justifyContent: 'center',
-    paddingBottom: 0,
-  },
-  cellPressed: {
-    transform: [{ scale: 0.94 }],
-    opacity: 0.85,
-  },
-  gapImg: { width: 26, height: 26 },
 })
 
 export const GardenGrid = memo(GardenGridImpl)

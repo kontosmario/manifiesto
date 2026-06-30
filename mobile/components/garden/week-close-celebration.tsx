@@ -31,8 +31,15 @@ function labelColorForScore(score: number): string {
   return '#A9A292'
 }
 
-function stageForDay(registered: boolean, weekStage: WeekClose['stage']): BroteStage {
+function stageForDay(
+  registered: boolean,
+  recovered: boolean,
+  weekStage: WeekClose['stage'],
+): BroteStage {
   if (registered && weekStage !== 'none') return weekStage
+  // Día que un escudo recuperó: brote coral 'recovered' (no florece, pero
+  // tampoco se muestra marchito como un salteado real).
+  if (recovered) return 'recovered'
   return 'missed'
 }
 
@@ -100,7 +107,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
         <View style={styles.brotesZone}>
           <View style={styles.brotesRow}>
           {weekClose.days.map((day, i) => {
-            const stage = stageForDay(day.registered, weekClose.stage)
+            const stage = stageForDay(day.registered, day.recovered, weekClose.stage)
             return (
               <View key={i} style={styles.broteCol}>
                 <View style={styles.broteSlot}>
@@ -118,7 +125,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
                 <Text
                   style={[
                     styles.broteLetter,
-                    { color: day.registered ? '#9FE08A' : '#8CA285' },
+                    { color: day.registered ? '#9FE08A' : day.recovered ? '#E2935E' : '#8CA285' },
                   ]}
                 >
                   {day.letter}

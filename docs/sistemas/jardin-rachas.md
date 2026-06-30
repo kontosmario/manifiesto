@@ -40,27 +40,32 @@ de "plantar" manual (sería redundante).
     la edad. *La edad lleva hasta arraigado; florecer requiere una semana completa.*
     La grilla (`garden-grid.tsx`) ahora rinde filas por-semana (`flex:1`,
     encabezados L→D) en vez de `flexWrap`+cellSize.
-- **`deriveWeekClose`** → score 0–7 (días registrados de la semana L→D) + madurez +
-  copy. Confeti solo en 7/7.
+- **`deriveWeekClose`** → score 0–7 (días ORGÁNICOS registrados de la semana L→D) +
+  madurez + copy. Confeti solo en 7/7. Un día recuperado por escudo se marca aparte
+  (`recovered: true`, brote coral en la celebración) pero NO suma al score: 6 orgánicos
+  + 1 recuperado = "gran semana" 6/7, nunca "perfecta".
 - **`deriveWeekStrip`** → semana calendario L→D para el widget de Home
-  (logged/pending/missed/future).
-- **`deriveRecoverableGap`** → espejo cliente de `recover_garden_day`: si la semana
-  recién cerrada está EXACTAMENTE 6/7 (gasto ∪ marca ∪ recuperado), el hueco es un
-  día real post-inicio, y tenés ≥1 escudo → devuelve el ISO del hueco (si no, null).
+  (logged/recovered/pending/missed/future). El recuperado va coral, distinto del missed.
 
-**Recovery del 6/7 ("plantá el día que faltó", opción A — cuesta 1 escudo):** si
-cerraste 6/7, la celda del hueco se vuelve tappable (afiche coral). Confirmás → RPC
-`recover_garden_day(family, day)` (migración `20260625110000`) valida server-side
-(semana recién cerrada · exactamente 6/7 · día = el hueco · post-cuenta · escudo
-disponible), consume 1 `freeze_token` e inserta en `garden_recovered_days`. El día
-queda como brote `recovered` (distinto, glyph con semilla coral) y **NO florece** —
-la floración sigue siendo solo para el 7/7 ORGÁNICO (los recuperados no están en
-`activity`). Anti-exploit: solo la semana anterior, solo 1 hueco, no arregla semanas
-viejas. Hooks: `useRecoverGardenDay` + `gardenRecoveredQueryKey` en `use-garden.ts`.
+**Recuperación AUTOMÁTICA del hueco (auto-plant por escudo, opción A):** ya NO hay
+plantado manual. Cuando faltás exactamente 1 día pero tenés ≥1 escudo, el motor de
+rachas consume el escudo SOLO para mantener la racha y, en el mismo paso, inserta el
+día en `garden_recovered_days` → el jardín lo muestra como brote `recovered` automático,
+sin tap ni 2do escudo. Dos disparadores server-side (migración `20260630030000`):
+- `_advance_streak_internal` **Case 3** (`gap = 2` + escudo): al registrar el día
+  siguiente, puentea el día faltado (`p_event_date - 1`).
+- `cron_emit_streak_broken` (medianoche): si faltó ayer y hay escudo, puentea ayer
+  (`v_today_local - 1`) y notifica "Tu escudo salvó la racha".
+El recuperado renderiza como brote `recovered` (semilla coral) en grilla, tira de Home
+y celebración, y **NO florece** — la floración sigue exigiendo 7/7 ORGÁNICO (los
+recuperados no están en `activity`). El RPC manual `recover_garden_day` (`20260625110000`)
+queda sin caller (deprecado). El cliente refresca el set recuperado vía
+`gardenRecoveredQueryKey`: invalidado en `syncAllAfterMutation` (path de gasto) y
+re-fetcheado en mount con `staleTime` corto (path del cron de medianoche).
 
 `mobile/features/garden/use-garden.ts` compone `useStreak` + `useExpenses` +
 `useMyProfile` + `garden_recovered_days` y expone `GardenData` (cells, weeksShown,
-weekClose, weekCloseAvailable, weekCloseId, weekStrip, recoverableGapIso, ...).
+weekClose, weekCloseAvailable, weekCloseId, weekStrip, ...).
 
 **Anclaje (`gardenFirstActivity`):** el jardín arranca con tu primer brote DESDE que
 creaste la cuenta (`profiles.created_at`). Back-datear un gasto anterior a tu cuenta

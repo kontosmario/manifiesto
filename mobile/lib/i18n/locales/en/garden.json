@@ -18,17 +18,6 @@
     "bloom": "bloom",
     "skipped": "skipped"
   },
-  "grid": {
-    "plantGapLabel": "Plant the day you missed last week"
-  },
-  "plantGap": {
-    "title": "Plant the day you missed",
-    "message": "Last week you logged 6 of 7 days. Plant the missing one with a saved seed (you have {{seeds}}). It won't bloom like a perfect week, but you'll complete your garden.",
-    "cancel": "Not now",
-    "confirm": "Plant",
-    "errorTitle": "Couldn't plant it",
-    "errorFallback": "Try again in a bit."
-  },
   "hero": {
     "label": "ACTIVE STREAK",
     "unit": "sprouts\nin a row",

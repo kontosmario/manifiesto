@@ -32,8 +32,8 @@ interface SproutProps {
 // CATEGORY_ICONS['crecimiento/*'] (generados desde los SVG de _src por
 // scripts/gen-category-icons.mjs), salvo el brote grande, que es el FernMark de
 // marca. Crecimiento: semilla → mini-brote → brote grande. Estados restantes:
-// recuperado / marchito (sin registrar) / pending (hoy sin registrar). El hueco
-// recuperable usa el sticker `crecimiento/recuperable` desde garden-grid.
+// recuperado (día que un escudo salvó, auto-plantado) / marchito (sin registrar
+// y sin escudo) / pending (hoy sin registrar).
 function SproutGlyph({
   stage,
   fernSize = 26,

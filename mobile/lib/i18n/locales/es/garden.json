@@ -18,17 +18,6 @@
     "bloom": "floración",
     "skipped": "salteado"
   },
-  "grid": {
-    "plantGapLabel": "Plantar el día que faltó la semana pasada"
-  },
-  "plantGap": {
-    "title": "Planta el día que faltó",
-    "message": "La semana pasada registraste 6 de 7 días. Planta el que falta con una semilla guardada (tienes {{seeds}}). No florece como una semana perfecta, pero completas tu jardín.",
-    "cancel": "Ahora no",
-    "confirm": "Plantar",
-    "errorTitle": "No se pudo plantar",
-    "errorFallback": "Intenta de nuevo en un rato."
-  },
   "hero": {
     "label": "RACHA ACTIVA",
     "unit": "brotes\nseguidos",

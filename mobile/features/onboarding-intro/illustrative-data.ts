@@ -80,12 +80,12 @@ export const INTRO_WEEK_CLOSE: WeekClose = {
   title: 'Tu jardín floreció', // @i18n-ignore: valor del tipo WeekClose que el preview NO renderiza (ver comentario arriba)
   sub: 'Mantén el ritmo y cada semana cierra en flor.',
   days: [
-    { letter: 'L', registered: true },
-    { letter: 'M', registered: true },
-    { letter: 'M', registered: true },
-    { letter: 'J', registered: true },
-    { letter: 'V', registered: true },
-    { letter: 'S', registered: true },
-    { letter: 'D', registered: true },
+    { letter: 'L', registered: true, recovered: false },
+    { letter: 'M', registered: true, recovered: false },
+    { letter: 'M', registered: true, recovered: false },
+    { letter: 'J', registered: true, recovered: false },
+    { letter: 'V', registered: true, recovered: false },
+    { letter: 'S', registered: true, recovered: false },
+    { letter: 'D', registered: true, recovered: false },
   ],
 }
