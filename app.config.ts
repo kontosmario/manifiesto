@@ -218,7 +218,13 @@ const config: ExpoConfig = {
     // updates requiere EAS Enterprise) — todo cambio de JS requiere build.
     // Build 8 (2026-06-29): UI de fijos (nombre completo + íconos dark) +
     // paridad del cupo "Buen día" con el Home (cliente; el cron va aparte).
-    buildNumber: '8',
+    // Build 9 (2026-06-30): build 8 ya subido a TestFlight → bump obligatorio
+    // (CFBundleVersion único por versión). Incluye, sobre el 8: priming del
+    // permiso de push (sheet + cooldown), notif de reactivación del asistente
+    // ("dormido"), endurecimiento de validez del asistente, revokes de
+    // seguridad (SECURITY DEFINER), reescritura del campo de luciérnagas del
+    // splash y los fixes de CI (lint + guards).
+    buildNumber: '9',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
