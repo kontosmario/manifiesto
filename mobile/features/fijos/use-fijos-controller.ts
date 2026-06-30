@@ -160,9 +160,10 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     monthlyIncomeForSummary,
   ])
 
-  // `allItems` ahora incluye los `future` para que pantallas que listan
-  // el catálogo completo (ej: AsesorFijos) sigan viéndolos. El filtrado
-  // por tab los redirige al tab "Pagados / Próximos".
+  // `allItems` incluye los `future` para que pantallas que listan el
+  // catálogo completo (ej: AsesorFijos) sigan viéndolos. En la pantalla
+  // de Fijos los `future` no caen en ningún tab (vencen en un ciclo
+  // posterior) y no se listan hasta que su ciclo llegue.
   const allItems = useMemo(
     () => [
       ...summary.paidItems,
@@ -183,8 +184,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     //   vencidos   → overdue
     //   pendientes → pending
     //   pagados    → paid (incluye paid-via-coverage)
-    // Future items NO van a ningún tab — se muestran en un banner
-    // contextual arriba del listado (FijosScheduledBanner).
+    // Future items NO van a ningún tab (vencen en un ciclo posterior);
+    // no se listan en la pantalla de Fijos hasta que su ciclo llega.
     if (tab === 'vencidos') return summary.overdueItems
     if (tab === 'pagados') return summary.paidItems
     return summary.pendingItems

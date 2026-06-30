@@ -54,8 +54,8 @@ interface FijosProximosCardProps {
  *
  * Naming nota: el header dice "POR PAGAR · ESTE CICLO" (no "PRÓXIMOS
  * A PAGAR" que era ambiguo — podía leerse como "lo programado para
- * después"). Los fijos programados a futuro viven en el
- * `FijosScheduledBanner` separado, arriba del listado.
+ * después"). Los fijos programados a futuro (vencen en un ciclo
+ * posterior) no se listan en esta pantalla hasta que su ciclo llega.
  *
  * La sub-section AVISOS solo se renderea cuando hay hikes o signals
  * relevantes al dominio fijos. Si no hay próximos, primer slot pasa a
@@ -141,7 +141,8 @@ export function FijosProximosCard({
           interpretarse como "lo siguiente urgente" o "lo programado
           para después". Con "ESTE CICLO" queda claro que es el bucket
           de cuotas que tocan AHORA (pending + overdue). Los fijos
-          programados a futuro viven en el FijosScheduledBanner aparte.
+          programados a futuro (vencen en un ciclo posterior) no se
+          listan acá hasta que su ciclo llega.
         */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>

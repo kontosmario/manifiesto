@@ -35,16 +35,6 @@
       "categoryDescription": "Tus fijos agrupados por categoría, con su estado."
     }
   },
-  "scheduledBanner": {
-    "count_one": "1 fijo programado",
-    "count_other": "{{count}} fijos programados",
-    "unpaidYet": "Sin pagar todavía",
-    "toggleHint": "{{label}}. Tap para {{action}} detalles.",
-    "toggleShow": "ver",
-    "toggleHide": "ocultar",
-    "noDate": "Sin fecha",
-    "due": "Vence {{date}}"
-  },
   "proximos": {
     "eyebrow": "POR PAGAR · ESTE MES",
     "itemCount_one": "{{count}} ítem",

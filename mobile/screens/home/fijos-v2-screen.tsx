@@ -10,7 +10,6 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
 import { FijosHeader } from '@/components/fijos/fijos-header'
-import { FijosScheduledBanner } from '@/components/fijos/fijos-scheduled-banner'
 import { FijosEmptyState } from '@/components/fijos/fijos-empty-state'
 import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
 import { FijosProximosCard } from '@/components/fijos/fijos-proximos-card'
@@ -524,8 +523,8 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
             visibleTabs={controller.visibleTabs}
             counts={{
               // 3 tabs (v4 2026-05-31): vencidos / pendientes / pagados.
-              // Future items (fijos programados sin pagar) viven en
-              // FijosScheduledBanner sobre el listado, no en tab.
+              // Los fijos `future` (vencen en un ciclo posterior) no caen
+              // en ningún tab y no se listan hasta que su ciclo llega.
               vencidos: controller.summary.overdueItems.length,
               pendientes: controller.summary.pendingItems.length,
               pagados: controller.summary.paidItems.length,
@@ -549,15 +548,6 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
           }}
         >
           <Animated.View layout={sectionLayout}>
-            {/*
-              Banner contextual de fijos programados sin pagar — vive
-              encima del listado, visible en todas las tabs. Renderea
-              null cuando no hay future items (99% del tiempo). Cuando
-              aparece, comunica "tienes N fijos cargados sin pagar
-              todavía" con un layout collapsible. Reemplazó la tab
-              "Próximos" que casi siempre quedaba vacía.
-            */}
-            <FijosScheduledBanner items={controller.summary.futureItems} />
             <FijoCategoryGroups
               groups={controller.groups}
               todayDay={controller.summary.todayDay}

@@ -35,16 +35,6 @@
       "categoryDescription": "Your fixed expenses grouped by category, with their status."
     }
   },
-  "scheduledBanner": {
-    "count_one": "1 scheduled fixed expense",
-    "count_other": "{{count}} scheduled fixed expenses",
-    "unpaidYet": "Not paid yet",
-    "toggleHint": "{{label}}. Tap to {{action}} details.",
-    "toggleShow": "show",
-    "toggleHide": "hide",
-    "noDate": "No date",
-    "due": "Due {{date}}"
-  },
   "proximos": {
     "eyebrow": "TO PAY · THIS MONTH",
     "itemCount_one": "{{count}} item",
