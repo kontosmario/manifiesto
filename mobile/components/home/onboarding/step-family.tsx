@@ -4,6 +4,11 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { CategorySticker } from '@/components/category/category-sticker'
+import {
+  ONBOARDING_ICONS,
+  type OnboardingIconKey,
+} from '@/components/onboarding/onboarding-icon-registry'
 import { TextField } from '@/components/ui/text-field'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { radii } from '@/theme/palette'
@@ -184,7 +189,7 @@ export function StepFamily({
           style={styles.optionStack}
         >
           <OptionCard
-            emoji="👤"
+            iconKey="solo"
             title={t('onboarding:family.optionSoloTitle')}
             meta={t('onboarding:family.optionSoloMeta')}
             onPress={() => void handleSolo()}
@@ -194,7 +199,7 @@ export function StepFamily({
           />
 
           <OptionCard
-            emoji="👨‍👩‍👧"
+            iconKey="familia"
             title={t('onboarding:family.optionSharedTitle')}
             meta={t('onboarding:family.optionSharedMeta')}
             onPress={() => setPanel('root')}
@@ -212,7 +217,7 @@ export function StepFamily({
           style={styles.optionStack}
         >
           <OptionCard
-            emoji="🏠"
+            iconKey="casa"
             title={t('onboarding:family.optionCreateTitle')}
             meta={t('onboarding:family.optionCreateMeta')}
             onPress={() => {
@@ -225,7 +230,7 @@ export function StepFamily({
           />
 
           <OptionCard
-            emoji="🔗"
+            iconKey="compartir"
             title={t('onboarding:family.optionJoinTitle')}
             meta={t('onboarding:family.optionJoinMeta')}
             onPress={() => setPanel('join')}
@@ -298,7 +303,7 @@ export function StepFamily({
 }
 
 interface OptionCardProps {
-  emoji: string
+  iconKey: OnboardingIconKey
   title: string
   meta: string
   onPress: () => void
@@ -308,7 +313,7 @@ interface OptionCardProps {
 }
 
 function OptionCard({
-  emoji,
+  iconKey,
   title,
   meta,
   onPress,
@@ -333,7 +338,7 @@ function OptionCard({
           { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
         ]}
       >
-        <Text style={styles.optionEmoji}>{emoji}</Text>
+        <CategorySticker source={ONBOARDING_ICONS[iconKey]} size={44} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{title}</Text>
           <Text style={[styles.optionMeta, { color: theme.colors.textMuted }]}>{meta}</Text>
@@ -359,7 +364,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
   },
-  optionEmoji: { fontSize: 28 },
   optionTitle: { fontSize: 16, fontWeight: '800' },
   optionMeta: { fontSize: 12, marginTop: 2 },
   codeInputOverride: {
