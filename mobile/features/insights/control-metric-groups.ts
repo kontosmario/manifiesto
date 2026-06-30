@@ -7,6 +7,7 @@
 import type { DailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import type { ExpenseAnalyticsSummary } from '@/features/expenses/expense-analytics'
 import { formatRemainingDays, type CommitmentSummary, type MetricDescriptor } from '@/features/insights/control-model'
+import { isFiniteNumber } from '@/features/insights/signal-guards'
 import { currencyFormatter, formatSignedCurrency } from '@/utils/money'
 
 export function buildHeroMetrics({
@@ -41,7 +42,7 @@ export function buildHeroMetrics({
         ? 'success'
         : 'default'
   const thirdMetric: MetricDescriptor =
-    commitmentSummary.reservedTotal > 0
+    isFiniteNumber(commitmentSummary.reservedTotal) && commitmentSummary.reservedTotal > 0
       ? {
           helper: `${commitmentSummary.dueSoonCount} cerca · ${commitmentSummary.overdueCount} vencidos`,
           icon: 'schedule',
@@ -77,7 +78,7 @@ export function buildHeroMetrics({
       icon: 'calendar-month',
       label: 'Hasta cobro',
       tone: 'default',
-      value: formatRemainingDays(remainingUntilPayday),
+      value: formatRemainingDays(isFiniteNumber(remainingUntilPayday) ? remainingUntilPayday : 0),
     },
     thirdMetric,
   ]

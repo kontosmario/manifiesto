@@ -1,6 +1,7 @@
 import type { DailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import type { ExpenseAnalyticsSummary } from '@/features/expenses/expense-analytics'
 import { type CommitmentSummary, type ControlAction } from '@/features/insights/control-types'
+import { isFiniteNumber } from '@/features/insights/signal-guards'
 import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
 
@@ -77,7 +78,11 @@ export function buildTodayActions({
       title: i18n.t('insights:controlActions.today.overdue.title'),
       tone: 'warning',
     })
-  } else if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
+  } else if (
+    commitmentSummary.dueSoonCount > 0 &&
+    isFiniteNumber(commitmentSummary.reservedTotal) &&
+    commitmentSummary.reservedTotal > 0
+  ) {
     actions.push({
       detail: i18n.t('insights:controlActions.today.reserve.detail', {
         amount: currencyFormatter.format(commitmentSummary.reservedTotal),

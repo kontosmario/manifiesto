@@ -114,6 +114,7 @@ export interface ControlMockData {
 
 import type { ControlAction } from '@/features/insights/control-action'
 import { computeRobustDailyAverage } from '@/features/insights/robust-daily-average'
+import { clampFinite, finiteOr, nonNegFinite, safeDiv } from '@/features/insights/signal-guards'
 
 export interface ControlAdvisorTask {
   id: string
@@ -382,33 +383,55 @@ export interface ControlView {
 const DOW_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const
 
 export function computeControlView(d: ControlMockData): ControlView {
+  // 0. SANITIZE INPUTS — the adapter already guards these, but
+  // computeControlView is the single funnel for every numeric field on
+  // ControlView, so we re-clamp the scalars it divides/multiplies with.
+  // This is the last line of defence for the invariant "dato válido o
+  // ausente, nunca errático": a non-finite scalar slipping in here would
+  // poison cupoHastaAhora, libreMesTotal, the projection, and the score.
+  const cupoDiario = nonNegFinite(d.cupoDiario) ?? 0
+  const gastoHoy = nonNegFinite(d.gastoHoy) ?? 0
+  const diasMes = Math.max(1, finiteOr(d.diasMes, 30))
+  const diaActual = clampFinite(d.diaActual, 1, diasMes)
+  const ingresoMes = nonNegFinite(d.ingresoMes) ?? 0
+  const fijosMes = nonNegFinite(d.fijosMes) ?? 0
+
   // 1. HOY
-  const horaF = d.horaActual + d.minActual / 60
-  const libreHoy = d.cupoDiario - d.gastoHoy
-  const cupoHastaAhora = (horaF / 24) * d.cupoDiario
-  const delta = cupoHastaAhora - d.gastoHoy
+  // Clamp hora/min to their valid ranges so a bad clock value can't drive
+  // horaF out of [0,24] and skew the proportional cupoHastaAhora.
+  const horaF = clampFinite(d.horaActual, 0, 23) + clampFinite(d.minActual, 0, 59) / 60
+  const libreHoy = cupoDiario - gastoHoy
+  const cupoHastaAhora = (horaF / 24) * cupoDiario
+  const delta = cupoHastaAhora - gastoHoy
   const estaOk = delta >= 0
 
   // 2. VAULT + derived per-day details
-  const detalleDias: DayDetail[] = d.dias.map((g, i) => ({
-    dia: i + 1,
-    gasto: g,
-    delta: d.cupoDiario - g,
-    dow: d.diasDow[i] ?? 0,
-  }))
+  // Guard: coerce each per-day spend to a finite non-negative number so a
+  // single corrupt entry in d.dias can't poison the vault sum, the
+  // average, the projection, or any per-day delta. A null/NaN day is
+  // treated as a $0 day (absent, never erratic).
+  const detalleDias: DayDetail[] = d.dias.map((g, i) => {
+    const gasto = nonNegFinite(g) ?? 0
+    return {
+      dia: i + 1,
+      gasto,
+      delta: cupoDiario - gasto,
+      dow: d.diasDow[i] ?? 0,
+    }
+  })
   // Suma cruda de los deltas positivos diarios (días que sub-gastaste el
   // cupo). OJO: ignora los días que te pasaste, así que con gasto lumpy
   // (mucho en pocos días) puede inflarse muy por encima del dinero real
   // que te queda. Se capea abajo contra `restanteMes`.
   const vaultRaw = detalleDias.reduce((s, x) => s + Math.max(0, x.delta), 0)
-  const diasGanadores = detalleDias.filter((x) => x.gasto <= d.cupoDiario).length
+  const diasGanadores = detalleDias.filter((x) => x.gasto <= cupoDiario).length
   // Distinct days WITH spend (closed days that registered a gasto, plus
   // today if it has one). Drives the data-sufficiency gate of the cards
   // que muestran promedios/patrones: con 1 solo gasto no hay "ritmo
   // semanal" ni "patrón" real, así que esas tarjetas piden gasto en
   // varios días distintos antes de activarse.
   const diasConGasto =
-    detalleDias.filter((x) => x.gasto > 0).length + (d.gastoHoy > 0 ? 1 : 0)
+    detalleDias.filter((x) => x.gasto > 0).length + (gastoHoy > 0 ? 1 : 0)
   const diasPerdedores = detalleDias.length - diasGanadores
   const gastoTotalMes = detalleDias.reduce((s, x) => s + x.gasto, 0)
 
@@ -420,11 +443,14 @@ export function computeControlView(d: ControlMockData): ControlView {
   const robustAverage = computeRobustDailyAverage(
     detalleDias.map((dd) => dd.gasto),
   )
-  const promedioDiario = robustAverage.typicalAverage
+  // Guard: the robust average feeds the projection (duracionAlRitmo,
+  // gastoProyectadoMes) and the DOW ratios. Clamp it finite ≥0 so a
+  // degenerate typicalAverage can never extrapolate to NaN/Infinity.
+  const promedioDiario = nonNegFinite(robustAverage.typicalAverage) ?? 0
 
   let racha = 0
   for (let i = detalleDias.length - 1; i >= 0; i--) {
-    if ((detalleDias[i]?.gasto ?? 0) <= d.cupoDiario) racha++
+    if ((detalleDias[i]?.gasto ?? 0) <= cupoDiario) racha++
     else break
   }
 
@@ -450,15 +476,17 @@ export function computeControlView(d: ControlMockData): ControlView {
   // guarantees one full week with both weekday and weekend samples.
   // Below that, `hasReliableProjection = false` and the UI renders
   // a placeholder instead.
-  const gastadoHastaHoy = gastoTotalMes + d.gastoHoy
-  const libreMesTotal = d.cupoDiario * d.diasMes
+  const gastadoHastaHoy = gastoTotalMes + gastoHoy
+  // cupoDiario (≥0 finite) × diasMes (≥1 finite) is always finite, so
+  // libreMesTotal and the restanteMes / sobrante derived from it stay finite.
+  const libreMesTotal = cupoDiario * diasMes
   const restanteMes = libreMesTotal - gastadoHastaHoy
   // La alcancía es una SUGERENCIA de cuánto mover a tu meta — nunca puede
   // superar lo que realmente te queda. Sin el cap mostraba "2.5M guardados"
   // mientras el saldo real era 139K (gasto lumpy: sub-gastaste muchos días
   // pero te pasaste en pocos, y el raw ignora los días que te pasaste).
   const vault = Math.min(vaultRaw, Math.max(0, restanteMes))
-  const diasRestantes = d.diasMes - d.diaActual + 1
+  const diasRestantes = diasMes - diaActual + 1
   const closedDays = detalleDias.length
   // Una proyección confiable necesita DOS cosas: una semana de días
   // cerrados Y gasto discrecional real para promediar. `closedDays`
@@ -468,7 +496,7 @@ export function computeControlView(d: ControlMockData): ControlView {
   // "alcanza con margen de sobra" proyectando desde $0/día (engañoso).
   // Exigiendo `promedioDiario > 0`, la AlcanzaCard cae a su placeholder
   // ("necesitamos una semana de gastos") hasta que haya datos reales.
-  const noDiscretionarySpendYet = promedioDiario <= 0 && d.gastoHoy <= 0
+  const noDiscretionarySpendYet = promedioDiario <= 0 && gastoHoy <= 0
   // Proyección confiable: una semana de días cerrados Y gasto real en al
   // menos 7 días distintos (no alcanza con 1 día con gasto promediado
   // sobre la semana). diasConGasto>=7 con closedDays>=7 garantiza
@@ -478,28 +506,34 @@ export function computeControlView(d: ControlMockData): ControlView {
     hasReliableProjection &&
     gastadoHastaHoy > libreMesTotal &&
     promedioDiario > 0
-  const duracionAlRitmo = promedioDiario > 0 ? restanteMes / promedioDiario : 0
-  const diaAgotamientoFloat = d.diaActual + duracionAlRitmo
+  // Guard: safeDiv over the daily pace. promedioDiario is already gated
+  // >0, but safeDiv also rejects a non-finite restanteMes; finiteOr→0
+  // keeps duracionAlRitmo (and the diaAgotamientoFloat below) finite so
+  // the runout day can never become Infinity/NaN.
+  const duracionAlRitmo =
+    promedioDiario > 0 ? finiteOr(safeDiv(restanteMes, promedioDiario) ?? 0, 0) : 0
+  const diaAgotamientoFloat = diaActual + duracionAlRitmo
   let diaAgotamiento: number
   if (alreadyExhausted) {
     // Approximate day-of-cycle when cumulative spend crossed the
     // discretionary budget. Backtrack from today by the overshoot at
-    // the current pace.
+    // the current pace. Guard: safeDiv (promedioDiario>0 is asserted by
+    // alreadyExhausted) + finiteOr→0 so overshootDays is never NaN.
     const overshootDays = Math.ceil(
-      (gastadoHastaHoy - libreMesTotal) / promedioDiario,
+      finiteOr(safeDiv(gastadoHastaHoy - libreMesTotal, promedioDiario) ?? 0, 0),
     )
     diaAgotamiento = Math.max(
       1,
-      Math.min(d.diasMes, Math.floor(d.diaActual - overshootDays)),
+      Math.min(diasMes, Math.floor(diaActual - overshootDays)),
     )
   } else if (!hasReliableProjection || promedioDiario <= 0) {
     // Not enough data yet, OR no discretionary spend at all → the UI
     // treats both cases as "budget would last forever" so the
     // already-exhausted / runout branches never fire.
-    diaAgotamiento = d.diasMes + 1
+    diaAgotamiento = diasMes + 1
   } else {
     diaAgotamiento = Math.min(
-      d.diasMes + 1,
+      diasMes + 1,
       Math.max(1, Math.floor(diaAgotamientoFloat)),
     )
   }
@@ -507,14 +541,16 @@ export function computeControlView(d: ControlMockData): ControlView {
   // the cycle end OR when there's simply no discretionary spend yet.
   const alcanzaElMes =
     !alreadyExhausted &&
-    (noDiscretionarySpendYet || diaAgotamiento > d.diasMes)
+    (noDiscretionarySpendYet || diaAgotamiento > diasMes)
   // Proyección de cierre HONESTA (auditoría 2026-06-11): lo YA gastado
   // es un hecho, no una proyección — solo los días que faltan se
   // extrapolan al ritmo típico. La versión anterior proyectaba el MES
   // ENTERO al promedio robusto (que además excluye los días pico), así
   // que con $4.3M ya gastados la card podía anunciar "sobran $2.1M"
   // cuando el disponible real era ~$0. Caso real de la cuenta owner.
-  const diasFuturos = Math.max(0, d.diasMes - d.diaActual)
+  const diasFuturos = Math.max(0, diasMes - diaActual)
+  // Guard: promedioDiario is sanitized at extraction (finite ≥0) so this
+  // projection and the sobrante derived from it are always finite.
   const gastoProyectadoMes = gastadoHastaHoy + promedioDiario * diasFuturos
   const sobrantePresupuestadoMes = libreMesTotal - gastoProyectadoMes
 
@@ -522,13 +558,15 @@ export function computeControlView(d: ControlMockData): ControlView {
   const porDow = DOW_NAMES.map((name, i) => {
     const dias = detalleDias.filter((x) => x.dow === i)
     const total = dias.reduce((s, x) => s + x.gasto, 0)
-    const avg = dias.length ? total / dias.length : 0
+    // safeDiv→finiteOr keep the per-DOW average finite for every bucket.
+    const avg = dias.length ? finiteOr(safeDiv(total, dias.length) ?? 0, 0) : 0
     return { name, avg, count: dias.length }
   })
   const globalAvg = promedioDiario
   const porDowEnriched: DowBucket[] = porDow.map((x) => ({
     ...x,
-    ratio: globalAvg > 0 ? x.avg / globalAvg : 0,
+    // ratio gated globalAvg>0; safeDiv→finiteOr→0 on any residual.
+    ratio: globalAvg > 0 ? finiteOr(safeDiv(x.avg, globalAvg) ?? 0, 0) : 0,
   }))
   const peorDow = porDowEnriched.reduce(
     (a, b) => (b.avg > a.avg ? b : a),
@@ -547,39 +585,55 @@ export function computeControlView(d: ControlMockData): ControlView {
   // Guard ingresoMes > 0 so a synthetic scenario with zero income
   // (or a real user that hasn't filled it in) doesn't propagate
   // Infinity into `coberturaFijos` and downstream `fijosRatio`/score.
+  // safeDiv + finiteOr keep coberturaFijos a finite integer even if an
+  // upstream value sneaks past the >0 gate.
   const coberturaFijos =
-    d.ingresoMes > 0
-      ? Math.ceil((d.fijosMes / d.ingresoMes) * d.diasMes)
+    ingresoMes > 0
+      ? Math.ceil(finiteOr((safeDiv(fijosMes, ingresoMes) ?? 0) * diasMes, 0))
       : 0
-  const diasLibres = d.diasMes - coberturaFijos
+  const diasLibres = diasMes - coberturaFijos
 
   // 7. MOMENTUM
   const ultimos7 = detalleDias.slice(-7)
   const previos7 = detalleDias.slice(-14, -7)
+  // avg over a known-nonempty slice of finite gastos → finite. safeDiv is
+  // belt-and-suspenders against a 0/non-finite length.
   const avgU7 =
     ultimos7.length > 0
-      ? ultimos7.reduce((s, x) => s + x.gasto, 0) / ultimos7.length
+      ? finiteOr(safeDiv(ultimos7.reduce((s, x) => s + x.gasto, 0), ultimos7.length) ?? 0, 0)
       : 0
   const avgP7 =
     previos7.length > 0
-      ? previos7.reduce((s, x) => s + x.gasto, 0) / previos7.length
+      ? finiteOr(safeDiv(previos7.reduce((s, x) => s + x.gasto, 0), previos7.length) ?? 0, 0)
       : avgU7
-  const momentum = avgP7 > 0 ? avgU7 / avgP7 : 1
+  // momentum gated avgP7>0; safeDiv→finiteOr→1 (flat) on any residual.
+  const momentum = avgP7 > 0 ? finiteOr(safeDiv(avgU7, avgP7) ?? 1, 1) : 1
 
   // 8. SCORE (weighted composite)
+  // safeDiv→finiteOr keep the win-rate term finite even if detalleDias
+  // length is degenerate.
   const sBajoCupo =
-    detalleDias.length > 0 ? (diasGanadores / detalleDias.length) * 40 : 0
+    detalleDias.length > 0
+      ? finiteOr(safeDiv(diasGanadores, detalleDias.length) ?? 0, 0) * 40
+      : 0
   const sRacha = (Math.min(racha, 7) / 7) * 20
   const sMomentum = momentum <= 1 ? 20 : Math.max(0, 20 - (momentum - 1) * 40)
   const sNoSpend = (Math.min(noSpendCount, 5) / 5) * 10
   // ingresoMes=0 → fijosRatio=NaN → sFijos=NaN → score=NaN. Default
   // ratio to 0 when there's no income so the score stays a number.
-  const fijosRatio = d.ingresoMes > 0 ? d.fijosMes / d.ingresoMes : 0
+  // safeDiv→finiteOr is the explicit form of that guard.
+  const fijosRatio = ingresoMes > 0 ? finiteOr(safeDiv(fijosMes, ingresoMes) ?? 0, 0) : 0
   // Clamp a 10 (auditoría 2026-06-11): sin el tope, un fijosRatio bajo
   // aportaba hasta 20/10 puntos y el score total podía superar 100,
   // inflando el label ("Excelente" regalado).
   const sFijos = Math.min(10, Math.max(0, (1 - fijosRatio) / 0.5) * 10)
-  const score = Math.round(sBajoCupo + sRacha + sMomentum + sNoSpend + sFijos)
+  // Guard: clamp the final composite to [0,100] and floor non-finite to 0
+  // so score / scoreLabel / scoreTone never derive from a NaN.
+  const score = clampFinite(
+    Math.round(sBajoCupo + sRacha + sMomentum + sNoSpend + sFijos),
+    0,
+    100,
+  )
   const scoreLabel =
     score >= 80
       ? 'Excelente'
@@ -595,12 +649,13 @@ export function computeControlView(d: ControlMockData): ControlView {
   const scoreToneDark =
     score >= 65 ? '#9EE0B2' : score >= 50 ? '#F1D690' : '#E88A70'
 
-  // 9. LAST 7 including today (for the weekly rhythm bars)
+  // 9. LAST 7 including today (for the weekly rhythm bars). Uses the
+  // sanitized scalars so today's in-progress bar is always finite.
   const last7: DayDetail[] = detalleDias.slice(-6).map((x) => ({ ...x }))
   last7.push({
-    dia: d.diaActual,
-    gasto: d.gastoHoy,
-    delta: d.cupoDiario - d.gastoHoy,
+    dia: diaActual,
+    gasto: gastoHoy,
+    delta: cupoDiario - gastoHoy,
     dow: 0,
     inProgress: true,
   })
@@ -610,13 +665,18 @@ export function computeControlView(d: ControlMockData): ControlView {
   // a normal one ($50k) doesn't render "+4900% vs mes pasado", which
   // is technically true but useless to the user. Anything ≥1000% gets
   // capped — the signed value still communicates direction + extremity.
-  const mpTotal = d.mesPasado.gastoTotal
+  // Guard: prev-month total clamped finite ≥0 so a corrupt fixture / DB
+  // value can't make mpTotal NaN and poison every vs-mes field below.
+  const mpTotal = nonNegFinite(d.mesPasado.gastoTotal) ?? 0
   const proyectadoMes = gastoProyectadoMes
+  // safeDiv guards the % (mpTotal already gated >0); finiteOr→0 keeps
+  // rawDeltaPct finite before the ±999 clamp.
   const rawDeltaPct =
-    mpTotal > 0 ? ((proyectadoMes - mpTotal) / mpTotal) * 100 : 0
-  const vsMesDeltaPct = Math.max(-999, Math.min(999, rawDeltaPct))
+    mpTotal > 0 ? finiteOr((safeDiv(proyectadoMes - mpTotal, mpTotal) ?? 0) * 100, 0) : 0
+  const vsMesDeltaPct = clampFinite(rawDeltaPct, -999, 999)
   const vsMesAhorro = mpTotal - proyectadoMes
-  const vsMesDiasBajoCupo = diasGanadores - d.mesPasado.diasBajoCupo
+  // Guard: prev-month day count clamped finite so the diff is never NaN.
+  const vsMesDiasBajoCupo = diasGanadores - (nonNegFinite(d.mesPasado.diasBajoCupo) ?? 0)
   const vsMesMejor = proyectadoMes < mpTotal
 
   return {

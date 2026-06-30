@@ -5,6 +5,7 @@ import {
   type ControlMood,
   type MetricDescriptor,
 } from '@/features/insights/control-types'
+import { clampFinite, isFiniteNumber, safeDiv } from '@/features/insights/signal-guards'
 import { currencyFormatter } from '@/utils/money'
 
 export function buildFocusMetrics({
@@ -16,7 +17,16 @@ export function buildFocusMetrics({
 }): MetricDescriptor[] {
   const metrics: MetricDescriptor[] = []
 
-  if (expenseAnalytics?.topCategory) {
+  // Guard: `share` viene de una división upstream (categoría/total) que puede
+  // ser NaN/Infinity si el total es 0 o los montos están corruptos; sin esto el
+  // chip mostraría "NaN%" / "∞%". `total` igual: un monto no finito rompe el
+  // formateo de moneda. Si cualquiera es inválido, omitimos la métrica.
+  if (
+    expenseAnalytics?.topCategory &&
+    isFiniteNumber(expenseAnalytics.topCategory.share) &&
+    isFiniteNumber(expenseAnalytics.topCategory.total)
+  ) {
+    const sharePct = clampFinite(Math.round(expenseAnalytics.topCategory.share * 100), 0, 100)
     metrics.push({
       helper: `${expenseAnalytics.topCategory.label} suma ${currencyFormatter.format(
         expenseAnalytics.topCategory.total,
@@ -24,12 +34,14 @@ export function buildFocusMetrics({
       icon: 'category',
       label: 'Categoria que mas pesa',
       tone: expenseAnalytics.topCategory.share >= 0.35 ? 'warning' : 'default',
-      value: `${Math.round(expenseAnalytics.topCategory.share * 100)}%`,
+      value: `${sharePct}%`,
       wide: true,
     })
   }
 
-  if (expenseAnalytics?.recurringFocus) {
+  // Guard: un `total` no finito en el gasto recurrente formatearía "NaN"/"∞" en
+  // la moneda; omitimos la métrica antes que mostrar un monto errático.
+  if (expenseAnalytics?.recurringFocus && isFiniteNumber(expenseAnalytics.recurringFocus.total)) {
     metrics.push({
       helper: `${expenseAnalytics.recurringFocus.label} se repitio ${expenseAnalytics.recurringFocus.count} veces.`,
       icon: 'repeat',
@@ -39,20 +51,31 @@ export function buildFocusMetrics({
     })
   }
 
+  // Guard: el ratio sale de una división (finde / promedio L-V); con promedio 0
+  // o data corrupta puede ser Infinity, que pasaría el `>= 1.05` y renderizaría
+  // "+∞%". `isFiniteNumber` exige finito; clampeamos el % a un rango sano por si
+  // un outlier dispara un porcentaje absurdo.
   if (
-    expenseAnalytics?.weekendPremiumRatio != null &&
+    isFiniteNumber(expenseAnalytics?.weekendPremiumRatio) &&
     expenseAnalytics.weekendPremiumRatio >= 1.05
   ) {
+    const premiumPct = clampFinite(
+      Math.round((expenseAnalytics.weekendPremiumRatio - 1) * 100),
+      0,
+      999,
+    )
     metrics.push({
       helper: 'Compara sabados y domingos contra el promedio de lunes a viernes.',
       icon: 'weekend',
       label: 'Fin de semana',
       tone: expenseAnalytics.weekendPremiumRatio >= 1.25 ? 'warning' : 'default',
-      value: `+${Math.round((expenseAnalytics.weekendPremiumRatio - 1) * 100)}%`,
+      value: `+${premiumPct}%`,
     })
   }
 
-  if (commitmentSummary.reservedTotal > 0) {
+  // Guard: `Infinity > 0` es true y formatearía "∞"; exigimos finito antes de
+  // mostrar el monto reservado de compromisos.
+  if (isFiniteNumber(commitmentSummary.reservedTotal) && commitmentSummary.reservedTotal > 0) {
     metrics.push({
       helper: `${commitmentSummary.dueSoonCount} cerca · ${commitmentSummary.overdueCount} vencidos`,
       icon: 'account-balance',
@@ -65,7 +88,11 @@ export function buildFocusMetrics({
     })
   }
 
-  if (commitmentSummary.debtBalanceTotal > 0) {
+  // Guard: igual que arriba — saldo de deuda no finito → "∞"/"NaN"; omitir.
+  if (
+    isFiniteNumber(commitmentSummary.debtBalanceTotal) &&
+    commitmentSummary.debtBalanceTotal > 0
+  ) {
     metrics.push({
       helper: 'Saldo vivo cargado en deudas del hogar.',
       icon: 'lock',
@@ -126,19 +153,40 @@ export function buildControlMood({
     score -= 22
   }
 
-  score -= Math.min(commitmentSummary.overdueCount * 12, 28)
-  score -= Math.min(commitmentSummary.dueSoonCount * 4, 12)
-
-  if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
-    const capBase = Math.max(expenseAnalytics.recommendedDailyCap, 1)
-    score -= Math.min(20, (expenseAnalytics.adjustmentNeededPerDay / capBase) * 18)
+  // Guard: counts no finitos (Infinity) producirían penalizaciones erráticas;
+  // sólo restamos cuando son finitos. `Math.min` ya acota el tope.
+  if (isFiniteNumber(commitmentSummary.overdueCount)) {
+    score -= Math.min(commitmentSummary.overdueCount * 12, 28)
+  }
+  if (isFiniteNumber(commitmentSummary.dueSoonCount)) {
+    score -= Math.min(commitmentSummary.dueSoonCount * 4, 12)
   }
 
-  if (expenseAnalytics?.weeklyDeltaRatio && expenseAnalytics.weeklyDeltaRatio > 0) {
+  if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
+    // Guard: `adjustmentNeededPerDay / capBase` puede ser no finito si capBase
+    // es 0 (no debería por el Math.max, pero el ajuste puede venir Infinity).
+    // safeDiv devuelve null → no penalizamos en vez de poison-ear el score.
+    const capBase = Math.max(expenseAnalytics.recommendedDailyCap, 1)
+    const ratio = safeDiv(expenseAnalytics.adjustmentNeededPerDay, capBase)
+    if (ratio != null) {
+      score -= Math.min(20, ratio * 18)
+    }
+  }
+
+  // Guard: ratio semanal no finito (división por semana previa 0) no debe
+  // entrar al score; exigimos finito antes de penalizar.
+  if (
+    isFiniteNumber(expenseAnalytics?.weeklyDeltaRatio) &&
+    expenseAnalytics.weeklyDeltaRatio > 0
+  ) {
     score -= Math.min(12, expenseAnalytics.weeklyDeltaRatio * 40)
   }
 
-  if (expenseAnalytics?.topCategory && expenseAnalytics.topCategory.share >= 0.35) {
+  if (
+    expenseAnalytics?.topCategory &&
+    isFiniteNumber(expenseAnalytics.topCategory.share) &&
+    expenseAnalytics.topCategory.share >= 0.35
+  ) {
     score -= 7
   }
 
@@ -146,7 +194,9 @@ export function buildControlMood({
     score += 4
   }
 
-  const safeScore = Math.max(0, Math.min(100, Math.round(score)))
+  // Guard final: si pese a todo `score` quedó no finito, lo colapsamos a 0
+  // antes de redondear — `Math.round(NaN)` es NaN y se filtraría al render.
+  const safeScore = clampFinite(Math.round(score), 0, 100)
 
   if (safeScore >= 78) {
     return {

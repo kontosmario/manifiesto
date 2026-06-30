@@ -5,8 +5,18 @@ import {
   type CommitmentSummary,
   type ControlHeroState,
 } from '@/features/insights/control-types'
+import { isFiniteNumber } from '@/features/insights/signal-guards'
 import i18n from '@/lib/i18n'
 import { currencyFormatter } from '@/utils/money'
+
+/**
+ * Días restantes saneados: si el valor no es finito, `formatRemainingDays`
+ * renderizaría "NaN dias". Colapsamos a 0 → "Hoy", un texto válido y seguro.
+ * Mantiene el invariante "dato válido o ausente, nunca errático".
+ */
+function safeRemainingDays(days: number): string {
+  return formatRemainingDays(isFiniteNumber(days) ? days : 0)
+}
 
 export function buildHeroState({
   commitmentSummary,
@@ -44,7 +54,7 @@ export function buildHeroState({
   if (dailyBudgetSummary.remainingToday < 0) {
     return {
       detail: i18n.t('insights:controlActions.hero.overToday.detail', {
-        remaining: formatRemainingDays(remainingUntilPayday),
+        remaining: safeRemainingDays(remainingUntilPayday),
       }),
       eyebrow: i18n.t('insights:controlActions.hero.overToday.eyebrow'),
       title: i18n.t('insights:controlActions.hero.overToday.title'),
@@ -56,7 +66,11 @@ export function buildHeroState({
     return {
       detail: i18n.t('insights:controlActions.hero.overdue.detail', {
         count: commitmentSummary.overdueCount,
-        amount: currencyFormatter.format(commitmentSummary.reservedTotal),
+        // Guard: monto reservado no finito → "∞"/"NaN" en el detalle; lo
+        // colapsamos a 0 (texto de moneda válido) sin perder el hero.
+        amount: currencyFormatter.format(
+          isFiniteNumber(commitmentSummary.reservedTotal) ? commitmentSummary.reservedTotal : 0,
+        ),
       }),
       eyebrow: i18n.t('insights:controlActions.hero.overdue.eyebrow'),
       title: i18n.t('insights:controlActions.hero.overdue.title'),
@@ -64,7 +78,13 @@ export function buildHeroState({
     }
   }
 
-  if (expenseAnalytics?.adjustmentNeededPerDay && expenseAnalytics.adjustmentNeededPerDay > 0) {
+  // Guard: `Infinity > 0` es true; sin exigir finito el hero mostraría
+  // "Recortá ∞ por día". Si el ajuste no es finito, salteamos este hero y
+  // caemos a uno válido más abajo (dato ausente, nunca errático).
+  if (
+    isFiniteNumber(expenseAnalytics?.adjustmentNeededPerDay) &&
+    expenseAnalytics.adjustmentNeededPerDay > 0
+  ) {
     return {
       detail: i18n.t('insights:controlActions.hero.adjustDaily.detail', {
         amount: currencyFormatter.format(expenseAnalytics.adjustmentNeededPerDay),
@@ -75,7 +95,13 @@ export function buildHeroState({
     }
   }
 
-  if (commitmentSummary.dueSoonCount > 0 && commitmentSummary.reservedTotal > 0) {
+  // Guard: exigimos `reservedTotal` finito en el gate (Infinity pasaría > 0 y
+  // formatearía "∞"); con monto inválido salteamos a un hero seguro.
+  if (
+    commitmentSummary.dueSoonCount > 0 &&
+    isFiniteNumber(commitmentSummary.reservedTotal) &&
+    commitmentSummary.reservedTotal > 0
+  ) {
     return {
       detail: i18n.t('insights:controlActions.hero.dueSoon.detail', {
         count: commitmentSummary.dueSoonCount,
@@ -100,7 +126,7 @@ export function buildHeroState({
 
   return {
     detail: i18n.t('insights:controlActions.hero.steady.detail', {
-      remaining: formatRemainingDays(remainingUntilPayday),
+      remaining: safeRemainingDays(remainingUntilPayday),
     }),
     eyebrow: i18n.t('insights:controlActions.hero.steady.eyebrow'),
     title: i18n.t('insights:controlActions.hero.steady.title'),

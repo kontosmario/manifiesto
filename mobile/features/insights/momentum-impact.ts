@@ -21,6 +21,7 @@
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
 import i18n from '@/lib/i18n'
+import { isFiniteNumber } from '@/features/insights/signal-guards'
 
 export interface MomentumImpact {
   /** Raw amount used for ranking + total impact banner. */
@@ -32,11 +33,22 @@ export interface MomentumImpact {
 }
 
 function fmt(n: number): string {
-  return '$' + Math.round(Math.abs(n)).toLocaleString(getIntlLocale())
+  // Guard: a non-finite `n` (NaN/±Infinity) would render "$NaN"/"$Infinity"
+  // in the headline. Coerce to 0 so fmt() always produces a valid currency
+  // string ("dato válido o ausente, nunca errático").
+  const safe = isFiniteNumber(n) ? n : 0
+  return '$' + Math.round(Math.abs(safe)).toLocaleString(getIntlLocale())
 }
 
 export function composeMomentumImpact(positive: ControlAdvisorTask): MomentumImpact {
-  const impactRaw = Math.max(0, Math.round(positive.impactRaw))
+  // Guard: `Math.max(0, Math.round(NaN/Infinity))` is still NaN, so a poisoned
+  // upstream `impactRaw` would propagate into the ranking total + banner.
+  // Reject non-finite or negative input → zero-impact headline (the module's
+  // "no surplus to show" shape). Negative surplus is nonsensical for a
+  // positive-momentum signal, so it also clamps to 0.
+  const impactRaw = isFiniteNumber(positive.impactRaw)
+    ? Math.max(0, Math.round(positive.impactRaw))
+    : 0
   const impactScope = positive.impactScope ?? 'oneTime'
   const label = i18n.t('insights:signals.superSavings.impact', { amount: fmt(impactRaw) })
   return { impactRaw, impactScope, label }

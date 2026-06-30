@@ -23,6 +23,8 @@
 //   5. typical_average = mean of typical-day totals.
 //   6. Return typical_average + outlier details for UI surfacing.
 
+import { isFiniteNumber, safeDiv } from '@/features/insights/signal-guards'
+
 const MIN_DAYS_FOR_ROBUST = 5
 const OUTLIER_MEDIAN_MULTIPLIER = 3
 const OUTLIER_ABSOLUTE_FLOOR = 50_000
@@ -45,7 +47,14 @@ export interface RobustDailyAverage {
 export function computeRobustDailyAverage(
   dailyTotals: number[],
 ): RobustDailyAverage {
-  if (dailyTotals.length === 0) {
+  // Validity guard: drop any non-finite (NaN/±Infinity/non-number) or
+  // negative entry BEFORE any sum/sort/median. A single NaN gasto would
+  // otherwise poison the mean→projection ("$NaN cycle pace"); a negative
+  // value (data glitch) would deflate the rhythm. We compute exclusively
+  // on the cleaned array so every downstream number stays finite.
+  const clean = dailyTotals.filter((v) => isFiniteNumber(v) && v >= 0)
+
+  if (clean.length === 0) {
     return {
       typicalAverage: 0,
       outlierDaysExcluded: 0,
@@ -54,10 +63,12 @@ export function computeRobustDailyAverage(
     }
   }
 
+  // safeDiv guards a zero/non-finite denominator; finiteOr-style fallback
+  // to 0 keeps typicalAverage finite even if the sum somehow overflows.
   const plainMean =
-    dailyTotals.reduce((s, x) => s + x, 0) / dailyTotals.length
+    safeDiv(clean.reduce((s, x) => s + x, 0), clean.length) ?? 0
 
-  if (dailyTotals.length < MIN_DAYS_FOR_ROBUST) {
+  if (clean.length < MIN_DAYS_FOR_ROBUST) {
     return {
       typicalAverage: plainMean,
       outlierDaysExcluded: 0,
@@ -66,15 +77,21 @@ export function computeRobustDailyAverage(
     }
   }
 
-  const sorted = [...dailyTotals].sort((a, b) => a - b)
+  const sorted = [...clean].sort((a, b) => a - b)
+  // sorted is non-empty here (clean.length >= MIN_DAYS_FOR_ROBUST); the
+  // `?? 0` is a belt-and-suspenders guard so median is never undefined.
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0
+  // Math.max with the absolute floor (50k) guarantees threshold > 0 even
+  // if median is 0 (mostly $0 days), so the > comparison can't misfire.
   const threshold = Math.max(median * OUTLIER_MEDIAN_MULTIPLIER, OUTLIER_ABSOLUTE_FLOOR)
 
   let typicalSum = 0
   let typicalCount = 0
   let outlierCount = 0
   let outlierSum = 0
-  for (const v of dailyTotals) {
+  // Iterate the cleaned array (not dailyTotals) so non-finite/negative
+  // days never enter the typical sum or the outlier total.
+  for (const v of clean) {
     if (v > threshold) {
       outlierCount += 1
       outlierSum += v
@@ -96,8 +113,12 @@ export function computeRobustDailyAverage(
     }
   }
 
+  // safeDiv guards the (already non-zero) denominator; `?? 0` plus
+  // Math.max keep typicalAverage finite and in [0, ∞) — never NaN/negative.
+  const typicalAverage = Math.max(0, safeDiv(typicalSum, typicalCount) ?? 0)
+
   return {
-    typicalAverage: typicalSum / typicalCount,
+    typicalAverage,
     outlierDaysExcluded: outlierCount,
     outlierDaysTotal: outlierSum,
     hadEnoughData: true,

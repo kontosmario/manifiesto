@@ -21,6 +21,7 @@
 
 import type { Expense } from '@/features/expenses/expense-repository'
 import { DAY_MS } from '@/utils/time'
+import { isFiniteNumber, safeDiv } from '@/features/insights/signal-guards'
 
 export type CausalCauseType = 'day' | 'category' | 'time'
 export type CausalEffectType = 'spending_spike'
@@ -59,10 +60,29 @@ function startOfLocalDay(d: Date): number {
   return out.getTime()
 }
 
-/** Average + count for a series; returns null when empty. */
+/**
+ * Coerce an expense price to a non-negative finite number.
+ *
+ * Guard: `Number(e.price ?? 0)` returns NaN for non-numeric strings and can
+ * surface a negative (refund) value. Either would poison every downstream
+ * sum/mean/ratio/magnitude. Drop invalid prices to 0 at the source.
+ */
+function finitePrice(raw: unknown): number {
+  const n = Number(raw ?? 0)
+  return isFiniteNumber(n) && n > 0 ? n : 0
+}
+
+/**
+ * Mean of a series; returns 0 when empty.
+ *
+ * Guard: filter out non-finite members so a single NaN/Infinity (e.g. from a
+ * corrupted total) can't turn the whole mean into NaN. An all-invalid series
+ * collapses to the empty case → 0.
+ */
 function avg(values: number[]): number {
-  if (values.length === 0) return 0
-  return values.reduce((s, v) => s + v, 0) / values.length
+  const finite = values.filter(isFiniteNumber)
+  if (finite.length === 0) return 0
+  return finite.reduce((s, v) => s + v, 0) / finite.length
 }
 
 /**
@@ -87,7 +107,7 @@ function detectFridayCascade(args: BuildArgs): CausalLink | null {
       total: 0,
       dow: projectDow(new Date(day)),
     }
-    prev.total += Number(e.price ?? 0)
+    prev.total += finitePrice(e.price)
     perDay.set(day, prev)
   }
 
@@ -98,7 +118,9 @@ function detectFridayCascade(args: BuildArgs): CausalLink | null {
   }
   if (saturdays.length < 3) return null
   const saturdayBaseline = avg(saturdays)
-  if (saturdayBaseline <= 0) return null
+  // Guard: baseline is the divisor for every magnitude below — a zero/negative/
+  // non-finite baseline would make ratios NaN/Infinity.
+  if (!isFiniteNumber(saturdayBaseline) || saturdayBaseline <= 0) return null
 
   // Walk Fridays and check the *next* day's bucket.
   let occurrences = 0
@@ -108,11 +130,19 @@ function detectFridayCascade(args: BuildArgs): CausalLink | null {
     const nextDay = perDay.get(dayMs + DAY_MS)
     if (!nextDay || nextDay.dow !== 5) continue
     if (nextDay.total < saturdayBaseline * SPIKE_RATIO_FRIDAY_SAT) continue
+    // Guard: safeDiv yields null on a degenerate denominator; skip rather than
+    // push a NaN/Infinity into the magnitude series.
+    const ratio = safeDiv(nextDay.total, saturdayBaseline)
+    if (ratio === null) continue
     occurrences++
-    magnitudes.push(nextDay.total / saturdayBaseline)
+    magnitudes.push(ratio)
   }
   if (occurrences < 4) return null
   const magnitude = avg(magnitudes) - 1 // express as +X% over baseline
+  // Guard: with the SPIKE_RATIO floor magnitude should be ≥0.4, but defend
+  // against a degenerate series — don't emit a non-finite or non-positive
+  // "spike" (no actual cascade to report).
+  if (!isFiniteNumber(magnitude) || magnitude <= 0) return null
   // Confidence rises with sample size and stability (lower std).
   // Cheap proxy: confidence = min(1, occurrences/8).
   const confidence = Math.min(1, occurrences / 8)
@@ -151,11 +181,16 @@ function detectPairedImpulse(args: BuildArgs): CausalLink | null {
     const ta = new Date(a.created_at).getTime()
     const tb = new Date(b.created_at).getTime()
     if (tb - ta > PAIRED_TX_WINDOW_MS) continue
-    const priceA = Number(a.price ?? 0)
-    const priceB = Number(b.price ?? 0)
+    // Guard: finitePrice drops NaN/negative prices to 0, which the >0 check
+    // below then rejects — protects the ratio divisor `priceA`.
+    const priceA = finitePrice(a.price)
+    const priceB = finitePrice(b.price)
     if (priceA <= 0 || priceB <= 0) continue
     if (priceB < priceA * 0.5) continue // skip tiny add-ons
-    const ratio = Math.min(1, priceB / priceA)
+    // Guard: safeDiv on the (now guaranteed >0) divisor; skip on null.
+    const div = safeDiv(priceB, priceA)
+    if (div === null) continue
+    const ratio = Math.min(1, div)
     const prev = counts.get(a.category_id) ?? { occ: 0, magSum: 0 }
     prev.occ++
     prev.magSum += ratio
@@ -174,6 +209,9 @@ function detectPairedImpulse(args: BuildArgs): CausalLink | null {
     }
   }
   if (!bestId) return null
+  // Guard: bestMag is a mean of [0.5,1] ratios so it should be finite & >0,
+  // but defend against a degenerate accumulation before emitting.
+  if (!isFiniteNumber(bestMag) || bestMag <= 0) return null
   return {
     cause: { type: 'category', value: bestId },
     effect: { type: 'spending_spike', magnitude: bestMag },
@@ -199,7 +237,7 @@ function detectStressSpending(args: BuildArgs): CausalLink | null {
   for (const e of discretionary) {
     const day = startOfLocalDay(new Date(e.created_at))
     const prev = perDay.get(day) ?? { total: 0, count: 0 }
-    prev.total += Number(e.price ?? 0)
+    prev.total += finitePrice(e.price)
     prev.count++
     perDay.set(day, prev)
   }
@@ -213,9 +251,14 @@ function detectStressSpending(args: BuildArgs): CausalLink | null {
   if (stressDayTotals.length < 3) return null
   if (allDayTotals.length < 7) return null
   const baseline = avg(allDayTotals)
-  if (baseline <= 0) return null
+  // Guard: baseline is the ratio divisor — reject non-finite/non-positive.
+  if (!isFiniteNumber(baseline) || baseline <= 0) return null
   const stressAvg = avg(stressDayTotals)
-  const ratio = stressAvg / baseline
+  if (!isFiniteNumber(stressAvg) || stressAvg <= 0) return null
+  // Guard: safeDiv instead of raw division so a degenerate baseline can't
+  // yield NaN/Infinity that would slip past the `< 1.3` check.
+  const ratio = safeDiv(stressAvg, baseline)
+  if (ratio === null) return null
   if (ratio < 1.3) return null
   return {
     cause: { type: 'time', value: 'multi-tx-day' },

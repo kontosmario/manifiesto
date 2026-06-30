@@ -58,6 +58,7 @@ import {
   positiveForecastBody,
 } from '@/features/insights/control-signals-copy'
 import { DAY_MS } from '@/utils/time'
+import { clampFinite, finiteOr, isFiniteNumber } from '@/features/insights/signal-guards'
 
 export interface CategoryLimit {
   id: string
@@ -230,6 +231,10 @@ export function buildControlSignals(
   )
   const blocked = args.blockedFamilies
   const filtered = signals.filter((s) => {
+    // Firewall numérico: una señal con confidence o impactRaw NO finito nunca
+    // llega al usuario. Crítico: `NaN < MIN_CONFIDENCE` es `false`, así que la
+    // comparación sola dejaba colar señales con confianza/impacto inválidos.
+    if (!Number.isFinite(s.confidence) || !Number.isFinite(s.impactRaw)) return false
     if (s.confidence < MIN_CONFIDENCE) return false
     // Hard mute: a user who blocked a family never sees signals of
     // that family again until they unblock it. Family resolution
@@ -539,7 +544,12 @@ function buildStressWeek(
     return dueDate >= now && dueDate <= cutoff
   })
   if (due.length < 3) return null
-  const total = due.reduce((s, f) => s + Number(f.amount ?? 0), 0)
+  // Sumar sólo montos finitos > 0 (un amount null/NaN no debe romper el total;
+  // el valor de la señal es el CONTEO de fijos por vencer + los nombres).
+  const total = due.reduce((s, f) => {
+    const a = Number(f.amount ?? 0)
+    return s + (isFiniteNumber(a) && a > 0 ? a : 0)
+  }, 0)
   const names = due.slice(0, 3).map((f) => f.name).filter(Boolean).join(', ')
   return {
     id: 'stress-week',
@@ -607,11 +617,14 @@ function buildEndOfCycleAcceleration(
   if (args.view.detalleDias.length < 6) return null
   if (args.diasRestantes > 5) return null
   const last3 = args.view.detalleDias.slice(-3)
+  // Validez: los 3 días deben tener gasto finito (un null/NaN por gap de data
+  // contaminaría el promedio) y el promedio del ciclo finito y > 0.
+  if (last3.length < 3 || !last3.every((d) => isFiniteNumber(d.gasto))) return null
   const last3Avg = last3.reduce((s, d) => s + d.gasto, 0) / 3
   const cycleAvg = args.view.promedioDiario
-  if (cycleAvg === 0) return null
+  if (!isFiniteNumber(cycleAvg) || cycleAvg <= 0) return null
   const ratio = last3Avg / cycleAvg
-  if (ratio < 1.3) return null
+  if (!Number.isFinite(ratio) || ratio < 1.3) return null
   const extra = (last3Avg - cycleAvg) * 3
   return {
     id: 'end-acceleration',
@@ -650,10 +663,15 @@ function buildRecoveryPath(
   // (bien) pero delta = -\$11.5K (mal) porque cupoHastaAhora a esa hora
   // es solo \$3.4K. El user quedaba con "SOBREGIRO \$11K" cuando todavía
   // tenía el día entero por delante. Owner feedback 2026-06-08.
-  if (args.view.libreHoy >= 0) return null
+  // Validez: libreHoy finito (NaN >= 0 es false → se colaba) y un cupo
+  // diario REAL (> 0). Sin cupo positivo el "nuevo cupo" no tiene sentido.
+  if (!isFiniteNumber(args.view.libreHoy) || args.view.libreHoy >= 0) return null
   if (args.diasRestantes <= 1) return null
+  if (!isFiniteNumber(args.cupoDiario) || args.cupoDiario <= 0) return null
   const overspend = Math.abs(args.view.libreHoy)
-  const newCupo = args.cupoDiario - overspend / args.diasRestantes
+  // Clamp a [0, cupoDiario]: el nuevo cupo nunca puede ser negativo
+  // (recomendar "gastá negativo") ni superar el cupo original.
+  const newCupo = clampFinite(args.cupoDiario - overspend / args.diasRestantes, 0, args.cupoDiario)
   if (newCupo < args.cupoDiario * 0.4) {
     const framing = framingFor(args.persona ?? 'planner')
     return {
@@ -707,6 +725,12 @@ function buildVelocityWarning(
   const v = args.velocity
   if (!v) return null
   if (v.stress_level === 'calm') return null
+  // Validez: el forecast y el momentum del snapshot deben ser finitos, y el
+  // cupo diario > 0 (sino libreMes colapsa a 0/negativo → falso "frenar").
+  if (!isFiniteNumber(v.forecast_close_amount) || !isFiniteNumber(v.momentum)) return null
+  if (!isFiniteNumber(args.cupoDiario) || args.cupoDiario <= 0) return null
+  const cycleDaysVel = args.view.diasRestantes + args.view.detalleDias.length
+  if (cycleDaysVel <= 0) return null
   // Compare the cycle-close forecast against the cycle's *budget*
   // (libreMes = cupoDiario × diasMes), NOT against `gastoProyectadoMes`.
   // The previous version subtracted two projections that came from
@@ -714,9 +738,7 @@ function buildVelocityWarning(
   // frontend = pay cycle), so `over` had no coherent economic meaning
   // and could surface absurd "Frenar: −$4M" deltas. The correct
   // overshoot is `forecast − presupuesto del ciclo`.
-  const libreMes =
-    args.cupoDiario *
-    (args.view.diasRestantes + args.view.detalleDias.length)
+  const libreMes = args.cupoDiario * cycleDaysVel
   const over = v.forecast_close_amount - libreMes
   const urgency: ControlAdvisorTask['urgency'] =
     v.stress_level === 'critical'
@@ -760,6 +782,11 @@ function buildPositiveForecast(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   if (!args.view.alcanzaElMes) return null
+  // Validez: el sobrante proyectado y el cupo deben ser finitos antes de
+  // calcular la contribución propuesta (sino `proposed` sale NaN → copy rota).
+  if (!isFiniteNumber(args.view.sobrantePresupuestadoMes) || !isFiniteNumber(args.cupoDiario)) {
+    return null
+  }
   if (args.view.sobrantePresupuestadoMes < args.cupoDiario * 2) return null
   const sobra = args.view.sobrantePresupuestadoMes
   const hasActiveGoal = !!(args.savingsGoal && args.savingsGoal.isActive)
@@ -810,9 +837,11 @@ function buildCategoryAcceleration(
   const byCategory = groupExpensesByCategory(args.expenses, args.categoriesExpense)
   if (byCategory.length === 0) return null
   const topNow = byCategory.sort((a, b) => b.amount - a.amount)[0]!
+  if (!isFiniteNumber(topNow.amount) || topNow.amount <= 0) return null
   const historicalAvg = avgCategoryFromSummaries(args.summaries, topNow.name)
-  if (historicalAvg === 0) return null
+  if (!isFiniteNumber(historicalAvg) || historicalAvg <= 0) return null
   const ratio = topNow.amount / historicalAvg
+  if (!Number.isFinite(ratio)) return null
   // Per-user calibrated threshold (P75 of historical accel peaks);
   // falls back to 1.4× when fewer than 3 cycles available.
   const accelThreshold = args.baselines?.catAccelP75 ?? 1.4
@@ -885,8 +914,13 @@ function buildCategoryCapBreaches(
 
   const out: ControlAdvisorTask[] = []
   for (const limit of args.limits) {
+    // Validez: cap REAL (> 0), umbral en (0,100], y gasto finito ≥ 0. Un cap
+    // ≤ 0 haría threshold ≤ 0 → todo gasto "rompe" el límite (falso positivo).
+    if (!isFiniteNumber(limit.monthly_cap) || limit.monthly_cap <= 0) continue
+    const pctThreshold = clampFinite(limit.warning_threshold_pct, 1, 100)
     const spent = byCategoryId.get(limit.category_id) ?? 0
-    const threshold = limit.monthly_cap * (limit.warning_threshold_pct / 100)
+    if (!isFiniteNumber(spent) || spent < 0) continue
+    const threshold = limit.monthly_cap * (pctThreshold / 100)
     if (spent < threshold) continue
     const rawName = rawCategoryName(limit.category_id)
     const name = categoryDisplayName(limit.category_id)
@@ -939,9 +973,11 @@ function buildCategoryDominance(
   const byCategory = groupExpensesByCategory(args.expenses, args.categoriesExpense)
   if (byCategory.length < 2) return null
   const total = byCategory.reduce((s, c) => s + c.amount, 0)
-  if (total === 0) return null
+  if (!isFiniteNumber(total) || total <= 0) return null
   const top = byCategory.sort((a, b) => b.amount - a.amount)[0]!
+  if (!isFiniteNumber(top.amount) || top.amount <= 0) return null
   const share = top.amount / total
+  if (!Number.isFinite(share)) return null
   // Per-user calibrated threshold: a category needs to beat the
   // user's own P75 share, not a global 40%. For users with naturally
   // concentrated spend (a single category always at 50%) this means
@@ -996,9 +1032,10 @@ function buildCategoryReductionWin(
     delta: number
   } | null = null
   for (const c of byCategory) {
+    if (!isFiniteNumber(c.amount) || c.amount < 0) continue
     // Match por nombre CRUDO (los summaries guardan el name en español).
     const avg = avgCategoryFromSummaries(args.summaries, c.name)
-    if (avg === 0) continue
+    if (!isFiniteNumber(avg) || avg <= 0) continue
     const ratio = c.amount / avg
     if (ratio > 0.7) continue
     const delta = avg - c.amount
@@ -1044,11 +1081,18 @@ function buildSmallLeaksInsight(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   const discretionary = args.expenses.filter((e) => !e.commitment_id)
-  const small = discretionary.filter((e) => Number(e.price ?? 0) < 5000)
+  const small = discretionary.filter((e) => {
+    const p = Number(e.price ?? 0)
+    return isFiniteNumber(p) && p >= 0 && p < 5000
+  })
   if (small.length < 10) return null
+  // Necesitamos cupo REAL y ≥3 días cerrados: sin eso el % del ciclo se infla
+  // con un denominador chico y la señal sobre-dispara en ciclos recién abiertos.
+  if (!isFiniteNumber(args.cupoDiario) || args.cupoDiario <= 0) return null
+  if (args.view.detalleDias.length < 3) return null
   const total = small.reduce((s, e) => s + Number(e.price ?? 0), 0)
-  const pctOfCycle = total / Math.max(1, args.cupoDiario * args.view.detalleDias.length)
-  if (pctOfCycle < 0.12) return null
+  const pctOfCycle = total / (args.cupoDiario * args.view.detalleDias.length)
+  if (!Number.isFinite(pctOfCycle) || pctOfCycle < 0.12) return null
   return {
     id: 'small-leaks',
     emoji: '💧',
@@ -1084,8 +1128,12 @@ function buildNightImpulse(
   let nightAmount = 0
   let totalAmount = 0
   for (const e of discretionary) {
-    const h = new Date(e.created_at).getHours()
+    const d = new Date(e.created_at)
     const amt = Number(e.price ?? 0)
+    // Validez: timestamp parseable y monto finito ≥ 0 (un created_at inválido
+    // daría getHours()=NaN y contaminaría los totales).
+    if (Number.isNaN(d.getTime()) || !isFiniteNumber(amt) || amt < 0) continue
+    const h = d.getHours()
     totalAmount += amt
     // 22hs → 02hs covers AR night-impulse window without false-firing
     // on AR's typical late dinners (20-21hs).
@@ -1094,9 +1142,9 @@ function buildNightImpulse(
       nightAmount += amt
     }
   }
-  if (totalAmount === 0) return null
+  if (totalAmount <= 0) return null
   const nightPct = (nightAmount / totalAmount) * 100
-  if (nightPct < 70) return null
+  if (!Number.isFinite(nightPct) || nightPct < 70) return null
   return {
     id: 'night-impulse',
     emoji: '🌙',
@@ -1132,7 +1180,8 @@ function buildWeeklyPattern(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   const { porDowEnriched, peorDow, globalAvg } = args.view
-  if (!porDowEnriched || porDowEnriched.length < 7 || globalAvg <= 0) return null
+  if (!porDowEnriched || porDowEnriched.length < 7) return null
+  if (!isFiniteNumber(globalAvg) || globalAvg <= 0) return null
 
   // ── Candidate A: worst single DoW
   // Use actual cycle length to compute how many of this weekday fall
@@ -1143,7 +1192,13 @@ function buildWeeklyPattern(
     args.view.detalleDias.length + args.view.diasRestantes
   let dowExtra = 0
   let dowName = ''
-  if (peorDow && peorDow.avg > 0 && peorDow.ratio >= 1.4) {
+  if (
+    peorDow &&
+    isFiniteNumber(peorDow.avg) &&
+    peorDow.avg > 0 &&
+    isFiniteNumber(peorDow.ratio) &&
+    peorDow.ratio >= 1.4
+  ) {
     const monthlyOccurrences = cycleDays / 7
     dowExtra = (peorDow.avg - globalAvg) * monthlyOccurrences
     const peorDowIdx = dowIndexFromName(peorDow.name)
@@ -1159,15 +1214,18 @@ function buildWeeklyPattern(
   let wkdayAvgValue = 0
   let weekendAvgValue = 0
   const weekend = porDowEnriched.filter(
-    (d) => (d.name === 'Sáb' || d.name === 'Dom') && d.avg > 0,
+    (d) => (d.name === 'Sáb' || d.name === 'Dom') && isFiniteNumber(d.avg) && d.avg > 0,
   )
-  if (weekend.length > 0) {
+  // Necesitamos ≥1 día de finde y ≥1 de semana con gasto finito. El ruido de
+  // muestras chicas ya lo descuenta la confianza (rampThreeWeeks); un patrón
+  // de un solo día de finde es válido (no errático) y se respeta.
+  if (weekend.length >= 1) {
     weekendAvgValue =
       weekend.reduce((s, d) => s + d.avg, 0) / weekend.length
     const weekday = porDowEnriched.filter(
-      (d) => d.name !== 'Sáb' && d.name !== 'Dom' && d.avg > 0,
+      (d) => d.name !== 'Sáb' && d.name !== 'Dom' && isFiniteNumber(d.avg) && d.avg > 0,
     )
-    if (weekday.length > 0 && weekendAvgValue > 0) {
+    if (weekday.length >= 1 && weekendAvgValue > 0) {
       wkdayAvgValue = weekday.reduce((s, d) => s + d.avg, 0) / weekday.length
       if (wkdayAvgValue > 0) {
         wkRatio = weekendAvgValue / wkdayAvgValue
@@ -1183,8 +1241,8 @@ function buildWeeklyPattern(
   }
 
   // Pick the strongest. Need 5k minimum impact to surface.
-  const useDow = dowExtra >= wkExtra && dowExtra >= 5000
-  const useWeekend = !useDow && wkExtra >= 8000
+  const useDow = Number.isFinite(dowExtra) && dowExtra >= wkExtra && dowExtra >= 5000
+  const useWeekend = !useDow && Number.isFinite(wkExtra) && wkExtra >= 8000
   if (!useDow && !useWeekend) return null
 
   if (useDow) {
@@ -1234,9 +1292,10 @@ function buildWeeklyPattern(
 function buildFijosRatioHealth(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
-  if (args.ingresoMes <= 0) return null
+  if (!isFiniteNumber(args.ingresoMes) || args.ingresoMes <= 0) return null
+  if (!isFiniteNumber(args.fijosMes) || args.fijosMes < 0) return null
   const ratio = args.fijosMes / args.ingresoMes
-  if (ratio < 0.6) return null
+  if (!Number.isFinite(ratio) || ratio < 0.6) return null
   const target = args.ingresoMes * 0.5
   const excess = args.fijosMes - target
   const severity: ControlAdvisorTask['urgency'] =
@@ -1268,14 +1327,14 @@ function buildIncomeVolatility(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   if (args.summaries.length < 2) return null
-  if (args.ingresoMes <= 0) return null
+  if (!isFiniteNumber(args.ingresoMes) || args.ingresoMes <= 0) return null
   const historicalAvg =
     args.summaries.slice(0, 3).reduce((s, x) => s + x.monthly_income, 0) /
     Math.min(3, args.summaries.length)
-  if (historicalAvg === 0) return null
+  if (!isFiniteNumber(historicalAvg) || historicalAvg <= 0) return null
   const delta = args.ingresoMes - historicalAvg
   const pct = (delta / historicalAvg) * 100
-  if (Math.abs(pct) < 10) return null
+  if (!Number.isFinite(pct) || Math.abs(pct) < 10) return null
   const better = pct > 0
   const action: ControlAction = better
     ? { kind: 'open-savings-goal' }
@@ -1327,8 +1386,11 @@ function buildSubUsageCheckin(
   const out: ControlAdvisorTask[] = []
   for (const c of checkins) {
     if (c.hasOpenCancelIntent) continue // ya en flujo de cancelación
+    if (!isFiniteNumber(c.amount) || c.amount < 0) continue
     const score = scoreSubscriptionUsage(c, now)
-    if (!score.shouldAsk) continue
+    // Validez: el scorer podría devolver algo inesperado → nunca derefenciar
+    // a ciegas (TypeError) ni mostrar un check-in sin decisión clara.
+    if (!score || typeof score.shouldAsk !== 'boolean' || !score.shouldAsk) continue
     const id = `sub-usage-${c.fixedExpenseId}`
     let title: string
     let body: string
@@ -1409,12 +1471,18 @@ function buildFromPriceHikeNotifications(
     }
     return true
   })
-  return hikes.slice(0, 2).map((n) => {
+  return hikes
+    .slice(0, 2)
+    .map((n): ControlAdvisorTask | null => {
     const name = (n.metadata.name as string) ?? i18n.t('insights:signals.hike.nameFallback')
-    const prev = Number(n.metadata.previous_amount ?? 0)
-    const next = Number(n.metadata.new_amount ?? 0)
-    const pct = Number(n.metadata.delta_pct ?? 0)
+    // Metadata puede venir corrupta (string '$5000', faltante) → coercemos a
+    // finito y, sin un aumento real (delta finito > 0), no mostramos la señal.
+    const prev = finiteOr(Number(n.metadata.previous_amount ?? 0), 0)
+    const next = finiteOr(Number(n.metadata.new_amount ?? 0), 0)
+    const pctRaw = Number(n.metadata.delta_pct ?? 0)
+    const pct = Number.isFinite(pctRaw) ? pctRaw : 0
     const delta = next - prev
+    if (!Number.isFinite(delta) || delta <= 0) return null
     return {
       id: `hike-${n.id}`,
       emoji: '⚡',
@@ -1437,7 +1505,8 @@ function buildFromPriceHikeNotifications(
         fixedExpenseId: String(n.metadata.fixed_expense_id ?? ''),
       },
     }
-  })
+    })
+    .filter((t): t is ControlAdvisorTask => t !== null)
 }
 
 // ─── Group 6 — Savings ──────────────────────────────────────────────
@@ -1448,13 +1517,16 @@ function buildSavingsFeasibility(
 ): ControlAdvisorTask | null {
   const goal = args.savingsGoal
   if (!goal || !goal.isActive) return null
+  // Validez: montos de la meta y el vault finitos antes de cualquier cuenta.
+  if (!isFiniteNumber(goal.goalAmount) || goal.goalAmount <= 0) return null
+  if (!isFiniteNumber(goal.currentAmount)) return null
   const missing = Math.max(0, goal.goalAmount - goal.currentAmount)
   if (missing <= 0) return null
   const months = goal.targetMonths ?? 0
   if (months <= 0) return null
   const monthlyNeeded = missing / months
   const monthlyActual = args.view.vault
-  if (monthlyActual >= monthlyNeeded) return null
+  if (!isFiniteNumber(monthlyActual) || monthlyActual >= monthlyNeeded) return null
   const shortfall = monthlyNeeded - monthlyActual
   return {
     id: 'savings-feasibility',
@@ -1487,13 +1559,15 @@ function buildSavingsOverachievement(
 ): ControlAdvisorTask | null {
   const goal = args.savingsGoal
   if (!goal || !goal.isActive) return null
+  if (!isFiniteNumber(goal.goalAmount) || goal.goalAmount <= 0) return null
+  if (!isFiniteNumber(goal.currentAmount)) return null
   const months = goal.targetMonths ?? 0
   if (months <= 0) return null
   const missing = Math.max(0, goal.goalAmount - goal.currentAmount)
   if (missing <= 0) return null
   const planned = missing / months
   const actual = args.view.vault
-  if (actual <= planned * 1.15) return null
+  if (!isFiniteNumber(actual) || actual <= planned * 1.15) return null
   const newMonths = Math.max(1, Math.round(missing / actual))
   const saved = months - newMonths
   if (saved < 1) return null
@@ -1540,7 +1614,7 @@ function startOfLocalDay(date: Date): number {
 function buildHighSingleExpense(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
-  if (args.cupoDiario <= 0) return null
+  if (!isFiniteNumber(args.cupoDiario) || args.cupoDiario <= 0) return null
   const today = startOfLocalDay(args.now ?? new Date())
   const todayExpenses = args.expenses.filter((e) => {
     // Excluir pagos de gastos fijos (commitment_id no-null): ya están
@@ -1552,8 +1626,13 @@ function buildHighSingleExpense(
     return ts >= today && ts < today + DAY_MS
   })
   if (todayExpenses.length === 0) return null
-  let max = todayExpenses[0]
-  for (const e of todayExpenses) if (Number(e.price ?? 0) > Number(max.price ?? 0)) max = e
+  let max: Expense | null = null
+  for (const e of todayExpenses) {
+    const p = Number(e.price ?? 0)
+    if (!isFiniteNumber(p)) continue
+    if (!max || p > Number(max.price ?? 0)) max = e
+  }
+  if (!max) return null
   const price = Number(max.price ?? 0)
   if (price < args.cupoDiario * 0.3) return null
   const pct = Math.round((price / args.cupoDiario) * 100)
@@ -1607,7 +1686,7 @@ function buildDuplicateMerchant(
     list.sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))
     const lo = Number(list[0].price ?? 0)
     const hi = Number(list[list.length - 1].price ?? 0)
-    if (lo <= 0) continue
+    if (!isFiniteNumber(lo) || lo <= 0 || !isFiniteNumber(hi)) continue
     if (hi - lo > lo * 0.05) continue // ±5% tolerance
     const focus = list[list.length - 1]
     return {
@@ -1645,9 +1724,10 @@ function buildDataGapWarning(
   // Sorted by `created_at desc` upstream; first item is the most recent.
   const last = args.expenses[0]
   const lastTs = new Date(last.created_at).getTime()
+  if (Number.isNaN(lastTs)) return null
   const now = (args.now ?? new Date()).getTime()
   const daysSince = Math.floor((now - lastTs) / DAY_MS)
-  if (daysSince < 3) return null
+  if (!Number.isFinite(daysSince) || daysSince < 3) return null
   if (daysSince > 14) return null // beyond this we don't pester
   return {
     id: 'data-gap-warning',
@@ -1673,6 +1753,9 @@ function buildSavingsMilestone(
 ): ControlAdvisorTask | null {
   const goal = args.savingsGoal
   if (!goal || !goal.isActive) return null
+  if (!isFiniteNumber(goal.goalAmount) || goal.goalAmount <= 0 || !isFiniteNumber(goal.currentAmount)) {
+    return null
+  }
   if (goal.currentAmount < goal.goalAmount) return null
   return {
     id: 'savings-milestone',
@@ -1704,23 +1787,23 @@ function buildIncomeMissing(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   if (!args.paydayPending) return null
+  // El "cobro esperado" es el SUELDO recurrente, no el ingreso del ciclo: los
+  // income_events one-time (transferencias, sobrantes) ya llegaron y no son lo
+  // que se espera. Coercemos a finito (0 = monto desconocido → copy "confirmar").
+  const expected = finiteOr(args.ingresoRecurrente ?? args.ingresoMes, 0)
   return {
     id: 'income-missing',
     emoji: '📭',
     cat: i18n.t('insights:signals.incomeMissing.cat'),
     title: i18n.t('insights:signals.incomeMissing.title'),
     body: i18n.t('insights:signals.incomeMissing.body'),
-    // El "cobro esperado" es el SUELDO recurrente, no el ingreso del
-    // ciclo: los income_events one-time (transferencias, sobrantes) ya
-    // llegaron y no son lo que se está esperando. Sin esta distinción la
-    // señal mostraba sueldo+extras (ej. 8.7M en vez de 6.4M).
     impact:
-      (args.ingresoRecurrente ?? args.ingresoMes) > 0
+      expected > 0
         ? i18n.t('insights:signals.incomeMissing.impactExpected', {
-            amount: fmt(args.ingresoRecurrente ?? args.ingresoMes),
+            amount: fmt(expected),
           })
         : i18n.t('insights:signals.incomeMissing.impactConfirm'),
-    impactRaw: Math.round(args.ingresoRecurrente ?? args.ingresoMes),
+    impactRaw: Math.round(expected),
     impactScope: 'oneTime',
     cta: i18n.t('insights:cta.actualizar'),
     urgency: 'alta',
@@ -1737,7 +1820,8 @@ function buildCycleStartProjection(
 ): ControlAdvisorTask | null {
   const closedDays = args.view.detalleDias.length
   if (closedDays > 2) return null
-  if (args.ingresoMes <= 0) return null
+  if (!isFiniteNumber(args.ingresoMes) || args.ingresoMes <= 0) return null
+  if (!isFiniteNumber(args.fijosMes)) return null
   const monthlyGoalNeed =
     args.savingsGoal && args.savingsGoal.isActive && args.savingsGoal.targetMonths
       ? Math.max(
@@ -1747,9 +1831,9 @@ function buildCycleStartProjection(
         )
       : 0
   const libre = args.ingresoMes - args.fijosMes - monthlyGoalNeed
-  if (libre <= 0) return null
+  if (!isFiniteNumber(libre) || libre <= 0) return null
   const libreRatio = libre / args.ingresoMes
-  if (libreRatio >= 0.25) return null
+  if (!Number.isFinite(libreRatio) || libreRatio >= 0.25) return null
   const target = Math.round(args.ingresoMes * 0.25)
   const gap = Math.max(0, target - libre)
   const pct = Math.round(libreRatio * 100)
@@ -1787,8 +1871,12 @@ function buildForecastPaydayGap(
   const f = args.forecast
   if (!f) return null
   if (args.diasRestantes <= 1) return null
-  if (f.pessimistic.dailyAvg <= 0) return null
+  // Validez: el forecast pesimista debe ser finito y > 0 (NaN/Infinity ≤ 0 es
+  // false → se colaba y producía gapDays/gapAmount basura), y el restante ≥ 0.
+  if (!isFiniteNumber(f.pessimistic.dailyAvg) || f.pessimistic.dailyAvg <= 0) return null
+  if (!isFiniteNumber(f.pessimistic.totalProjected)) return null
   const remaining = args.view.restanteMes
+  if (!isFiniteNumber(remaining) || remaining < 0) return null
   if (f.pessimistic.totalProjected <= remaining) return null
   const daysToZero = Math.floor(remaining / f.pessimistic.dailyAvg)
   if (daysToZero >= args.diasRestantes) return null
@@ -1819,7 +1907,7 @@ function buildStreakEncouragement(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   const racha = args.view.racha
-  if (racha < 3) return null
+  if (!isFiniteNumber(racha) || racha < 3) return null
   return {
     id: 'streak-ok',
     emoji: '🔥',
@@ -1850,7 +1938,11 @@ function urgencyWeight(u: 'alta' | 'media' | 'baja'): number {
 }
 
 function fmt(n: number): string {
-  const round = Math.round(Math.abs(n))
+  // Backstop: si un builder llegara con un valor no finito (no debería —
+  // cada uno valida sus inputs), nunca emitimos "$NaN" a la UI. El filtro de
+  // impactRaw del orquestador igual descarta esas señales.
+  const safe = Number.isFinite(n) ? n : 0
+  const round = Math.round(Math.abs(safe))
   return '$' + round.toLocaleString(getIntlLocale())
 }
 
@@ -1879,10 +1971,12 @@ function groupExpensesByCategory(
   const byId = new Map<string, number>()
   for (const e of expenses) {
     if (e.commitment_id) continue
-    byId.set(
-      e.category_id,
-      (byId.get(e.category_id) ?? 0) + Number(e.price ?? 0),
-    )
+    // Fix de raíz: precios no finitos o negativos (corrupción/data error)
+    // contaminarían los totales por categoría que consumen cat-accel,
+    // cat-dominance y cat-win. Se excluyen acá una sola vez.
+    const price = Number(e.price ?? 0)
+    if (!isFiniteNumber(price) || price < 0) continue
+    byId.set(e.category_id, (byId.get(e.category_id) ?? 0) + price)
   }
   return Array.from(byId.entries()).map(([id, amount]) => {
     const cat = categories.find((c) => c.id === id)
@@ -1903,10 +1997,9 @@ function groupExpensesByCategoryId(expenses: Expense[]): Map<string, number> {
   const byId = new Map<string, number>()
   for (const e of expenses) {
     if (e.commitment_id) continue
-    byId.set(
-      e.category_id,
-      (byId.get(e.category_id) ?? 0) + Number(e.price ?? 0),
-    )
+    const price = Number(e.price ?? 0)
+    if (!isFiniteNumber(price) || price < 0) continue
+    byId.set(e.category_id, (byId.get(e.category_id) ?? 0) + price)
   }
   return byId
 }
@@ -1927,11 +2020,13 @@ function isCategorySpike(
     if (e.commitment_id) continue
     if (e.category_id !== categoryId) continue
     const amt = Number(e.price ?? 0)
+    if (!isFiniteNumber(amt) || amt < 0) continue
     total += amt
     if (new Date(e.created_at).getTime() >= cutoff) last7 += amt
   }
-  if (total === 0) return false
-  return last7 / total >= 0.7
+  if (total <= 0) return false
+  const ratio = last7 / total
+  return Number.isFinite(ratio) && ratio >= 0.7
 }
 
 function avgCategoryFromSummaries(
@@ -1952,7 +2047,9 @@ function avgCategoryFromSummaries(
       const bucket = (breakdown as Record<string, { amount?: number }>)[categoryName]
       amount = bucket?.amount != null ? Number(bucket.amount) : null
     }
-    if (amount != null) {
+    // Sólo acumulamos montos finitos: un total NaN/string en el breakdown
+    // (corrupción server-side) envenenaría el promedio que usan cat-accel/win.
+    if (amount != null && Number.isFinite(amount)) {
       total += amount
       count += 1
     }

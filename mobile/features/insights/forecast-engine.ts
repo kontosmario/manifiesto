@@ -19,6 +19,7 @@
 import type { ControlView, DowBucket } from '@/features/insights/control-v2-mock'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import { parseFixedExpenseDate } from '@/features/fixed-expenses/commitment-date-utils'
+import { finiteOr, isFiniteNumber } from '@/features/insights/signal-guards'
 import { DAY_MS } from '@/utils/time'
 
 export interface ForecastTrack {
@@ -108,7 +109,9 @@ function projectTrack(args: {
   fixedByDay: Map<string, number>
   startDate: Date
 }): ForecastTrack {
-  const horizon = Math.max(0, Math.min(7, args.cycleHorizon))
+  // Guard a non-finite/negative horizon (e.g. NaN diasRestantes): clamp
+  // to [0, 7] with finiteOr so the loop bound is always a valid integer.
+  const horizon = Math.max(0, Math.min(7, finiteOr(args.cycleHorizon, 0)))
   const daily: number[] = []
   for (let i = 0; i < 7; i++) {
     if (i >= horizon) {
@@ -116,8 +119,13 @@ function projectTrack(args: {
       continue
     }
     const dayDate = new Date(args.startDate.getTime() + i * DAY_MS)
-    const base = Math.max(0, args.perDayBase(i, dayDate))
-    const fixed = args.fixedByDay.get(isoDay(dayDate)) ?? 0
+    // finiteOr(...,0) catches a NaN/Infinity perDayBase result (e.g. a
+    // corrupt DoW avg) before Math.max/Math.round; a non-finite base
+    // would otherwise push NaN into daily[] and poison totalProjected.
+    const base = Math.max(0, finiteOr(args.perDayBase(i, dayDate), 0))
+    // fixedByDay only ever holds finite, non-negative sums (see
+    // fixedByDayInWindow), but finiteOr keeps this robust to future edits.
+    const fixed = Math.max(0, finiteOr(args.fixedByDay.get(isoDay(dayDate)) ?? 0, 0))
     daily.push(Math.round(base + fixed))
   }
   const totalProjected = daily.reduce((s, v) => s + v, 0)
@@ -125,7 +133,43 @@ function projectTrack(args: {
     daily,
     totalProjected,
     endingBalance: 0, // filled in by caller (needs `remaining`)
+    // horizon > 0 guarantees a non-zero finite denominator here; the
+    // ternary returns 0 (not NaN) for an empty horizon.
     dailyAvg: horizon > 0 ? totalProjected / horizon : 0,
+  }
+}
+
+/** A zero-filled track: 7 days of 0 spend. Used when there is not enough
+ *  history to extrapolate, so we surface absence rather than a fabricated
+ *  (or NaN) projection. `endingBalance` is filled in by the caller. */
+function zeroTrack(): ForecastTrack {
+  return {
+    daily: [0, 0, 0, 0, 0, 0, 0],
+    totalProjected: 0,
+    endingBalance: 0,
+    dailyAvg: 0,
+  }
+}
+
+/** A fully zeroed forecast for the "insufficient history" case. All tracks
+ *  are zeroed so downstream signal builders (which gate on
+ *  `dailyAvg > 0` / `totalProjected > remaining`) naturally suppress —
+ *  the engine never extrapolates from an invalid baseline. */
+function insufficientForecast(now: Date, remaining: number): Forecast7Day {
+  const safeRemaining = finiteOr(remaining, 0)
+  const baseline = zeroTrack()
+  baseline.endingBalance = safeRemaining
+  const optimistic = zeroTrack()
+  optimistic.endingBalance = safeRemaining
+  const pessimistic = zeroTrack()
+  pessimistic.endingBalance = safeRemaining
+  return {
+    generatedAt: now.toISOString(),
+    horizon: 7,
+    baseline,
+    optimistic,
+    pessimistic,
+    inflectionDays: [],
   }
 }
 
@@ -151,10 +195,18 @@ function fixedByDayInWindow(
     // the due date one day earlier and drops fijos from the 7-day
     // window incorrectly.
     const due = parseFixedExpenseDate(f.next_due_on)
-    if (!due) continue
+    // Skip unparseable dates (parseFixedExpenseDate returns null) and any
+    // date whose getTime() is NaN — an Invalid Date would otherwise pass
+    // the range check unpredictably and emit a NaN-keyed entry.
+    if (!due || !isFiniteNumber(due.getTime())) continue
     if (due.getTime() < startMs || due.getTime() >= endMs) continue
+    // Only fold in finite, positive amounts. A NaN/negative `amount`
+    // (data glitch) would otherwise corrupt the day's fixed sum and flow
+    // straight into totalProjected and the fixed_payment inflection.
+    const amount = Number(f.amount ?? 0)
+    if (!isFiniteNumber(amount) || amount <= 0) continue
     const key = isoDay(due)
-    out.set(key, (out.get(key) ?? 0) + Number(f.amount ?? 0))
+    out.set(key, (out.get(key) ?? 0) + amount)
   }
   return out
 }
@@ -162,9 +214,27 @@ function fixedByDayInWindow(
 export function buildForecast7Day(input: ForecastInput): Forecast7Day {
   const now = input.now ?? new Date()
   const tomorrow = startOfDay(new Date(now.getTime() + DAY_MS))
-  const baselineDailyAvg = Math.max(0, input.view.promedioDiario)
+  // finiteOr(...,0) first: Math.max(0, NaN) === NaN, so a non-finite
+  // promedioDiario would slip through Math.max and contaminate every
+  // track. Normalize to a finite, non-negative baseline.
+  const baselineDailyAvg = Math.max(0, finiteOr(input.view.promedioDiario, 0))
+
+  // Insufficient-history gate: with a zero/non-finite baseline there is
+  // no valid rhythm to extrapolate. Return a fully zeroed forecast
+  // instead of fabricating (or NaN-propagating) a projection. Downstream
+  // signal builders gate on dailyAvg > 0 / totalProjected > remaining, so
+  // a zeroed forecast cleanly suppresses them ("dato ausente").
+  if (!isFiniteNumber(baselineDailyAvg) || baselineDailyAvg <= 0) {
+    return insufficientForecast(now, input.remaining)
+  }
+
   const peorDow = input.view.peorDow
   const fixedByDay = fixedByDayInWindow(input.fixedExpenses, tomorrow)
+
+  // Normalize `remaining` to a finite value once. endingBalance may be
+  // negative (per contract) so we don't clamp it — but a non-finite
+  // `remaining` would make every endingBalance NaN, which we must not emit.
+  const safeRemaining = finiteOr(input.remaining, 0)
 
   const baseline = projectTrack({
     cycleHorizon: input.diasRestantes,
@@ -172,7 +242,7 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
     fixedByDay,
     startDate: tomorrow,
   })
-  baseline.endingBalance = input.remaining - baseline.totalProjected
+  baseline.endingBalance = safeRemaining - baseline.totalProjected
 
   const optimistic = projectTrack({
     cycleHorizon: input.diasRestantes,
@@ -180,24 +250,27 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
     fixedByDay,
     startDate: tomorrow,
   })
-  optimistic.endingBalance = input.remaining - optimistic.totalProjected
+  optimistic.endingBalance = safeRemaining - optimistic.totalProjected
 
   const pessimistic = projectTrack({
     cycleHorizon: input.diasRestantes,
     perDayBase: (_, dayDate) => {
       const projectDow = jsDowToProject(dayDate.getDay())
       const bucket = bucketForDow(input.view.porDowEnriched, projectDow)
-      // Fall back to baseline when the DoW bucket is missing OR when
-      // the bucket averages zero (e.g. the user has had a no-spend
-      // streak on this DoW). A `0 * 1.2` projection would zero out
+      // Fall back to baseline when the DoW bucket is missing, non-finite,
+      // OR averages zero (e.g. the user has had a no-spend streak on this
+      // DoW). A `0 * 1.2` / `NaN * 1.2` projection would zero out / poison
       // the daily base and miscompute the days-to-zero downstream.
-      const dowAvg = bucket && bucket.avg > 0 ? bucket.avg : baselineDailyAvg
+      const dowAvg =
+        bucket && isFiniteNumber(bucket.avg) && bucket.avg > 0
+          ? bucket.avg
+          : baselineDailyAvg
       return dowAvg * 1.2
     },
     fixedByDay,
     startDate: tomorrow,
   })
-  pessimistic.endingBalance = input.remaining - pessimistic.totalProjected
+  pessimistic.endingBalance = safeRemaining - pessimistic.totalProjected
 
   // ─── Inflection days ─────────────────────────────────────────────
   const inflectionDays: InflectionDay[] = []
@@ -224,6 +297,10 @@ export function buildForecast7Day(input: ForecastInput): Forecast7Day {
       const projectDow = jsDowToProject(dayDate.getDay())
       const bucket = bucketForDow(input.view.porDowEnriched, projectDow)
       if (!bucket) continue
+      // Require a finite avg: a NaN avg would make the `<=` comparison
+      // false (skipping the `continue`) and push Math.round(NaN) = NaN
+      // into expectedAmount.
+      if (!isFiniteNumber(bucket.avg)) continue
       if (bucket.avg <= baselineDailyAvg * 1.6) continue
       inflectionDays.push({
         day: isoDay(dayDate),

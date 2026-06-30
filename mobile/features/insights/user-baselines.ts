@@ -20,6 +20,7 @@
 // effects.
 
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
+import { isFiniteNumber, safeDiv } from '@/features/insights/signal-guards'
 
 export interface UserBaselines {
   /** P75 of "top category share of total variable spend" across
@@ -61,9 +62,15 @@ export function computeUserBaselines(
     const entries = normalizeBreakdownEntries(breakdown)
     if (entries.length === 0) continue
     const total = entries.reduce((sum, e) => sum + e.amount, 0)
-    if (total <= 0) continue
+    // Guard: entries are pre-filtered to finite >0 amounts, so total is finite;
+    // still reject a non-finite/non-positive total before it becomes a divisor.
+    if (!isFiniteNumber(total) || total <= 0) continue
     const top = entries.reduce((a, b) => (b.amount > a.amount ? b : a))
-    dominanceObs.push(top.amount / total)
+    // Guard: safeDiv yields null on a degenerate denominator; skip rather than
+    // feed NaN/Infinity into the percentile series.
+    const share = safeDiv(top.amount, total)
+    if (share === null) continue
+    dominanceObs.push(share)
   }
 
   // ── Per-category-vs-history ratio per cycle
@@ -80,8 +87,12 @@ export function computeUserBaselines(
     let peak = 0
     for (const e of curEntries) {
       const baseline = avgCategoryAcrossPriors(summaries.slice(i + 1), e.name)
-      if (baseline <= 0) continue
-      const ratio = e.amount / baseline
+      // Guard: baseline is the ratio divisor — reject non-finite/non-positive
+      // (a category appearing from $0 is not an "acceleration of a trend").
+      if (!isFiniteNumber(baseline) || baseline <= 0) continue
+      // Guard: safeDiv keeps a degenerate baseline from yielding NaN/Infinity.
+      const ratio = safeDiv(e.amount, baseline)
+      if (ratio === null) continue
       if (ratio > peak) peak = ratio
     }
     if (peak > 0) accelObs.push(peak)
@@ -115,11 +126,14 @@ function normalizeBreakdownEntries(
         name: String(e.name ?? ''),
         amount: Number(e.total ?? 0),
       }))
-      .filter((e) => e.name && e.amount > 0)
+      // Guard: require a finite, positive amount. Number("abc") → NaN; this
+      // keeps a malformed entry out of every sum/mean/ratio downstream.
+      .filter((e) => e.name && isFiniteNumber(e.amount) && e.amount > 0)
   }
   return Object.entries(breakdown as Record<string, { amount?: number }>)
     .map(([name, v]) => ({ name, amount: Number(v?.amount ?? 0) }))
-    .filter((e) => e.amount > 0)
+    // Guard: same finite+positive requirement for the legacy Record shape.
+    .filter((e) => isFiniteNumber(e.amount) && e.amount > 0)
 }
 
 function avgCategoryAcrossPriors(
@@ -136,14 +150,23 @@ function avgCategoryAcrossPriors(
     total += match.amount
     count += 1
   }
-  return count > 0 ? total / count : 0
+  if (count === 0) return 0
+  // Guard: safeDiv returns null on a degenerate denominator/non-finite total;
+  // collapse to 0 (the "no prior data" shape) so the mean never escapes as NaN.
+  return safeDiv(total, count) ?? 0
 }
 
 /** Linear-interpolation percentile. Expects 0 ≤ p ≤ 1. */
 function percentile(values: number[], p: number): number {
-  if (values.length === 0) return 0
-  const sorted = [...values].sort((a, b) => a - b)
-  const idx = (sorted.length - 1) * p
+  // Guard: drop non-finite members so a single NaN/Infinity can't sort
+  // unpredictably and surface as the percentile result.
+  const finite = values.filter(isFiniteNumber)
+  if (finite.length === 0) return 0
+  // Guard: clamp p into [0,1] so idx stays within bounds (an out-of-range p
+  // would index past the array and yield undefined → NaN arithmetic).
+  const pClamped = p < 0 ? 0 : p > 1 ? 1 : p
+  const sorted = [...finite].sort((a, b) => a - b)
+  const idx = (sorted.length - 1) * pClamped
   const lo = Math.floor(idx)
   const hi = Math.ceil(idx)
   if (lo === hi) return sorted[lo]!

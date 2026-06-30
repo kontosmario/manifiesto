@@ -86,4 +86,27 @@ describe('control-today-actions', () => {
     expect(actions[1]?.title).toBe('Ya te pasaste de lo del dia a dia')
     expect(actions[1]?.detail).toContain('para el dia a dia')
   })
+
+  it('reservedTotal no finito (Infinity/NaN) no genera acciones con "$∞"/"NaN"', () => {
+    for (const bad of [Number.POSITIVE_INFINITY, Number.NaN]) {
+      const actions = buildTodayActions({
+        commitmentSummary: buildCommitmentSummary({ dueSoonCount: 2, reservedTotal: bad }),
+        dailyBudgetSummary: buildDailySummary(),
+        expenseAnalytics: buildAnalytics(),
+        flexibleDelta: 0,
+        flexibleTargetAmount: 22_000,
+        hasDailyBudgetBase: true,
+        isSalaryPendingConfirmation: false,
+        savingsGoal: 25_000,
+        savingsGoalPercent: 25,
+        savingsRemaining: 18_000,
+        targetFlexiblePercent: 25,
+        variableSpentInCurrentCycle: 30_000,
+      })
+      for (const a of actions) {
+        const text = `${a.title} ?? ${a.detail}`
+        expect(/NaN|Infinity|∞/.test(text), `reservedTotal=${bad}: ${text}`).toBe(false)
+      }
+    }
+  })
 })

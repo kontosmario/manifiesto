@@ -14,6 +14,7 @@ import type { FamilyFinance } from '@/features/finance/use-family-finance'
 import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
+import { finiteOr, isFiniteNumber, nonNegFinite, safeDiv } from '@/features/insights/signal-guards'
 import i18n from '@/lib/i18n'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 import { monthShort } from '@/utils/date-format'
@@ -188,7 +189,11 @@ function lastCycleDays(periodStart: string, periodEnd: string): number {
   const startMs = new Date(start.year, start.month - 1, start.day).getTime()
   const endMs = new Date(end.year, end.month - 1, end.day).getTime()
   const days = Math.round((endMs - startMs) / (24 * 60 * 60 * 1000))
-  return days > 0 ? days : 30
+  // Guard: an unparseable bound can yield NaN getTime() → days=NaN, and
+  // `NaN > 0` is false so it falls through, but a guard makes the intent
+  // explicit and prevents a non-finite day count from ever leaking into
+  // the prev-cycle daily-average denominator.
+  return isFiniteNumber(days) && days > 0 ? days : 30
 }
 
 export function buildControlDataFromSnapshot(
@@ -204,15 +209,19 @@ export function buildControlDataFromSnapshot(
   // ese plano. Los nombres del field se preservan para no romper el
   // contrato con `computeControlView` y la UI.
   const cycleStart = monthlyAccounting.start
-  const diasMes = monthlyAccounting.days
+  // Guard: diasMes feeds every loop bound and per-day divisor below. A
+  // malformed accounting window (NaN/0 days) would make `diaActual`,
+  // the diasSpend loop, and cupoDays degenerate — floor it at 1 finite day.
+  const diasMes = Math.max(1, finiteOr(monthlyAccounting.days, 30))
   const msPerDay = 86_400_000
-  const diaActual = Math.max(
+  // Guard: if `now` or `cycleStart` is an Invalid Date, getTime() returns
+  // NaN and the floor/min/max chain would yield NaN → poisoning diaActual
+  // and the entire view. finiteOr collapses that to day 1 (start of cycle).
+  const elapsedDays = finiteOr(
+    Math.floor((startOfDay(now).getTime() - cycleStart.getTime()) / msPerDay) + 1,
     1,
-    Math.min(
-      diasMes,
-      Math.floor((startOfDay(now).getTime() - cycleStart.getTime()) / msPerDay) + 1,
-    ),
   )
+  const diaActual = Math.max(1, Math.min(diasMes, elapsedDays))
   const horaActual = now.getHours()
   const minActual = now.getMinutes()
 
@@ -284,7 +293,9 @@ export function buildControlDataFromSnapshot(
   // Mismo idiom que family-dashboard-model — sin replicar la freeze
   // logic (Control no se entra durante el cobro pending, edge case
   // mínimo). La comparación contra payCycle.start cubre el flow normal.
-  const monthlyIncomeRaw = Math.max(0, finance.monthly_income ?? 0)
+  // Guard: nonNegFinite collapses a NaN/Infinity income (bad DB value)
+  // to null → fall back to 0 so it can never propagate into ingresoMes.
+  const monthlyIncomeRaw = nonNegFinite(finance.monthly_income ?? 0) ?? 0
   const cycleAnchorKey = formatLocalDateKey(payCycle.start)
   const storedAnchor = finance.current_cycle_anchor ?? null
   const storedBalance = finance.current_cycle_starting_balance ?? null
@@ -298,12 +309,16 @@ export function buildControlDataFromSnapshot(
   // Ingresos extra del ciclo sumados al ingreso efectivo — mismo
   // tratamiento que Home (use-home-metrics): el extra impacta de
   // inmediato en libreMes → cupoDiario → proyección → score.
-  const extraIncome = Math.max(0, args.extraIncome ?? 0)
+  // Guard: same non-finite collapse for the extra-income input.
+  const extraIncome = nonNegFinite(args.extraIncome ?? 0) ?? 0
   const ingresoMes =
     (hasCycleOverride ? (cycleStartingBalanceOverride as number) : monthlyIncomeRaw) +
     extraIncome
+  // Guard: daysRemaining can arrive non-finite from a malformed window;
+  // finiteOr→1 keeps the divisor a valid ≥1 integer so cupoDiario never
+  // divides by NaN/Infinity.
   const cupoDays = hasCycleOverride
-    ? Math.max(1, monthlyAccounting.daysRemaining)
+    ? Math.max(1, finiteOr(monthlyAccounting.daysRemaining, 1))
     : Math.max(1, diasMes)
 
   const commitmentSummary = computeFixedExpenseCycleSummary({
@@ -312,14 +327,23 @@ export function buildControlDataFromSnapshot(
     window: { start: monthlyAccounting.start, end: monthlyAccounting.end },
     today: now,
   })
-  const fijosMes = commitmentSummary.pressureTotal
-  const ahorroMes = Math.max(0, finance.savings_goal ?? 0)
+  // Guard: pressureTotal is computed elsewhere; clamp it non-negative
+  // finite so a bad fixed-expense amount can't drive libreMes to NaN.
+  const fijosMes = nonNegFinite(commitmentSummary.pressureTotal) ?? 0
+  const ahorroMes = nonNegFinite(finance.savings_goal ?? 0) ?? 0
+  // libreMes is already floored at 0; with the finite inputs above it is
+  // guaranteed a finite value in [0, ingresoMes].
   const libreMes = Math.max(0, ingresoMes - fijosMes - ahorroMes)
-  const cupoDiario = libreMes / cupoDays
+  // Guard: cupoDays is ≥1 finite and libreMes is finite ≥0, so safeDiv
+  // can only return null on an unforeseen non-finite — collapse that to 0.
+  // Contract: cupoDiario is ALWAYS finite ≥0 (callers treat >0 as
+  // meaningful; libreMes<=0 keeps it 0, never NaN/negative).
+  const cupoDiario = safeDiv(libreMes, cupoDays) ?? 0
+  // Guard: ratio uses safeDiv (ingresoMes already gated >0) and finiteOr
+  // so a non-finite intermediate can't make fijosCobertura NaN.
+  const fijosRatio = ingresoMes > 0 ? safeDiv(fijosMes, ingresoMes) : null
   const fijosCobertura =
-    ingresoMes > 0
-      ? Math.ceil((fijosMes / ingresoMes) * diasMes)
-      : 0
+    fijosRatio !== null ? Math.ceil(finiteOr(fijosRatio * diasMes, 0)) : 0
 
   // Next salary estimate: `salary_payment_day` is the anchor day each
   // month. Compute days until the next occurrence.
@@ -354,12 +378,14 @@ export function buildControlDataFromSnapshot(
     : 0
   // Multi-cycle trend (oldest → newest, this cycle's projection at
   // the tail). Capped at 3 entries to keep the sparkline readable.
+  // Guard: safeDiv on the daily-pace divisor (diaActual is finite ≥1 but
+  // safeDiv also catches a non-finite numerator); finiteOr collapses any
+  // residual non-finite to 0 so the trend never carries a NaN bar.
+  const dailyPace = safeDiv(sumAmount(discretionary), Math.max(1, diaActual))
   const projectedThisCycle =
-    diaActual > 0
-      ? (sumAmount(discretionary) / Math.max(1, diaActual)) * diasMes
-      : 0
+    dailyPace !== null ? finiteOr(dailyPace * diasMes, 0) : 0
   const summariesAsc = [...summaries]
-    .filter((s) => (s.total_variable_spent ?? 0) > 0)
+    .filter((s) => isFiniteNumber(s.total_variable_spent) && s.total_variable_spent > 0)
     .sort((a, b) => (a.period_start < b.period_start ? -1 : 1))
     .slice(-2)
     .map((s) => Number(s.total_variable_spent ?? 0))
@@ -368,18 +394,31 @@ export function buildControlDataFromSnapshot(
   const mesPasado = last
     ? {
         nombre: formatPeriodLabel(last.period_start) || prevMonthName,
-        gastoTotal: last.total_variable_spent ?? 0,
+        // Guard: clamp the prev-cycle total non-negative finite so a
+        // corrupt rollup value can't poison gastoTotal / the vs-mes delta.
+        gastoTotal: nonNegFinite(last.total_variable_spent ?? 0) ?? 0,
         diasBajoCupo: countDaysBelowCupo(last.daily_totals, cupoDiario),
-        promedioDiario:
-          (last.total_variable_spent ?? 0) /
-          Math.max(1, lastCycleDays(last.period_start, last.period_end)),
+        // Guard: safeDiv over a ≥1 day count (lastCycleDays floors at 30
+        // on bad bounds); finiteOr collapses a non-finite numerator/result
+        // to 0 so promedioDiario is always finite.
+        promedioDiario: finiteOr(
+          safeDiv(
+            nonNegFinite(last.total_variable_spent ?? 0) ?? 0,
+            Math.max(1, lastCycleDays(last.period_start, last.period_end)),
+          ) ?? 0,
+          0,
+        ),
         topCat: lastTopCat,
         mood: normaliseMood(last.mood),
-        savingsDelta: Number(last.savings_delta ?? 0),
+        // Guard: savingsDelta can legitimately be negative, so finiteOr
+        // (not nonNegFinite) — only strip NaN/Infinity.
+        savingsDelta: finiteOr(Number(last.savings_delta ?? 0), 0),
         topExpense: last.top_expense
           ? {
               description: last.top_expense.description,
-              price: Number(last.top_expense.price ?? 0),
+              // Guard: finite price floor so a bad top_expense.price can't
+              // render NaN in the "gasto más grande" chip.
+              price: nonNegFinite(Number(last.top_expense.price ?? 0)) ?? 0,
             }
           : null,
         currentTopCatSpent,
@@ -445,16 +484,28 @@ function startOfDay(d: Date): Date {
 }
 
 function sumAmount(list: Expense[]): number {
-  return list.reduce((acc, e) => acc + Number(e.price ?? 0), 0)
+  // Guard: drop non-finite prices (NaN from a bad coercion, ±Infinity)
+  // BEFORE summing. A single poisoned row would otherwise make every
+  // derived metric (gastoHoy, diasSpend, projections, top-cat spend) NaN.
+  return list.reduce((acc, e) => {
+    const price = Number(e.price ?? 0)
+    return isFiniteNumber(price) ? acc + price : acc
+  }, 0)
 }
 
 function computeDaysUntilSalary(paymentDay: number, now: Date): number {
+  // Guard: clamp paymentDay to a valid day-of-month and bail to 0 on a
+  // non-finite `now` so the countdown is never NaN/negative.
+  const safeDay = isFiniteNumber(paymentDay)
+    ? Math.min(31, Math.max(1, Math.round(paymentDay)))
+    : 1
   const today = now.getDate()
-  if (paymentDay > today) return paymentDay - today
+  if (!isFiniteNumber(today)) return 0
+  if (safeDay > today) return safeDay - today
   // Next month's payment day.
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, paymentDay)
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, safeDay)
   const diff = nextMonth.getTime() - startOfDay(now).getTime()
-  return Math.max(0, Math.round(diff / DAY_MS))
+  return Math.max(0, finiteOr(Math.round(diff / DAY_MS), 0))
 }
 
 function computeWeeklyNoSpend(
@@ -465,9 +516,17 @@ function computeWeeklyNoSpend(
   // Find days belonging to this week (Mon..today) within the
   // current month. Anything before day 1 we skip.
   const jsDow = now.getDay() // 0=Sun..6=Sat
-  const offset = (jsDow + 6) % 7 // 0=Mon..6=Sun
-  const weekStartDay = Math.max(1, diaActual - offset)
-  const weekDays = diasSpend.slice(weekStartDay - 1, diaActual - 1)
+  // Guard: an Invalid Date returns NaN from getDay(); finiteOr keeps the
+  // offset arithmetic from producing NaN slice indices (slice(NaN, …)
+  // silently returns the whole array, inflating logros).
+  const offset = (finiteOr(jsDow, 0) + 6) % 7 // 0=Mon..6=Sun
+  // Guard: clamp both slice bounds to valid finite array positions so the
+  // week window is always a real sub-range of closed days. diaActual is
+  // already finite ≥1; diaActual-1 is the count of closed days.
+  const safeDiaActual = Math.max(1, finiteOr(diaActual, 1))
+  const lo = Math.max(0, safeDiaActual - offset - 1)
+  const hi = Math.max(lo, safeDiaActual - 1)
+  const weekDays = diasSpend.slice(lo, hi)
   const logros = weekDays.filter((g) => g === 0).length
   return { metaNoSpendSemana: 3, logrosNoSpendSemana: logros }
 }
@@ -485,15 +544,19 @@ export function normaliseCategoryBreakdown(
       category_id: entry.category_id ?? null,
       name: entry.name ?? null,
       color: entry.color ?? null,
-      total: Number(entry.total ?? 0),
-      count: Number(entry.count ?? 0),
-      pct: Number(entry.pct ?? 0),
+      // Guard: coerce every numeric to a finite non-negative value so a
+      // corrupt rollup entry can't push NaN into the stacked-bar widths.
+      total: nonNegFinite(Number(entry.total ?? 0)) ?? 0,
+      count: nonNegFinite(Number(entry.count ?? 0)) ?? 0,
+      pct: nonNegFinite(Number(entry.pct ?? 0)) ?? 0,
     }))
   }
   // Legacy Record<>
   let total = 0
   const entries = Object.entries(raw).map(([label, value]) => {
-    const amount = Number(value?.amount ?? 0)
+    // Guard: drop a non-finite amount to 0 before it enters the running
+    // total — otherwise `total` becomes NaN and every pct collapses.
+    const amount = nonNegFinite(Number(value?.amount ?? 0)) ?? 0
     total += amount
     return {
       category_id: null,
@@ -522,8 +585,10 @@ export function normaliseByMember(
     .map((m) => ({
       user_id: m.user_id ?? null,
       display_name: m.display_name ?? null,
-      total: Number(m.total ?? 0),
-      count: Number(m.count ?? 0),
+      // Guard: finite non-negative totals so the > 0 filter and the
+      // desc sort can't be tripped by a NaN member total.
+      total: nonNegFinite(Number(m.total ?? 0)) ?? 0,
+      count: nonNegFinite(Number(m.count ?? 0)) ?? 0,
     }))
     .filter((m) => m.total > 0)
     .sort((a, b) => b.total - a.total)
