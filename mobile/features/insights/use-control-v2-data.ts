@@ -55,6 +55,7 @@ import { buildForecast7Day, type Forecast7Day } from '@/features/insights/foreca
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { useAdvisorPreferences } from '@/features/insights/use-advisor-preferences'
 import { useSignalBlocklist } from '@/features/insights/use-signal-blocklist'
+import { areSignalsReady } from '@/features/insights/signals-ready'
 import { inferPersona, type UserPersona } from '@/features/insights/persona'
 import { singleEntryMemoize } from '@/lib/single-entry-memo'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
@@ -599,23 +600,29 @@ export function useControlV2Data(
   // señales descartadas. La blocklist ya se aplica arriba (computedSignals).
   const dismissed = useDismissedIds()
   const dismissalsHydrated = useDismissalsHydrated()
-  // `signalsReady`: las DOS fuentes async que filtran señales cargaron — la
-  // blocklist (solo si hay userId; sin userId no aplica) y los dismissals.
-  // Hasta entonces las señales no están filtradas, así que no se exponen (si
-  // no, aparecen y desaparecen al cargar los filtros).
-  const signalsReady =
-    (!userId || blocklistQuery.data !== undefined) && dismissalsHydrated
-  const signals = useMemo<ControlAdvisorTask[]>(() => {
-    if (!signalsReady) return EMPTY_SIGNALS
-    return computedSignals.filter((t) => !dismissed.has(dismissKeyFor(t)))
-  }, [signalsReady, computedSignals, dismissed])
-
   const isLoading =
     expensesQuery.isLoading ||
     fixedExpensesQuery.isLoading ||
     financeQuery.isLoading ||
     categoriesQuery.isLoading ||
     intelligenceQuery.isLoading
+  // Exponer las señales SOLO cuando los filtros (blocklist + dismissed) Y las
+  // fuentes que las ALIMENTAN cargaron — sino se computan con data parcial y
+  // flickean (falsos positivos). Ver `areSignalsReady`.
+  const signalsReady = areSignalsReady({
+    hasUserId: Boolean(userId),
+    blocklistLoaded: blocklistQuery.data !== undefined,
+    dismissalsHydrated,
+    coreLoading: isLoading,
+    prefsLoading: advisorPrefsQuery.isLoading,
+    statsLoading: interactionStatsQuery.isLoading,
+    snapshotLoading: controlSnapshotQuery.isLoading,
+    homeSnapshotLoading: homeSnapshotQuery.isLoading,
+  })
+  const signals = useMemo<ControlAdvisorTask[]>(() => {
+    if (!signalsReady) return EMPTY_SIGNALS
+    return computedSignals.filter((t) => !dismissed.has(dismissKeyFor(t)))
+  }, [signalsReady, computedSignals, dismissed])
 
   const controlSnapshot = snapshotData
 
