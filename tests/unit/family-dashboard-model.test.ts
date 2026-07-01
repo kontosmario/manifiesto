@@ -99,6 +99,38 @@ describe('buildFamilyDashboardSnapshot', () => {
     expect(snapshot.monthlyHistoryTotals.totalSpent).toBe(40_000)
   })
 
+  it('con override de saldo: resta TODO el gasto variable del ciclo (no solo el posterior a confirmar)', () => {
+    // El override (200k) es un presupuesto BRUTO del ciclo (sueldo/caja +
+    // arrastre), NO una foto del saldo al confirmar. TODO el gasto variable del
+    // ciclo salió de ahí — el previo a la confirmación también — así que se resta
+    // completo (var_cycle), igual que el path sin override. El override solo
+    // cambia el ingreso, no el boundary del gasto.
+    const snapshot = buildFamilyDashboardSnapshot({
+      commitments: [],
+      expenses: [
+        // 5/4 (antes de confirmar el 10/4) → SÍ se resta (salió del presupuesto).
+        buildExpense({ created_at: '2026-04-05T12:00:00.000Z', id: 'pre-confirm', price: 30_000 }),
+        // 15/4 (después de confirmar) → SÍ se resta.
+        buildExpense({ created_at: '2026-04-15T12:00:00.000Z', id: 'post-confirm', price: 20_000 }),
+      ],
+      finance: buildFinance({
+        monthly_income: 100_000,
+        savings_goal: 0,
+        savings_goal_percent: 0,
+        current_cycle_starting_balance: 200_000,
+        current_cycle_anchor: '2026-04-01',
+        last_salary_confirmed_at: '2026-04-10T10:00:00.000Z',
+      }),
+      today: new Date('2026-04-20T09:00:00.000Z'),
+    })
+
+    // Gasto variable del ciclo = 50k (30k + 20k), TODO se resta:
+    // 200k − 0 ahorro − 0 fijos − 50k = 150k. (El fix viejo var_since_confirm
+    // daba 180k porque descartaba los 30k previos a confirmar.)
+    expect(snapshot.variableSpentInCurrentCycle).toBe(50_000)
+    expect(snapshot.totalAvailable).toBe(150_000)
+  })
+
   it('congela el ciclo cuando falta confirmar el cobro del mes actual', () => {
     const snapshot = buildFamilyDashboardSnapshot({
       expenses: [

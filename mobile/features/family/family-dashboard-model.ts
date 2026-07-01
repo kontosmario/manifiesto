@@ -120,7 +120,6 @@ export function buildFamilyDashboardSnapshot({
   let totalGeneral = 0
   let actualSpentInCurrentCycle = 0
   let variableSpentInCurrentCycle = 0
-  let variableSpentSinceToday = 0
   let commitmentPaymentsInCurrentCycle = 0
   const monthlyTotalsByMonth = new Map<string, number>()
 
@@ -142,12 +141,6 @@ export function buildFamilyDashboardSnapshot({
         commitmentPaymentsInCurrentCycle += expense.price
       } else {
         variableSpentInCurrentCycle += expense.price
-        // "Since today" excludes anything dated before the start of
-        // today — used by the override path, where the user's reported
-        // balance is implicitly post-spending up to now.
-        if (expenseDate >= todayDate) {
-          variableSpentSinceToday += expense.price
-        }
       }
     }
 
@@ -244,13 +237,15 @@ export function buildFamilyDashboardSnapshot({
   const effectiveSavingsGoal = overrideIsDown
     ? Math.max(0, Math.round(effectiveCycleIncome * (savingsGoalPercent / 100)))
     : savingsGoal
-  // Variable spend that "counts" toward this cycle's tracking. With
-  // override on, the user's reported balance already accounts for
-  // pre-today spending — so we only subtract spending from today
-  // onwards. Without override, the standard cycle-wide total applies.
-  const variableSpentForCycleMetrics = hasCycleOverride
-    ? variableSpentSinceToday
-    : variableSpentInCurrentCycle
+  // Variable spend that "counts" toward this cycle = ALL variable spent this
+  // cycle (`var_cycle`), con o sin override. El override solo cambia el INGRESO
+  // del ciclo (un presupuesto BRUTO: sueldo/caja + arrastre), NO qué cuenta como
+  // gastado — cada gasto variable del ciclo salió de ese presupuesto, así que se
+  // resta el total del ciclo (mismo boundary que el path sin override). Intentos
+  // previos (var_since_today, luego var_since_confirm) trataban el override como
+  // una foto de saldo a mitad de ciclo y descartaban el gasto previo a confirmar,
+  // inflando el saldo (bug 2026-06-30; ver docs de cycle_disponible).
+  const variableSpentForCycleMetrics = variableSpentInCurrentCycle
 
   const flexibleTargetAmount = derivePercentAmount(effectiveCycleIncome, targetFlexiblePercent)
   const cycleBalanceBeforeSavings =
