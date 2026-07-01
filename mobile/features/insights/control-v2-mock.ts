@@ -477,9 +477,14 @@ export function computeControlView(d: ControlMockData): ControlView {
   // Below that, `hasReliableProjection = false` and the UI renders
   // a placeholder instead.
   const gastadoHastaHoy = gastoTotalMes + gastoHoy
-  // cupoDiario (≥0 finite) × diasMes (≥1 finite) is always finite, so
-  // libreMesTotal and the restanteMes / sobrante derived from it stay finite.
-  const libreMesTotal = cupoDiario * diasMes
+  // Presupuesto discrecional total del ciclo = libreMes (ingreso − fijos −
+  // ahorro). Antes se reconstruía como `cupoDiario × diasMes`, que asumía
+  // cupoDiario = libreMes/díasTOTALES. Con override el cupoDiario es por día
+  // RESTANTE y ya resta el variable, así que esa reconstrucción inflaba
+  // restanteMes/sobrante. Usar libreMes directo deja el no-override idéntico
+  // (ahí libreMes == cupoDiario × diasMes) y corrige el override → restanteMes
+  // = libreMes − gastado = el saldo real (coincide con el Home).
+  const libreMesTotal = nonNegFinite(d.libreMes) ?? cupoDiario * diasMes
   const restanteMes = libreMesTotal - gastadoHastaHoy
   // La alcancía es una SUGERENCIA de cuánto mover a tu meta — nunca puede
   // superar lo que realmente te queda. Sin el cap mostraba "2.5M guardados"

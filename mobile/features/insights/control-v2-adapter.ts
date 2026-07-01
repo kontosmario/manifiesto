@@ -334,11 +334,31 @@ export function buildControlDataFromSnapshot(
   // libreMes is already floored at 0; with the finite inputs above it is
   // guaranteed a finite value in [0, ingresoMes].
   const libreMes = Math.max(0, ingresoMes - fijosMes - ahorroMes)
-  // Guard: cupoDays is ≥1 finite and libreMes is finite ≥0, so safeDiv
+  // Variable discrecional ya gastado este ciclo. Con override, el cupo
+  // diario debe repartir lo que REALMENTE queda (libreMes − gastado) entre
+  // los días restantes — igual que el saldo del Home (available_today /
+  // días restantes). Sin restar el variable, el cupo re-ofrecía plata ya
+  // gastada e inflaba el número, divergiendo del Home (kontosmario:
+  // mostraba 282.908 vs 187.631 del Home). Sin override se mantiene el
+  // objetivo plano del mes (libreMes / días totales), sin restar variable.
+  const variableSpentThisCycle = sumAmount(
+    discretionary.filter((e) => {
+      const t = new Date(e.created_at).getTime()
+      return (
+        isFiniteNumber(t) &&
+        t >= monthlyAccounting.start.getTime() &&
+        t < monthlyAccounting.end.getTime()
+      )
+    }),
+  )
+  const cupoNumerator = hasCycleOverride
+    ? Math.max(0, libreMes - variableSpentThisCycle)
+    : libreMes
+  // Guard: cupoDays is ≥1 finite and cupoNumerator is finite ≥0, so safeDiv
   // can only return null on an unforeseen non-finite — collapse that to 0.
   // Contract: cupoDiario is ALWAYS finite ≥0 (callers treat >0 as
-  // meaningful; libreMes<=0 keeps it 0, never NaN/negative).
-  const cupoDiario = safeDiv(libreMes, cupoDays) ?? 0
+  // meaningful; numerator<=0 keeps it 0, never NaN/negative).
+  const cupoDiario = safeDiv(cupoNumerator, cupoDays) ?? 0
   // Guard: ratio uses safeDiv (ingresoMes already gated >0) and finiteOr
   // so a non-finite intermediate can't make fijosCobertura NaN.
   const fijosRatio = ingresoMes > 0 ? safeDiv(fijosMes, ingresoMes) : null
