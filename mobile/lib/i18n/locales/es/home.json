@@ -107,6 +107,8 @@
     "adjustedBalanceChip": "Saldo ajustado",
     "reserveA11y": "Tienes {{amount}} en reserva acumulada",
     "reserveChip": "Reserva {{amount}}",
+    "fixedReservedA11y": "Tu saldo ya reserva {{amount}} para los fijos que faltan pagar este mes.",
+    "fixedReservedChip": "Aparta {{amount}} en fijos",
     "canSpendPerDay": "Puedes gastar por día",
     "untilCycleEnd": "hasta fin de ciclo",
     "youWillCloseWith": "Vas a cerrar con",

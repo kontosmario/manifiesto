@@ -127,6 +127,15 @@ export interface HomeHeroMetrics {
    *         default sin override).
    */
   cycleBalanceDiff: number
+  /**
+   * Monto de gastos FIJOS que vencen este ciclo y todavía NO se pagaron
+   * (`reservedTotal` del summary). El saldo del mes ya lo aparta por
+   * adelantado (modelo de reserva: resta pagados + pendientes de una),
+   * así que el hero lo surface como chip read-only "aparta $X en fijos"
+   * para explicar por qué el saldo NO baja al confirmar un pago fijo — la
+   * plata ya estaba reservada. 0 cuando no queda ningún fijo por pagar.
+   */
+  fixedPendingReserved: number
 }
 
 export interface HomeMonthSummary {
@@ -275,6 +284,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       effectiveSavingsGoal: dashboard.savingsGoal,
       totalAvailable: dashboard.totalAvailable,
       cycleExtraIncome,
+      hasCycleOverride: dashboard.cycleStartingBalanceOverride !== null,
     })
     const availableToday = disponible.availableToday
     const dailyBudget = disponible.dailyBudget
@@ -323,6 +333,15 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
         ? (dashboard.cycleStartingBalanceOverride as number) - dashboard.monthlyIncome
         : 0
 
+    // Fijos que vencen este ciclo y todavía no se pagaron. El saldo del
+    // mes ya los aparta (reserva pagados + pendientes de una); el chip lo
+    // hace visible para que el número no se sienta "trabado" cuando el
+    // user confirma un pago y el saldo no se mueve.
+    const fixedPendingReserved = Math.max(
+      0,
+      Math.round(dashboard.currentCycleCommitmentSummary.reservedTotal),
+    )
+
     const hero: HomeHeroMetrics = {
       availableToday,
       cycleDay,
@@ -339,6 +358,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       acumulado,
       monthlyReserveAmount,
       cycleBalanceDiff,
+      fixedPendingReserved,
     }
 
     const variableTotal = Math.round(dashboard.variableSpentInCurrentCycle)
@@ -401,6 +421,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.monthlyIncome,
     dashboard.savingsGoal,
     dashboard.fixedExpensesMonthlyTotal,
+    dashboard.currentCycleCommitmentSummary,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
     dashboard.familyFinanceQuery.data?.monthly_reserve_amount,

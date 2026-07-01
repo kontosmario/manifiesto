@@ -334,7 +334,11 @@ function HomeHeroCardImpl({
           </RiseView>
         ) : null}
 
-        {data.cycleAdjusted || savingsChip || data.acumulado || data.monthlyReserveAmount > 0 ? (
+        {data.cycleAdjusted ||
+        savingsChip ||
+        data.acumulado ||
+        data.monthlyReserveAmount > 0 ||
+        data.fixedPendingReserved > 0 ? (
           // Read-only chip stack between the saldo amount and the
           // tiles row. Two captions can co-exist: "Ajustado/Acumulado"
           // (cycle override origin) y "Apartando ahorro" (savings).
@@ -547,6 +551,50 @@ function HomeHeroCardImpl({
                     numberOfLines={1}
                   >
                     {t('home:hero.reserveChip', { amount: formatMoneyShort(data.monthlyReserveAmount) })}
+                  </Text>
+                </View>
+              </RiseView>
+            ) : null}
+
+            {data.fixedPendingReserved > 0 ? (
+              // "Aparta $X en fijos" — read-only, tono neutro
+              // (informativo, no un status/celebración). Explica por qué
+              // el saldo del mes NO baja al confirmar el pago de un fijo:
+              // la plata ya estaba reservada (el saldo aparta pagados +
+              // pendientes de una). `event-repeat` = recurrencia de fijos.
+              <RiseView delay={180}>
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel={t('home:hero.fixedReservedA11y', {
+                    amount: formatMoney(data.fixedPendingReserved),
+                  })}
+                  style={[
+                    styles.savingsChip,
+                    {
+                      backgroundColor: 'rgba(246,251,239,0.06)',
+                      borderColor: 'rgba(255,255,255,0.16)',
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="event-repeat"
+                    size={13}
+                    color={theme.colors.heroMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.savingsChipText,
+                      {
+                        color: theme.colors.heroMuted,
+                        fontVariant: ['tabular-nums'],
+                      },
+                    ]}
+                    maxFontSizeMultiplier={1.4}
+                    numberOfLines={1}
+                  >
+                    {t('home:hero.fixedReservedChip', {
+                      amount: formatMoneyShort(data.fixedPendingReserved),
+                    })}
                   </Text>
                 </View>
               </RiseView>

@@ -27,6 +27,12 @@ export interface CycleDisponibleInputs {
   totalAvailable: number
   /** Ingresos extra del ciclo (transferencias/bonos/regalos). */
   cycleExtraIncome: number
+  /**
+   * `true` cuando el saldo del ciclo proviene de un override (saldo
+   * reportado "a hoy", p.ej. ajuste de saldo / reserva sumada al mes).
+   * Cambia cómo se reparte el cupo diario — ver `computeCycleDisponible`.
+   */
+  hasCycleOverride: boolean
 }
 
 export interface CycleDisponible {
@@ -46,18 +52,36 @@ export function computeCycleDisponible(inputs: CycleDisponibleInputs): CycleDisp
     effectiveSavingsGoal,
     totalAvailable,
     cycleExtraIncome,
+    hasCycleOverride,
   } = inputs
-
-  // Cupo diario — espeja use-home-metrics.ts (libreMes / días efectivos).
-  const libreMes = Math.max(
-    0,
-    Math.round(effectiveCycleIncome - commitmentPressure - effectiveSavingsGoal),
-  )
-  const dailyBudget = Math.max(0, Math.round(libreMes / Math.max(1, effectiveCycleDays)))
 
   // Saldo del mes — espeja totalAvailable + income extra del hook.
   const rawCycleBalance = Math.round(totalAvailable + cycleExtraIncome)
   const availableToday = Math.max(0, rawCycleBalance)
+
+  // Cupo diario ("para gustos hoy").
+  // · CON override: el saldo del mes es "a hoy" (ya neteado de fijos,
+  //   ahorro y variable-desde-confirmación). El cupo reparte lo que
+  //   REALMENTE queda entre los días restantes → cupo × días_restantes =
+  //   saldo del mes. Antes usaba el numerador BRUTO (ingreso − fijos)
+  //   sin restar el variable ya gastado, y dividía por días restantes,
+  //   así que re-ofrecía como disponible plata ya consumida e inflaba el
+  //   cupo (bug 2026-06-30). Ahora es consistente con el saldo por
+  //   construcción — nunca promete más de lo que hay.
+  // · SIN override: objetivo plano del mes (libreMes / días totales), el
+  //   comportamiento canónico histórico. No resta variable ya gastado
+  //   (es un target por día, no un saldo restante); se deja intacto.
+  const dailyBudget = hasCycleOverride
+    ? Math.max(0, Math.round(availableToday / Math.max(1, effectiveCycleDays)))
+    : Math.max(
+        0,
+        Math.round(
+          Math.max(
+            0,
+            Math.round(effectiveCycleIncome - commitmentPressure - effectiveSavingsGoal),
+          ) / Math.max(1, effectiveCycleDays),
+        ),
+      )
 
   return { dailyBudget, availableToday, rawCycleBalance }
 }

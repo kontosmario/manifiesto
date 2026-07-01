@@ -107,6 +107,8 @@
     "adjustedBalanceChip": "Adjusted balance",
     "reserveA11y": "You have {{amount}} in accumulated reserve",
     "reserveChip": "Reserve {{amount}}",
+    "fixedReservedA11y": "Your balance already sets aside {{amount}} for bills still due this month.",
+    "fixedReservedChip": "Sets aside {{amount}} for bills",
     "canSpendPerDay": "You can spend per day",
     "untilCycleEnd": "until cycle end",
     "youWillCloseWith": "You'll close with",

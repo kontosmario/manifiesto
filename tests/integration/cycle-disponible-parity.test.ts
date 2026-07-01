@@ -115,13 +115,10 @@ describeIfLive('cycle_disponible parity (rpc vs TS, read-only)', () => {
         return !x.commitment_id && !x.archived_at && inWin(x)
       })
       .reduce((s: number, e: never) => s + (e as { price: number }).price, 0)
-    const variableSinceToday = (expenses ?? [])
-      .filter((e: never) => {
-        const x = e as { commitment_id: string | null; archived_at: string | null; created_at: string }
-        return !x.commitment_id && !x.archived_at && new Date(x.created_at) >= asOf && new Date(x.created_at) < cEnd
-      })
-      .reduce((s: number, e: never) => s + (e as { price: number }).price, 0)
-    const varMetrics = hasOverride ? variableSinceToday : variableCycle
+    // El gasto que cuenta es TODO el del ciclo (var_cycle), con o sin override:
+    // el override solo cambia el ingreso/días, no el boundary del gasto (espeja
+    // la SQL, migración 20260630110000).
+    const varMetrics = variableCycle
 
     const { data: incomeEvents } = await admin
       .from('income_events')
@@ -142,6 +139,7 @@ describeIfLive('cycle_disponible parity (rpc vs TS, read-only)', () => {
       effectiveSavingsGoal: effSavings,
       totalAvailable,
       cycleExtraIncome: extraIncome,
+      hasCycleOverride: hasOverride,
     })
 
     expect(Number(sql.daily_budget)).toBe(ts.dailyBudget)

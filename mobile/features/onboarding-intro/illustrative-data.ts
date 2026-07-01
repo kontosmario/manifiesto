@@ -30,6 +30,7 @@ export const INTRO_HERO_METRICS: HomeHeroMetrics = {
   acumulado: null,
   monthlyReserveAmount: 0,
   cycleBalanceDiff: 0,
+  fixedPendingReserved: 0,
 }
 
 // Slide 3 — FijosHeroCard: 1 fijo pendiente (Alquiler $150.000), pesa 32% del sueldo.
