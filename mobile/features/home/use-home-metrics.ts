@@ -129,11 +129,11 @@ export interface HomeHeroMetrics {
   cycleBalanceDiff: number
   /**
    * Monto de gastos FIJOS que vencen este ciclo y todavía NO se pagaron
-   * (`reservedTotal` del summary). El saldo del mes ya lo aparta por
-   * adelantado (modelo de reserva: resta pagados + pendientes de una),
-   * así que el hero lo surface como chip read-only "aparta $X en fijos"
-   * para explicar por qué el saldo NO baja al confirmar un pago fijo — la
-   * plata ya estaba reservada. 0 cuando no queda ningún fijo por pagar.
+   * (`effectiveCommitmentReserved`, prorrateado). El SALDO del mes es plata
+   * REAL: resta solo los fijos PAGADOS + variable, así que este pendiente
+   * TODAVÍA está en el saldo. El hero lo surface como chip "te faltan $X de
+   * fijos" para avisar que parte del saldo está comprometido — el CUPO diario
+   * sí lo reserva (no te deja gastarlo). 0 cuando no queda ningún fijo por pagar.
    */
   fixedPendingReserved: number
 }
@@ -277,6 +277,12 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     // solo se compone el cupo diario ("para gustos") y el saldo del mes
     // ("disponible hoy", que suma los income_events del ciclo). Sin override,
     // los intermedios coinciden con los valores tradicionales.
+    // Fijos PENDIENTES de pago del ciclo (prorrateados). El cupo reserva TODOS
+    // los fijos; el SALDO real los suma de vuelta (solo resta los pagados).
+    const fixedPendingReserved = Math.max(
+      0,
+      Math.round(dashboard.effectiveCommitmentReserved),
+    )
     const disponible = computeCycleDisponible({
       effectiveCycleIncome: dashboard.effectiveCycleIncome,
       effectiveCycleDays: dashboard.effectiveCycleDays,
@@ -284,8 +290,11 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       effectiveSavingsGoal: dashboard.savingsGoal,
       totalAvailable: dashboard.totalAvailable,
       cycleExtraIncome,
+      effectiveReservedFixed: fixedPendingReserved,
       hasCycleOverride: dashboard.cycleStartingBalanceOverride !== null,
     })
+    // Saldo del mes = plata REAL (computeCycleDisponible lo compone: discrecional
+    // + fijos pendientes); el CUPO (dailyBudget) reserva los fijos → no cambia.
     const availableToday = disponible.availableToday
     const dailyBudget = disponible.dailyBudget
 
@@ -332,15 +341,6 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       dashboard.cycleStartingBalanceOverride !== null
         ? (dashboard.cycleStartingBalanceOverride as number) - dashboard.monthlyIncome
         : 0
-
-    // Fijos que vencen este ciclo y todavía no se pagaron. El saldo del
-    // mes ya los aparta (reserva pagados + pendientes de una); el chip lo
-    // hace visible para que el número no se sienta "trabado" cuando el
-    // user confirma un pago y el saldo no se mueve.
-    const fixedPendingReserved = Math.max(
-      0,
-      Math.round(dashboard.currentCycleCommitmentSummary.reservedTotal),
-    )
 
     const hero: HomeHeroMetrics = {
       availableToday,
@@ -421,7 +421,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.monthlyIncome,
     dashboard.savingsGoal,
     dashboard.fixedExpensesMonthlyTotal,
-    dashboard.currentCycleCommitmentSummary,
+    dashboard.effectiveCommitmentReserved,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
     dashboard.familyFinanceQuery.data?.monthly_reserve_amount,

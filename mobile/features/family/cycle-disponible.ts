@@ -23,10 +23,14 @@ export interface CycleDisponibleInputs {
   commitmentPressure: number
   /** Meta de ahorro efectiva del ciclo (recalculada al cobro real si override down). */
   effectiveSavingsGoal: number
-  /** Saldo discrecional del ciclo ANTES de sumar income extra (del dashboard). */
+  /** Saldo DISCRECIONAL del ciclo (reserva TODOS los fijos) ANTES de sumar income
+   *  extra (del dashboard). De acá sale el CUPO diario protegido. */
   totalAvailable: number
   /** Ingresos extra del ciclo (transferencias/bonos/regalos). */
   cycleExtraIncome: number
+  /** Fijos PENDIENTES de pago del ciclo (prorrateados). El SALDO real los suma de
+   *  vuelta al discrecional (solo resta los fijos pagados); el cupo no. */
+  effectiveReservedFixed: number
   /**
    * `true` cuando el saldo del ciclo proviene de un override (saldo
    * reportado "a hoy", p.ej. ajuste de saldo / reserva sumada al mes).
@@ -52,27 +56,30 @@ export function computeCycleDisponible(inputs: CycleDisponibleInputs): CycleDisp
     effectiveSavingsGoal,
     totalAvailable,
     cycleExtraIncome,
+    effectiveReservedFixed,
     hasCycleOverride,
   } = inputs
 
-  // Saldo del mes — espeja totalAvailable + income extra del hook.
-  const rawCycleBalance = Math.round(totalAvailable + cycleExtraIncome)
+  // Base DISCRECIONAL del ciclo (reserva TODOS los fijos: pagados + pendientes).
+  const discretionary = totalAvailable + cycleExtraIncome
+  // Saldo del mes = plata REAL: el discrecional + los fijos PENDIENTES de pago
+  // (todavía no salieron de la cuenta; el saldo solo resta los fijos pagados +
+  // el variable). Baja a medida que se paga cada fijo. Modelo owner 2026-07-01.
+  const rawCycleBalance = Math.round(discretionary + effectiveReservedFixed)
   const availableToday = Math.max(0, rawCycleBalance)
 
-  // Cupo diario ("para gustos hoy").
-  // · CON override: el saldo del mes es "a hoy" (ya neteado de fijos,
-  //   ahorro y variable-desde-confirmación). El cupo reparte lo que
-  //   REALMENTE queda entre los días restantes → cupo × días_restantes =
-  //   saldo del mes. Antes usaba el numerador BRUTO (ingreso − fijos)
-  //   sin restar el variable ya gastado, y dividía por días restantes,
-  //   así que re-ofrecía como disponible plata ya consumida e inflaba el
-  //   cupo (bug 2026-06-30). Ahora es consistente con el saldo por
-  //   construcción — nunca promete más de lo que hay.
-  // · SIN override: objetivo plano del mes (libreMes / días totales), el
-  //   comportamiento canónico histórico. No resta variable ya gastado
-  //   (es un target por día, no un saldo restante); se deja intacto.
+  // Cupo diario ("para gustos hoy") — usa la base DISCRECIONAL (que reserva los
+  // fijos pendientes), NO el saldo real, para no dejar gastar la plata de los
+  // fijos que todavía faltan pagar.
+  // · CON override: reparte el discrecional entre los días RESTANTES.
+  // · SIN override: objetivo plano del mes (libreMes / días totales), histórico.
   const dailyBudget = hasCycleOverride
-    ? Math.max(0, Math.round(availableToday / Math.max(1, effectiveCycleDays)))
+    ? Math.max(
+        0,
+        Math.round(
+          Math.max(0, Math.round(discretionary)) / Math.max(1, effectiveCycleDays),
+        ),
+      )
     : Math.max(
         0,
         Math.round(

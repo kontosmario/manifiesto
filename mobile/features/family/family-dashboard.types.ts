@@ -40,6 +40,10 @@ export interface FamilyDashboardSnapshot {
   actualSpentInCurrentCycle: number
   commitmentPaymentsInCurrentCycle: number
   commitmentPressureInCurrentCycle: number
+  /** Fijos pendientes de pago (reservados) del ciclo, prorrateados. El saldo
+   *  real del mes los suma de vuelta (no resta los pendientes, solo los
+   *  pagados); el cupo diario sí los reserva. */
+  effectiveCommitmentReserved: number
   currentCycleCommitmentSummary: FixedExpenseCycleSummary
   currentMonthPayDate: Date
   cycleBalanceBeforeSavings: number

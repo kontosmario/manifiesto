@@ -227,6 +227,13 @@ export function buildFamilyDashboardSnapshot({
     hasCycleOverride && (cycleStartingBalanceOverride as number) < monthlyIncome
   const overrideProration = overrideIsDown ? remainingDaysFromToday / totalCycleDays : 1
   const effectiveCommitmentPressure = commitmentPressureInCurrentCycle * overrideProration
+  // Fijos PENDIENTES de pago (reservados) del ciclo, prorrateados igual que la
+  // presión. El SALDO del mes (plata real) NO los resta —solo los pagados— así
+  // que se suman de vuelta al `totalAvailable` (que sí reserva todo) para obtener
+  // el saldo real. El CUPO diario sí los reserva (usa `totalAvailable`), y el chip
+  // los muestra como "por pagar". Modelo owner 2026-07-01.
+  const effectiveCommitmentReserved =
+    currentCycleCommitmentSummary.reservedTotal * overrideProration
   // Savings goal RECOMPUTA al cobro real cuando override es DOWN:
   // 20% del sueldo configurado (\$6.9M) sería \$1.4M, pero si el user
   // cobró \$4M, el target del mes debería ser 20% de \$4M = \$800K — no
@@ -276,6 +283,7 @@ export function buildFamilyDashboardSnapshot({
     actualSpentInCurrentCycle,
     commitmentPaymentsInCurrentCycle,
     commitmentPressureInCurrentCycle,
+    effectiveCommitmentReserved,
     currentCycleCommitmentSummary,
     currentMonthPayDate,
     cycleBalanceBeforeSavings,

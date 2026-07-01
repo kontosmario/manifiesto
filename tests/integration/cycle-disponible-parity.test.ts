@@ -132,6 +132,9 @@ describeIfLive('cycle_disponible parity (rpc vs TS, read-only)', () => {
       .reduce((s: number, ie: { amount: number }) => s + Number(ie.amount), 0)
 
     const totalAvailable = effIncome - effSavings - pressure * proration - varMetrics
+    // Fijos PENDIENTES de pago (prorrateados). El saldo real los suma de vuelta
+    // al discrecional (espeja la SQL: available_today resta solo paid_total).
+    const reservedFixed = Number(summary.reservedTotal ?? 0) * proration
     const ts = computeCycleDisponible({
       effectiveCycleIncome: effIncome,
       effectiveCycleDays: effDays,
@@ -139,6 +142,7 @@ describeIfLive('cycle_disponible parity (rpc vs TS, read-only)', () => {
       effectiveSavingsGoal: effSavings,
       totalAvailable,
       cycleExtraIncome: extraIncome,
+      effectiveReservedFixed: reservedFixed,
       hasCycleOverride: hasOverride,
     })
 
