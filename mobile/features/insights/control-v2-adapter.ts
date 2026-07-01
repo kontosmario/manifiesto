@@ -473,6 +473,7 @@ export function buildControlDataFromSnapshot(
 
   return {
     ingresoMes,
+    monthlyIncome: monthlyIncomeRaw,
     fijosMes,
     libreMes,
     cupoDiario,

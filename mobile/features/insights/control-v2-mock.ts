@@ -27,8 +27,14 @@ import type {
 } from '@/features/insights/control-v2-adapter'
 
 export interface ControlMockData {
-  /** Monthly take-home income (ARS). */
+  /** Monthly take-home income (ARS). Con override activo = el saldo del ciclo
+   *  (override) + income extra; NO el sueldo recurrente (ver `monthlyIncome`). */
   ingresoMes: number
+  /** Sueldo RECURRENTE base (family_finance.monthly_income), sin override ni
+   *  income_events one-time. Lo usan las señales que comparan contra el
+   *  histórico de sueldo (income-volatility), donde el override —un ajuste de
+   *  UN ciclo— no debe entrar. */
+  monthlyIncome: number
   /** Fixed monthly commitments (ARS). */
   fijosMes: number
   /** Discretionary budget for the month = ingresoMes - fijosMes. */
@@ -177,6 +183,7 @@ export interface ControlAdvisorTask {
 
 export const CONTROL_MOCK: ControlMockData = {
   ingresoMes: 2_200_000,
+  monthlyIncome: 2_200_000,
   fijosMes: 1_250_000,
   libreMes: 950_000,
   cupoDiario: 31_600,
@@ -354,6 +361,11 @@ export interface ControlView {
   sobrantePresupuestadoMes: number
   diasRestantes: number
   restanteMes: number
+  /** Presupuesto discrecional total del ciclo (= libreMes: ingreso/override
+   *  − fijos − ahorro). Base de restanteMes y sobrante; se expone para que
+   *  las señales del asistente (velocity) usen el presupuesto real en vez de
+   *  reconstruirlo desde el cupo (que con override no lo iguala). */
+  libreMesTotal: number
   porDowEnriched: DowBucket[]
   peorDow: DowBucket
   mejorDow: DowBucket
@@ -714,6 +726,7 @@ export function computeControlView(d: ControlMockData): ControlView {
     sobrantePresupuestadoMes,
     diasRestantes,
     restanteMes,
+    libreMesTotal,
     porDowEnriched,
     peorDow,
     mejorDow,

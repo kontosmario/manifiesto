@@ -729,16 +729,14 @@ function buildVelocityWarning(
   // cupo diario > 0 (sino libreMes colapsa a 0/negativo → falso "frenar").
   if (!isFiniteNumber(v.forecast_close_amount) || !isFiniteNumber(v.momentum)) return null
   if (!isFiniteNumber(args.cupoDiario) || args.cupoDiario <= 0) return null
-  const cycleDaysVel = args.view.diasRestantes + args.view.detalleDias.length
-  if (cycleDaysVel <= 0) return null
-  // Compare the cycle-close forecast against the cycle's *budget*
-  // (libreMes = cupoDiario × diasMes), NOT against `gastoProyectadoMes`.
-  // The previous version subtracted two projections that came from
-  // different definitions of "the cycle" (backend = calendar month,
-  // frontend = pay cycle), so `over` had no coherent economic meaning
-  // and could surface absurd "Frenar: −$4M" deltas. The correct
-  // overshoot is `forecast − presupuesto del ciclo`.
-  const libreMes = args.cupoDiario * cycleDaysVel
+  // Compará el forecast de cierre contra el PRESUPUESTO del ciclo (libreMes =
+  // ingreso/override − fijos − ahorro), NO contra gastoProyectadoMes. Usamos el
+  // libreMes REAL del modelo (view.libreMesTotal), no `cupoDiario × diasVel`: con
+  // override el cupo es saldo/díasRestantes (ya resta el variable gastado), así
+  // que reconstruir libreMes desde el cupo daba un presupuesto inflado y un
+  // `over` mal calculado. El overshoot correcto es `forecast − presupuesto`.
+  const libreMes = args.view.libreMesTotal
+  if (!isFiniteNumber(libreMes) || libreMes <= 0) return null
   const over = v.forecast_close_amount - libreMes
   const urgency: ControlAdvisorTask['urgency'] =
     v.stress_level === 'critical'
@@ -1327,12 +1325,17 @@ function buildIncomeVolatility(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   if (args.summaries.length < 2) return null
-  if (!isFiniteNumber(args.ingresoMes) || args.ingresoMes <= 0) return null
+  // Comparar el sueldo RECURRENTE contra el histórico de sueldo. Con override
+  // activo, ingresoMes = la caja del ciclo (un ajuste de UN ciclo) → compararla
+  // vs el take-home histórico daría un falso "tu ingreso bajó/subió $X".
+  // ingresoRecurrente = family_finance.monthly_income (sin override ni extras).
+  const income = args.ingresoRecurrente ?? args.ingresoMes
+  if (!isFiniteNumber(income) || income <= 0) return null
   const historicalAvg =
     args.summaries.slice(0, 3).reduce((s, x) => s + x.monthly_income, 0) /
     Math.min(3, args.summaries.length)
   if (!isFiniteNumber(historicalAvg) || historicalAvg <= 0) return null
-  const delta = args.ingresoMes - historicalAvg
+  const delta = income - historicalAvg
   const pct = (delta / historicalAvg) * 100
   if (!Number.isFinite(pct) || Math.abs(pct) < 10) return null
   const better = pct > 0
@@ -1345,10 +1348,10 @@ function buildIncomeVolatility(
     cat: i18n.t('insights:signals.incomeVolatility.cat'),
     title: better
       ? i18n.t('insights:signals.incomeVolatility.titleBetter', {
-          amount: fmt(args.ingresoMes),
+          amount: fmt(income),
         })
       : i18n.t('insights:signals.incomeVolatility.titleWorse', {
-          amount: fmt(args.ingresoMes),
+          amount: fmt(income),
         }),
     body: better
       ? i18n.t('insights:signals.incomeVolatility.bodyBetter', {

@@ -463,7 +463,11 @@ export function useControlV2Data(
     // `diasRestantes` incluye hoy; hoy ya está contado en gastadoCiclo.
     const diasFuturos = Math.max(0, view.diasRestantes - 1)
     const forecast = gastadoCiclo + avg7 * diasFuturos
-    const libre = data.cupoDiario * (closed.length + view.diasRestantes)
+    // Presupuesto discrecional del ciclo = libreMes REAL del modelo, NO
+    // reconstruido como cupoDiario × días: con override el cupo es por día
+    // RESTANTE (ya netea el variable gastado), así que multiplicarlo por los
+    // días totales re-inflaba el presupuesto y subestimaba el stress_level.
+    const libre = view.libreMesTotal
     const stress: VelocitySnapshot['stress_level'] =
       libre <= 0 || forecast > libre * 1.15
         ? 'critical'
@@ -480,7 +484,7 @@ export function useControlV2Data(
       forecast_close_amount: forecast,
       stress_level: stress,
     }
-  }, [view.detalleDias, view.diasRestantes, data.gastoHoy, data.cupoDiario, velocity])
+  }, [view.detalleDias, view.diasRestantes, view.libreMesTotal, data.gastoHoy, velocity])
 
   const baselines = useMemo(
     () => memoizedComputeBaselines(summaries),
@@ -544,9 +548,11 @@ export function useControlV2Data(
         gastoHoy: data.gastoHoy,
         diasRestantes: view.diasRestantes,
         ingresoMes: data.ingresoMes,
-        // Sueldo recurrente = ingreso del ciclo SIN los income_events
-        // one-time. Lo consume `income-missing` para el cobro esperado.
-        ingresoRecurrente: Math.max(0, data.ingresoMes - extraIncome),
+        // Sueldo RECURRENTE base (family_finance.monthly_income), sin override
+        // ni income_events one-time. Lo consumen `income-missing` (cobro
+        // esperado) e `income-volatility` (vs histórico de sueldo) — el override
+        // es un ajuste de UN ciclo y no debe entrar en esas comparaciones.
+        ingresoRecurrente: Math.max(0, data.monthlyIncome),
         fijosMes: data.fijosMes,
         dismissedHikes,
         baselines,
@@ -574,7 +580,7 @@ export function useControlV2Data(
     data.cupoDiario,
     data.gastoHoy,
     data.ingresoMes,
-    extraIncome,
+    data.monthlyIncome,
     data.fijosMes,
     dismissedHikes,
     baselines,

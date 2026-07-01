@@ -120,11 +120,26 @@ export function computeDailyBudgetSummary({
   const effectiveCycleDays = hasOverride
     ? remainingDaysFromToday
     : monthlyDays
-  const proration = hasOverride
-    ? remainingDaysFromToday / monthlyDays
-    : 1
+  // El override es un presupuesto BRUTO del ciclo (no una foto de saldo): hay
+  // que restarle el gasto variable PREVIO a hoy (salió de ese presupuesto) y
+  // prorratear los fijos SOLO si el override es DOWN (cobré menos que el sueldo
+  // recurrente). Antes prorrateaba en CUALQUIER override y olvidaba el gasto
+  // previo (re-ancla a hoy con spentBeforeToday=0) → cupo inflado ~54% y nudge
+  // tardío. Espeja el modelo canónico (family-dashboard-model / cycle_disponible).
+  const overrideIsDown =
+    hasOverride && (cycleStartingBalance as number) < monthlyIncome
+  const proration = overrideIsDown ? remainingDaysFromToday / monthlyDays : 1
+  const priorVariableSpend = hasOverride
+    ? expenses.reduce((sum, expense) => {
+        const d = normalizeToStartOfDay(new Date(expense.created_at))
+        if (Number.isNaN(d.getTime()) || d < originalCycleStart || d >= safeToday) {
+          return sum
+        }
+        return sum + expense.price
+      }, 0)
+    : 0
   const effectiveMonthlyIncome = hasOverride
-    ? (cycleStartingBalance as number)
+    ? Math.max(0, (cycleStartingBalance as number) - priorVariableSpend)
     : monthlyIncome
   const effectiveFixed = hasOverride ? fixedExpensesMonthlyTotal * proration : fixedExpensesMonthlyTotal
   const effectiveSavings = hasOverride ? savingsGoal * proration : savingsGoal
