@@ -235,7 +235,17 @@ const config: ExpoConfig = {
     // seguridad backend (peek_family_invite sin datos financieros del hogar, etc.);
     // familia: invitar es owner-only + refresco de miembros del Home al unirse;
     // fix del ingreso del hogar (suma los aportes de todos los miembros).
-    buildNumber: '10',
+    // Build 11 (2026-07-01): overhaul del saldo/cupo del ciclo. Sobre el 10:
+    // (1) SALDO DEL MES = plata REAL (resta los fijos a medida que se pagan, no
+    //     todos de una) + chip "$X de fijos por pagar"; el CUPO diario sigue
+    //     reservando los fijos pendientes (protegido).
+    // (2) Cupo diario consistente con el saldo (deja de re-ofrecer plata ya
+    //     gastada con override) y el saldo resta TODO el gasto del ciclo (var_cycle).
+    // (3) Asistente: cupo/velocity/nudge/income-volatility calculan sobre el
+    //     override, no el sueldo base; y sin falsos positivos (las señales esperan
+    //     a que cargue toda su data antes de mostrarse).
+    // (Los cambios de SQL — cycle_disponible, velocity fallback — ya viven en prod.)
+    buildNumber: '11',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
