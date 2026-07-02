@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -270,6 +270,8 @@ interface ErrorFallbackProps {
   errorKind?: AuthTransitionErrorKind
 }
 
+const AUTO_RETRY_POLL_MS = 5000
+
 function ErrorFallback({ errorKind }: ErrorFallbackProps) {
   const { t } = useTranslation()
   const [isChecking, setChecking] = useState(false)
@@ -279,31 +281,47 @@ function ErrorFallback({ errorKind }: ErrorFallbackProps) {
     void triggerHaptic('selection')
     setChecking(true)
     try {
+      // Error de la máquina (viaje en curso): RETRY INCONDICIONAL — el
+      // prefetch del snapshot es la prueba real de conectividad. Gatearlo
+      // en verifyInternetReachable dejaba el botón muerto en redes donde
+      // los probes (Google/Cloudflare) están bloqueados pero el backend
+      // responde. Si de verdad no hay red, el retry falla y este fallback
+      // vuelve solo.
+      if (getAuthFlowState().phase === 'bridge-error') {
+        dispatchAuthFlow({ type: 'RETRY' })
+      }
       // VERIFICACIÓN ACTIVA (round-trip real) en vez de confiar en NetInfo:
       // si NetInfo quedó "stuck" en offline (snapshot stale al resumir, o su
-      // probe por defecto bloqueado), confiar en él haría que el Reintentar
-      // NUNCA funcione aunque el usuario tenga internet. Aquí hacemos un GET
-      // real a endpoints confiables. Si hay conexión, escondemos la vista y
-      // revelamos la pantalla de abajo; si sigue offline, el fallback queda
-      // (el haptic del tap ya dio feedback de que el intento ocurrió).
+      // probe por defecto bloqueado), confiar en él haría que el takeover
+      // offline NUNCA se esconda aunque el usuario tenga internet.
       const online = await verifyInternetReachable()
-      if (online) {
-        // Error de la máquina (viaje en curso) → RETRY re-prefetchea y
-        // sigue el viaje. Takeover offline global → simplemente se
-        // esconde y la pantalla de abajo se revela.
-        if (getAuthFlowState().phase === 'bridge-error') {
-          dispatchAuthFlow({ type: 'RETRY' })
-        }
-        hideOfflineTakeover()
-      }
+      if (online) hideOfflineTakeover()
       // Sigue offline: el fallback queda visible; el haptic del tap ya
       // dio feedback de que el intento ocurrió.
     } catch {
-      // NetInfo falló — tratamos como "sigue offline" (fallback queda).
+      // Verificación falló — tratamos como "sigue offline" (fallback queda).
     } finally {
       setChecking(false)
     }
   }
+
+  // AUTO-RECUPERACIÓN: mientras el error del bridge está visible, sondea
+  // cada 5s y reintenta solo apenas hay internet verificada — el usuario
+  // no tiene que tocar nada (mismo espíritu que el recovery poll del
+  // takeover offline). Un blip transitorio post-login se corrige sin
+  // interacción; Apple Review rechazó 1.0(11) por quedarse en este error.
+  useEffect(() => {
+    const id = setInterval(() => {
+      void (async () => {
+        if (getAuthFlowState().phase !== 'bridge-error') return
+        const online = await verifyInternetReachable()
+        if (online && getAuthFlowState().phase === 'bridge-error') {
+          dispatchAuthFlow({ type: 'RETRY' })
+        }
+      })()
+    }, AUTO_RETRY_POLL_MS)
+    return () => clearInterval(id)
+  }, [])
 
   // Most common case is "no internet" — a hung request, a NetInfo
   // offline state, or a timeout that's almost always network. We

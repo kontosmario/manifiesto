@@ -87,6 +87,30 @@ any   ─ LOGOUT (logoutSession) → guest
 | `SAFETY_TIMEOUT_MS` | 15000 | Bridge colgado → error(timeout) |
 | `LOGIN_FALLBACK_FADE_MS` | 240 | Fade del auth stack al login (en `(auth)/_layout`) |
 
+## Resiliencia post-login (rechazo Apple 2.1a — 1.0(11), 2026-07-02)
+
+Un blip transitorio de red justo después del login mostraba "Sin conexión a
+internet" full-screen con internet ACTIVA del lado del usuario (RN fetch
+reporta `TypeError: Network request failed` también cuando solo el backend
+no respondió). Apple Review rechazó 1.0(11) por ese mensaje. Reglas vigentes:
+
+1. **Retry con backoff en `home_snapshot`** (5 intentos, 0.5s→4s, ~8s
+   total): el blip se absorbe bajo el splash y nunca llega a pantalla de
+   error (`use-home-snapshot.ts`).
+2. **Clasificación honesta** (`classify-bridge-load-error.ts`): "Sin
+   conexión" SOLO cuando la verificación ACTIVA (`verifyInternetReachable`)
+   confirmó que no hay internet; con internet real, un error de transporte
+   se surfacea como `timeout` ("La conexión está demorando").
+3. **Auto-recuperación del bridge-error**: `ErrorFallback` sondea cada 5s
+   y dispara RETRY solo apenas hay internet verificada; el Reintentar
+   manual dispara RETRY incondicional (el prefetch es la prueba real de
+   conectividad — gatearlo en los probes de Google/Cloudflare dejaba el
+   botón muerto en redes que los bloquean).
+4. **`DESTINATION_READY` se re-señala al (re)entrar a `bridging`**: si la
+   data llegó mientras la máquina estaba en `bridge-error`, la señal
+   original se perdía como no-op y el RETRY quedaba colgado hasta el
+   safety timeout (`use-signal-destination-ready.ts`).
+
 ## Superficies
 
 - **BootScreen** (`/` index): única superficie de arranque. Fern + wordmark;
@@ -113,6 +137,9 @@ any   ─ LOGOUT (logoutSession) → guest
 - `tests/unit/auth-flow-controller.test.ts` — driver con adapters fake
   (invariante 1, timers, prefetch fallido, restore fallido).
 - `tests/unit/resolve-destination.test.ts` — matriz de ruteo.
+- `tests/unit/classify-bridge-load-error.test.ts` — clasificación del
+  error de carga del bridge (regla "sin conexión solo con offline
+  verificado").
 
 ## Gotchas
 

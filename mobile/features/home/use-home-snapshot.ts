@@ -528,6 +528,15 @@ async function fetchAndSeedHomeSnapshot(
 
 const HOME_SNAPSHOT_STALE_TIME_MS = 60_000
 
+// Post-login este fetch es lo ÚNICO entre el usuario y su Home: con el
+// retry global (1) un blip transitorio de red se convertía en pantalla de
+// error a los ~2s — Apple Review rechazó 1.0(11) por eso (2.1a). Cinco
+// intentos con backoff (0.5s→4s, ~8s total) absorben el blip mientras el
+// usuario sigue viendo el splash; el safety timer del bridge (15s) sigue
+// acotando la espera real.
+const HOME_SNAPSHOT_RETRY = 4
+const homeSnapshotRetryDelay = (attempt: number) => Math.min(500 * 2 ** attempt, 4000)
+
 /**
  * Warm the home snapshot cache ahead of navigation. Called from the
  * unlock screen the moment it mounts, so the RPC round-trip runs in
@@ -548,6 +557,8 @@ export function prefetchHomeSnapshot(
   return queryClient.prefetchQuery({
     queryKey: homeSnapshotQueryKey(userId),
     staleTime: HOME_SNAPSHOT_STALE_TIME_MS,
+    retry: HOME_SNAPSHOT_RETRY,
+    retryDelay: homeSnapshotRetryDelay,
     queryFn: () => fetchAndSeedHomeSnapshot(queryClient, userId),
   })
 }
@@ -566,6 +577,8 @@ export function useHomeSnapshot(userId?: string) {
     enabled: Boolean(userId),
     staleTime: HOME_SNAPSHOT_STALE_TIME_MS,
     gcTime: 5 * 60_000,
+    retry: HOME_SNAPSHOT_RETRY,
+    retryDelay: homeSnapshotRetryDelay,
     // On iOS foreground-resume both home_snapshot + gastos_snapshot
     // were re-fetching back-to-back even with staleTime=60s, costing
     // 300-600ms of blocking re-hydration. `staleTime` alone is enough:

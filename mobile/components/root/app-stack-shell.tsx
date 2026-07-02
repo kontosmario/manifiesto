@@ -18,7 +18,7 @@ import { useLanguageSync } from '@/features/preferences/use-language-sync'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useAdvisorDismissalsSync } from '@/features/insights/control-dismiss-store'
 import { useRegisterPushToken } from '@/features/push/use-register-push-token'
-import { useOnlineStatus } from '@/hooks/use-online-status'
+import { classifyBridgeLoadError } from '@/features/auth-flow/classify-bridge-load-error'
 import { verifyInternetReachable } from '@/lib/verify-internet-reachable'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { motionDurations } from '@/lib/motion'
@@ -83,7 +83,6 @@ export function AppStackShell() {
   const session = useAuthSession()
   const userId = session.data?.user.id
   const snapshot = useHomeSnapshot(userId)
-  const isOnline = useOnlineStatus()
   // Mirror the active user's email + display name + avatar to a
   // SecureStore-backed cache so the login screen can show a
   // personalized hero on next launch.
@@ -124,32 +123,25 @@ export function AppStackShell() {
   useEffect(() => {
     if (!snapshot.isError) return
 
-    const classifyByMessage = (): 'network' | 'unknown' => {
-      const message = String(snapshot.error?.message ?? '').toLowerCase()
-      return message.includes('network') || message.includes('fetch') ? 'network' : 'unknown'
-    }
-
-    if (!isOnline) {
-      // NetInfo dice offline — pero puede ser un snapshot STALE al resumir
-      // (la radio recién despierta). Verificamos de verdad antes de surfacear
-      // "Sin conexión": si hay internet real, el error NO es de red →
-      // clasificamos por el mensaje. Mismo criterio que GlobalConnectivityWatcher
-      // para que la vista solo aparezca cuando realmente no hay conexión.
-      let cancelled = false
-      void verifyInternetReachable().then((reachable) => {
-        if (cancelled) return
-        dispatchAuthFlow({
-          type: 'LOAD_FAILED',
-          kind: reachable ? classifyByMessage() : 'network',
-        })
+    // SIEMPRE verificación activa (round-trip real) antes de clasificar,
+    // sin importar qué diga NetInfo: un fetch fallido reporta "Network
+    // request failed" también cuando el usuario SÍ tiene internet (blip
+    // transitorio, backend inalcanzable). Acusar "Sin conexión a internet"
+    // en ese caso es falso — Apple Review rechazó 1.0(11) por esto (2.1a).
+    // Con internet verificada el error se surfacea como demora ('timeout').
+    let cancelled = false
+    const message = String(snapshot.error?.message ?? '')
+    void verifyInternetReachable().then((reachable) => {
+      if (cancelled) return
+      dispatchAuthFlow({
+        type: 'LOAD_FAILED',
+        kind: classifyBridgeLoadError(message, reachable),
       })
-      return () => {
-        cancelled = true
-      }
+    })
+    return () => {
+      cancelled = true
     }
-
-    dispatchAuthFlow({ type: 'LOAD_FAILED', kind: classifyByMessage() })
-  }, [snapshot.isError, snapshot.error, isOnline])
+  }, [snapshot.isError, snapshot.error])
 
   // If the user is authenticated, block the whole app tree until the
   // snapshot is seeded. Everything downstream (RequireAuth, tabs,
