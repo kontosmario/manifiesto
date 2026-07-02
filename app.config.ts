@@ -245,7 +245,14 @@ const config: ExpoConfig = {
     //     override, no el sueldo base; y sin falsos positivos (las señales esperan
     //     a que cargue toda su data antes de mostrarse).
     // (Los cambios de SQL — cycle_disponible, velocity fallback — ya viven en prod.)
-    buildNumber: '11',
+    // Build 12 (2026-07-02): fix del rechazo Apple 2.1(a) sobre 1.0(11)
+    // ("connection error message after login"). Sobre el 11: resiliencia
+    // post-login — retry con backoff en home_snapshot (un blip transitorio ya
+    // no llega a pantalla de error), "Sin conexión" solo con offline
+    // VERIFICADO (con internet real el error se surfacea como demora),
+    // auto-recuperación del bridge-error (poll 5s) y Reintentar incondicional,
+    // y re-señalización de DESTINATION_READY al reentrar a bridging.
+    buildNumber: '12',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
