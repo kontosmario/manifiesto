@@ -94,9 +94,14 @@ internet" full-screen con internet ACTIVA del lado del usuario (RN fetch
 reporta `TypeError: Network request failed` también cuando solo el backend
 no respondió). Apple Review rechazó 1.0(11) por ese mensaje. Reglas vigentes:
 
-1. **Retry con backoff en `home_snapshot`** (5 intentos, 0.5s→4s, ~8s
-   total): el blip se absorbe bajo el splash y nunca llega a pantalla de
-   error (`use-home-snapshot.ts`).
+1. **Retry con backoff en `home_snapshot`** (5 intentos, 0.5s→4s) **+
+   timeout de 10s POR INTENTO** (abort): el blip se absorbe bajo el splash
+   y un request colgado en tránsito no pinnea el query — sin el abort, el
+   dedupe de React Query sumaba los RETRY al fetch colgado y la
+   recuperación quedaba presa del timeout del OS (~60s). La captura del
+   rechazo muestra la variante `timeout` del fallback ("The connection is
+   taking a while"): el primer snapshot del reviewer quedó ~14s en
+   tránsito y el safety (15s) venció (`use-home-snapshot.ts`).
 2. **Clasificación honesta** (`classify-bridge-load-error.ts`): "Sin
    conexión" SOLO cuando la verificación ACTIVA (`verifyInternetReachable`)
    confirmó que no hay internet; con internet real, un error de transporte

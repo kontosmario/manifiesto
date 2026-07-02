@@ -223,11 +223,29 @@ import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
  * snapshot at mount time (cache warming). Cache seeding happens inside
  * `useHomeSnapshot` where we have access to `queryClient` and `userId`.
  */
+// Timeout POR INTENTO: un request colgado en tránsito no puede pinnear el
+// query in-flight — por el dedupe de React Query, los RETRY del bridge se
+// SUMAN al fetch colgado en vez de disparar uno nuevo, y la recuperación
+// queda presa del timeout del OS (~60s). Evidencia del review de Apple
+// (2026-07-02): el primer snapshot quedó ~14s en tránsito, el safety del
+// bridge (15s) venció y el reviewer vio "The connection is taking a while".
+// Con el abort a 10s el intento colgado muere y el retry con backoff
+// dispara un request FRESCO.
+const HOME_SNAPSHOT_ATTEMPT_TIMEOUT_MS = 10_000
+
 export async function fetchHomeSnapshot(): Promise<HomeSnapshotPayload> {
-  const { data, error } = await supabase.rpc('home_snapshot')
-  if (error) throw error
-  if (!data) throw new Error('El snapshot del inicio vino vacío.')
-  return data as HomeSnapshotPayload
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), HOME_SNAPSHOT_ATTEMPT_TIMEOUT_MS)
+  try {
+    const { data, error } = await supabase
+      .rpc('home_snapshot')
+      .abortSignal(controller.signal)
+    if (error) throw error
+    if (!data) throw new Error('El snapshot del inicio vino vacío.')
+    return data as HomeSnapshotPayload
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 const RECENT_EXPENSES_LIMIT = 6
