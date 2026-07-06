@@ -1,3 +1,4 @@
+import {AbsoluteFill, Audio, staticFile} from 'remotion'
 import {TransitionSeries, linearTiming} from '@remotion/transitions'
 import {fade} from '@remotion/transitions/fade'
 import {ColdStartScene} from './scenes/ColdStartScene'
@@ -10,7 +11,9 @@ const [home, gastos, fijos, control, jardin, wrapped, familia] = PRODUCT_SCENES
 
 // Timeline master: 1395f de escenas − 9 transiciones × 15f = 1260f (42s).
 export const Reel: React.FC = () => (
-  <TransitionSeries>
+  <AbsoluteFill>
+    <Audio src={staticFile('audio/music.m4a')} />
+    <TransitionSeries>
     <TransitionSeries.Sequence durationInFrames={135}>
       <ColdStartScene />
     </TransitionSeries.Sequence>
@@ -77,5 +80,6 @@ export const Reel: React.FC = () => (
     <TransitionSeries.Sequence durationInFrames={180}>
       <ClosingScene />
     </TransitionSeries.Sequence>
-  </TransitionSeries>
+    </TransitionSeries>
+  </AbsoluteFill>
 )
