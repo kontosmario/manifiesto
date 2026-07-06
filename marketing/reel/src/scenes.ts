@@ -20,7 +20,7 @@ export const PRODUCT_SCENES: ProductSceneDef[] = [
   {
     id: 'gastos',
     clip: 'captures/03-gastos.mp4',
-    startFrom: 45,
+    startFrom: 12,
     title: [{text: 'Cada peso, a la '}, {text: 'vista', accent: true}, {text: '.'}],
   },
   {
