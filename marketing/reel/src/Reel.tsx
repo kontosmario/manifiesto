@@ -1,3 +1,4 @@
-import {HookScene} from './scenes/HookScene'
+import {ProductScene} from './scenes/ProductScene'
+import {PRODUCT_SCENES} from './scenes'
 
-export const Reel: React.FC = () => <HookScene />
+export const Reel: React.FC = () => <ProductScene {...PRODUCT_SCENES[6]} />
