@@ -55,6 +55,41 @@ agregando ingresos manuales (`income_events`) en vez de un
   `tests/unit/family-dashboard-model.test.ts` (describe "modo ingreso
   dinámico").
 
+## Ahorro mensual: NO disponible en dinámico (2026-07-08, fase 2)
+
+El % del sueldo que se aparta no tiene base sin sueldo. Gates:
+- Onboarding paso 5: sin card de %, queda solo la primera meta
+  (por monto, mode-agnóstica); `savingsGoalPercent` se persiste 0.
+- Settings: filas de sueldo/contribución, día de cobro y % de ahorro
+  OCULTAS en dinámico; el switch a dinámico pone goal+percent en 0.
+- Defensivo en modelo (`savingsGoal = 0 si dynamic`) y SQL
+  (`eff_savings = 0 when dyn`, velocity idem) por si queda config stale.
+- Las METAS (`savings_goals`) siguen disponibles: son por monto y se
+  fondean a mano / con el sobrante del cierre.
+
+## Superficies ajustadas app-wide (fase 2)
+
+- **Control/Asistente/Alcancía**: `classifyControlMode` y
+  `missingIncome` aceptan dinámico (antes: empty-state "Configurá tu
+  sueldo" PERMANENTE). Test: control-v2-mode.
+- **Fijos**: hero sin fila "dinero libre / % de tu sueldo"
+  (`showIncomeStats`, también en el preview del empty state).
+- **Home**: pill de payday del FamilyStrip oculto; chip de ahorro con
+  gate explícito por modo.
+- **Wizard household-setup** (joiner o deep-link): aviso amigable del
+  modo en vez del flujo sueldo→ahorro (que re-activaba ambos).
+- **Wrapped**: "Tienes $X para administrar" = sueldo + `extra_income`.
+- **Check-ins push** (migración `20260708140000`): morning/midday/
+  evening ya no excluyen a dinámico ni lo dejan en "Confirmá tu sueldo".
+- **Velocity/stress** (misma migración): `eff_income` suma
+  `income_events` (antes stress `critical` perpetuo).
+- **Asesor LLM** (`control-advisor`): recibe `incomeMode` +
+  `cycleIncome` y el prompt prohíbe hablar de "sueldo" en dinámico.
+- **UI onboarding**: card del modo variable con `AchievementIcon`
+  `first_cycle_under_budget` (moneda que brota, SVG propio AA) + 3
+  pasos + footer de audiencias (`onboarding:income.dynamicCard.*`).
+
 ## Pendiente owner
 
-- Aplicar migración `20260708130000` a prod (coordinada con build).
+- Aplicar migraciones `20260708130000` y `20260708140000` a prod
+  (coordinadas con build) + deploy del edge fn `control-advisor`.
