@@ -55,7 +55,7 @@ interface GastosSnapshotPayload {
   categories: GastosCategoriesResponse
   first_page: GastosExpensesPage
   streak_row: RawStreakRow | null
-  /** YYYY-MM-DD strings, newest first, max 14 entries. */
+  /** YYYY-MM-DD strings, newest first, max 35 entries (marcas del hogar). */
   streak_marked_days: string[]
 }
 
@@ -187,16 +187,13 @@ function seedCaches(
     seededInfinite,
   )
 
-  // Streaks: solo seedeamos si tenemos userId (el snapshot ya viene
-  // scoped al user actual server-side, pero los queryKeys del cliente
-  // incluyen userId para diferenciar múltiples cuentas en un device).
-  if (userId) {
-    client.setQueryData(streakQueryKey(familyId, userId), payload.streak_row)
-    client.setQueryData(
-      markedDaysQueryKey(familyId, userId),
-      payload.streak_marked_days ?? [],
-    )
-  }
+  // Streaks: la racha es FAMILIAR (2026-07-08) — keys por familia. El
+  // snapshot devuelve la fila de family_streaks + marcas del hogar (≤35).
+  client.setQueryData(streakQueryKey(familyId), payload.streak_row)
+  client.setQueryData(
+    markedDaysQueryKey(familyId),
+    payload.streak_marked_days ?? [],
+  )
 }
 
 /**

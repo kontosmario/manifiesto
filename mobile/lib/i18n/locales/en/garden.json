@@ -1,8 +1,8 @@
 {
   "screen": {
     "title": "My garden",
-    "subtitle": "A sprout for every day you log.",
-    "footnote": "Your garden grows on its own: every expense you log plants the day's sprout. Didn't spend? Mark the no-spend day on the calendar and it counts too."
+    "subtitle": "A sprout for every day your home logs.",
+    "footnote": "The garden grows on its own: any family member's expense plants the day's sprout. Nobody spent? Mark the no-spend day on the calendar and it counts too."
   },
   "card": {
     "title": "Your garden",
@@ -23,7 +23,7 @@
     "unit": "sprouts\nin a row",
     "streakA11y_one": "{{count}} sprout in a row",
     "streakA11y_other": "{{count}} sprouts in a row",
-    "sub": "A seed for every day you log. The gaps are days you didn't log — no worries, the garden goes on.",
+    "sub": "A seed for every day your home logs. The gaps are days without logs — no worries, the garden goes on.",
     "statGarden": "GARDEN",
     "statRecord": "RECORD",
     "statSeeds": "SEEDS"

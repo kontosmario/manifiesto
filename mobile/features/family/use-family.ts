@@ -6,6 +6,9 @@ import { normalizeAccountKind } from '@/features/family/account-kind'
 export interface FamilyInfo {
   familyId: string
   kind: AccountKind
+  /** ISO timestamp de creación de la familia — ancla del jardín
+   *  familiar (el jardín arranca cuando nació el hogar). */
+  createdAt: string | null
 }
 
 export const familyQueryKey = (userId?: string) => ['family', userId] as const
@@ -29,7 +32,7 @@ export function useFamily(userId?: string) {
 
       const membershipResponse = await supabase
         .from('family_members')
-        .select('family_id, families(kind)')
+        .select('family_id, families(kind, created_at)')
         .eq('user_id', userId)
         .maybeSingle()
 
@@ -41,12 +44,16 @@ export function useFamily(userId?: string) {
         return null
       }
 
-      const familyRel = membershipResponse.data.families as { kind: string } | { kind: string }[] | null
-      const kindRaw = Array.isArray(familyRel) ? familyRel[0]?.kind : familyRel?.kind
+      const familyRel = membershipResponse.data.families as
+        | { kind: string; created_at: string | null }
+        | { kind: string; created_at: string | null }[]
+        | null
+      const familyRow = Array.isArray(familyRel) ? familyRel[0] : familyRel
 
       return {
         familyId: membershipResponse.data.family_id as string,
-        kind: normalizeAccountKind(kindRaw),
+        kind: normalizeAccountKind(familyRow?.kind),
+        createdAt: familyRow?.created_at ?? null,
       }
     },
   })

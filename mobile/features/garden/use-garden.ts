@@ -4,11 +4,13 @@ import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useStreak } from '@/features/streaks/use-streak'
 import { useMyProfile } from '@/features/profile/use-profile'
+import { useFamily } from '@/features/family/use-family'
 import { gardenRecoveredQueryKey } from './garden-query-keys'
 import {
   deriveGardenCells,
   deriveWeekClose,
   deriveWeekStrip,
+  familyActivityDays,
   gardenFirstActivity,
   weeksToShow,
   type GardenCell,
@@ -18,11 +20,12 @@ import {
 
 export { gardenRecoveredQueryKey }
 
-async function fetchRecoveredDays(userId: string): Promise<string[]> {
+async function fetchRecoveredDays(familyId: string): Promise<string[]> {
+  // Los días recuperados son del HOGAR (unicidad family_id+day).
   const { data, error } = await supabase
     .from('garden_recovered_days')
     .select('day')
-    .eq('user_id', userId)
+    .eq('family_id', familyId)
     .order('day', { ascending: false })
     .limit(60)
   if (error) throw error
@@ -75,8 +78,9 @@ export function useGarden(
   const streak = useStreak(familyId, userId)
   const expensesQuery = useExpenses(familyId)
   const profileQuery = useMyProfile(userId)
+  const familyQuery = useFamily(userId)
   const recoveredQuery = useQuery<string[]>({
-    queryKey: gardenRecoveredQueryKey(userId),
+    queryKey: gardenRecoveredQueryKey(familyId),
     enabled: Boolean(familyId && userId),
     // staleTime corto (30s = default global): el auto-bridge del cron (medianoche)
     // escribe garden_recovered_days SIN mutación cliente, así que al re-montar el
@@ -84,7 +88,7 @@ export function useGarden(
     // recién recuperado en vez de mostrarlo 'missed'. El path de gasto (Case 3)
     // además invalida esta key vía syncAllAfterMutation → refresco inmediato.
     staleTime: 30_000,
-    queryFn: () => fetchRecoveredDays(userId!),
+    queryFn: () => fetchRecoveredDays(familyId!),
   })
 
   const data = useMemo<GardenData | null>(() => {
@@ -93,13 +97,14 @@ export function useGarden(
     const today = new Date()
     const todayIso = isoDay(today, tz)
 
-    // Set de días-con-actividad: gastos del usuario (variable + fijo) ∪
-    // días marcados sin-gasto. Mismo patrón que use-streak.ts weekActivity.
-    const activity = new Set<string>(streak.data.markedDaysIso)
-    for (const e of expensesQuery.data ?? []) {
-      if (e.created_by !== userId) continue
-      activity.add(isoDay(new Date(e.created_at), tz))
-    }
+    // Set de días-con-actividad DEL HOGAR: gastos de CUALQUIER miembro
+    // (variable + fijo) ∪ días marcados sin-gasto de cualquier miembro.
+    // El jardín es familiar: todos plantan, todos lo ven crecer.
+    const activity = familyActivityDays(
+      expensesQuery.data ?? [],
+      streak.data.markedDaysIso,
+      tz,
+    )
 
     // Lunes de la semana actual (getDay: 0=Dom..6=Sáb → Monday0).
     const dow = (today.getDay() + 6) % 7
@@ -110,9 +115,10 @@ export function useGarden(
     const prevWeekDayIso = (i: number) =>
       isoDay(new Date(today.getTime() - (dow - i + 7) * 86_400_000), tz)
 
-    // Ancla = primer brote DESDE tu inicio (cuándo creaste la cuenta). Back-datear
-    // un gasto anterior a tu cuenta no extiende el jardín (evita "salteados" falsos).
-    const created = profileQuery.data?.created_at
+    // Ancla = primer brote DESDE que nació el HOGAR (families.created_at).
+    // Back-datear un gasto anterior no extiende el jardín (evita "salteados"
+    // falsos). Fallback al created_at del perfil si la familia aún no cargó.
+    const created = familyQuery.data?.createdAt ?? profileQuery.data?.created_at
     const accountCreatedIso = created ? isoDay(new Date(created), tz) : null
     const sorted = [...activity].sort()
     const firstActivityIso = gardenFirstActivity(sorted, accountCreatedIso)
@@ -138,7 +144,7 @@ export function useGarden(
       weekStrip: deriveWeekStrip(activity, recoveredIso, todayIso, weekDayIso, accountCreatedIso),
       firstActivityIso,
     }
-  }, [familyId, userId, streak.data, expensesQuery.data, profileQuery.data, recoveredQuery.data])
+  }, [familyId, userId, streak.data, expensesQuery.data, profileQuery.data, familyQuery.data, recoveredQuery.data])
 
   return {
     data,

@@ -85,15 +85,14 @@ export async function syncAllAfterMutation(
     // gastos_snapshot tiene una key larga (cycle window, today, cupo, cat);
     // invalidamos por prefijo de familia para cubrir todas las variantes.
     keys.push(['gastos-snapshot', familyId])
-    if (userId) {
-      keys.push(streakQueryKey(familyId, userId))
-      keys.push(markedDaysQueryKey(familyId, userId))
-      // Registrar un gasto puede disparar el auto-bridge del jardín (Case 3 de
-      // _advance_streak_internal escribe garden_recovered_days al consumir un
-      // escudo), así que refrescamos el set de días recuperados para que el
-      // brote 'recuperado' aparezca de inmediato.
-      keys.push(gardenRecoveredQueryKey(userId))
-    }
+    // La racha/jardín es FAMILIAR (2026-07-08): keys por familia, sin userId.
+    keys.push(streakQueryKey(familyId))
+    keys.push(markedDaysQueryKey(familyId))
+    // Registrar un gasto puede disparar el auto-bridge del jardín (Case 3 de
+    // _advance_streak_internal escribe garden_recovered_days al consumir un
+    // escudo), así que refrescamos el set de días recuperados para que el
+    // brote 'recuperado' aparezca de inmediato.
+    keys.push(gardenRecoveredQueryKey(familyId))
   }
 
   // ── Fixed cluster

@@ -70,6 +70,9 @@ interface RawNotificationSlice {
 interface RawFamilySlice {
   familyId: string
   kind?: string | null
+  /** Presente cuando el RPC lo devuelve (ancla del jardín familiar);
+   *  si falta, el merge preserva el valor ya cacheado por useFamily. */
+  created_at?: string | null
 }
 
 interface HomeSnapshotPayload {
@@ -321,9 +324,20 @@ function toFamilyFinance(raw: FinanceStoragePayload | null): FamilyFinance {
  * all the downstream hooks read from cache and skip their own
  * queries because the cache entry is fresh (within staleTime).
  */
-function toFamilyInfo(raw: RawFamilySlice | null): FamilyInfo | null {
+function toFamilyInfo(
+  raw: RawFamilySlice | null,
+  prev: FamilyInfo | null | undefined,
+): FamilyInfo | null {
   if (!raw) return null
-  return { familyId: raw.familyId, kind: normalizeAccountKind(raw.kind) }
+  return {
+    familyId: raw.familyId,
+    kind: normalizeAccountKind(raw.kind),
+    // El snapshot puede no traer created_at; preservar lo que ya trajo
+    // useFamily (mismo cuidado que seedProfile con los tour flags).
+    createdAt:
+      raw.created_at ??
+      (prev && prev.familyId === raw.familyId ? prev.createdAt : null),
+  }
 }
 
 /**
@@ -375,7 +389,13 @@ function seedCaches(
   // The RPC returns `{ familyId, code }`; the client's `useFamily`
   // expects `{ familyId, familyCode }`. Normalize before seeding so
   // consumers read the right shape on the cache hit.
-  client.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
+  client.setQueryData(
+    familyQueryKey(userId),
+    toFamilyInfo(
+      payload.family,
+      client.getQueryData<FamilyInfo | null>(familyQueryKey(userId)),
+    ),
+  )
 
   client.setQueryData(
     familyFinanceQueryKey(familyId),
@@ -539,7 +559,13 @@ async function fetchAndSeedHomeSnapshot(
     // No family yet — still seed profile + family (as null) so
     // RequireAuth can redirect without refetching.
     seedProfile(queryClient, userId, payload.profile ?? null)
-    queryClient.setQueryData(familyQueryKey(userId), toFamilyInfo(payload.family))
+    queryClient.setQueryData(
+      familyQueryKey(userId),
+      toFamilyInfo(
+        payload.family,
+        queryClient.getQueryData<FamilyInfo | null>(familyQueryKey(userId)),
+      ),
+    )
   }
   return payload
 }

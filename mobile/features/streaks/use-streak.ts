@@ -47,11 +47,10 @@ export interface StreakData {
    *  truth for break detection — the client used to derive this
    *  locally but that race-conditioned with the at-risk window. */
   streakBrokenAt: string | null
-  /** ISO date strings (`YYYY-MM-DD`) of marked no-spend days,
-   *  ordered by `marked_date` descending. Limited to the last 14 by
-   *  the underlying query — sufficient for the calendar's current
-   *  cycle view. F3 will replace this with the cycle-scoped list
-   *  from home_snapshot. */
+  /** ISO date strings (`YYYY-MM-DD`) of marked no-spend days from ANY
+   *  family member (deduped), ordered by `marked_date` descending.
+   *  Limited to the last 35 by the underlying query — covers the
+   *  garden grid's 5-week window. */
   markedDaysIso: string[]
 }
 
@@ -91,10 +90,10 @@ export function levelLabel(key: StreakLevel): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Raw Supabase row.
+// Raw Supabase row (family_streaks — la racha es del HOGAR).
 // ─────────────────────────────────────────────────────────────
 
-interface UserStreakRow {
+interface FamilyStreakRow {
   current_streak: number
   longest_streak: number
   total_days_logged: number
@@ -117,46 +116,42 @@ interface MarkedDayRow {
   marked_date: string
 }
 
-async function fetchMarkedDays(
-  familyId: string,
-  userId: string,
-): Promise<string[]> {
-  // Last 14 entries is plenty: the UI only renders the last 7 days,
-  // and a small buffer covers timezone edge-cases without paginating.
+async function fetchMarkedDays(familyId: string): Promise<string[]> {
+  // Marcas de TODOS los miembros (el día sin gasto es del hogar). El
+  // límite sube a 35 (14 cuando era per-usuario): la grilla del jardín
+  // cubre hasta 5 semanas y ahora agrega varias autorías.
   const { data, error } = await supabase
     .from('streak_marked_days')
     .select('marked_date')
     .eq('family_id', familyId)
-    .eq('user_id', userId)
     .order('marked_date', { ascending: false })
-    .limit(14)
+    .limit(35)
   if (error) throw error
-  return ((data as MarkedDayRow[] | null) ?? []).map((r) => r.marked_date)
+  const days = ((data as MarkedDayRow[] | null) ?? []).map((r) => r.marked_date)
+  // Dos miembros pueden marcar el mismo día — dedupe para el Set/UI.
+  return [...new Set(days)]
 }
 
-async function fetchStreakRow(
-  familyId: string,
-  userId: string,
-): Promise<UserStreakRow | null> {
+async function fetchStreakRow(familyId: string): Promise<FamilyStreakRow | null> {
   const { data, error } = await supabase
-    .from('user_streaks')
+    .from('family_streaks')
     .select(
       'current_streak, longest_streak, total_days_logged, last_logged_date, freeze_tokens, streak_broken_at',
     )
     .eq('family_id', familyId)
-    .eq('user_id', userId)
     .maybeSingle()
   if (error) throw error
-  return (data as UserStreakRow | null) ?? null
+  return (data as FamilyStreakRow | null) ?? null
 }
 
-// Streak day boundary lives in the device's IANA timezone to match
-// the trigger (`expenses_trigger_advance_streak`), which reads the
-// same value off `profiles.timezone` (synced by `useTimezoneSync` on
-// every authenticated session). Using UTC here misclassified any
-// expense logged in the local evening — the trigger stored the next
-// UTC date but the client was comparing against today-in-UTC,
-// flipping `hasLoggedToday` and the at-risk/broken status off.
+// Streak day boundary lives in the device's IANA timezone. Server-side
+// the trigger (`expenses_trigger_advance_streak`) cuts the day in the
+// FAMILY timezone (`family_local_timezone` = owner's profile tz); a
+// household normally shares the huso, so device tz matches. Using UTC
+// here misclassified any expense logged in the local evening — the
+// trigger stored the next UTC date but the client was comparing
+// against today-in-UTC, flipping `hasLoggedToday` and the
+// at-risk/broken status off.
 function isoDay(d: Date, timeZone: string): string {
   return d.toLocaleDateString('en-CA', { timeZone })
 }
@@ -171,7 +166,8 @@ function resolveLocalTimezone(): string {
 }
 
 /**
- * Aggregates the authoritative `user_streaks` row with a derived
+ * Aggregates the authoritative `family_streaks` row (the streak is the
+ * HOUSEHOLD's — any member's activity advances it) with a derived
  * `weekActivity` series and the at-risk / broken state the UI needs.
  * The state machine only runs on expense insert (via trigger), so the
  * client derives the current-moment status from `last_logged_date`
@@ -183,21 +179,21 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
   error: unknown
 } {
   const expensesQuery = useExpenses(familyId)
-  const streakRowQuery = useQuery<UserStreakRow | null>({
-    queryKey: streakQueryKey(familyId, userId),
+  const streakRowQuery = useQuery<FamilyStreakRow | null>({
+    queryKey: streakQueryKey(familyId),
     enabled: Boolean(familyId && userId),
     // Sin staleTime explícito el default es 0 → cada mount disparaba
     // un refetch en background, anulando el seed de gastos_snapshot.
     // 5 min + invalidaciones en mark/unmark mutations cubren los
     // cambios reales.
     staleTime: 5 * 60_000,
-    queryFn: () => fetchStreakRow(familyId!, userId!),
+    queryFn: () => fetchStreakRow(familyId!),
   })
   const markedDaysQuery = useQuery<string[]>({
-    queryKey: markedDaysQueryKey(familyId, userId),
+    queryKey: markedDaysQueryKey(familyId),
     enabled: Boolean(familyId && userId),
     staleTime: 5 * 60_000,
-    queryFn: () => fetchMarkedDays(familyId!, userId!),
+    queryFn: () => fetchMarkedDays(familyId!),
   })
 
   const data = useMemo<StreakData | null>(() => {
@@ -211,8 +207,9 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
     const yesterdayIso = isoDay(new Date(today.getTime() - 86_400_000), tz)
 
     // weekActivity — last 7 days (index 0 = 6 days ago, 6 = today).
-    // A day counts as "logged" if the user inserted an expense OR
-    // explicitly marked it as a "no spending" day via the streak sheet.
+    // A day counts as "logged" if ANY family member inserted an
+    // expense OR marked it as a "no spending" day — the garden is the
+    // household's, so everyone's activity plants the day's sprout.
     const week = new Array<boolean>(7).fill(false)
     for (let i = 0; i < 7; i++) {
       const offsetDate = new Date(today.getTime() - (6 - i) * 86_400_000)
@@ -222,7 +219,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
       }
     }
     for (const e of expenses) {
-      if (!e.created_by || e.created_by !== userId) continue
+      if (!e.created_by) continue
       const created = new Date(e.created_at)
       const iso = isoDay(created, tz)
       // Find which week column this date belongs to (0 = 6 days ago).
@@ -339,8 +336,8 @@ export function useMarkNoExpenseDay(
       // it too — without this the calendar leaf-dot only updates
       // after a full reload.
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId, userId) }),
-        queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId, userId) }),
+        queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
       ])
     },
@@ -385,8 +382,8 @@ export function useUnmarkNoExpenseDay(
       // it too — without this the calendar leaf-dot only updates
       // after a full reload.
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId, userId) }),
-        queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId, userId) }),
+        queryClient.invalidateQueries({ queryKey: streakQueryKey(familyId) }),
+        queryClient.invalidateQueries({ queryKey: markedDaysQueryKey(familyId) }),
         queryClient.invalidateQueries({ queryKey: homeSnapshotQueryKey(userId) }),
       ])
     },

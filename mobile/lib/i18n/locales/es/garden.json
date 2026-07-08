@@ -1,8 +1,8 @@
 {
   "screen": {
     "title": "Mi jardín",
-    "subtitle": "Un brote por cada día que registras.",
-    "footnote": "Tu jardín crece solo: cada gasto que registras planta el brote del día. ¿No gastaste? Marca el día sin gastos en el calendario y también suma."
+    "subtitle": "Un brote por cada día que registra tu hogar.",
+    "footnote": "El jardín crece solo: cada gasto que registra cualquier miembro del hogar planta el brote del día. ¿Nadie gastó? Marca el día sin gastos en el calendario y también suma."
   },
   "card": {
     "title": "Tu jardín",
@@ -23,7 +23,7 @@
     "unit": "brotes\nseguidos",
     "streakA11y_one": "{{count}} brote seguido",
     "streakA11y_other": "{{count}} brotes seguidos",
-    "sub": "Una semilla por cada día que registras. Los huecos son días que no cargaste, tranquilo: el jardín sigue.",
+    "sub": "Una semilla por cada día que registra tu hogar. Los huecos son días sin registros, tranquilo: el jardín sigue.",
     "statGarden": "JARDÍN",
     "statRecord": "RÉCORD",
     "statSeeds": "SEMILLAS"

@@ -8,21 +8,18 @@ import { notificationQueryKeys } from '@/features/notifications/notification-que
 import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
 
 describe('streakQueryKey', () => {
-  it('normaliza familyId/userId undefined a null', () => {
-    expect(streakQueryKey()).toEqual(['user-streak', null, null])
-    expect(streakQueryKey('fam-1')).toEqual(['user-streak', 'fam-1', null])
-    expect(streakQueryKey(undefined, 'u-1')).toEqual(['user-streak', null, 'u-1'])
-  })
-
-  it('claves con familyId + userId son estables', () => {
-    expect(streakQueryKey('fam-1', 'u-1')).toEqual(['user-streak', 'fam-1', 'u-1'])
+  // Racha FAMILIAR (2026-07-08): keys scopeadas por familia, sin userId,
+  // para que los miembros compartan cache y no fragmente por usuario.
+  it('normaliza familyId undefined a null', () => {
+    expect(streakQueryKey()).toEqual(['family-streak', null])
+    expect(streakQueryKey('fam-1')).toEqual(['family-streak', 'fam-1'])
   })
 
   it('markedDaysQueryKey usa namespace propio (no colisiona con streakQueryKey)', () => {
-    const a = streakQueryKey('fam-1', 'u-1')
-    const b = markedDaysQueryKey('fam-1', 'u-1')
+    const a = streakQueryKey('fam-1')
+    const b = markedDaysQueryKey('fam-1')
     expect(a[0]).not.toBe(b[0])
-    expect(b).toEqual(['streak-marked-days', 'fam-1', 'u-1'])
+    expect(b).toEqual(['streak-marked-days', 'fam-1'])
   })
 })
 

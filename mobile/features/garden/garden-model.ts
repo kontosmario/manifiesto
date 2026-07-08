@@ -37,6 +37,29 @@ export const GARDEN_COLS = 7
 export const GARDEN_ROWS = 5
 export const GARDEN_CELLS = GARDEN_COLS * GARDEN_ROWS // 35
 
+/**
+ * Set de días-con-actividad DEL HOGAR (jardín familiar, 2026-07-08):
+ * el gasto de CUALQUIER miembro ∪ los días marcados sin-gasto plantan
+ * el brote del día para toda la familia. No filtra por autor — ese es
+ * exactamente el punto del cambio.
+ *
+ * `tz` corta el día local con el mismo formato en-CA que usa el resto
+ * del sistema (`isoDay`).
+ */
+export function familyActivityDays(
+  expenses: ReadonlyArray<{ created_at: string; created_by?: string | null }>,
+  markedDaysIso: readonly string[],
+  tz: string,
+): Set<string> {
+  const activity = new Set<string>(markedDaysIso)
+  for (const e of expenses) {
+    activity.add(
+      new Date(e.created_at).toLocaleDateString('en-CA', { timeZone: tz }),
+    )
+  }
+  return activity
+}
+
 // El helecho arraiga a los 7 días (1 semana) y sigue engrosando un poco con la
 // edad (24→32px) hasta ~3½ semanas. Rebase tras bajar el umbral de 14→7.
 export function fernSizeForAge(ageDays: number): number {

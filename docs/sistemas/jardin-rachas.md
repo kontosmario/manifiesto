@@ -1,8 +1,43 @@
 # Sistema de rachas "Mi jardín"
 
 Metáfora de **jardín que crece** sobre el motor de rachas existente. Cada día que
-el usuario registra actividad, "planta un brote"; con el tiempo se forma un jardín.
+el hogar registra actividad, "planta un brote"; con el tiempo se forma un jardín.
 Sin culpa: los días salteados **no marchitan** el jardín, solo no suman.
+
+## Jardín FAMILIAR (2026-07-08, migración `20260708120000`)
+
+La racha es **del hogar**, no del usuario: el gasto o día-marcado de CUALQUIER
+miembro planta el brote del día para toda la familia.
+
+- **Fuente de verdad**: `family_streaks` (una fila por familia). `user_streaks`
+  queda **congelada** como respaldo (sin escritores) para rollback barato.
+- **Día local**: se corta en la tz del DUEÑO (`family_local_timezone`), no en la
+  del que registra — determinística para todo el hogar.
+- **Escudos**: pozo familiar (cap 2, cadencia semanal sin cambios).
+- **Logros `streak_7..90`**: se otorgan a TODOS los miembros no bloqueados al
+  cruzar el umbral (trigger sobre `family_streaks`).
+- **`streak_marked_days`**: conserva autoría per-usuario; la RLS pasa a
+  visibilidad familiar y la derivación une por familia. `mark_no_expense_day`
+  valida contra los gastos de TODO el hogar; `unmark` borra solo la marca propia
+  y recomputa la racha familiar.
+- **`garden_recovered_days`**: unicidad `(family_id, day)`, `user_id` nullable
+  (atribución opcional), RLS familiar.
+- **Ancla del jardín**: `families.created_at` (antes `profiles.created_at`);
+  cliente vía `useFamily().createdAt` con fallback al perfil.
+- **Query keys**: `streakQueryKey(familyId)` / `markedDaysQueryKey(familyId)` /
+  `gardenRecoveredQueryKey(familyId)` — sin userId (los miembros comparten cache).
+- **`gastos_snapshot`**: `streak_row` desde `family_streaks`; marked days del
+  hogar con límite 35 (antes 14 per-usuario).
+- **Crons** (`broken`/`at_risk`/`recovery_nudge`): iteran `family_streaks` en tz
+  familiar y hacen fan-out a todos los miembros (idioma y prefs por miembro).
+  `cron_emit_assistant_dormant` dejó de leer `user_streaks`: deriva la
+  actividad POR USUARIO de sus gastos ∪ sus marcas (el "dormido" sigue siendo
+  del usuario). `family_member_stats` muestra la racha del hogar.
+- **Seed**: replay de la actividad familiar completa + clamp generoso con el
+  máximo entre miembros (`current`, `longest`, `tokens`, `last_logged`) —
+  nadie pierde su racha con el cambio; el efecto unión puede incluso subirla.
+- **Semana perfecta / floración**: sigue exigiendo 7/7 orgánico — ahora entre
+  todos ("cuidar el jardín del hogar").
 
 > Reemplaza la UI de la "llama" (StreakFlameIcon + StreakSheet) por el jardín.
 > El motor de datos NO se reconstruyó — ver [docs canónico de rachas en las migraciones].
