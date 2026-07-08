@@ -389,19 +389,24 @@ begin
       where asd.user_id = v_user_id
     ), '[]'::jsonb)
     ,
+    -- DISTINCT obligatorio con visibilidad familiar: dos miembros pueden
+    -- marcar el MISMO día (PK family+user+date) y el día del hogar es uno.
     'no_spend_days_count_cycle', (
-      select count(*)::int
+      select count(distinct md.marked_date)::int
       from public.streak_marked_days md
       where md.family_id = v_family_id
         and md.marked_date >= v_cycle_start::date
         and md.marked_date <= current_date
     ),
     'no_spend_days_this_cycle', coalesce((
-      select jsonb_agg(md.marked_date::text order by md.marked_date desc)
-      from public.streak_marked_days md
-      where md.family_id = v_family_id
-        and md.marked_date >= v_cycle_start::date
-        and md.marked_date <= current_date
+      select jsonb_agg(day_text order by day_text desc)
+      from (
+        select distinct md.marked_date::text as day_text
+        from public.streak_marked_days md
+        where md.family_id = v_family_id
+          and md.marked_date >= v_cycle_start::date
+          and md.marked_date <= current_date
+      ) days
     ), '[]'::jsonb)
   ) into v_result;
 

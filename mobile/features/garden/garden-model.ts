@@ -38,13 +38,30 @@ export const GARDEN_ROWS = 5
 export const GARDEN_CELLS = GARDEN_COLS * GARDEN_ROWS // 35
 
 /**
+ * Día local `YYYY-MM-DD` en la tz dada — el MISMO corte de día que usa
+ * el server (`family_local_timezone` en el trigger). en-CA + IANA tz;
+ * NO usar UTC (un gasto a la noche local caía en el día siguiente).
+ * Fuente única: antes vivía copiado en use-streak y use-garden.
+ */
+export function isoDay(d: Date, timeZone: string): string {
+  return d.toLocaleDateString('en-CA', { timeZone })
+}
+
+/** Tz IANA del dispositivo, con el fallback del proyecto. */
+export function resolveDeviceTimezone(): string {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    return tz && tz.length > 0 ? tz : 'America/Argentina/Buenos_Aires'
+  } catch {
+    return 'America/Argentina/Buenos_Aires'
+  }
+}
+
+/**
  * Set de días-con-actividad DEL HOGAR (jardín familiar, 2026-07-08):
  * el gasto de CUALQUIER miembro ∪ los días marcados sin-gasto plantan
  * el brote del día para toda la familia. No filtra por autor — ese es
  * exactamente el punto del cambio.
- *
- * `tz` corta el día local con el mismo formato en-CA que usa el resto
- * del sistema (`isoDay`).
  */
 export function familyActivityDays(
   expenses: ReadonlyArray<{ created_at: string; created_by?: string | null }>,
@@ -53,9 +70,7 @@ export function familyActivityDays(
 ): Set<string> {
   const activity = new Set<string>(markedDaysIso)
   for (const e of expenses) {
-    activity.add(
-      new Date(e.created_at).toLocaleDateString('en-CA', { timeZone: tz }),
-    )
+    activity.add(isoDay(new Date(e.created_at), tz))
   }
   return activity
 }

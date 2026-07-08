@@ -4,6 +4,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { computeDailyBudgetSummary } from '@/features/expenses/daily-budget-engine'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamily } from '@/features/family/use-family'
+import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
@@ -24,6 +25,21 @@ export function useDailyBudgetNudges() {
     () => (expensesQuery.data ?? []).filter((expense) => !expense.commitment_id),
     [expensesQuery.data],
   )
+  // Modo INGRESO DINÁMICO: el hogar no tiene sueldo (monthlyIncome = 0)
+  // y sin este mapeo el umbral del 70% nunca dispararía (openingBudget
+  // quedaba en 0). El presupuesto BRUTO del ciclo = ingresos cargados
+  // (+ override real si lo hay), que el engine ya sabe re-anclar a hoy
+  // — mismo modelo que el hero (family-dashboard-model + hero metrics).
+  const isDynamicIncome = dashboard.incomeMode === 'dynamic'
+  const cycleIncomeQuery = useCycleIncomeEventsTotal(
+    isDynamicIncome ? familyId : undefined,
+    formatLocalDateKey(dashboard.monthlyAccounting.start),
+    formatLocalDateKey(dashboard.monthlyAccounting.end),
+  )
+  const cycleExtraIncome = cycleIncomeQuery.data ?? 0
+  const effectiveCycleStartingBalance = isDynamicIncome
+    ? (dashboard.cycleStartingBalanceOverride ?? 0) + cycleExtraIncome
+    : dashboard.cycleStartingBalanceOverride
 
   const summary = useMemo(() => {
     if (!familyId) {
@@ -39,10 +55,10 @@ export function useDailyBudgetNudges() {
       monthlyAccounting: dashboard.monthlyAccounting,
       savingsGoal: dashboard.savingsGoal,
       today: dashboard.todayDate,
-      cycleStartingBalance: dashboard.cycleStartingBalanceOverride,
+      cycleStartingBalance: effectiveCycleStartingBalance,
     })
   }, [
-    dashboard.cycleStartingBalanceOverride,
+    effectiveCycleStartingBalance,
     dashboard.dailyBudgetBufferMode,
     dashboard.dailyBudgetBufferValue,
     dashboard.fixedExpensesMonthlyTotal,

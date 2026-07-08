@@ -151,7 +151,12 @@ export function computeIsSalaryPendingConfirmation(
   config: FinanceCycleConfig,
   today: Date,
   lastConfirmedAt: string | null,
+  incomeMode?: 'fixed' | 'dynamic',
 ): boolean {
+  // Modo dinámico: no hay sueldo que confirmar → nunca pending/freeze.
+  // Vive ACÁ (la fuente única de la condición) para que countdown y
+  // saldo no puedan divergir por gates duplicados en los hooks.
+  if (incomeMode === 'dynamic') return false
   if (config.cycle_type !== 'monthly') return false
   const todayNorm = normalizeToStartOfDay(today)
   const payDate = buildPayDate(

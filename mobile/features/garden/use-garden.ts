@@ -12,6 +12,8 @@ import {
   deriveWeekStrip,
   familyActivityDays,
   gardenFirstActivity,
+  isoDay,
+  resolveDeviceTimezone,
   weeksToShow,
   type GardenCell,
   type WeekClose,
@@ -47,22 +49,6 @@ export interface GardenData {
   firstActivityIso: string | null
 }
 
-// Día local del usuario — DEBE coincidir con el trigger server
-// (`expenses_trigger_advance_streak`, que lee `profiles.timezone`). Mismo
-// helper que use-streak.ts: en-CA + IANA tz resuelta. NO usar UTC.
-function isoDay(d: Date, tz: string): string {
-  return d.toLocaleDateString('en-CA', { timeZone: tz })
-}
-
-function resolveTz(): string {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return tz && tz.length > 0 ? tz : 'America/Argentina/Buenos_Aires'
-  } catch {
-    return 'America/Argentina/Buenos_Aires'
-  }
-}
-
 /**
  * Deriva el estado del jardín (grilla 7×5 + cierre de semana) a partir del
  * motor de rachas existente (`useStreak`) y del historial de gastos
@@ -93,7 +79,7 @@ export function useGarden(
 
   const data = useMemo<GardenData | null>(() => {
     if (!familyId || !userId || !streak.data) return null
-    const tz = resolveTz()
+    const tz = resolveDeviceTimezone()
     const today = new Date()
     const todayIso = isoDay(today, tz)
 

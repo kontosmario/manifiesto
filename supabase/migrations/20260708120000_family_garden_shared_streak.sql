@@ -259,8 +259,17 @@ as $$
 declare
   r record;
   v_tz text;
+  v_prior_longest integer := 0;
 begin
   v_tz := public.family_local_timezone(p_family_id);
+
+  -- `longest_streak` es un récord de VIDA (monotónico). El replay puede
+  -- reconstruir menos que lo vivido: días puenteados por el cron de
+  -- medianoche no dejan fila de actividad, y el seed 2026-07-08 clampeó
+  -- generosamente desde user_streaks. Nunca degradarlo en un recompute.
+  select fs.longest_streak into v_prior_longest
+  from public.family_streaks fs
+  where fs.family_id = p_family_id;
 
   delete from public.family_streaks
   where family_id = p_family_id;
@@ -279,6 +288,14 @@ begin
   loop
     perform public._advance_streak_internal(p_family_id, null, r.event_date);
   end loop;
+
+  if coalesce(v_prior_longest, 0) > 0 then
+    insert into public.family_streaks (family_id, longest_streak)
+    values (p_family_id, v_prior_longest)
+    on conflict (family_id) do update
+      set longest_streak = greatest(public.family_streaks.longest_streak, excluded.longest_streak),
+          updated_at = now();
+  end if;
 end;
 $$;
 
@@ -791,6 +808,12 @@ revoke execute on function public.cron_emit_streak_recovery_nudge() from public,
 -- user_streaks queda congelada; el "dormido" es del USUARIO (no del
 -- hogar), así que se deriva de su propia actividad: sus gastos ∪ sus
 -- días marcados. Copy y gates idénticos a 20260630000000.
+
+-- El cron corre cada hora y hace max(created_at) por miembro: índice
+-- compuesto para que ese max sea un lookup y no un scan de las filas
+-- del usuario (el índice FK existente cubre solo created_by).
+create index if not exists expenses_created_by_created_at_idx
+  on public.expenses (created_by, created_at desc);
 
 create or replace function public.cron_emit_assistant_dormant()
 returns void

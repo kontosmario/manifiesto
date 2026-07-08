@@ -22,8 +22,9 @@ agregando ingresos manuales (`income_events`) en vez de un
 
 ## Qué se suprime en dinámico
 
-- `isSalaryPendingConfirmation` = false siempre (`use-pay-cycle`,
-  `use-monthly-accounting`): sin "¿ya cobraste?", sin freeze del ciclo.
+- `isSalaryPendingConfirmation` = false siempre — el gate vive DENTRO de
+  `computeIsSalaryPendingConfirmation` (param `incomeMode`), la fuente
+  única que comparten `use-pay-cycle` y `use-monthly-accounting`.
 - El prompt de saldo inicial del ciclo no se auto-abre
   (`isCycleStartingBalancePromptPending` = false).
 - `close_monthly_cycle` Guard 2 (sueldo confirmado) **no aplica** — sin
@@ -40,6 +41,10 @@ agregando ingresos manuales (`income_events`) en vez de un
   `/(app)/add-income` (`home:hero.dynamicSetup*`), no el setup de sueldo.
 - **Settings → Hogar**: switch "Ingreso variable" (owner-only) con Alert
   de confirmación (`settings:household.incomeMode*`).
+- **Nudge "Cierra tu día"** (`use-daily-budget-nudges`): en dinámico el
+  engine recibe `cycleStartingBalance = (override ?? 0) + Σ income_events`
+  del ciclo — sin este mapeo el umbral del 70% nunca disparaba
+  (openingBudget quedaba 0 con sueldo 0). En fixed no cambia nada.
 
 ## Snapshot / gotchas
 

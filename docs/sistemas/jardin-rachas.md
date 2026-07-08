@@ -36,6 +36,11 @@ miembro planta el brote del día para toda la familia.
 - **Seed**: replay de la actividad familiar completa + clamp generoso con el
   máximo entre miembros (`current`, `longest`, `tokens`, `last_logged`) —
   nadie pierde su racha con el cambio; el efecto unión puede incluso subirla.
+- **`recompute_family_streak` preserva `longest_streak`**: es récord de VIDA
+  (monotónico); el replay puede reconstruir menos que lo vivido (días
+  puenteados por cron sin fila de actividad, clamp del seed), así que el
+  recompute (path de unmark) nunca lo degrada. `current_streak` sí es replay
+  honesto — desmarcar un día puede bajarla, ese es el punto del unmark.
 - **Semana perfecta / floración**: sigue exigiendo 7/7 orgánico — ahora entre
   todos ("cuidar el jardín del hogar").
 

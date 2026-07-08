@@ -45,10 +45,10 @@ export function usePayCycle(
   const freeze = options?.freeze ?? true
   const financeQuery = useFamilyFinance(familyId)
   const finance = financeQuery.data
-  // Modo dinámico: no hay sueldo que confirmar → nunca pending/freeze.
   // Hoisteado fuera del memo (el compiler no preserva la memo con el
-  // optional-chain adentro).
-  const isDynamicIncome = finance?.income_mode === 'dynamic'
+  // optional-chain adentro). El "modo dinámico → nunca pending" vive en
+  // computeIsSalaryPendingConfirmation (fuente única).
+  const incomeMode = finance?.income_mode
 
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
@@ -62,13 +62,12 @@ export function usePayCycle(
     // types el ciclo activo viene del anchor + length, no del "día de
     // cobro" que se confirma manualmente. Helper compartido con
     // useMonthlyAccounting → countdown y saldo nunca divergen.
-    const isSalaryPendingConfirmation = isDynamicIncome
-      ? false
-      : computeIsSalaryPendingConfirmation(
-          config,
-          today,
-          finance?.last_salary_confirmed_at ?? null,
-        )
+    const isSalaryPendingConfirmation = computeIsSalaryPendingConfirmation(
+      config,
+      today,
+      finance?.last_salary_confirmed_at ?? null,
+      incomeMode,
+    )
 
     const cycle = getCurrentPayCycle(
       today,
@@ -82,7 +81,7 @@ export function usePayCycle(
     finance?.cycle_anchor_date,
     finance?.cycle_length_days,
     finance?.last_salary_confirmed_at,
-    isDynamicIncome,
+    incomeMode,
     freeze,
   ])
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { useExpenses } from '@/features/expenses/use-expenses'
+import { isoDay, resolveDeviceTimezone } from '@/features/garden/garden-model'
 
 // ─────────────────────────────────────────────────────────────
 // Types mirrored from the spec so the UI can import a single place.
@@ -118,18 +119,20 @@ interface MarkedDayRow {
 
 async function fetchMarkedDays(familyId: string): Promise<string[]> {
   // Marcas de TODOS los miembros (el día sin gasto es del hogar). El
-  // límite sube a 35 (14 cuando era per-usuario): la grilla del jardín
-  // cubre hasta 5 semanas y ahora agrega varias autorías.
+  // objetivo son 35 DÍAS distintos (la grilla del jardín cubre 5
+  // semanas), pero PostgREST no expone DISTINCT: como dos miembros
+  // pueden marcar el MISMO día, se piden filas de sobra (35 × 3) y se
+  // deduplica acá. Con menos margen, un hogar que marca en pareja
+  // perdía brotes viejos de la grilla tras el primer refetch.
   const { data, error } = await supabase
     .from('streak_marked_days')
     .select('marked_date')
     .eq('family_id', familyId)
     .order('marked_date', { ascending: false })
-    .limit(35)
+    .limit(105)
   if (error) throw error
   const days = ((data as MarkedDayRow[] | null) ?? []).map((r) => r.marked_date)
-  // Dos miembros pueden marcar el mismo día — dedupe para el Set/UI.
-  return [...new Set(days)]
+  return [...new Set(days)].slice(0, 35)
 }
 
 async function fetchStreakRow(familyId: string): Promise<FamilyStreakRow | null> {
@@ -147,23 +150,8 @@ async function fetchStreakRow(familyId: string): Promise<FamilyStreakRow | null>
 // Streak day boundary lives in the device's IANA timezone. Server-side
 // the trigger (`expenses_trigger_advance_streak`) cuts the day in the
 // FAMILY timezone (`family_local_timezone` = owner's profile tz); a
-// household normally shares the huso, so device tz matches. Using UTC
-// here misclassified any expense logged in the local evening — the
-// trigger stored the next UTC date but the client was comparing
-// against today-in-UTC, flipping `hasLoggedToday` and the
-// at-risk/broken status off.
-function isoDay(d: Date, timeZone: string): string {
-  return d.toLocaleDateString('en-CA', { timeZone })
-}
-
-function resolveLocalTimezone(): string {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-    return tz && tz.length > 0 ? tz : 'America/Argentina/Buenos_Aires'
-  } catch {
-    return 'America/Argentina/Buenos_Aires'
-  }
-}
+// household normally shares the huso, so device tz matches. `isoDay` y
+// `resolveDeviceTimezone` viven en garden-model (fuente única).
 
 /**
  * Aggregates the authoritative `family_streaks` row (the streak is the
@@ -202,7 +190,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
     const expenses = expensesQuery.data ?? []
     const markedDays = new Set(markedDaysQuery.data ?? [])
     const today = new Date()
-    const tz = resolveLocalTimezone()
+    const tz = resolveDeviceTimezone()
     const todayIso = isoDay(today, tz)
     const yesterdayIso = isoDay(new Date(today.getTime() - 86_400_000), tz)
 
