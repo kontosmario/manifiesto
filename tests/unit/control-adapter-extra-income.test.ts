@@ -88,3 +88,46 @@ describe('adapter de Control: ingresos extra del ciclo (auditoría 2026-06-11)',
     expect(negativo.ingresoMes).toBe(1_000_000)
   })
 })
+
+describe('adapter de Control: modo INGRESO DINÁMICO', () => {
+  function buildDynamic(extraIncome: number) {
+    const { finance, payCycle, monthlyAccounting } = fixtures()
+    return buildControlDataFromSnapshot({
+      expenses: [],
+      fixedExpenses: [],
+      finance: { ...finance, monthly_income: 0, income_mode: 'dynamic' },
+      summaries: [],
+      payCycle,
+      monthlyAccounting,
+      extraIncome,
+      now: NOW,
+    })
+  }
+
+  it('el ingreso del ciclo = Σ income_events (sin sueldo base)', () => {
+    expect(buildDynamic(500_000).ingresoMes).toBe(500_000)
+    expect(buildDynamic(0).ingresoMes).toBe(0)
+  })
+
+  it('el cupo reparte sobre los días RESTANTES (paridad con Home), no el mes completo', () => {
+    // Home trata dinámico como override: discrecional / días restantes.
+    // Sin fijos/ahorro/gasto: 500.000 / 20 (no / 30).
+    const d = buildDynamic(500_000)
+    expect(d.cupoDiario).toBeCloseTo(500_000 / 20, 6)
+  })
+
+  it('fixed no cambia de comportamiento (regresión: mes completo)', () => {
+    const { finance, payCycle, monthlyAccounting } = fixtures()
+    const fixed = buildControlDataFromSnapshot({
+      expenses: [],
+      fixedExpenses: [],
+      finance: { ...finance, income_mode: 'fixed' },
+      summaries: [],
+      payCycle,
+      monthlyAccounting,
+      extraIncome: 0,
+      now: NOW,
+    })
+    expect(fixed.cupoDiario).toBeCloseTo(1_000_000 / 30, 6)
+  })
+})

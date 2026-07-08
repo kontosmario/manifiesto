@@ -105,7 +105,8 @@
     "positiveForecastGoal_neutral": "Si sigues así, a fin de mes te sobran {{sobra}}. Una buena: pasa {{proposed}} a \"{{goalTitle}}\" y deja el resto guardado por las dudas.",
     "positiveForecast_loss": "Te van a sobrar {{sobra}} a fin de mes — fáciles de gastar sin querer. Mejor decide ya dónde guardarlos.",
     "positiveForecast_gain": "Buen mes: te sobran {{sobra}}. Buen momento para arrancar una meta de ahorro.",
-    "positiveForecast_neutral": "Si sigues así, a fin de mes te sobran {{sobra}}. Esa plata puede ir a una meta de ahorro o quedar guardada por las dudas."
+    "positiveForecast_neutral": "Si sigues así, a fin de mes te sobran {{sobra}}. Esa plata puede ir a una meta de ahorro o quedar guardada por las dudas.",
+    "fijosRatio_dynamic": "Tus pagos fijos (alquiler, servicios, suscripciones) se llevan una parte muy grande de lo que ingresaste este ciclo: si un ingreso se atrasa, casi no te queda colchón. Bajar el más grande te libera {{excess}} por ciclo."
   },
   "signals": {
     "superStorm": {
@@ -239,7 +240,8 @@
       "cat": "Fijos",
       "title": "Tus pagos fijos pesan mucho",
       "impact": "Bajando alguno: liberas {{excess}}/mes",
-      "explanation": "Cuando tus gastos fijos pasan la mitad del sueldo, te queda muy poco para imprevistos y ahorro."
+      "explanation": "Cuando tus gastos fijos pasan la mitad del sueldo, te queda muy poco para imprevistos y ahorro.",
+      "explanationDynamic": "Compara tus pagos fijos con los ingresos que registraste este ciclo. Cuando pasan la mitad, queda poco margen para el día a día."
     },
     "incomeVolatility": {
       "cat": "Ingreso",
@@ -345,7 +347,14 @@
       "impact": "Lo que puedes gastar hoy: {{cupo}}",
       "explanation": "Cuenta días seguidos en los que el gasto del día se mantuvo bajo control. Ver los días seguidos refuerza el hábito y hace visible el progreso del mes."
     },
-    "fallbackCategory": "Otros"
+    "fallbackCategory": "Otros",
+    "incomeMissingDynamic": {
+      "cat": "Ingresos",
+      "title": "Todavía sin ingresos este ciclo",
+      "body": "Va una buena parte del ciclo y no registraste ingresos. Si ya te entró dinero, cárgalo para que tu cupo diario refleje lo que de verdad tienes.",
+      "impact": "Registrar ingresos",
+      "explanation": "En modo de ingreso variable, tu presupuesto se arma con los ingresos que registras. Sin ingresos cargados, el cupo del día trabaja con $0."
+    }
   },
   "subscriptions": {
     "followup": {

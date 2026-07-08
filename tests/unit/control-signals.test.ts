@@ -331,3 +331,103 @@ describe('control-signals', () => {
     expect(out.some((s) => s.id.startsWith('cat-dominance'))).toBe(true)
   })
 })
+
+describe('control-signals — modo INGRESO DINÁMICO', () => {
+  it('income-missing dinámico dispara pasado el 30% del ciclo sin ingresos', () => {
+    const out = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        ingresoMes: 0,
+        ingresoRecurrente: 0,
+        diasCiclo: 30,
+        diasRestantes: 15, // 15 días transcurridos ≥ ceil(30·0.3)
+      }),
+    )
+    const missing = out.find((s) => s.id === 'income-missing')
+    expect(missing).toBeDefined()
+    expect(missing?.body).not.toMatch(/sueldo|cobro/i)
+  })
+
+  it('income-missing dinámico NO dispara al inicio del ciclo ni con ingresos cargados', () => {
+    const early = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        ingresoMes: 0,
+        ingresoRecurrente: 0,
+        diasCiclo: 30,
+        diasRestantes: 29, // día 1
+      }),
+    )
+    expect(early.find((s) => s.id === 'income-missing')).toBeUndefined()
+
+    const funded = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        ingresoMes: 300_000,
+        ingresoRecurrente: 300_000,
+        diasCiclo: 30,
+        diasRestantes: 15,
+      }),
+    )
+    expect(funded.find((s) => s.id === 'income-missing')).toBeUndefined()
+  })
+
+  it('income-missing dinámico guarda el invariante sin diasCiclo (silencio, no basura)', () => {
+    const out = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        ingresoMes: 0,
+        ingresoRecurrente: 0,
+        // diasCiclo ausente a propósito
+      }),
+    )
+    expect(out.find((s) => s.id === 'income-missing')).toBeUndefined()
+  })
+
+  it('income-volatility dinámico compara contra el histórico de extra_income', () => {
+    const summary = (extra: number, i: number): MonthlySummaryHistory =>
+      ({
+        id: `s-${i}`,
+        period_start: `2026-0${4 + i}-01`,
+        period_end: `2026-0${5 + i}-01`,
+        period_label: `Mes ${i}`,
+        total_variable_spent: 100_000,
+        total_spent: 120_000,
+        expenses_count: 10,
+        monthly_income: 0, // dinámico: sueldo histórico 0 por diseño
+        savings_delta: 0,
+        extra_income: extra,
+        savings_goal_amount: 0,
+        category_breakdown: null,
+        daily_totals: null,
+        delta_vs_previous_percent: null,
+        mood: null,
+        top_expense: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+      }) as any
+    const out = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        // Este ciclo entraron 800k; histórico ~500k → +60% dispara.
+        ingresoRecurrente: 800_000,
+        ingresoMes: 800_000,
+        summaries: [summary(500_000, 1), summary(500_000, 2)],
+      }),
+    )
+    expect(out.find((s) => s.id === 'income-volatility')).toBeDefined()
+  })
+
+  it('fijos-ratio dinámico usa el copy neutral (sin "sueldo")', () => {
+    const out = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        ingresoMes: 500_000,
+        ingresoRecurrente: 500_000,
+        fijosMes: 400_000, // ratio 0.8 → dispara
+      }),
+    )
+    const ratio = out.find((s) => s.id === 'fijos-ratio')
+    expect(ratio).toBeDefined()
+    expect(ratio?.body).not.toMatch(/sueldo/i)
+  })
+})

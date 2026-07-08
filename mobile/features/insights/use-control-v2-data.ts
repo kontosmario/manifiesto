@@ -553,7 +553,15 @@ export function useControlV2Data(
         // ni income_events one-time. Lo consumen `income-missing` (cobro
         // esperado) e `income-volatility` (vs histórico de sueldo) — el override
         // es un ajuste de UN ciclo y no debe entrar en esas comparaciones.
-        ingresoRecurrente: Math.max(0, data.monthlyIncome),
+        // DINÁMICO: no hay sueldo — la referencia de ingreso del ciclo son
+        // los income_events (extraIncome). ÚNICO punto de verdad de esa
+        // referencia para toda la capa de señales.
+        ingresoRecurrente:
+          finance?.income_mode === 'dynamic'
+            ? Math.max(0, extraIncome)
+            : Math.max(0, data.monthlyIncome),
+        incomeMode: finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed',
+        diasCiclo: Math.max(1, monthlyAccounting.days),
         fijosMes: data.fijosMes,
         dismissedHikes,
         baselines,
@@ -583,6 +591,9 @@ export function useControlV2Data(
     data.ingresoMes,
     data.monthlyIncome,
     data.fijosMes,
+    finance?.income_mode,
+    extraIncome,
+    monthlyAccounting.days,
     dismissedHikes,
     baselines,
     forecast,

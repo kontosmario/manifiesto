@@ -105,7 +105,8 @@
     "positiveForecastGoal_neutral": "If you keep this up, at month-end you've got {{sobra}} to spare. A good move: send {{proposed}} to \"{{goalTitle}}\" and keep the rest saved just in case.",
     "positiveForecast_loss": "You'll have {{sobra}} to spare at month-end — easy to spend without noticing. Better decide now where to keep it.",
     "positiveForecast_gain": "Good month: you've got {{sobra}} to spare. Great time to start a savings goal.",
-    "positiveForecast_neutral": "If you keep this up, at month-end you've got {{sobra}} to spare. That money can go to a savings goal or stay put just in case."
+    "positiveForecast_neutral": "If you keep this up, at month-end you've got {{sobra}} to spare. That money can go to a savings goal or stay put just in case.",
+    "fijosRatio_dynamic": "Your fixed payments (rent, utilities, subscriptions) take a very large share of what came in this cycle: if an income runs late, there's almost no cushion left. Lowering the biggest one frees up {{excess}} per cycle."
   },
   "signals": {
     "superStorm": {
@@ -239,7 +240,8 @@
       "cat": "Fixed expenses",
       "title": "Your fixed expenses weigh too much",
       "impact": "Lowering one: you free up {{excess}}/mo",
-      "explanation": "When your fixed expenses pass half your salary, very little is left for unexpected costs and savings."
+      "explanation": "When your fixed expenses pass half your salary, very little is left for unexpected costs and savings.",
+      "explanationDynamic": "Compares your fixed payments against the income you logged this cycle. When they pass half, little margin is left for day-to-day."
     },
     "incomeVolatility": {
       "cat": "Income",
@@ -345,7 +347,14 @@
       "impact": "What you can spend today: {{cupo}}",
       "explanation": "It counts days in a row where the day's spending stayed under control. Seeing the streak reinforces the habit and makes the month's progress visible."
     },
-    "fallbackCategory": "Other"
+    "fallbackCategory": "Other",
+    "incomeMissingDynamic": {
+      "cat": "Income",
+      "title": "No income logged this cycle yet",
+      "body": "A good part of the cycle has passed and no income is logged. If money already came in, log it so your daily allowance reflects what you really have.",
+      "impact": "Log income",
+      "explanation": "In variable income mode, your budget builds from the income you log. With no income logged, the daily allowance works with $0."
+    }
   },
   "subscriptions": {
     "followup": {

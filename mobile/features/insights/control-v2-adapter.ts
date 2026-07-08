@@ -306,6 +306,14 @@ export function buildControlDataFromSnapshot(
       ? storedBalance
       : null
   const hasCycleOverride = cycleStartingBalanceOverride !== null
+  // Modo INGRESO DINÁMICO: sin sueldo base — el ciclo se fondea con
+  // income_events (llegan como `extraIncome`). Para el REPARTO del cupo
+  // se trata como el override (días restantes + resta el variable ya
+  // gastado), espejando a Home (use-home-metrics → computeCycleDisponible
+  // con hasCycleOverride true). Sin esto, Control repartía sobre el mes
+  // completo y su cupo divergía del Home.
+  const isDynamicIncome = finance.income_mode === 'dynamic'
+  const spreadsOverRemainingDays = hasCycleOverride || isDynamicIncome
   // Ingresos extra del ciclo sumados al ingreso efectivo — mismo
   // tratamiento que Home (use-home-metrics): el extra impacta de
   // inmediato en libreMes → cupoDiario → proyección → score.
@@ -317,7 +325,7 @@ export function buildControlDataFromSnapshot(
   // Guard: daysRemaining can arrive non-finite from a malformed window;
   // finiteOr→1 keeps the divisor a valid ≥1 integer so cupoDiario never
   // divides by NaN/Infinity.
-  const cupoDays = hasCycleOverride
+  const cupoDays = spreadsOverRemainingDays
     ? Math.max(1, finiteOr(monthlyAccounting.daysRemaining, 1))
     : Math.max(1, diasMes)
 
@@ -351,7 +359,7 @@ export function buildControlDataFromSnapshot(
       )
     }),
   )
-  const cupoNumerator = hasCycleOverride
+  const cupoNumerator = spreadsOverRemainingDays
     ? Math.max(0, libreMes - variableSpentThisCycle)
     : libreMes
   // Guard: cupoDays is ≥1 finite and cupoNumerator is finite ≥0, so safeDiv

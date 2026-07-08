@@ -102,8 +102,18 @@ interface BuildSignalsArgs {
   /** Ingreso RECURRENTE del ciclo (sueldo, SIN los income_events
    *  one-time como transferencias o sobrantes). Lo usa `income-missing`
    *  para mostrar el cobro esperado REAL: los extras ya llegaron y no
-   *  son el cobro que se está esperando. Fallback a `ingresoMes`. */
+   *  son el cobro que se está esperando. Fallback a `ingresoMes`.
+   *  En modo DINÁMICO el hook lo setea a Σ income_events del ciclo (la
+   *  única referencia de ingreso que existe sin sueldo). */
   ingresoRecurrente?: number
+  /** Régimen de ingreso del hogar. 'dynamic' = sin sueldo fijo: cambia
+   *  la referencia de `income-volatility` (histórico de extra_income),
+   *  activa la rama dinámica de `income-missing` (sin payday) y el
+   *  copy neutral de `fijos-ratio` (sin "sueldo"). */
+  incomeMode?: 'fixed' | 'dynamic'
+  /** Días TOTALES del ciclo de accounting (progreso del ciclo para la
+   *  rama dinámica de `income-missing`). */
+  diasCiclo?: number
   fijosMes: number
   /** Optional 7-day rolling forecast (cognitive layer P1).
    *  When present, the predictive builders (`forecast-*`) consume it. */
@@ -1304,18 +1314,25 @@ function buildFijosRatioHealth(
     emoji: '⚖️',
     cat: i18n.t('insights:signals.fijosRatio.cat'),
     title: i18n.t('insights:signals.fijosRatio.title'),
-    body: fijosRatioBody(framing, {
-      ratioPct: Math.round(ratio * 100),
-      excess: fmt(excess),
-      comprometidoPct: Math.round(ratio * 100),
-    }),
+    body:
+      args.incomeMode === 'dynamic'
+        ? // Dinámico: sin "sueldo" — la referencia son los ingresos del ciclo.
+          i18n.t('insights:copy.fijosRatio_dynamic', { excess: fmt(excess) })
+        : fijosRatioBody(framing, {
+            ratioPct: Math.round(ratio * 100),
+            excess: fmt(excess),
+            comprometidoPct: Math.round(ratio * 100),
+          }),
     impact: i18n.t('insights:signals.fijosRatio.impact', { excess: fmt(excess) }),
     impactRaw: Math.round(excess),
     cta: i18n.t('insights:cta.verFijos'),
     urgency: severity,
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
-    dummyExplanation: i18n.t('insights:signals.fijosRatio.explanation'),
+    dummyExplanation:
+      args.incomeMode === 'dynamic'
+        ? i18n.t('insights:signals.fijosRatio.explanationDynamic')
+        : i18n.t('insights:signals.fijosRatio.explanation'),
     action: { kind: 'navigate', route: '/(app)/(tabs)/fixed-expenses' },
   }
 }
@@ -1329,11 +1346,23 @@ function buildIncomeVolatility(
   // activo, ingresoMes = la caja del ciclo (un ajuste de UN ciclo) → compararla
   // vs el take-home histórico daría un falso "tu ingreso bajó/subió $X".
   // ingresoRecurrente = family_finance.monthly_income (sin override ni extras).
+  // DINÁMICO: la referencia son los income_events — ingresoRecurrente llega
+  // como Σ del ciclo y el histórico sale de `extra_income` de los cierres
+  // (monthly_income histórico es 0 por diseño en dinámico).
+  const isDynamic = args.incomeMode === 'dynamic'
   const income = args.ingresoRecurrente ?? args.ingresoMes
   if (!isFiniteNumber(income) || income <= 0) return null
   const historicalAvg =
-    args.summaries.slice(0, 3).reduce((s, x) => s + x.monthly_income, 0) /
-    Math.min(3, args.summaries.length)
+    args.summaries
+      .slice(0, 3)
+      .reduce(
+        (s, x) =>
+          s +
+          (isDynamic
+            ? finiteOr(Number(x.extra_income ?? 0), 0)
+            : x.monthly_income),
+        0,
+      ) / Math.min(3, args.summaries.length)
   if (!isFiniteNumber(historicalAvg) || historicalAvg <= 0) return null
   const delta = income - historicalAvg
   const pct = (delta / historicalAvg) * 100
@@ -1789,6 +1818,35 @@ function buildSavingsMilestone(
 function buildIncomeMissing(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
+  // Rama DINÁMICA: no hay payday que esperar — el equivalente de "cobro
+  // no confirmado" es "todavía no registraste ingresos este ciclo".
+  // Dispara pasado ~30% del ciclo (mínimo 2 días) sin income_events.
+  // Guard de invariante: sin diasCiclo/diasRestantes finitos, silencio.
+  if (args.incomeMode === 'dynamic') {
+    const total = args.diasCiclo
+    if (!isFiniteNumber(total) || total <= 0) return null
+    if (!isFiniteNumber(args.diasRestantes)) return null
+    const elapsed = Math.max(0, total - args.diasRestantes)
+    if (elapsed < Math.max(2, Math.ceil(total * 0.3))) return null
+    const cycleIncome = finiteOr(args.ingresoRecurrente ?? args.ingresoMes, 0)
+    if (cycleIncome > 0) return null
+    return {
+      id: 'income-missing',
+      emoji: '📭',
+      cat: i18n.t('insights:signals.incomeMissingDynamic.cat'),
+      title: i18n.t('insights:signals.incomeMissingDynamic.title'),
+      body: i18n.t('insights:signals.incomeMissingDynamic.body'),
+      impact: i18n.t('insights:signals.incomeMissingDynamic.impact'),
+      impactRaw: 0,
+      impactScope: 'oneTime',
+      cta: i18n.t('insights:cta.actualizar'),
+      urgency: 'media',
+      confidence: 1.0,
+      dataDays: args.view.detalleDias.length,
+      dummyExplanation: i18n.t('insights:signals.incomeMissingDynamic.explanation'),
+      action: { kind: 'navigate', route: '/(app)/add-income' },
+    }
+  }
   if (!args.paydayPending) return null
   // El "cobro esperado" es el SUELDO recurrente, no el ingreso del ciclo: los
   // income_events one-time (transferencias, sobrantes) ya llegaron y no son lo
