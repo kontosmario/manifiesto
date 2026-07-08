@@ -338,7 +338,12 @@ export function buildControlDataFromSnapshot(
   // Guard: pressureTotal is computed elsewhere; clamp it non-negative
   // finite so a bad fixed-expense amount can't drive libreMes to NaN.
   const fijosMes = nonNegFinite(commitmentSummary.pressureTotal) ?? 0
-  const ahorroMes = nonNegFinite(finance.savings_goal ?? 0) ?? 0
+  // Dinámico: el ahorro mensual por % del sueldo no aplica — defensivo
+  // (espejo del `eff_savings = 0 when dyn` del SQL y del dashboard
+  // model), por si un fixed→dynamic dejó savings_goal stale.
+  const ahorroMes = isDynamicIncome
+    ? 0
+    : (nonNegFinite(finance.savings_goal ?? 0) ?? 0)
   // libreMes is already floored at 0; with the finite inputs above it is
   // guaranteed a finite value in [0, ingresoMes].
   const libreMes = Math.max(0, ingresoMes - fijosMes - ahorroMes)

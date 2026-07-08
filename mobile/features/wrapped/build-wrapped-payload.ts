@@ -44,8 +44,10 @@ export function buildWrappedPayloadFromSummary({
   // Rango display: si el ciclo es calendario (1→1 del mes siguiente)
   // no mostramos rango porque el periodLabel ya alcanza.
   const periodRange = buildPeriodRange(summary.period_start, summary.period_end)
-  // Período CORTO (< 21 días) = ciclo semanal/quincenal del modo
-  // dinámico — el nombre de mes deja de identificar el período.
+  // Período CORTO (< 21 días) = ciclo semanal/quincenal — tanto del
+  // modo dinámico como de sueldos rolling PREEXISTENTES (intencional:
+  // para ellos "Julio 2026" también se repetía 2-4 veces por mes; el
+  // rango es el título honesto en ambos casos).
   const periodDays =
     (Date.parse(summary.period_end) - Date.parse(summary.period_start)) / 86_400_000
   const isShortPeriod = Number.isFinite(periodDays) && periodDays > 0 && periodDays < 21

@@ -516,6 +516,10 @@ export function useControlV2Data(
 
   const demoMode = useAssistantDemoMode()
   const demoFilter = useAssistantDemoFilter()
+  // Hoisteado fuera del memo (el compiler no preserva la memo con el
+  // optional-chain adentro — mismo patrón que use-monthly-accounting).
+  const signalsIncomeMode: 'fixed' | 'dynamic' =
+    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
   const computedSignals = useMemo<ControlAdvisorTask[]>(() => {
     // TESTING flag (Settings → Desarrollo → "Modo demo del asistente").
     // When ON, replace computed signals with a curated fixture
@@ -557,10 +561,10 @@ export function useControlV2Data(
         // los income_events (extraIncome). ÚNICO punto de verdad de esa
         // referencia para toda la capa de señales.
         ingresoRecurrente:
-          finance?.income_mode === 'dynamic'
+          signalsIncomeMode === 'dynamic'
             ? Math.max(0, extraIncome)
             : Math.max(0, data.monthlyIncome),
-        incomeMode: finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed',
+        incomeMode: signalsIncomeMode,
         diasCiclo: Math.max(1, monthlyAccounting.days),
         fijosMes: data.fijosMes,
         dismissedHikes,
@@ -591,7 +595,7 @@ export function useControlV2Data(
     data.ingresoMes,
     data.monthlyIncome,
     data.fijosMes,
-    finance?.income_mode,
+    signalsIncomeMode,
     extraIncome,
     monthlyAccounting.days,
     dismissedHikes,
