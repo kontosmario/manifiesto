@@ -1,13 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import {
-  AchievementIcon,
-  ICON_CORAL,
-  ICON_CORAL_SOFT,
-  ICON_FOREST,
-} from '@/components/achievements/achievement-icon'
 import { AmountCard } from '@/components/home/amount-card'
+import { DynamicIncomeSticker } from '@/components/home/onboarding/dynamic-income-sticker'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ChoicePill } from '@/components/home/onboarding/step-income-contribution'
 import { CycleConfigSection } from '@/components/finance/cycle-config-section'
@@ -78,8 +73,8 @@ export function StepIncome({
       {isDynamic ? (
         <RiseView delay={120}>
           {/* Card explicativa del modo variable — a prueba de todo:
-              ícono SVG propio (moneda que brota, del set de logros,
-              AA sobre crema en ambos temas), 3 pasos concretos y un
+              sticker SVG del owner (moneda con flecha en alza, colores
+              de marca fijos en ambos temas), 3 pasos concretos y un
               cierre que nombra a quién le sirve. Sin side-stripes ni
               emoji-como-ícono (leyes impeccable/ui-ux-pro-max). */}
           <View
@@ -98,13 +93,7 @@ export function StepIncome({
                   { backgroundColor: theme.colors.primarySurface },
                 ]}
               >
-                <AchievementIcon
-                  code="first_cycle_under_budget"
-                  size={34}
-                  stroke={ICON_FOREST}
-                  accent={ICON_CORAL}
-                  accentSoft={ICON_CORAL_SOFT}
-                />
+                <DynamicIncomeSticker size={44} />
               </View>
               <View style={styles.infoHeaderText}>
                 <Text style={[styles.infoTitle, { color: theme.colors.text }]}>
