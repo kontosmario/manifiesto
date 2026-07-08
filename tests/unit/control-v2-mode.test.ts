@@ -66,4 +66,35 @@ describe('classifyControlMode', () => {
       }),
     ).toEqual({ noConfig: true, usingMock: true })
   })
+
+  describe('modo ingreso dinámico (income_mode = dynamic)', () => {
+    it('dinámico con gastos = cuenta configurada (Control/Asistente/Alcancía reales)', () => {
+      // El hogar dinámico tiene monthly_income = 0 POR DISEÑO — sin esta
+      // rama quedaba atrapado para siempre en "Configurá tu sueldo".
+      expect(
+        classifyControlMode({
+          finance: buildFinance({ monthly_income: 0, income_mode: 'dynamic' }),
+          expensesCount: 12,
+        }),
+      ).toEqual({ noConfig: false, usingMock: false })
+    })
+
+    it('dinámico sin gastos aún = configurado pero con señales vacías', () => {
+      expect(
+        classifyControlMode({
+          finance: buildFinance({ monthly_income: 0, income_mode: 'dynamic' }),
+          expensesCount: 0,
+        }),
+      ).toEqual({ noConfig: false, usingMock: true })
+    })
+
+    it('fixed explícito con income 0 sigue siendo noConfig (regresión)', () => {
+      expect(
+        classifyControlMode({
+          finance: buildFinance({ monthly_income: 0, income_mode: 'fixed' }),
+          expensesCount: 5,
+        }),
+      ).toEqual({ noConfig: true, usingMock: true })
+    })
+  })
 })

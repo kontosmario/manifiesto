@@ -501,7 +501,11 @@ as $function$
   res2 as (
     select r.*,
       case when r.ov_down then greatest(1, r.days_remaining)::numeric / greatest(1, r.days) else 1 end as proration,
-      case when r.ov_down then greatest(0, round(r.eff_income * (r.savings_goal_percent / 100))) else r.savings_goal end as eff_savings,
+      -- Dinámico: la config de ahorro mensual NO aplica (defensivo: aunque
+      -- un fixed→dynamic haya dejado savings_goal seteado, no se resta).
+      case when r.dyn then 0
+           when r.ov_down then greatest(0, round(r.eff_income * (r.savings_goal_percent / 100)))
+           else r.savings_goal end as eff_savings,
       r.var_cycle as var_metrics
     from res r
   )
@@ -560,6 +564,22 @@ begin
 
   -- Load finance once (we use it for guard 2 and for context).
   select * into v_finance from public.family_finance where family_id = p_family_id;
+
+  -- Guard 0 (ANTI-FANTASMA, de 20260625040000 — preservado en esta
+  -- redefinición): no cerrar un ciclo que terminó ANTES de que la familia
+  -- existiera. Una cuenta onboardeada mid-ciclo tiene un "ciclo anterior"
+  -- que predata la familia; el cron nocturno lo cerraba con savings_delta
+  -- = sueldo entero → modal de sobrante falso.
+  if not p_force then
+    select created_at into v_family_created from public.families where id = p_family_id;
+    if v_family_created is not null and v_family_created::date >= p_period_end then
+      return jsonb_build_object(
+        'status', 'family_too_new',
+        'family_created', v_family_created,
+        'period_end', p_period_end
+      );
+    end if;
+  end if;
 
   -- Guard 1: cycle must have ended.
   if not p_force and current_date < p_period_end then

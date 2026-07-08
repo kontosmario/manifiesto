@@ -96,6 +96,12 @@ interface FamilyContext {
   familyId: string
   generatedAt: string
   monthlyIncome: number
+  /** 'dynamic' = hogar sin sueldo fijo: se fondea con income_events.
+   *  El prompt instruye a usar cycleIncome como referencia de ingreso
+   *  y a no hablar de "sueldo" en ese caso. */
+  incomeMode: 'fixed' | 'dynamic'
+  /** Ingresos reales registrados en el ciclo (income_events). */
+  cycleIncome: number
   fijosMes: number
   velocity: VelocityRow | null
   monthlySummaries: MonthlySummaryRow[]
@@ -203,6 +209,7 @@ D. TODO número lleva un ancla de la vida real: la diferencia en pesos, cuántos
 E. Decí SIEMPRE si es bueno o malo y QUÉ HACER. El usuario no tiene que adivinar. Terminá en una acción concreta que se entiende sin googlear.
 F. UMBRALES sin número mágico: no digas "lo sano es menos del 50%". Decí la consecuencia: "tus gastos fijos se comen más de la mitad del sueldo, te queda muy poco para el día a día y para guardar".
 G. TONO: si hay un problema, directo y tranquilizador, sin metáforas ("hoy gastaste de más, cuidá los próximos días"). Si hay una buena noticia, ahí sí cálido ("¡vas bárbaro, te sobran $5.000!").
+H. INGRESO VARIABLE: si "incomeMode" es "dynamic", este hogar NO tiene sueldo fijo (monthlyIncome va a ser 0 y es normal, no un problema). Su ingreso real del período es "cycleIncome" (lo que registraron a mano). Usá cycleIncome como referencia de ingreso, nunca digas "sueldo" ni sugieras "configurar tu ingreso"; si cycleIncome es bajo o 0, sugerí registrar los ingresos a medida que entran.
 
 ═══ FORMATO (inquebrantable) ═══
 1. Respondés SOLO con un JSON array válido. Sin texto antes ni después. Sin backticks. Sin \`\`\`json. Solo el array.
@@ -248,10 +255,36 @@ async function loadFamilyContext(
   // Family finance (income + fijos already aggregated? we re-sum fijos below)
   const financeRes = await admin
     .from('family_finance')
-    .select('monthly_income')
+    .select('monthly_income, income_mode')
     .eq('family_id', familyId)
     .maybeSingle()
   const monthlyIncome = Number(financeRes.data?.monthly_income ?? 0)
+  const incomeMode: 'fixed' | 'dynamic' =
+    (financeRes.data as { income_mode?: string } | null)?.income_mode === 'dynamic'
+      ? 'dynamic'
+      : 'fixed'
+
+  // Ingresos reales del ciclo (income_events). En modo dinámico es LA
+  // referencia de ingreso (monthly_income es 0 por diseño); en fixed es
+  // contexto extra (bonos/ventas).
+  let cycleIncome = 0
+  try {
+    const incomeRes = await admin
+      .from('income_events')
+      .select('amount')
+      .eq('family_id', familyId)
+      .gte('event_date', cycleStart)
+      .lt('event_date', cycleEnd)
+    if (!incomeRes.error && incomeRes.data) {
+      cycleIncome = incomeRes.data.reduce(
+        (sum: number, row: { amount: number | string | null }) =>
+          sum + (Number(row.amount) || 0),
+        0,
+      )
+    }
+  } catch (_err) {
+    cycleIncome = 0
+  }
 
   // Velocity snapshot (optional — table may or may not exist)
   let velocity: VelocityRow | null = null
@@ -381,6 +414,8 @@ async function loadFamilyContext(
     familyId,
     generatedAt,
     monthlyIncome: Math.round(monthlyIncome),
+    incomeMode,
+    cycleIncome: Math.round(cycleIncome),
     fijosMes: Math.round(fijosMes),
     velocity,
     monthlySummaries,
@@ -393,6 +428,7 @@ async function loadFamilyContext(
 function hasEnoughData(ctx: FamilyContext): boolean {
   return (
     ctx.monthlyIncome > 0 ||
+    ctx.cycleIncome > 0 ||
     ctx.topCategories.length > 0 ||
     ctx.upcomingFixedExpenses.length > 0 ||
     ctx.activeSavingsGoal !== null

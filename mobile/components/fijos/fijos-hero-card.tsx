@@ -35,6 +35,9 @@ interface FijosHeroCardProps {
   cantidadVencidos?: number
   dineroLibre?: number
   porcentajeSueldo?: number
+  /** false en modo INGRESO DINÁMICO: sin sueldo base, "dinero libre" y
+   *  "% de tu sueldo" no tienen denominador — la fila se oculta. */
+  showIncomeStats?: boolean
   /** Día actual del ciclo (1..cycleDays). Drive del today marker en la
    *  route line ABR → MAY del boarding pass. */
   cycleDayIndex?: number
@@ -73,6 +76,7 @@ function FijosHeroCardImpl({
   cantidadVencidos = 0,
   dineroLibre = 0,
   porcentajeSueldo = 0,
+  showIncomeStats = true,
   cycleDayIndex = 1,
   cycleDays = 30,
   empty = false,
@@ -170,7 +174,7 @@ function FijosHeroCardImpl({
   // después de los hooks (la urgency pulse ya se auto-cancela cuando no
   // hay vencidos) para no romper el orden de hooks.
   if (empty) {
-    return <FijosHeroCardEmpty />
+    return <FijosHeroCardEmpty showIncomeStats={showIncomeStats} />
   }
 
   return (
@@ -342,31 +346,33 @@ function FijosHeroCardImpl({
             />
           </View>
 
-          <View style={styles.bottomRow}>
-            <View>
-              <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
-                {/* "ESTE MES" removido — impeccable rule: redundante con
-                    el eyebrow "GASTOS FIJOS · ABRIL" del header. */}
-                {t('fijos:hero.freeMoney')}
-              </Text>
-              <CountUpText
-                value={dineroLibre}
-                format={(n) => formatMoney(n)}
-                style={[styles.bottomMonto, { color: theme.colors.heroText }]}
-              />
+          {showIncomeStats ? (
+            <View style={styles.bottomRow}>
+              <View>
+                <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
+                  {/* "ESTE MES" removido — impeccable rule: redundante con
+                      el eyebrow "GASTOS FIJOS · ABRIL" del header. */}
+                  {t('fijos:hero.freeMoney')}
+                </Text>
+                <CountUpText
+                  value={dineroLibre}
+                  format={(n) => formatMoney(n)}
+                  style={[styles.bottomMonto, { color: theme.colors.heroText }]}
+                />
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
+                  {t('fijos:hero.ofYourSalary')}
+                </Text>
+                <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>
+                  {porcentajeSueldo}%
+                </Text>
+                <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
+                  {t('fijos:hero.goesToFixed')}
+                </Text>
+              </View>
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
-                {t('fijos:hero.ofYourSalary')}
-              </Text>
-              <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>
-                {porcentajeSueldo}%
-              </Text>
-              <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
-                {t('fijos:hero.goesToFixed')}
-              </Text>
-            </View>
-          </View>
+          ) : null}
         </LinearGradient>
       </Animated.View>
     </RiseView>
@@ -585,7 +591,7 @@ function PaymentSegments({
  * muted sin colorear. Cero datos fabricados. Sin shine ni particles ni
  * urgency pulse — preview inerte.
  */
-function FijosHeroCardEmpty() {
+function FijosHeroCardEmpty({ showIncomeStats = true }: { showIncomeStats?: boolean }) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const muted = 'rgba(242,234,211,0.22)'
@@ -659,23 +665,25 @@ function FijosHeroCardEmpty() {
         />
       </View>
 
-      <View style={styles.bottomRow}>
-        <View>
-          <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
-            {t('fijos:hero.freeMoney')}
-          </Text>
-          <Text style={[styles.bottomMonto, { color: theme.colors.heroText }]}>—</Text>
+      {showIncomeStats ? (
+        <View style={styles.bottomRow}>
+          <View>
+            <Text style={[styles.bottomLabel, { color: theme.colors.heroAccent }]}>
+              {t('fijos:hero.freeMoney')}
+            </Text>
+            <Text style={[styles.bottomMonto, { color: theme.colors.heroText }]}>—</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
+              {t('fijos:hero.ofYourSalary')}
+            </Text>
+            <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>—</Text>
+            <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
+              {t('fijos:hero.goesToFixed')}
+            </Text>
+          </View>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={[styles.bottomPctLabel, { color: theme.colors.heroMuted2 }]}>
-            {t('fijos:hero.ofYourSalary')}
-          </Text>
-          <Text style={[styles.bottomPct, { color: theme.colors.heroMuted }]}>—</Text>
-          <Text style={[styles.bottomPctSub, { color: theme.colors.heroAccent }]}>
-            {t('fijos:hero.goesToFixed')}
-          </Text>
-        </View>
-      </View>
+      ) : null}
     </LinearGradient>
   )
 }

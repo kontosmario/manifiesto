@@ -106,10 +106,11 @@
     "incomeModeLabel": "Variable income",
     "incomeModeHelper": "No fixed salary: your budget builds up from the income you log.",
     "incomeModeConfirmTitle_dynamic": "Switch to variable income?",
-    "incomeModeConfirmBody_dynamic": "Your daily allowance will be calculated from the income you log this cycle, spread across the remaining days. You can switch back to a fixed salary anytime.",
+    "incomeModeConfirmBody_dynamic": "Your daily allowance will be calculated from the income you log this cycle, spread across the remaining days. The monthly salary-% savings is turned off. You can switch back to a fixed salary anytime.",
     "incomeModeConfirmTitle_fixed": "Back to fixed salary?",
     "incomeModeConfirmBody_fixed": "Your daily allowance will be calculated from the household's monthly salary again. Make sure your contribution is set.",
-    "incomeModeConfirmCta": "Confirm"
+    "incomeModeConfirmCta": "Confirm",
+    "incomeModeHelperOn": "On: your budget builds from the income you log. The monthly % savings is turned off."
   },
   "conversion": {
     "rowDisabled": "Off",
@@ -467,7 +468,10 @@
     "presetBalancedSubtitle": "Trim part of your flexible spending to strengthen your monthly reserve.",
     "presetBalancedTitle": "Boosted savings",
     "presetResilientSubtitle": "Prioritizes building cash fast and protects your household's flow more.",
-    "presetResilientTitle": "Accelerated reserve"
+    "presetResilientTitle": "Accelerated reserve",
+    "dynamicTitle": "This home runs on variable income",
+    "dynamicSubtitle": "There's no salary or monthly savings to set up: the budget builds from the income you log from Home, and the daily allowance adjusts on its own. When money comes in, log it and you're set.",
+    "dynamicCta": "Got it"
   },
   "notif": {
     "title": "Notifications",

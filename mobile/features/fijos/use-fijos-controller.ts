@@ -51,6 +51,8 @@ export interface UseFijosControllerResult {
   monthlyIncome: number
   freeAfterFijos: number
   pctOfIncome: number
+  /** 'dynamic' = hogar sin sueldo fijo — el hero oculta dinero libre / % del sueldo. */
+  incomeMode: 'fixed' | 'dynamic'
   today: Date
   cycleStart: Date
   cycleEnd: Date
@@ -262,6 +264,10 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   )
   const pctOfIncome =
     monthlyIncome > 0 ? Math.round((summary.total / monthlyIncome) * 100) : 0
+  // Dinámico: "dinero libre" y "% de tu sueldo" no tienen base (no hay
+  // sueldo) — el hero oculta esa fila.
+  const incomeMode: 'fixed' | 'dynamic' =
+    financeQuery.data?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
 
   const cycleType = useMemo(
     () => financeToCycleConfig(financeQuery.data).cycle_type,
@@ -288,6 +294,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     monthlyIncome,
     freeAfterFijos,
     pctOfIncome,
+    incomeMode,
     today,
     cycleStart: cycle.start,
     cycleEnd: cycle.end,

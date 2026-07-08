@@ -117,6 +117,14 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
     )
   }
 
+  // Hogar en modo INGRESO DINÁMICO: el wizard entero (sueldo → % de
+  // ahorro → resumen) no aplica — no hay sueldo que declarar ni ahorro
+  // por % que configurar, y completarlo re-activaría ambos. Se explica
+  // el modo y se sigue de largo.
+  if (financeQuery.data?.income_mode === 'dynamic') {
+    return <HouseholdSetupDynamicNotice isInitialFlow={isInitialFlow} />
+  }
+
   return (
     <HouseholdSetupWizardContent
       familyId={familyId}
@@ -124,6 +132,30 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
       isInitialFlow={isInitialFlow}
       key={financeSeedKey}
     />
+  )
+}
+
+/** Aviso para hogares dinámicos: explica el modo y saca al usuario del
+ *  wizard de sueldo/ahorro sin dejarlo pisar la config. */
+function HouseholdSetupDynamicNotice({ isInitialFlow }: { isInitialFlow: boolean }) {
+  const router = useRouter()
+  const { t } = useTranslation()
+  return (
+    <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
+      <BrandedPanel>
+        <SectionHeader
+          subtitle={t('settings:householdSetup.dynamicSubtitle')}
+          title={t('settings:householdSetup.dynamicTitle')}
+        />
+        <AppButton
+          label={t('settings:householdSetup.dynamicCta')}
+          onPress={() => {
+            router.replace(isInitialFlow ? '/(app)/(tabs)/home' : '/(app)/settings')
+          }}
+          variant="primary"
+        />
+      </BrandedPanel>
+    </Screen>
   )
 }
 

@@ -1,5 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { MaterialIcons } from '@expo/vector-icons'
+import {
+  AchievementIcon,
+  ICON_CORAL,
+  ICON_CORAL_SOFT,
+  ICON_FOREST,
+} from '@/components/achievements/achievement-icon'
 import { AmountCard } from '@/components/home/amount-card'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { ChoicePill } from '@/components/home/onboarding/step-income-contribution'
@@ -8,6 +15,10 @@ import { parsePrice } from '@/utils/money'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
+
+// Íconos de los 3 pasos de la card del modo variable (mismo set
+// MaterialIcons del resto del onboarding, uno por fila).
+const DYNAMIC_ROW_ICONS = ['add-circle-outline', 'bolt', 'eco'] as const
 
 interface StepIncomeProps {
   monthlyIncomeRaw: string
@@ -66,6 +77,11 @@ export function StepIncome({
 
       {isDynamic ? (
         <RiseView delay={120}>
+          {/* Card explicativa del modo variable — a prueba de todo:
+              ícono SVG propio (moneda que brota, del set de logros,
+              AA sobre crema en ambos temas), 3 pasos concretos y un
+              cierre que nombra a quién le sirve. Sin side-stripes ni
+              emoji-como-ícono (leyes impeccable/ui-ux-pro-max). */}
           <View
             style={[
               styles.infoCard,
@@ -75,11 +91,47 @@ export function StepIncome({
               },
             ]}
           >
-            <Text style={[styles.infoTitle, { color: theme.colors.text }]}>
-              {t('onboarding:income.dynamicInfoTitle')}
-            </Text>
-            <Text style={[styles.infoText, { color: theme.colors.textMuted }]}>
-              {t('onboarding:income.dynamicInfoBody')}
+            <View style={styles.infoHeader}>
+              <View
+                style={[
+                  styles.infoIconDisc,
+                  { backgroundColor: theme.colors.primarySurface },
+                ]}
+              >
+                <AchievementIcon
+                  code="first_cycle_under_budget"
+                  size={34}
+                  stroke={ICON_FOREST}
+                  accent={ICON_CORAL}
+                  accentSoft={ICON_CORAL_SOFT}
+                />
+              </View>
+              <View style={styles.infoHeaderText}>
+                <Text style={[styles.infoTitle, { color: theme.colors.text }]}>
+                  {t('onboarding:income.dynamicCard.title')}
+                </Text>
+                <Text style={[styles.infoKicker, { color: theme.colors.textMuted }]}>
+                  {t('onboarding:income.dynamicCard.kicker')}
+                </Text>
+              </View>
+            </View>
+
+            {(['row1', 'row2', 'row3'] as const).map((rowKey, index) => (
+              <View key={rowKey} style={styles.infoRow}>
+                <MaterialIcons
+                  name={DYNAMIC_ROW_ICONS[index]}
+                  size={18}
+                  color={theme.colors.primary}
+                  style={styles.infoRowIcon}
+                />
+                <Text style={[styles.infoText, { color: theme.colors.textMuted }]}>
+                  {t(`onboarding:income.dynamicCard.${rowKey}`)}
+                </Text>
+              </View>
+            ))}
+
+            <Text style={[styles.infoFooter, { color: theme.colors.textMuted }]}>
+              {t('onboarding:income.dynamicCard.footer')}
             </Text>
           </View>
         </RiseView>
@@ -120,11 +172,24 @@ const styles = StyleSheet.create({
   dayEyebrow: { marginBottom: 8 },
   hint: { marginTop: 10, fontSize: 12 },
   infoCard: {
-    padding: 14,
+    padding: 16,
     borderRadius: radii.md,
     borderWidth: 1,
-    gap: 6,
+    gap: 12,
   },
-  infoTitle: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
-  infoText: { fontSize: 13, lineHeight: 18 },
+  infoHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  infoIconDisc: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoHeaderText: { flex: 1, gap: 2 },
+  infoTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+  infoKicker: { fontSize: 12, lineHeight: 16 },
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  infoRowIcon: { marginTop: 1 },
+  infoText: { flex: 1, fontSize: 13, lineHeight: 19 },
+  infoFooter: { fontSize: 12, lineHeight: 16, fontStyle: 'italic' },
 })

@@ -216,7 +216,11 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
       setIsRefreshing(false)
     }
   }, [snapshot])
-  const missingIncome = (financeQuery.data?.monthly_income ?? 0) <= 0
+  // Dinámico: no hay sueldo que "falte" — el hogar se fondea con
+  // income_events (mismo criterio que classifyControlMode).
+  const missingIncome =
+    (financeQuery.data?.monthly_income ?? 0) <= 0 &&
+    financeQuery.data?.income_mode !== 'dynamic'
   const missingExpenses = (expensesQuery.data ?? []).length === 0
 
   // ── Daily-goal ("Mi meta diaria") wiring ────────────────────────

@@ -36,8 +36,14 @@ export interface ControlMode {
 export function classifyControlMode(
   input: ClassifyControlModeInput,
 ): ControlMode {
+  // Ingreso "configurado" = sueldo cargado O modo DINÁMICO (sin sueldo
+  // fijo; el ciclo se fondea con income_events). Sin esta rama, un
+  // hogar dinámico quedaba atrapado para siempre en el empty-state
+  // "Configurá tu sueldo" de Control/Asistente/Alcancía.
   const hasIncome = Boolean(
-    input.finance && (input.finance.monthly_income ?? 0) > 0,
+    input.finance &&
+      ((input.finance.monthly_income ?? 0) > 0 ||
+        input.finance.income_mode === 'dynamic'),
   )
   const hasExpenses = input.expensesCount > 0
   return {

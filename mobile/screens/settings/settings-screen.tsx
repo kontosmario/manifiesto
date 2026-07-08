@@ -544,8 +544,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
   // Régimen de ingreso (fijo ↔ variable). Cambiarlo altera cómo se
   // calcula el cupo diario, así que se confirma con Alert antes de
-  // persistir. `income_mode` viaja explícito; el resto del snapshot se
-  // preserva tal cual.
+  // persistir. Al pasar a dinámico se APAGA el ahorro mensual por %
+  // (no tiene base sin sueldo); al volver a fijo el usuario reconfigura
+  // sueldo y ahorro desde las filas que reaparecen.
+  const isDynamicIncomeMode = dashboard.incomeMode === 'dynamic'
   const handleToggleDynamicIncome = useCallback(
     (value: boolean) => {
       const nextMode = value ? 'dynamic' : 'fixed'
@@ -558,7 +560,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
             text: t('settings:household.incomeModeConfirmCta'),
             onPress: () =>
               saveFinanceSnapshot(
-                { ...financeSnapshot, incomeMode: nextMode },
+                nextMode === 'dynamic'
+                  ? {
+                      ...financeSnapshot,
+                      incomeMode: nextMode,
+                      savingsGoal: 0,
+                      savingsGoalPercent: 0,
+                    }
+                  : { ...financeSnapshot, incomeMode: nextMode },
                 () => {},
               ),
           },
@@ -1164,29 +1173,41 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 }
                 title={isSolo ? t('settings:household.titleSolo') : t('settings:household.title')}
               >
-                <SettingsRow
-                  helper={isSolo ? undefined : householdTotalSubtitle}
-                  icon="attach-money"
-                  label={isSolo ? t('settings:household.monthlyIncome') : t('settings:household.myContribution')}
-                  onPress={() => setIncomeSheetOpen(true)}
-                  value={myContributionValue}
-                />
+                {/* En modo INGRESO DINÁMICO no hay sueldo fijo: se ocultan
+                    las filas de sueldo/contribución, día de cobro y % de
+                    ahorro (no tienen base). Los ingresos se cargan desde
+                    Home → Agregar ingreso. */}
+                {!isDynamicIncomeMode ? (
+                  <SettingsRow
+                    helper={isSolo ? undefined : householdTotalSubtitle}
+                    icon="attach-money"
+                    label={isSolo ? t('settings:household.monthlyIncome') : t('settings:household.myContribution')}
+                    onPress={() => setIncomeSheetOpen(true)}
+                    value={myContributionValue}
+                  />
+                ) : null}
                 <SettingsSwitchRow
                   disabled={!isOwner}
-                  helper={t('settings:household.incomeModeHelper')}
+                  helper={
+                    isDynamicIncomeMode
+                      ? t('settings:household.incomeModeHelperOn')
+                      : t('settings:household.incomeModeHelper')
+                  }
                   icon="auto-graph"
                   label={t('settings:household.incomeModeLabel')}
                   onValueChange={handleToggleDynamicIncome}
-                  value={dashboard.incomeMode === 'dynamic'}
+                  value={isDynamicIncomeMode}
                 />
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
-                  icon="autorenew"
-                  label={t('settings:household.payCycle')}
-                  onPress={() => setCycleConfigSheetOpen(true)}
-                  value={cycleConfigValue}
-                />
+                {!isDynamicIncomeMode ? (
+                  <SettingsRow
+                    disabled={!isOwner}
+                    disabledHint={DISABLED_HINT}
+                    icon="autorenew"
+                    label={t('settings:household.payCycle')}
+                    onPress={() => setCycleConfigSheetOpen(true)}
+                    value={cycleConfigValue}
+                  />
+                ) : null}
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
@@ -1196,14 +1217,16 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   onPress={() => setConversionSheetOpen(true)}
                   value={conversionRowValue}
                 />
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
-                  icon="savings"
-                  label={t('settings:household.savingsPercent')}
-                  onPress={() => setSavingsSheetOpen(true)}
-                  value={savingsPercentValue}
-                />
+                {!isDynamicIncomeMode ? (
+                  <SettingsRow
+                    disabled={!isOwner}
+                    disabledHint={DISABLED_HINT}
+                    icon="savings"
+                    label={t('settings:household.savingsPercent')}
+                    onPress={() => setSavingsSheetOpen(true)}
+                    value={savingsPercentValue}
+                  />
+                ) : null}
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}

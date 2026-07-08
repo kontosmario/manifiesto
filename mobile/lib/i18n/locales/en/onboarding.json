@@ -142,8 +142,14 @@
     "cycleHint": "You can always edit it from Settings.",
     "modeFixed": "Fixed salary",
     "modeDynamic": "Variable income",
-    "dynamicInfoTitle": "Your budget builds up as money comes in",
-    "dynamicInfoBody": "No fixed salary needed: whenever money comes in, log it as income and your balance and daily allowance update instantly. Ideal for freelancers, sales or irregular income."
+    "dynamicCard": {
+      "title": "No fixed salary? No problem",
+      "kicker": "Your budget builds up from what comes in.",
+      "row1": "When money comes in, log it as income with one tap from Home.",
+      "row2": "Your balance and daily allowance update instantly, based on what you really have.",
+      "row3": "Days without income? That's fine: we spread what's left across the remaining days.",
+      "footer": "Ideal for freelance work, sales, tips or income that comes and goes."
+    }
   },
   "incomeContribution": {
     "title": "Do you contribute to the household income?",
@@ -178,7 +184,9 @@
     "monthsChip_one": "{{count}} month",
     "monthsChip_other": "{{count}} months",
     "monthsA11y_one": "{{count}} month",
-    "monthsA11y_other": "{{count}} months"
+    "monthsA11y_other": "{{count}} months",
+    "titleDynamic": "A goal to get started?",
+    "subcopyDynamic": "It's optional. Since your income is variable, we don't set aside a fixed % each month: you decide how much to add to your goal when money comes in."
   },
   "success": {
     "eyebrow": "You're in Manifiesto",

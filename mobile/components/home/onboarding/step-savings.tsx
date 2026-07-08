@@ -20,6 +20,10 @@ import { useAppTheme } from '@/theme/theme-provider'
 
 interface StepSavingsProps {
   monthlyIncome: number
+  /** 'dynamic' = sin sueldo fijo: el ahorro mensual por % no tiene base
+   *  y la card de porcentaje se oculta — queda solo la primera meta
+   *  (opcional), que es por monto y no depende del sueldo. */
+  incomeMode?: 'fixed' | 'dynamic'
   savingsGoalPercent: number
   createFirstGoal: boolean
   firstGoalTitle: string
@@ -45,6 +49,7 @@ const PERCENT_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 40] as const
 
 export function StepSavings({
   monthlyIncome,
+  incomeMode = 'fixed',
   savingsGoalPercent,
   createFirstGoal,
   firstGoalTitle,
@@ -65,18 +70,22 @@ export function StepSavings({
   const targetAmount = monthlyIncome * (savingsGoalPercent / 100)
   const parsedGoal = parsePrice(firstGoalTargetRaw)
   const goalAmount = Number.isFinite(parsedGoal) && parsedGoal > 0 ? parsedGoal : 0
+  // Dinámico: la config de ahorro mensual (% del sueldo) no existe —
+  // este paso queda como "tu primera meta" solamente.
+  const isDynamic = incomeMode === 'dynamic'
 
   return (
     <View style={styles.stack}>
       <RiseView>
         <Text style={[styles.title, { color: theme.colors.text }]}>
-          {t('onboarding:savings.title')}
+          {isDynamic ? t('onboarding:savings.titleDynamic') : t('onboarding:savings.title')}
         </Text>
         <Text style={[styles.subcopy, { color: theme.colors.textMuted }]}>
-          {t('onboarding:savings.subcopy')}
+          {isDynamic ? t('onboarding:savings.subcopyDynamic') : t('onboarding:savings.subcopy')}
         </Text>
       </RiseView>
 
+      {isDynamic ? null : (
       <RiseView delay={80}>
         <View
           style={[
@@ -134,8 +143,9 @@ export function StepSavings({
           )}
         </View>
       </RiseView>
+      )}
 
-      <RiseView delay={140}>
+      <RiseView delay={isDynamic ? 80 : 140}>
         <Pressable
           onPress={() => {
             void triggerHaptic('selection')

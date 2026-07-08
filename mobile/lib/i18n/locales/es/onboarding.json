@@ -142,8 +142,14 @@
     "cycleHint": "Siempre puedes editarlo desde Ajustes.",
     "modeFixed": "Sueldo fijo",
     "modeDynamic": "Ingreso variable",
-    "dynamicInfoTitle": "Tu presupuesto se arma con lo que ingresas",
-    "dynamicInfoBody": "No necesitas un sueldo fijo: cada vez que te entre dinero, lo registras como ingreso y tu saldo y tu cupo diario se actualizan al instante. Ideal para freelancers, ventas o ingresos irregulares."
+    "dynamicCard": {
+      "title": "Sin sueldo fijo, sin problema",
+      "kicker": "Tu presupuesto se arma con lo que va entrando.",
+      "row1": "Cuando te entre dinero, lo cargas como ingreso con un toque desde Home.",
+      "row2": "Tu saldo y tu cupo del día se actualizan al instante, con lo que de verdad tienes.",
+      "row3": "¿Días sin ingresos? No pasa nada: repartimos lo que queda entre los días que faltan.",
+      "footer": "Ideal para freelance, ventas, propinas o ingresos que van y vienen."
+    }
   },
   "incomeContribution": {
     "title": "¿Aportas al ingreso del hogar?",
@@ -178,7 +184,9 @@
     "monthsChip_one": "{{count}} mes",
     "monthsChip_other": "{{count}} meses",
     "monthsA11y_one": "{{count}} mes",
-    "monthsA11y_other": "{{count}} meses"
+    "monthsA11y_other": "{{count}} meses",
+    "titleDynamic": "¿Una meta para arrancar?",
+    "subcopyDynamic": "Es opcional. Como tu ingreso es variable, no apartamos un % fijo cada mes: tú decides cuánto sumar a tu meta cuando entra dinero."
   },
   "success": {
     "eyebrow": "Ya estás en Manifiesto",

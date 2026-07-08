@@ -245,11 +245,21 @@ export function HomeDashboard({
   // Ciclo en TIEMPO REAL (freeze:false) — solo para las OBLIGACIONES
   // (el próximo fijo a vencer). El saldo sigue usando `payCycle` frozen.
   const { cycle: realCycle } = usePayCycle(familyId, { freeze: false })
+  // Dinámico: no existe día de cobro — el pill de payday del FamilyStrip
+  // se oculta (days=null → PaydayPillV2 devuelve null) y nunca hay
+  // "¿Cobraste?" pendiente.
+  const isDynamicIncome = dashboard.incomeMode === 'dynamic'
   const pending = useMemo(
-    () => isPaydayPending({ cycle: payCycle, lastConfirmedAt }, today),
-    [payCycle, lastConfirmedAt, today],
+    () =>
+      isDynamicIncome
+        ? false
+        : isPaydayPending({ cycle: payCycle, lastConfirmedAt }, today),
+    [isDynamicIncome, payCycle, lastConfirmedAt, today],
   )
-  const days = useMemo(() => daysUntilPayday(payCycle, today), [payCycle, today])
+  const days = useMemo(
+    () => (isDynamicIncome ? null : daysUntilPayday(payCycle, today)),
+    [isDynamicIncome, payCycle, today],
+  )
   const cycle = useMemo(() => getPaydayCycle(payCycle, today), [payCycle, today])
   void cycle
 
@@ -915,13 +925,18 @@ export function HomeDashboard({
 
   const savingsChip = useMemo(
     () =>
-      computeSavingsHeroChip({
-        savingsGoal: dashboard.savingsGoal,
-        savingsRemaining: dashboard.savingsRemaining,
-        savingsGoalPercent: dashboard.savingsGoalPercent,
-        incomeConfigured: homeMetrics.hero.incomeConfigured,
-      }),
+      // Dinámico: el ahorro mensual por % del sueldo no existe — gate
+      // explícito (no depender de que savings_goal esté en 0).
+      isDynamicIncome
+        ? null
+        : computeSavingsHeroChip({
+            savingsGoal: dashboard.savingsGoal,
+            savingsRemaining: dashboard.savingsRemaining,
+            savingsGoalPercent: dashboard.savingsGoalPercent,
+            incomeConfigured: homeMetrics.hero.incomeConfigured,
+          }),
     [
+      isDynamicIncome,
       dashboard.savingsGoal,
       dashboard.savingsRemaining,
       dashboard.savingsGoalPercent,

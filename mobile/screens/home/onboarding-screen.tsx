@@ -370,7 +370,9 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         dailyBudgetNudgesEnabled: existingFinance?.daily_budget_nudges_enabled ?? true,
         monthlyIncome: isDynamicIncome ? 0 : monthlyIncome,
         savingsGoal: 0, // derived by the model from percent × income.
-        savingsGoalPercent: state.savingsGoalPercent,
+        // Dinámico: el ahorro por % del sueldo no aplica (el paso 5 ni
+        // lo ofrece) — persistir 0 evita que un % default quede vivo.
+        savingsGoalPercent: isDynamicIncome ? 0 : state.savingsGoalPercent,
         usdExchangeRate: existingFinance?.usd_exchange_rate ?? 1000,
         incomeMode: state.incomeMode,
         salaryPaymentDay:
@@ -865,6 +867,7 @@ function renderStep(
       return (
         <StepSavings
           monthlyIncome={ctx.monthlyIncome}
+          incomeMode={state.incomeMode}
           savingsGoalPercent={state.savingsGoalPercent}
           createFirstGoal={state.createFirstGoal}
           firstGoalTitle={state.firstGoalTitle}

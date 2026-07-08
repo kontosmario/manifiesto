@@ -201,6 +201,23 @@ describe('buildFamilyDashboardSnapshot', () => {
       expect(snapshot.effectiveCycleIncome).toBe(0)
     })
 
+    it('ignora un savings_goal stale (el ahorro por % no aplica en dinámico)', () => {
+      // Un fixed→dynamic puede dejar savings_goal > 0 en DB; el modelo
+      // lo neutraliza (espejo del `eff_savings = 0 when dyn` del SQL).
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({
+          monthly_income: 0,
+          income_mode: 'dynamic',
+          savings_goal: 50_000,
+          savings_goal_percent: 20,
+        }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.savingsGoal).toBe(0)
+    })
+
     it('NO auto-abre el prompt de saldo inicial del ciclo', () => {
       const snapshot = buildFamilyDashboardSnapshot({
         expenses: [],

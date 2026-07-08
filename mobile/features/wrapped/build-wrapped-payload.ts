@@ -80,7 +80,13 @@ export function buildWrappedPayloadFromSummary({
     periodLabel: summary.period_label,
     periodRange,
     totalSpent: Number(summary.total_spent ?? 0),
-    monthlyIncome: Number(summary.monthly_income ?? 0),
+    // "Tienes $X para administrar" (closing) = TODO lo que entró al
+    // ciclo: sueldo base + income_events. Con solo monthly_income, un
+    // hogar de INGRESO DINÁMICO (sueldo 0 por diseño) veía "$0 para
+    // administrar" — y en fixed los extras también son plata que entró.
+    // Mismo criterio que el veredicto (computeCycleSurplusSigned).
+    monthlyIncome:
+      Number(summary.monthly_income ?? 0) + Number(summary.extra_income ?? 0),
     // El "veredicto" (2da escena) muestra el saldo del ciclo. Usamos el
     // sobrante REAL con signo = (sueldo + income extra del ciclo) − gasto −
     // ahorro comprometido, NO el `savings_delta` del server (= max(0, sueldo −

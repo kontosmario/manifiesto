@@ -106,10 +106,11 @@
     "incomeModeLabel": "Ingreso variable",
     "incomeModeHelper": "Sin sueldo fijo: tu presupuesto se arma con los ingresos que registras.",
     "incomeModeConfirmTitle_dynamic": "¿Pasar a ingreso variable?",
-    "incomeModeConfirmBody_dynamic": "Tu cupo diario se calculará con los ingresos que registres en el ciclo, repartidos en los días que quedan. Puedes volver a sueldo fijo cuando quieras.",
+    "incomeModeConfirmBody_dynamic": "Tu cupo diario se calculará con los ingresos que registres en el ciclo, repartidos en los días que quedan. El ahorro mensual por % del sueldo se desactiva. Puedes volver a sueldo fijo cuando quieras.",
     "incomeModeConfirmTitle_fixed": "¿Volver a sueldo fijo?",
     "incomeModeConfirmBody_fixed": "Tu cupo diario volverá a calcularse con el sueldo mensual del hogar. Revisa que tu contribución esté cargada.",
-    "incomeModeConfirmCta": "Confirmar"
+    "incomeModeConfirmCta": "Confirmar",
+    "incomeModeHelperOn": "Activo: tu presupuesto se arma con los ingresos que registras. El ahorro mensual por % queda desactivado."
   },
   "conversion": {
     "rowDisabled": "Desactivada",
@@ -467,7 +468,10 @@
     "presetBalancedSubtitle": "Recorta parte del gasto flexible para fortalecer la reserva mensual.",
     "presetBalancedTitle": "Ahorro reforzado",
     "presetResilientSubtitle": "Prioriza construir caja rapido y protege mas el flujo del hogar.",
-    "presetResilientTitle": "Reserva acelerada"
+    "presetResilientTitle": "Reserva acelerada",
+    "dynamicTitle": "Este hogar usa ingreso variable",
+    "dynamicSubtitle": "No hay sueldo ni ahorro mensual que configurar: el presupuesto se arma con los ingresos que registran desde Home, y el cupo del día se ajusta solo. Cuando entre dinero, cárgalo y listo.",
+    "dynamicCta": "Entendido"
   },
   "notif": {
     "title": "Notificaciones",

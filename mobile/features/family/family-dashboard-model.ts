@@ -170,7 +170,10 @@ export function buildFamilyDashboardSnapshot({
   const incomeMode: 'fixed' | 'dynamic' =
     finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
   const isDynamicIncome = incomeMode === 'dynamic'
-  const savingsGoal = finance?.savings_goal ?? 0
+  // Dinámico: el ahorro mensual por % del sueldo NO aplica — defensivo
+  // (espeja `eff_savings = 0 when dyn` del SQL cycle_disponible), por si
+  // un fixed→dynamic dejó un savings_goal stale en DB.
+  const savingsGoal = isDynamicIncome ? 0 : (finance?.savings_goal ?? 0)
   const savingsGoalPercent =
     typeof finance?.savings_goal_percent === 'number'
       ? finance.savings_goal_percent
