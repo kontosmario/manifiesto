@@ -18,6 +18,19 @@ export const TERMS_OF_SERVICE_URL = 'https://manifiestoapp.com/terms/'
 
 export const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
 
+/** App Store Connect app id (mismo `ascAppId` de eas.json). */
+export const APP_STORE_ID = '6776033487'
+
+/** Página del producto en App Store. */
+export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`
+
+/**
+ * Deep link al compositor de reseña de App Store — fallback del prompt
+ * nativo (`StoreReview.requestReview`), que iOS racionea (~3/año) y
+ * puede no mostrarse. El deep link SIEMPRE abre algo.
+ */
+export const APP_STORE_REVIEW_URL = `${APP_STORE_URL}?action=write-review`
+
 /**
  * Construye el `mailto:` con subject + body pre-poblados para
  * que el usuario llegue al inbox con contexto mínimo de triage

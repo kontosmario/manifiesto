@@ -965,5 +965,11 @@
     "importPreviewLabel": "Vista previa: wizard de importación",
     "demoFilterFooter": "Filtra las tarjetas demo por tipo de acción para probar cada bucket por separado.",
     "filterAction": "Acción"
+  },
+  "rate": {
+    "rowLabel": "Calificar Manifiesto",
+    "helper": "Si la app te está sirviendo, tu reseña en App Store nos ayuda muchísimo.",
+    "errorTitle": "No pudimos abrir App Store",
+    "errorBody": "Intenta de nuevo en un rato, o busca Manifiesto en App Store para dejar tu reseña."
   }
 }

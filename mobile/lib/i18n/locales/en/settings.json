@@ -965,5 +965,11 @@
     "importPreviewLabel": "Preview: import wizard",
     "demoFilterFooter": "Filter the demo cards by action type to test each bucket separately.",
     "filterAction": "Action"
+  },
+  "rate": {
+    "rowLabel": "Rate Manifiesto",
+    "helper": "If the app is helping you, your App Store review helps us a lot.",
+    "errorTitle": "Couldn't open the App Store",
+    "errorBody": "Try again in a bit, or search for Manifiesto on the App Store to leave your review."
   }
 }

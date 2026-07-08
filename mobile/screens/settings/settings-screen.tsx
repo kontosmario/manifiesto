@@ -6,7 +6,8 @@ import {
 } from '@/features/auth-flow/dev-journeys'
 import { resetIntroSeen } from '@/features/onboarding-intro/intro-seen'
 import { useFocusEffect } from '@react-navigation/native'
-import { Alert, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, Linking, StyleSheet, Switch, Text, View } from 'react-native'
+import * as StoreReview from 'expo-store-review'
 import { LinearGradient } from 'expo-linear-gradient'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
@@ -111,6 +112,8 @@ import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
 import { formatCycleSummary } from '@/utils/format-cycle-label'
+import { requestAppRating } from '@/features/settings/rate-app'
+import { APP_STORE_REVIEW_URL } from '@/lib/legal-urls'
 
 interface SettingsScreenProps {
   userId: string
@@ -521,6 +524,23 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     },
     [financeSnapshot, saveFinanceSnapshot],
   )
+
+  // "Calificar Manifiesto" — modal nativo de rating cuando el sistema
+  // lo permite (iOS lo racionea ~3/año), deep link al compositor de
+  // reseña como fallback garantizado. Política pura en rate-app.ts.
+  const handleRateApp = useCallback(() => {
+    void (async () => {
+      try {
+        await requestAppRating({
+          isAvailable: () => StoreReview.isAvailableAsync(),
+          requestReview: () => StoreReview.requestReview(),
+          openReviewUrl: () => Linking.openURL(APP_STORE_REVIEW_URL),
+        })
+      } catch {
+        Alert.alert(t('settings:rate.errorTitle'), t('settings:rate.errorBody'))
+      }
+    })()
+  }, [t])
 
   // Régimen de ingreso (fijo ↔ variable). Cambiarlo altera cómo se
   // calcula el cupo diario, así que se confirma con Alert antes de
@@ -1473,9 +1493,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsRow
                   helper={t('settings:info.aboutHelper')}
                   icon="info-outline"
-                  isLast
                   label={t('settings:info.about')}
                   onPress={() => router.push('/(app)/settings/about')}
+                />
+                <SettingsRow
+                  helper={t('settings:rate.helper')}
+                  icon="star-outline"
+                  isLast
+                  label={t('settings:rate.rowLabel')}
+                  onPress={handleRateApp}
                 />
               </SettingsGroup>
             </RiseView>
