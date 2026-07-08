@@ -58,11 +58,15 @@ export function usePayCycle(
     // types el ciclo activo viene del anchor + length, no del "día de
     // cobro" que se confirma manualmente. Helper compartido con
     // useMonthlyAccounting → countdown y saldo nunca divergen.
-    const isSalaryPendingConfirmation = computeIsSalaryPendingConfirmation(
-      config,
-      today,
-      finance?.last_salary_confirmed_at ?? null,
-    )
+    // Modo dinámico: no hay sueldo que confirmar → nunca pending/freeze.
+    const isSalaryPendingConfirmation =
+      finance?.income_mode === 'dynamic'
+        ? false
+        : computeIsSalaryPendingConfirmation(
+            config,
+            today,
+            finance?.last_salary_confirmed_at ?? null,
+          )
 
     const cycle = getCurrentPayCycle(
       today,
@@ -76,6 +80,7 @@ export function usePayCycle(
     finance?.cycle_anchor_date,
     finance?.cycle_length_days,
     finance?.last_salary_confirmed_at,
+    finance?.income_mode,
     freeze,
   ])
 }

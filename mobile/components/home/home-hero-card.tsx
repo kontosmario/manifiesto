@@ -29,6 +29,9 @@ interface HomeHeroCardProps {
   /** Optional handler invoked when the hero is in the
    *  "income not configured" state and the user taps the setup CTA. */
   onPressConfigureIncome?: () => void
+  /** Handler del estado vacío en modo INGRESO DINÁMICO ("Cargá tu
+   *  primer ingreso") — navega a add-income en vez de Settings. */
+  onPressAddIncome?: () => void
   /** Sprint 3 — fraction vs prior cycle (e.g. -0.08 = "-8%"). When
    *  provided and the projection is reliable, the projection tile
    *  renders an arrow + signed % below the main value. `null` hides
@@ -55,6 +58,7 @@ interface HomeHeroCardProps {
 function HomeHeroCardImpl({
   data,
   onPressConfigureIncome,
+  onPressAddIncome,
   projectedCloseTrend = null,
   savingsChip = null,
   usdConversion = null,
@@ -62,6 +66,12 @@ function HomeHeroCardImpl({
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
+  // Modo dinámico sin ingresos cargados este ciclo → estado vacío con
+  // CTA a add-income (el setup clásico empuja a configurar SUELDO, que
+  // es justo lo que este hogar no tiene).
+  const dynamicSetup =
+    data.incomeConfigured && data.incomeMode === 'dynamic' && !data.hasCycleIncome
+  const showSetup = !data.incomeConfigured || dynamicSetup
   const projPositive = data.projectedClose >= 0
   const projColor = projPositive ? theme.colors.heroAccent : '#F8D1C3'
 
@@ -120,7 +130,7 @@ function HomeHeroCardImpl({
   // readers announce it as a summary unit rather than reading each
   // chip / number / chip in document order. The fall-through for the
   // setup state stays simple — there's no number to announce yet.
-  const a11yLabel = data.incomeConfigured
+  const a11yLabel = !showSetup
     ? `${t('home:hero.a11yBalance', { amount: formatMoney(data.availableToday) })} ${
         data.dailyBudget != null
           ? t('home:hero.a11yDailyAllowance', { amount: formatMoney(data.dailyBudget) })
@@ -132,7 +142,9 @@ function HomeHeroCardImpl({
       } ${savingsChip ? savingsChip.a11y : ''} ${
         usdConversion ? t('home:hero.a11yUsdEquivalent', { amount: formatUsd(usdConversion.saldoUsd) }) : ''
       }`.trim()
-    : t('home:hero.setupA11y')
+    : dynamicSetup
+      ? t('home:hero.dynamicSetupA11y')
+      : t('home:hero.setupA11y')
 
   return (
     <RiseView delay={60}>
@@ -151,17 +163,21 @@ function HomeHeroCardImpl({
             el resto de los heroes (todos forest plano). */}
         <CardParticles count={12} accentColor="#F2A78C" />
 
-        {!data.incomeConfigured ? (
-          // Setup state — no monthly income on file. Showing "$0 de
-          // saldo" is misleading; instead we surface a clear CTA that
-          // takes the user to Settings to configure their ingreso.
-          // Keeps the hero chrome (gradient, shine, aurora) so the
-          // user lands on a familiar surface, just with a setup-
-          // flavored body.
+        {showSetup ? (
+          // Setup state — no monthly income on file (o modo dinámico
+          // sin ingresos cargados). Showing "$0 de saldo" is
+          // misleading; instead we surface a clear CTA: Settings para
+          // configurar sueldo (fixed) o add-income para cargar el
+          // primer ingreso (dynamic). Keeps the hero chrome (gradient,
+          // shine, aurora) so the user lands on a familiar surface.
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t('home:hero.configureIncomeAccessibility')}
-            onPress={onPressConfigureIncome}
+            accessibilityLabel={
+              dynamicSetup
+                ? t('home:hero.addIncomeAccessibility')
+                : t('home:hero.configureIncomeAccessibility')
+            }
+            onPress={dynamicSetup ? (onPressAddIncome ?? onPressConfigureIncome) : onPressConfigureIncome}
             onPressIn={setupPress.onPressIn}
             onPressOut={setupPress.onPressOut}
           >
@@ -189,7 +205,7 @@ function HomeHeroCardImpl({
                     { color: theme.colors.heroText },
                   ]}
                 >
-                  {t('home:hero.setupTitle')}
+                  {dynamicSetup ? t('home:hero.dynamicSetupTitle') : t('home:hero.setupTitle')}
                 </Text>
                 <Text
                   style={[
@@ -197,7 +213,7 @@ function HomeHeroCardImpl({
                     { color: theme.colors.heroMuted },
                   ]}
                 >
-                  {t('home:hero.setupBody')}
+                  {dynamicSetup ? t('home:hero.dynamicSetupBody') : t('home:hero.setupBody')}
                 </Text>
               </RiseView>
               <RiseView delay={160}>
@@ -213,7 +229,7 @@ function HomeHeroCardImpl({
                   <Text
                     style={[styles.setupCtaText, { color: theme.colors.heroAccent }]}
                   >
-                    {t('home:hero.configureNow')}
+                    {dynamicSetup ? t('home:hero.addFirstIncome') : t('home:hero.configureNow')}
                   </Text>
                   <MaterialIcons
                     name="arrow-forward"

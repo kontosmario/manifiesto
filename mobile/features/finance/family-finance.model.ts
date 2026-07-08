@@ -1,12 +1,24 @@
 import type { PostgrestError } from '@supabase/supabase-js'
 import i18n from '@/lib/i18n'
 
+/** Régimen de ingreso del hogar.
+ *  - 'fixed': sueldo recurrente (modelo clásico; monthly_income > 0).
+ *  - 'dynamic': sin sueldo fijo — el presupuesto se construye agregando
+ *    ingresos manuales (income_events) y el cupo reparte lo disponible
+ *    sobre los días restantes del ciclo. */
+export type IncomeMode = 'fixed' | 'dynamic'
+
 export interface FinanceStoragePayload {
   daily_budget_buffer_mode: 'none' | 'fixed' | 'percent'
   daily_budget_buffer_value: number
   daily_budget_checkin_hour: number
   daily_budget_nudges_enabled: boolean
   monthly_income: number
+  /** Régimen de ingreso. Opcional en el payload de escritura: cuando un
+   *  upsert NO lo incluye (undefined), se preserva el valor existente
+   *  (mismo patrón que local_currency). En lectura, normalize lo
+   *  resuelve siempre ('fixed' default). */
+  income_mode?: IncomeMode
   savings_goal: number
   savings_goal_percent: number
   usd_exchange_rate: number
@@ -67,6 +79,8 @@ export interface UpsertFamilyFinanceInput {
   localCurrency?: string
   /** Toggle de cotización USD (per-hogar). undefined → upsert lo omite → preserva. */
   usdRateEnabled?: boolean
+  /** Régimen de ingreso. undefined → upsert lo omite → preserva. */
+  incomeMode?: IncomeMode
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -91,6 +105,8 @@ export interface FamilyFinanceInputSnapshot {
   localCurrency?: string
   /** Toggle de cotización USD (per-hogar). undefined → upsert lo omite → preserva. */
   usdRateEnabled?: boolean
+  /** Régimen de ingreso. undefined → upsert lo omite → preserva. */
+  incomeMode?: IncomeMode
   salaryPaymentDay: number
   lastSalaryConfirmedAt: string | null
   currentCycleStartingBalance: number | null
@@ -240,6 +256,8 @@ export function normalizeFinancePayload(
         : undefined
     })(),
     usd_rate_enabled: payload?.usd_rate_enabled === true,
+    // Lectura: siempre resuelto ('fixed' salvo 'dynamic' explícito).
+    income_mode: payload?.income_mode === 'dynamic' ? 'dynamic' : 'fixed',
     salary_payment_day:
       Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
         ? salaryPaymentDay
@@ -337,7 +355,8 @@ export function isMissingFinanceColumnError(
     | 'local_currency'
     | 'usd_rate_enabled'
     | 'current_cycle_starting_balance'
-    | 'current_cycle_anchor',
+    | 'current_cycle_anchor'
+    | 'income_mode',
 ) {
   return isMissingColumnError(error, columnName)
 }
@@ -356,6 +375,8 @@ export function financeInputToStoragePayload(
     usd_exchange_rate: input.usdExchangeRate,
     local_currency: input.localCurrency,
     usd_rate_enabled: input.usdRateEnabled,
+    // undefined → el upsert omite la key → DB preserva el modo actual.
+    income_mode: input.incomeMode,
     salary_payment_day: input.salaryPaymentDay,
     last_salary_confirmed_at: input.lastSalaryConfirmedAt,
     current_cycle_starting_balance: input.currentCycleStartingBalance,
@@ -461,6 +482,14 @@ export function validateFamilyFinanceInput(input: UpsertFamilyFinanceInput): Fin
     throw new Error(i18n.t('settings:financeValidation.unsupportedCurrency'))
   }
 
+  if (
+    input.incomeMode !== undefined &&
+    input.incomeMode !== 'fixed' &&
+    input.incomeMode !== 'dynamic'
+  ) {
+    throw new Error(i18n.t('settings:financeValidation.reviewFields'))
+  }
+
   return financeInputToStoragePayload(input)
 }
 
@@ -478,6 +507,7 @@ export function buildFamilyFinanceInput(
     usdExchangeRate: snapshot.usdExchangeRate,
     localCurrency: snapshot.localCurrency,
     usdRateEnabled: snapshot.usdRateEnabled,
+    incomeMode: snapshot.incomeMode,
     salaryPaymentDay: snapshot.salaryPaymentDay,
     lastSalaryConfirmedAt: snapshot.lastSalaryConfirmedAt,
     currentCycleStartingBalance: snapshot.currentCycleStartingBalance,

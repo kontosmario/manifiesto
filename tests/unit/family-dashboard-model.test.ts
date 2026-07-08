@@ -175,4 +175,60 @@ describe('buildFamilyDashboardSnapshot', () => {
     expect(snapshot.flexibleDelta).toBe(10_000)
     expect(snapshot.flexibleRemaining).toBe(0)
   })
+
+  describe('modo ingreso dinámico (income_mode = dynamic)', () => {
+    it('expone incomeMode y reparte el cupo sobre los días RESTANTES', () => {
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({
+          monthly_income: 0,
+          income_mode: 'dynamic',
+          savings_goal: 0,
+          savings_goal_percent: 0,
+        }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.incomeMode).toBe('dynamic')
+      // Sin override real no hay cycleStartingBalanceOverride, pero el
+      // reparto del cupo usa los días restantes (tratamiento override).
+      expect(snapshot.cycleStartingBalanceOverride).toBeNull()
+      expect(snapshot.effectiveCycleDays).toBe(
+        snapshot.monthlyAccounting.daysRemaining,
+      )
+      // El ingreso base es 0 — el ciclo se fondea con income_events
+      // (entran como cycleExtraIncome en use-home-metrics).
+      expect(snapshot.effectiveCycleIncome).toBe(0)
+    })
+
+    it('NO auto-abre el prompt de saldo inicial del ciclo', () => {
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({
+          monthly_income: 0,
+          income_mode: 'dynamic',
+          savings_goal: 0,
+          savings_goal_percent: 0,
+          // Anchor viejo/ausente: en fixed esto abriría el prompt.
+          current_cycle_anchor: null,
+          current_cycle_starting_balance: null,
+        }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.isCycleStartingBalancePromptPending).toBe(false)
+    })
+
+    it('fixed conserva el comportamiento previo (regresión)', () => {
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({ monthly_income: 100_000 }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.incomeMode).toBe('fixed')
+      expect(snapshot.effectiveCycleDays).toBe(snapshot.monthlyAccounting.days)
+      expect(snapshot.isCycleStartingBalancePromptPending).toBe(true)
+    })
+  })
 })

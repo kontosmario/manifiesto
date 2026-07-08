@@ -113,7 +113,9 @@ interface ChoicePillProps {
   theme: ReturnType<typeof useAppTheme>['theme']
 }
 
-function ChoicePill({ label, selected, onPress, theme }: ChoicePillProps) {
+/** Pill de opción del onboarding — también la usa `StepIncome` para el
+ *  selector de régimen de ingreso (fijo / variable). */
+export function ChoicePill({ label, selected, onPress, theme }: ChoicePillProps) {
   const press = usePressScale({ pressedScale: 0.98 })
   return (
     <Pressable

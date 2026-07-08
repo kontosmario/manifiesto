@@ -82,11 +82,24 @@ export interface HomeHeroMetrics {
    */
   projectionReliable: boolean
   /**
-   * `true` when the family has set a monthly income (>0). When false
-   * the entire downstream math collapses to zero and the hero shows
-   * a setup CTA instead of "$0 disponible".
+   * `true` when the family has set a monthly income (>0) OR runs in
+   * dynamic income mode (no fixed salary; funded by income_events).
+   * When false the entire downstream math collapses to zero and the
+   * hero shows a setup CTA instead of "$0 disponible".
    */
   incomeConfigured: boolean
+  /**
+   * Régimen de ingreso del hogar. En 'dynamic' el hero reemplaza el
+   * setup de sueldo por el estado "Cargá tu primer ingreso" (CTA a
+   * add-income) mientras no haya ingresos en el ciclo.
+   */
+  incomeMode: 'fixed' | 'dynamic'
+  /**
+   * `true` cuando el ciclo ya tiene income_events cargados. Junto a
+   * `incomeMode === 'dynamic'` decide si el hero muestra métricas o
+   * el estado vacío "Cargá tu primer ingreso".
+   */
+  hasCycleIncome: boolean
   /**
    * Sueldo mensual base — usado por el hero para mostrar el breakdown
    * "$X sueldo · $Y acumulado de mayo" cuando `acumulado != null`.
@@ -291,7 +304,12 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       totalAvailable: dashboard.totalAvailable,
       cycleExtraIncome,
       effectiveReservedFixed: fixedPendingReserved,
-      hasCycleOverride: dashboard.cycleStartingBalanceOverride !== null,
+      // Modo dinámico: el cupo reparte lo disponible (ingresos del ciclo
+      // − gasto − fijos − ahorro) sobre los días RESTANTES — mismo path
+      // que el override (espejado en SQL cycle_disponible, flag `dyn`).
+      hasCycleOverride:
+        dashboard.cycleStartingBalanceOverride !== null ||
+        dashboard.incomeMode === 'dynamic',
     })
     // Saldo del mes = plata REAL (computeCycleDisponible lo compone: discrecional
     // + fijos pendientes); el CUPO (dailyBudget) reserva los fijos → no cambia.
@@ -323,7 +341,10 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     // wrong "vas a cerrar con" numbers. Wait until day 4+ before
     // surfacing the projection (UI shows a placeholder until then).
     const projectionReliable = cycleDay >= 4
-    const incomeConfigured = dashboard.monthlyIncome > 0
+    // En dinámico el ingreso "configurado" es el modo mismo: las
+    // superficies downstream (chip de ahorro, USD, a11y) no se apagan.
+    const incomeConfigured =
+      dashboard.monthlyIncome > 0 || dashboard.incomeMode === 'dynamic'
     // PostgREST devuelve numeric como string → Number() defensivo.
     // `normalizeFinancePayload` ya lo coerciona, pero aquí lo dejamos
     // explícito por si llega data desde otro camino (fallback / cache
@@ -354,6 +375,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       paydayDaysOverdue,
       projectionReliable,
       incomeConfigured,
+      incomeMode: dashboard.incomeMode,
+      hasCycleIncome: cycleExtraIncome > 0,
       monthlyIncome: dashboard.monthlyIncome,
       acumulado,
       monthlyReserveAmount,
@@ -424,6 +447,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.effectiveCommitmentReserved,
     dashboard.cycleStartingBalanceOverride,
     dashboard.isSalaryPendingConfirmation,
+    dashboard.incomeMode,
     dashboard.familyFinanceQuery.data?.monthly_reserve_amount,
     cycleExtraIncome,
     expenses,

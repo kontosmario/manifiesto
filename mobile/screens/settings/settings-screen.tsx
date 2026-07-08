@@ -26,6 +26,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   SettingsGroup,
   SettingsRow,
+  SettingsSwitchRow,
 } from '@/components/settings/settings-grouped-list'
 import { SettingsProtectionDismissRow } from '@/components/settings/protection-dismiss-row'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
@@ -196,6 +197,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
       currentCycleAnchor:
         dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+      incomeMode: dashboard.incomeMode,
       // Cycle config: leer del query — NO hardcodear monthly. Cualquier
       // save vía `saveFinanceSnapshot` (USD rate, ahorro, etc.) hubiera
       // reseteado la config del ciclo si quedaban estos hardcodeados.
@@ -221,6 +223,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       dashboard.usdExchangeRate,
       dashboard.familyFinanceQuery.data?.local_currency,
       dashboard.familyFinanceQuery.data?.usd_rate_enabled,
+      dashboard.incomeMode,
     ],
   )
 
@@ -517,6 +520,32 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       saveFinanceSnapshot({ ...financeSnapshot, usdRateEnabled: value }, () => {})
     },
     [financeSnapshot, saveFinanceSnapshot],
+  )
+
+  // Régimen de ingreso (fijo ↔ variable). Cambiarlo altera cómo se
+  // calcula el cupo diario, así que se confirma con Alert antes de
+  // persistir. `income_mode` viaja explícito; el resto del snapshot se
+  // preserva tal cual.
+  const handleToggleDynamicIncome = useCallback(
+    (value: boolean) => {
+      const nextMode = value ? 'dynamic' : 'fixed'
+      Alert.alert(
+        t(`settings:household.incomeModeConfirmTitle_${nextMode}`),
+        t(`settings:household.incomeModeConfirmBody_${nextMode}`),
+        [
+          { style: 'cancel', text: t('common:actions.cancel') },
+          {
+            text: t('settings:household.incomeModeConfirmCta'),
+            onPress: () =>
+              saveFinanceSnapshot(
+                { ...financeSnapshot, incomeMode: nextMode },
+                () => {},
+              ),
+          },
+        ],
+      )
+    },
+    [financeSnapshot, saveFinanceSnapshot, t],
   )
 
   const handleSaveSavingsPercent = useCallback(
@@ -1121,6 +1150,14 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   label={isSolo ? t('settings:household.monthlyIncome') : t('settings:household.myContribution')}
                   onPress={() => setIncomeSheetOpen(true)}
                   value={myContributionValue}
+                />
+                <SettingsSwitchRow
+                  disabled={!isOwner}
+                  helper={t('settings:household.incomeModeHelper')}
+                  icon="auto-graph"
+                  label={t('settings:household.incomeModeLabel')}
+                  onValueChange={handleToggleDynamicIncome}
+                  value={dashboard.incomeMode === 'dynamic'}
                 />
                 <SettingsRow
                   disabled={!isOwner}

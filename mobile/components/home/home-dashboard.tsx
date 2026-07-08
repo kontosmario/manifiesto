@@ -108,6 +108,8 @@ interface HomeDashboardProps {
   /** Invoked from the hero card's setup state (income not configured)
    *  to drop the user into the income setup flow. */
   onPressConfigureIncome?: () => void
+  /** Estado vacío del modo INGRESO DINÁMICO — navega a add-income. */
+  onPressAddIncome?: () => void
   isLoadingActivity: boolean
   activityError: unknown
   /**
@@ -161,6 +163,7 @@ export function HomeDashboard({
   onPressSettings,
   onPressAssistant,
   onPressConfigureIncome,
+  onPressAddIncome,
   isLoadingActivity,
   activityError,
   onConfirmCycleStartingBalance,
@@ -729,6 +732,10 @@ export function HomeDashboard({
     trackTap('hero_setup_cta', 'S3', '/(app)/settings')
     onPressConfigureIncome?.()
   }, [trackTap, onPressConfigureIncome])
+  const handlePressAddIncome = useCallback(() => {
+    trackTap('hero_add_income_cta', 'S3', '/(app)/add-income')
+    onPressAddIncome?.()
+  }, [trackTap, onPressAddIncome])
 
   // Wrap the cycle prompt confirm so we capture taps on the payday
   // pill / cycle adjusted chip before opening the sheet.
@@ -975,6 +982,7 @@ export function HomeDashboard({
         <HomeHeroCard
           data={homeMetrics.hero}
           onPressConfigureIncome={handlePressConfigureIncome}
+          onPressAddIncome={handlePressAddIncome}
           projectedCloseTrend={projectedCloseTrend}
           savingsChip={savingsChip}
           usdConversion={usdConversion}

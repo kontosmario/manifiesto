@@ -37,11 +37,15 @@ export function useMonthlyAccounting(
     // Freeze: si el cobro del mes no fue confirmado, la ventana (y por ende el
     // saldo) se queda en el ciclo anterior. Sin esto el saldo saltaba al ingreso
     // nuevo el día de cobro aunque el user no confirmara.
-    const pending = computeIsSalaryPendingConfirmation(
-      config,
-      today,
-      finance.data?.last_salary_confirmed_at ?? null,
-    )
+    // Modo dinámico: no hay cobro que confirmar → nunca freeze.
+    const pending =
+      finance.data?.income_mode === 'dynamic'
+        ? false
+        : computeIsSalaryPendingConfirmation(
+            config,
+            today,
+            finance.data?.last_salary_confirmed_at ?? null,
+          )
     return computeMonthlyAccountingWindow(config, today, freeze && pending)
   }, [
     finance.data?.cycle_type,
@@ -49,6 +53,7 @@ export function useMonthlyAccounting(
     finance.data?.cycle_anchor_date,
     finance.data?.cycle_length_days,
     finance.data?.last_salary_confirmed_at,
+    finance.data?.income_mode,
     freeze,
   ])
 }

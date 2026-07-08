@@ -9,6 +9,8 @@ export interface FamilyDashboardFinanceSnapshot {
   daily_budget_checkin_hour: number
   daily_budget_nudges_enabled: boolean
   monthly_income: number
+  /** Régimen de ingreso ('fixed' default). 'dynamic' = sin sueldo fijo. */
+  income_mode?: 'fixed' | 'dynamic'
   savings_goal: number
   savings_goal_percent: number
   usd_exchange_rate: number
@@ -86,6 +88,15 @@ export interface FamilyDashboardSnapshot {
   totalGeneral: number
   usdExchangeRate: number
   variableSpentInCurrentCycle: number
+  /**
+   * Régimen de ingreso del hogar. 'dynamic' = sin sueldo fijo: el
+   * presupuesto del ciclo se construye con income_events y el cupo
+   * diario reparte lo disponible sobre los días restantes (mismo
+   * tratamiento que el override). Consumidores: `use-home-metrics`
+   * (hasCycleOverride + incomeConfigured) y el hero del Home (CTA
+   * "Agregar ingreso" en vez del setup de sueldo).
+   */
+  incomeMode: 'fixed' | 'dynamic'
   /**
    * Active per-cycle "starting balance" override. Number when the
    * user has confirmed an adjusted amount for the current cycle;

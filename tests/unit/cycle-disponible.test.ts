@@ -163,4 +163,60 @@ describe('computeCycleDisponible', () => {
     })
     expect(r.dailyBudget).toBe(300_000) // 300.000 / max(1, 0)
   })
+
+  // ── Modo INGRESO DINÁMICO (income_mode='dynamic') ─────────────────────
+  // El dashboard model lo modela como el path del override: base 0
+  // (monthly_income = 0), los ingresos del ciclo entran como
+  // cycleExtraIncome y el cupo reparte sobre los días RESTANTES.
+
+  it('dinámico con ingresos cargados → cupo = (ingresos − gasto − fijos − ahorro) / días restantes', () => {
+    // Ingresos del ciclo 500.000; gastó 120.000 variable y reserva
+    // 80.000 de fijos → totalAvailable = 0 − 0 − 80.000 − 120.000 = −200.000.
+    // Discrecional = −200.000 + 500.000 = 300.000 → 300.000 / 10 = 30.000.
+    const r = computeCycleDisponible({
+      effectiveCycleIncome: 0, // sin sueldo base
+      effectiveCycleDays: 10, // días RESTANTES (tratamiento override)
+      commitmentPressure: 80_000,
+      effectiveSavingsGoal: 0,
+      totalAvailable: -200_000,
+      cycleExtraIncome: 500_000,
+      effectiveReservedFixed: 0,
+      hasCycleOverride: true, // dinámico entra por el path del override
+    })
+    expect(r.dailyBudget).toBe(30_000)
+    expect(r.availableToday).toBe(300_000)
+    expect(r.rawCycleBalance).toBe(300_000)
+  })
+
+  it('dinámico sin ingresos aún → cupo 0 y saldo 0 (sin NaN ni negativos)', () => {
+    const r = computeCycleDisponible({
+      effectiveCycleIncome: 0,
+      effectiveCycleDays: 15,
+      commitmentPressure: 0,
+      effectiveSavingsGoal: 0,
+      totalAvailable: 0,
+      cycleExtraIncome: 0,
+      effectiveReservedFixed: 0,
+      hasCycleOverride: true,
+    })
+    expect(r.dailyBudget).toBe(0)
+    expect(r.availableToday).toBe(0)
+    expect(r.rawCycleBalance).toBe(0)
+  })
+
+  it('dinámico que gastó más de lo que ingresó → saldo clampa a 0 y raw queda negativo', () => {
+    const r = computeCycleDisponible({
+      effectiveCycleIncome: 0,
+      effectiveCycleDays: 5,
+      commitmentPressure: 0,
+      effectiveSavingsGoal: 0,
+      totalAvailable: -150_000, // gastó 150.000
+      cycleExtraIncome: 100_000, // ingresó 100.000
+      effectiveReservedFixed: 0,
+      hasCycleOverride: true,
+    })
+    expect(r.dailyBudget).toBe(0)
+    expect(r.availableToday).toBe(0)
+    expect(r.rawCycleBalance).toBe(-50_000)
+  })
 })

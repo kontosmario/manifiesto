@@ -163,6 +163,13 @@ export function buildFamilyDashboardSnapshot({
     today: todayDate,
   })
   const monthlyIncome = finance?.monthly_income ?? 0
+  // Modo dinámico: sin sueldo fijo — monthly_income queda 0 y el ciclo
+  // se fondea con income_events (entran como cycleExtraIncome en
+  // use-home-metrics). Cambia el reparto del cupo (días restantes) y
+  // suprime los prompts de sueldo/saldo-inicial.
+  const incomeMode: 'fixed' | 'dynamic' =
+    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const isDynamicIncome = incomeMode === 'dynamic'
   const savingsGoal = finance?.savings_goal ?? 0
   const savingsGoalPercent =
     typeof finance?.savings_goal_percent === 'number'
@@ -200,7 +207,10 @@ export function buildFamilyDashboardSnapshot({
     cycleAnchorMatchesCurrent && typeof storedBalance === 'number' && storedBalance >= 0
       ? storedBalance
       : null
-  const isCycleStartingBalancePromptPending = !cycleAnchorMatchesCurrent
+  // En dinámico no se auto-abre el prompt de saldo inicial: el balance
+  // se construye agregando ingresos, no confirmando un cobro.
+  const isCycleStartingBalancePromptPending =
+    !cycleAnchorMatchesCurrent && !isDynamicIncome
 
   // Effective income for the current cycle. When the user has
   // confirmed an override (e.g. mid-month signup with reduced cash),
@@ -218,7 +228,10 @@ export function buildFamilyDashboardSnapshot({
   // Effective cycle length the daily-budget formula divides into.
   // With override active, the daily cap spreads the user's reported
   // balance across the remaining days only (matches engine output).
-  const effectiveCycleDays = hasCycleOverride ? remainingDaysFromToday : totalCycleDays
+  // Modo dinámico: mismo reparto sobre días restantes aunque no haya
+  // override real (el "presupuesto" son los ingresos ya cargados).
+  const effectiveCycleDays =
+    hasCycleOverride || isDynamicIncome ? remainingDaysFromToday : totalCycleDays
   // Proration de fijos: cuando el override es DOWN (cobré menos que
   // el sueldo recurrente), recortar las fijos a los días restantes
   // tiene sentido (lo que YA pagué en los días anteriores ya pasó).
@@ -300,6 +313,7 @@ export function buildFamilyDashboardSnapshot({
     monthlyHistoryTotals,
     monthlyAccounting: accounting,
     monthlyIncome,
+    incomeMode,
     payCycle,
     remainingUntilPayday,
     salaryPaymentDay,

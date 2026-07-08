@@ -471,6 +471,10 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
             void triggerHaptic('selection')
             router.push('/(app)/settings')
           }}
+          onPressAddIncome={() => {
+            void triggerHaptic('selection')
+            router.push('/(app)/add-income')
+          }}
           isLoadingActivity={recentExpensesQuery.isLoading}
           activityError={activityError}
           onConfirmCycleStartingBalance={confirmCycleStartingBalance}

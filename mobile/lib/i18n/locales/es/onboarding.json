@@ -139,7 +139,11 @@
     "subcopy": "Lo usamos para calcular tu presupuesto del día.",
     "amountLabel": "Sueldo mensual",
     "cycleEyebrow": "TU CICLO DE COBRO",
-    "cycleHint": "Siempre puedes editarlo desde Ajustes."
+    "cycleHint": "Siempre puedes editarlo desde Ajustes.",
+    "modeFixed": "Sueldo fijo",
+    "modeDynamic": "Ingreso variable",
+    "dynamicInfoTitle": "Tu presupuesto se arma con lo que ingresas",
+    "dynamicInfoBody": "No necesitas un sueldo fijo: cada vez que te entre dinero, lo registras como ingreso y tu saldo y tu cupo diario se actualizan al instante. Ideal para freelancers, ventas o ingresos irregulares."
   },
   "incomeContribution": {
     "title": "¿Aportas al ingreso del hogar?",

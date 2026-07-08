@@ -110,6 +110,7 @@ export async function upsertFamilyFinance(
     | 'usd_rate_enabled'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor'
+    | 'income_mode'
   > = [
     'daily_budget_checkin_hour',
     'daily_budget_nudges_enabled',
@@ -123,6 +124,7 @@ export async function upsertFamilyFinance(
     'usd_rate_enabled',
     'current_cycle_starting_balance',
     'current_cycle_anchor',
+    'income_mode',
   ]
 
   for (const columnName of optionalColumns) {

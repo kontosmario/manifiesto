@@ -102,7 +102,14 @@
     "usdRate": "Cotización en dólares",
     "usdRateHelper": "Muestra tu saldo convertido a dólares según tu moneda.",
     "savingsPercent": "Meta de ahorro %",
-    "dailyBuffer": "Buffer diario"
+    "dailyBuffer": "Buffer diario",
+    "incomeModeLabel": "Ingreso variable",
+    "incomeModeHelper": "Sin sueldo fijo: tu presupuesto se arma con los ingresos que registras.",
+    "incomeModeConfirmTitle_dynamic": "¿Pasar a ingreso variable?",
+    "incomeModeConfirmBody_dynamic": "Tu cupo diario se calculará con los ingresos que registres en el ciclo, repartidos en los días que quedan. Puedes volver a sueldo fijo cuando quieras.",
+    "incomeModeConfirmTitle_fixed": "¿Volver a sueldo fijo?",
+    "incomeModeConfirmBody_fixed": "Tu cupo diario volverá a calcularse con el sueldo mensual del hogar. Revisa que tu contribución esté cargada.",
+    "incomeModeConfirmCta": "Confirmar"
   },
   "conversion": {
     "rowDisabled": "Desactivada",

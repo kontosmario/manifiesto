@@ -16,6 +16,10 @@ export interface OnboardingDraft {
   accountKind: AccountKind
   familyId: string | null
   monthlyIncomeRaw: string
+  /** Régimen de ingreso del creator. 'dynamic' = sin sueldo fijo: el
+   *  step 4 no exige monto > 0 y el hogar se fondea con ingresos
+   *  manuales (income_events). Ignorado en el path joiner. */
+  incomeMode: 'fixed' | 'dynamic'
   salaryPaymentDay: number
   savingsGoalPercent: number
   createFirstGoal: boolean
@@ -51,6 +55,7 @@ type Action =
   | { type: 'setFamily'; mode: 'created' | 'joined'; familyId: string }
   | { type: 'setAccountKind'; value: AccountKind }
   | { type: 'setMonthlyIncome'; value: string }
+  | { type: 'setIncomeMode'; value: 'fixed' | 'dynamic' }
   | { type: 'setSalaryDay'; value: number }
   | { type: 'setSavingsPercent'; value: number }
   | { type: 'setCreateFirstGoal'; value: boolean }
@@ -70,6 +75,7 @@ function createInitialDraft(): OnboardingDraft {
     accountKind: 'shared',
     familyId: null,
     monthlyIncomeRaw: '',
+    incomeMode: 'fixed',
     salaryPaymentDay: 1,
     savingsGoalPercent: 20,
     createFirstGoal: false,
@@ -110,6 +116,12 @@ function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
       return { ...state, accountKind: action.value }
     case 'setMonthlyIncome':
       return { ...state, monthlyIncomeRaw: action.value }
+    case 'setIncomeMode':
+      // Al pasar a dinámico se limpia el monto tipeado para que un
+      // valor viejo no se persista como contribución en el submit.
+      return action.value === 'dynamic'
+        ? { ...state, incomeMode: 'dynamic', monthlyIncomeRaw: '' }
+        : { ...state, incomeMode: 'fixed' }
     case 'setSalaryDay':
       return { ...state, salaryPaymentDay: action.value }
     case 'setSavingsPercent':
@@ -168,6 +180,8 @@ export function useOnboardingState(seed?: Partial<OnboardingDraft>) {
         dispatch({ type: 'setFamily', mode, familyId }),
       setAccountKind: (value: AccountKind) => dispatch({ type: 'setAccountKind', value }),
       setMonthlyIncome: (value: string) => dispatch({ type: 'setMonthlyIncome', value }),
+      setIncomeMode: (value: 'fixed' | 'dynamic') =>
+        dispatch({ type: 'setIncomeMode', value }),
       setSalaryDay: (value: number) => dispatch({ type: 'setSalaryDay', value }),
       setSavingsPercent: (value: number) => dispatch({ type: 'setSavingsPercent', value }),
       setCreateFirstGoal: (value: boolean) => dispatch({ type: 'setCreateFirstGoal', value }),

@@ -139,7 +139,11 @@
     "subcopy": "We use it to work out your daily budget.",
     "amountLabel": "Monthly salary",
     "cycleEyebrow": "YOUR PAY CYCLE",
-    "cycleHint": "You can always edit it from Settings."
+    "cycleHint": "You can always edit it from Settings.",
+    "modeFixed": "Fixed salary",
+    "modeDynamic": "Variable income",
+    "dynamicInfoTitle": "Your budget builds up as money comes in",
+    "dynamicInfoBody": "No fixed salary needed: whenever money comes in, log it as income and your balance and daily allowance update instantly. Ideal for freelancers, sales or irregular income."
   },
   "incomeContribution": {
     "title": "Do you contribute to the household income?",

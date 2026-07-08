@@ -46,6 +46,7 @@ export type HomeElementId =
   // Hero
   | 'hero_card'
   | 'hero_setup_cta'
+  | 'hero_add_income_cta'
   // Month summary
   | 'month_summary_variables'
   | 'month_summary_fixed'

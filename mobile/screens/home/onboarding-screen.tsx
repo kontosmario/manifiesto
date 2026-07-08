@@ -250,6 +250,10 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           if (state.contributesIncome === true) return monthlyIncome > 0
           return true
         }
+        // Ingreso DINÁMICO (sin sueldo fijo): no hay monto ni ciclo que
+        // validar — el presupuesto se construye cargando ingresos
+        // manuales después del onboarding.
+        if (state.incomeMode === 'dynamic') return true
         // For rolling cycles (biweekly/weekly/custom), the anchor +
         // length are picked from constrained controls in
         // `CycleConfigSection`, so the only thing that can be invalid
@@ -355,17 +359,22 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         return
       }
 
+      // Ingreso DINÁMICO: sin sueldo fijo. El presupuesto se construye
+      // con income_events; el ciclo queda en mensual día 1 (mes
+      // calendario) y la contribución del dueño en 0.
+      const isDynamicIncome = state.incomeMode === 'dynamic'
       const baseSnapshot = {
         dailyBudgetBufferMode: existingFinance?.daily_budget_buffer_mode ?? 'none',
         dailyBudgetBufferValue: existingFinance?.daily_budget_buffer_value ?? 0,
         dailyBudgetCheckinHour: existingFinance?.daily_budget_checkin_hour ?? 9,
         dailyBudgetNudgesEnabled: existingFinance?.daily_budget_nudges_enabled ?? true,
-        monthlyIncome,
+        monthlyIncome: isDynamicIncome ? 0 : monthlyIncome,
         savingsGoal: 0, // derived by the model from percent × income.
         savingsGoalPercent: state.savingsGoalPercent,
         usdExchangeRate: existingFinance?.usd_exchange_rate ?? 1000,
+        incomeMode: state.incomeMode,
         salaryPaymentDay:
-          cycleConfig.cycle_type === 'monthly'
+          !isDynamicIncome && cycleConfig.cycle_type === 'monthly'
             ? cycleConfig.salary_payment_day
             : 1,
         // Stampeamos la confirmación de sueldo al terminar onboarding.
@@ -387,13 +396,13 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         currentCycleStartingBalance:
           existingFinance?.current_cycle_starting_balance ?? null,
         currentCycleAnchor: existingFinance?.current_cycle_anchor ?? null,
-        cycleType: cycleConfig.cycle_type,
+        cycleType: isDynamicIncome ? ('monthly' as const) : cycleConfig.cycle_type,
         cycleAnchorDate:
-          cycleConfig.cycle_type === 'monthly'
+          isDynamicIncome || cycleConfig.cycle_type === 'monthly'
             ? null
             : cycleConfig.cycle_anchor_date,
         cycleLengthDays:
-          cycleConfig.cycle_type === 'monthly'
+          isDynamicIncome || cycleConfig.cycle_type === 'monthly'
             ? null
             : cycleConfig.cycle_length_days,
       } as const
@@ -408,7 +417,8 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       // el dueño entra en la suma y los que se unan se agregan encima.
       const { error: ownerIncomeError } = await supabase.rpc(
         'update_my_income_contribution',
-        { p_amount: monthlyIncome },
+        // Dinámico: contribución 0 explícita (no hay sueldo base).
+        { p_amount: isDynamicIncome ? 0 : monthlyIncome },
       )
       // supabase.rpc NO tira: si no chequeamos el error, un fallo dejaría al dueño
       // con contribución 0 (ingreso del hogar 0) — justo lo que este fix evita.
@@ -452,6 +462,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     state.firstGoalTitle,
     state.firstGoalEmoji,
     state.firstGoalMonths,
+    state.incomeMode,
     monthlyIncome,
     existingFinance,
     upsertFinance,
@@ -827,7 +838,9 @@ function renderStep(
       return (
         <StepIncome
           monthlyIncomeRaw={state.monthlyIncomeRaw}
+          incomeMode={state.incomeMode}
           cycleConfig={ctx.cycleConfig}
+          onChangeIncomeMode={actions.setIncomeMode}
           onRequestNumpad={ctx.openIncomeNumpad}
           onChangeCycleConfig={ctx.onChangeCycleConfig}
           isNumpadActive={ctx.numpadTarget === 'income'}

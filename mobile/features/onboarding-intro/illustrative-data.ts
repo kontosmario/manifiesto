@@ -26,6 +26,8 @@ export const INTRO_HERO_METRICS: HomeHeroMetrics = {
   paydayDaysOverdue: 0,
   projectionReliable: true,
   incomeConfigured: true,
+  incomeMode: 'fixed',
+  hasCycleIncome: false,
   monthlyIncome: 1_200_000,
   acumulado: null,
   monthlyReserveAmount: 0,

@@ -102,7 +102,14 @@
     "usdRate": "USD rate",
     "usdRateHelper": "Shows your balance converted to dollars based on your currency.",
     "savingsPercent": "Savings goal %",
-    "dailyBuffer": "Daily buffer"
+    "dailyBuffer": "Daily buffer",
+    "incomeModeLabel": "Variable income",
+    "incomeModeHelper": "No fixed salary: your budget builds up from the income you log.",
+    "incomeModeConfirmTitle_dynamic": "Switch to variable income?",
+    "incomeModeConfirmBody_dynamic": "Your daily allowance will be calculated from the income you log this cycle, spread across the remaining days. You can switch back to a fixed salary anytime.",
+    "incomeModeConfirmTitle_fixed": "Back to fixed salary?",
+    "incomeModeConfirmBody_fixed": "Your daily allowance will be calculated from the household's monthly salary again. Make sure your contribution is set.",
+    "incomeModeConfirmCta": "Confirm"
   },
   "conversion": {
     "rowDisabled": "Off",
