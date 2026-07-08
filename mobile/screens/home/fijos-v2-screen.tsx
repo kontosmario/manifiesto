@@ -440,6 +440,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
           // button keeps its own ref-based target inside FijosHeader.
           <FijosEmptyState
             onAddFirst={handlePressAdd}
+            showIncomeStats={controller.incomeMode !== 'dynamic'}
             renderSection={(slot, children) => {
               const step =
                 slot === 'hero'

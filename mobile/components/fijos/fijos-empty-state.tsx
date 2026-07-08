@@ -22,6 +22,9 @@ interface FijosEmptyStateProps {
    * account. When omitted, the previews render unwrapped.
    */
   renderSection?: (slot: GhostSlot, children: React.ReactNode) => React.ReactNode
+  /** false en modo INGRESO DINÁMICO — el preview del hero no promete
+   *  "dinero libre / % de tu sueldo" (no hay sueldo). */
+  showIncomeStats?: boolean
 }
 
 /**
@@ -43,7 +46,11 @@ interface FijosEmptyStateProps {
  * slightly recessed (opacity) and inert so they read as samples, not
  * interactive cards or loading skeletons.
  */
-export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStateProps) {
+export function FijosEmptyState({
+  onAddFirst,
+  renderSection,
+  showIncomeStats = true,
+}: FijosEmptyStateProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
 
@@ -108,7 +115,7 @@ export function FijosEmptyState({ onAddFirst, renderSection }: FijosEmptyStatePr
             icon="donut-large"
             title={t('fijos:empty.preview.summaryTitle')}
           >
-            <FijosHeroCard empty />
+            <FijosHeroCard empty showIncomeStats={showIncomeStats} />
           </PreviewBlock>,
         )}
       </RiseView>

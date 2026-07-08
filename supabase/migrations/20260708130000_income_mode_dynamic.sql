@@ -548,6 +548,7 @@ declare
   v_period_label text;
   v_expected_monthly numeric;
   v_summary_id uuid;
+  v_family_created timestamptz;
 begin
   -- Idempotency: already closed for this exact period?
   select id into v_existing_id

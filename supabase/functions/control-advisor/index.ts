@@ -269,12 +269,14 @@ async function loadFamilyContext(
   // contexto extra (bonos/ventas).
   let cycleIncome = 0
   try {
+    // `cycleEnd` acá es el ÚLTIMO día del mes (new Date(y, m+1, 0)), no
+    // el primer día del siguiente — inclusive, como el query de expenses.
     const incomeRes = await admin
       .from('income_events')
       .select('amount')
       .eq('family_id', familyId)
       .gte('event_date', cycleStart)
-      .lt('event_date', cycleEnd)
+      .lte('event_date', cycleEnd)
     if (!incomeRes.error && incomeRes.data) {
       cycleIncome = incomeRes.data.reduce(
         (sum: number, row: { amount: number | string | null }) =>
