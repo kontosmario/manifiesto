@@ -135,7 +135,8 @@
     "hintExhaustoQuedanDynamic": "{{amount}} left until the cycle ends. Watch every expense.",
     "hintExhaustoAgotadoDynamic": "Free budget exhausted. Watch your pace until the cycle closes.",
     "hintReduceDiarioDynamic": "Cut {{amount}}/day to reach the end of the cycle comfortably.",
-    "timelineFinDeCiclo": "CYCLE END"
+    "timelineFinDeCiclo": "CYCLE END",
+    "statSubHastaCobrarDynamic": "until cycle end"
   },
   "ingresos": {
     "eyebrow": "CAME IN THIS CYCLE",
@@ -146,7 +147,7 @@
     "kindBonus": "Bonus",
     "kindGift": "Gift",
     "kindOther": "Income",
-    "headlineDynamic": "{{total}} came in this cycle — your daily budget comes from here: +{{perDia}}/day."
+    "headlineDynamic": "{{total}} came in this cycle — your budget is built from this."
   },
   "semana": {
     "eyebrow": "HOW IT'S GOING · LAST 7 DAYS",

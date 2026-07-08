@@ -135,7 +135,8 @@
     "hintExhaustoQuedanDynamic": "Quedan {{amount}} hasta el fin del ciclo. Cuida cada gasto.",
     "hintExhaustoAgotadoDynamic": "Presupuesto libre agotado. Cuida el ritmo hasta que cierre el ciclo.",
     "hintReduceDiarioDynamic": "Reduce {{amount}}/día para llegar holgado al fin del ciclo.",
-    "timelineFinDeCiclo": "FIN DE CICLO"
+    "timelineFinDeCiclo": "FIN DE CICLO",
+    "statSubHastaCobrarDynamic": "hasta fin de ciclo"
   },
   "ingresos": {
     "eyebrow": "ENTRÓ ESTE CICLO",
@@ -146,7 +147,7 @@
     "kindBonus": "Bono",
     "kindGift": "Regalo",
     "kindOther": "Ingreso",
-    "headlineDynamic": "Entraron {{total}} este ciclo — tu cupo diario sale de aquí: +{{perDia}}/día."
+    "headlineDynamic": "Entraron {{total}} este ciclo — tu presupuesto se arma con esto."
   },
   "semana": {
     "eyebrow": "CÓMO VA · ÚLTIMOS 7 DÍAS",

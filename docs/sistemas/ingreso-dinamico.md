@@ -119,6 +119,31 @@ custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
   (infra existente); `monthly_summaries` no colisiona (unique por
   period_start).
 
+## Superficies ajustadas (fase 4 — auditoría post-release)
+
+- **Control sin ingresos del ciclo**: `dynamicNoIncome` (use-control-v2-
+  data) → la pantalla pinta la guía "Carga tus ingresos para empezar"
+  (variante del `ControlV2EmptyState`, CTA a add-income) en vez del
+  stack con "LIBRE HOY $0" y `NaN%` (guard 0/0 agregado igual).
+- **Copy "cobro/sueldo" en dinámico**: variantes `_dynamic` en hero
+  ("fin de ciclo"), alcanza ("FIN DE CICLO"), cobertura ("TUS INGRESOS
+  EN DÍAS"), ingresos, vsmes, daily-goal, tours (familyStrip/cobertura)
+  y señal payday-proximity (mismo id — dismiss estable — con
+  `bubbleFrame: 'cycle'` para el asesor bubble).
+- **Bug ALTO corregido**: family-dashboard-model computaba el pending
+  de cobro inline SIN exención dinámica (hero "+N días sin cobrar" +
+  ventana congelada en mensual) — ahora exime y además fuerza
+  `monthlyIncome = 0` en dinámico (sueldo stale post-switch).
+- **Fijos wizard**: sin "0% de tu sueldo" cuando no hay base.
+- **Gastos**: el empty `pending-confirm` ("Confirma tu cobro") no
+  aplica en dinámico → cae al neutro.
+- **Regresión de prod cazada por esta auditoría** (hotfix
+  `20260708160000` APLICADO): las redefiniciones de home_snapshot del
+  release partieron de una base pre-cutover del catálogo global y
+  devolvían categorías VACÍAS para toda familia ("no hay categorías" en
+  add-expense) + subscription_checkins ausente. Gotcha reforzado:
+  redefinir una función SIEMPRE desde su última migración aplicada.
+
 ## Asistente heurístico en dinámico (fase 3)
 
 - Referencia de ingreso ÚNICA en `use-control-v2-data`:
@@ -129,6 +154,46 @@ custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
 - `income-missing`: rama dinámica sin payday — "todavía sin ingresos
   este ciclo" pasado ~30% del ciclo, CTA a add-income.
 - `fijos-ratio`: copy neutral (sin "sueldo").
+
+## Cierre de ciclo en dinámico (cómo funciona — es AUTOMÁTICO)
+
+1. **Cron nocturno** `close-previous-cycles` (03:00 UTC = 00:00 AR,
+   diario) barre TODAS las familias → `try_close_previous_cycle` →
+   `close_monthly_cycle` con la ventana del ciclo anterior (via
+   `compute_pay_cycle`, soporta semanal/quincenal/mensual/custom).
+2. **Guards**: idempotencia (un cierre por period_start), Guard 0
+   family_too_new (primer ciclo de cuenta nueva), Guard 1 not_yet_ended.
+   El Guard 2 (sueldo confirmado) NO aplica en dinámico — sin esa
+   exención los ciclos no cerrarían nunca. ⚠️ La exención vive en la
+   ÚLTIMA redefinición (20260708130000→170000): una migración futura
+   que copie un body viejo la rompería en silencio.
+3. **Escritura**: `monthly_summaries` con extra_income = Σ income_events
+   de la ventana; en dinámico (migración `20260708170000`)
+   monthly_income/savings 0 defensivos, savings_delta = ingresos − gasto
+   (antes 0 → la notificación nunca decía "Guardaste"), mood desde los
+   ingresos reales, y period_label de ciclos <21 días = rango
+   ("7–13 jul 2026"). Los gastos del ciclo quedan archivados.
+4. **Notificación** "Cerró <periodo>" (trigger, solo si hubo gasto) +
+   **Wrapped**: en dinámico se AUTO-DISPARA desde Home al detectar el
+   summary nuevo sin ver (efecto en home-dashboard con mark-seen; el
+   path fixed lo dispara al confirmar cobro). Replay en Control.
+5. **Sobrante**: la decisión (meta/acumular/reserva) viaja DENTRO del
+   wrapped (Spec B); fallback = sheet standalone. "Acumular" crea un
+   income_event con fecha de HOY → ingreso del ciclo nuevo.
+
+## Switch de Settings (fijo ↔ variable) — semántica
+
+- Confirmación vía `IncomeModeConfirmSheet` (ModalCard con efectos
+  explícitos; reemplazó al Alert nativo). El switch NO es optimista.
+- **fixed→dynamic**: apaga ahorro (goal+percent 0) y LIMPIA el override
+  del ciclo (starting_balance/anchor null — un saldo confirmado bajo el
+  régimen de sueldo compondría como base del cupo dinámico). Las
+  contribuciones de miembros NO se tocan: la lectura fuerza base 0
+  (modelo cliente + adapter + SQL `when dyn then 0`), y así
+  **dynamic→fixed recupera el sueldo anterior** tal cual estaba.
+- El scope 'income' de sync-after-mutation invalida también
+  `gastos-snapshot` (su queryKey embebe el cupo y quedaba stale si el
+  cupo no cambiaba ≥$1).
 
 ## Estado en prod
 

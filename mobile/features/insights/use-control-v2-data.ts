@@ -165,6 +165,10 @@ export interface ControlV2ViewModel {
    *  en su lugar. `false` mientras la query de ingresos hidrata (evita
    *  flash de la guía para dinámicos que SÍ tienen ingresos). */
   dynamicNoIncome: boolean
+  /** Dinámico con la query de ingresos del ciclo aún hidratando: la
+   *  pantalla muestra el shell neutro (ni stack con $0 ni guía) para no
+   *  flashear contenido equivocado en ninguna dirección. */
+  dynamicIncomeHydrating: boolean
   /**
    * Pre-computed snapshot from the `control_snapshot()` RPC (migration
    * 20260512030000). Exposed as a surface-level field for progressive
@@ -674,11 +678,16 @@ export function useControlV2Data(
 
   // Dinámico sin ingresos ESTE ciclo → la pantalla pinta la guía en vez
   // del stack de cards. Gate en `data !== undefined` (no en el ?? 0)
-  // para no flashear la guía mientras la query de ingresos hidrata.
+  // para no flashear la guía mientras la query de ingresos hidrata; el
+  // flag hermano `dynamicIncomeHydrating` cubre esa ventana con el shell
+  // neutro (sin él, un dinámico sin ingresos veía el stack con $0 un
+  // instante antes de saltar a la guía).
   const dynamicNoIncome =
     signalsIncomeMode === 'dynamic' &&
     cycleIncomeQuery.data !== undefined &&
     cycleIncomeQuery.data <= 0
+  const dynamicIncomeHydrating =
+    signalsIncomeMode === 'dynamic' && cycleIncomeQuery.isLoading
 
   return {
     data,
@@ -691,6 +700,7 @@ export function useControlV2Data(
     usingMock,
     noConfig,
     dynamicNoIncome,
+    dynamicIncomeHydrating,
     controlSnapshot,
     wrappedPayload,
     wrappedSummaryId,

@@ -88,14 +88,22 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   useScreenTour(CONTROL_TOUR)
   // userId → aplica la blocklist del usuario (consistente con el asistente).
   // `signals` ya viene filtrado por blocklist + dismissed desde el hook.
-  const { data, view, ingresosCiclo, signals, noConfig, dynamicNoIncome, wrappedPayload, wrappedSummaryId, wrappedSeen } =
+  const { data, view, ingresosCiclo, signals, noConfig, dynamicNoIncome, dynamicIncomeHydrating, wrappedPayload, wrappedSummaryId, wrappedSeen } =
     useControlV2Data(familyId, userId)
   // Sonda de la rama de render de Control. Un cambio al entrar (p.ej.
   // loading→content o noConfig→content) = el contenido aparece/cambia =
   // posible parpadeo.
   useBranchLog(
     'control',
-    noConfig ? 'noConfig' : dynamicNoIncome ? 'dynamicNoIncome' : data ? 'content' : 'loading',
+    noConfig
+      ? 'noConfig'
+      : dynamicIncomeHydrating
+        ? 'dynamicHydrating'
+        : dynamicNoIncome
+          ? 'dynamicNoIncome'
+          : data
+            ? 'content'
+            : 'loading',
   )
   const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
   // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
@@ -419,7 +427,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     [data.ingresoMes, data.fijosMes, data.libreMes],
   )
 
-  if (noConfig || dynamicNoIncome) {
+  if (noConfig || dynamicNoIncome || dynamicIncomeHydrating) {
     // Onboarding inicial pendiente: sin `monthly_income` no podemos
     // calcular un cupo diario, así que la pantalla pinta el empty
     // state guiando a configurar el ingreso. Una vez configurado,
@@ -428,7 +436,9 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     // placeholder ("Día X de N").
     // INGRESO DINÁMICO sin ingresos este ciclo: mismo shell, guía
     // "carga tu primer ingreso" — el stack de cards con $0 ("Vas bien
-    // hoy · LIBRE HOY $0") no le sirve a nadie y confunde.
+    // hoy · LIBRE HOY $0") no le sirve a nadie y confunde. Mientras la
+    // query de ingresos hidrata, el shell queda sin card (ni stack $0
+    // ni guía equivocada — sin flash en ninguna dirección).
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -452,23 +462,25 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               scoreLabel={t('control:header.scorePending')}
               scoreTone={view.scoreToneDark}
             />
-            <ControlV2EmptyState
-              missingIncome={missingIncome}
-              missingExpenses={missingExpenses}
-              dynamicNoIncome={dynamicNoIncome}
-              onPressSetupIncome={() => {
-                void triggerHaptic('selection')
-                router.push('/(app)/settings')
-              }}
-              onPressAddExpense={() => {
-                void triggerHaptic('selection')
-                router.push('/(app)/add-expense')
-              }}
-              onPressAddIncome={() => {
-                void triggerHaptic('selection')
-                router.push('/(app)/add-income')
-              }}
-            />
+            {dynamicIncomeHydrating && !noConfig ? null : (
+              <ControlV2EmptyState
+                missingIncome={missingIncome}
+                missingExpenses={missingExpenses}
+                dynamicNoIncome={dynamicNoIncome}
+                onPressSetupIncome={() => {
+                  void triggerHaptic('selection')
+                  router.push('/(app)/settings')
+                }}
+                onPressAddExpense={() => {
+                  void triggerHaptic('selection')
+                  router.push('/(app)/add-expense')
+                }}
+                onPressAddIncome={() => {
+                  void triggerHaptic('selection')
+                  router.push('/(app)/add-income')
+                }}
+              />
+            )}
           </View>
         </ScrollView>
       </Screen>

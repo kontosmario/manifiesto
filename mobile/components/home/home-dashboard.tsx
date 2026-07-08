@@ -471,6 +471,18 @@ export function HomeDashboard({
     // early-return (caso expenses_count=0, en el que el standalone SÍ es
     // el fallback correcto).
     if (wrappedInFlight) return
+    // Dinámico: la decisión de abrir el sheet standalone depende de si
+    // hay un wrapped sin ver (dynamicWrappedPending), y eso recién se
+    // sabe cuando intelligence hidrata. Sin este gate, en cold start el
+    // sheet (Modal NATIVO) se abría primero y el wrapped (overlay View)
+    // quedaba reproduciéndose INVISIBLE detrás, ya marcado como visto.
+    // Si la query falla, isError destraba y el sheet opera como siempre.
+    if (
+      isDynamicIncome &&
+      intelligenceForWrapped.data === undefined &&
+      !intelligenceForWrapped.isError
+    )
+      return
     // Dinámico con wrapped sin ver: el auto-fire del wrapped (efecto de
     // más abajo) va a llevar la decisión integrada en la closing scene —
     // abrir el sheet standalone acá lo pisaría. Si el user saltea la
@@ -485,7 +497,16 @@ export function HomeDashboard({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- abre el sheet de decisión cuando hay pending; guard por ref evita re-disparos
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision, splashIsHidden, pending, wrappedInFlight, dynamicWrappedPending])
+  }, [
+    pendingDecision,
+    splashIsHidden,
+    pending,
+    wrappedInFlight,
+    dynamicWrappedPending,
+    isDynamicIncome,
+    intelligenceForWrapped.data,
+    intelligenceForWrapped.isError,
+  ])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
@@ -524,6 +545,9 @@ export function HomeDashboard({
     if (g.isActive === false) return null
     return { id: g.id, title: g.title, emoji: g.emoji }
   }, [savingsGoalQuery.data])
+  // Declarado ANTES de fireWrappedForClosedCycle: el flujo de auto-fire
+  // dinámico stampa como visto el summary REALMENTE reproducido.
+  const markWrappedSeenHome = useMarkCycleWrappedSeen(familyId)
   // Dispara el "Manifiesto Wrapped" del ciclo recién cerrado. Gating:
   //   - Solo en flow recurrente (NO en onboarding — el primer cobro
   //     no cierra nada).
@@ -533,7 +557,13 @@ export function HomeDashboard({
   // El DB trigger `trg_family_finance_salary_confirm` cierra el ciclo
   // sync con el upsert. Por eso esperamos un wait corto post-haptic y
   // luego invalidamos la cache + refetch para leer la summary fresca.
-  const fireWrappedForClosedCycle = useCallback(async () => {
+  const fireWrappedForClosedCycle = useCallback(async (opts?: {
+    /** Auto-fire dinámico: stampa wrapped_seen_at del summary que
+     *  realmente se reproduce (el más nuevo por query directa) — marcar
+     *  el [0] del cache de intelligence podía divergir si un cierre
+     *  nuevo aterrizó entre el warm del cache y este fire. */
+    markSeenAfterPlay?: boolean
+  }) => {
     if (isOnboardingFlow) return
     // Lock SINCRONO: evita que el sheet standalone se abra durante el
     // wait + refetch. Se libera en TODOS los early-return y al final
@@ -672,6 +702,10 @@ export function HomeDashboard({
           : undefined,
       }),
     )
+    // Auto-fire dinámico: visto = el row que ACABAMOS de reproducir.
+    if (opts?.markSeenAfterPlay && summaryId) {
+      markWrappedSeenHome.mutate(summaryId)
+    }
     // Wrapped lanzado. `lastShownDecisionIdRef` ya quedó seteado más
     // arriba si correspondía → el standalone NO se abre detrás. Podemos
     // liberar el lock para que el useEffect vuelva a operar normalmente
@@ -684,14 +718,15 @@ export function HomeDashboard({
     categoryNameById,
     activeGoalForSheet,
     applyDecision,
+    markWrappedSeenHome,
   ])
 
   // Auto-fire del Wrapped en modo DINÁMICO: el ciclo cierra solo (cron
   // nocturno), nadie confirma cobro → sin este efecto el recap quedaba
   // enterrado como entrada manual en Control. Ref por summary id evita
-  // re-fires en el mismo mount; el mark-seen inmediato evita que se
-  // re-dispare en cada vuelta al Home (y deja el replay en Control).
-  const markWrappedSeenHome = useMarkCycleWrappedSeen(familyId)
+  // re-fires en el mismo mount; el mark-seen (dentro del flujo, sobre el
+  // summary realmente reproducido) evita que se re-dispare en cada
+  // vuelta al Home (y deja el replay en Control).
   const lastAutoWrappedIdRef = useRef<string | null>(null)
   useEffect(() => {
     if (!dynamicWrappedPending || !splashIsHidden || wrappedInFlight) return
@@ -700,15 +735,13 @@ export function HomeDashboard({
     if (lastAutoWrappedIdRef.current === latest.id) return
     lastAutoWrappedIdRef.current = latest.id
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fireWrapped setea el lock wrappedInFlight (sync) igual que el path fixed; guard por ref evita re-disparos
-    void fireWrappedForClosedCycle()
-    markWrappedSeenHome.mutate(latest.id)
+    void fireWrappedForClosedCycle({ markSeenAfterPlay: true })
   }, [
     dynamicWrappedPending,
     splashIsHidden,
     wrappedInFlight,
     intelligenceForWrapped.data,
     fireWrappedForClosedCycle,
-    markWrappedSeenHome,
   ])
 
   const handleCycleSheetSave = useCallback((amount: number) => {

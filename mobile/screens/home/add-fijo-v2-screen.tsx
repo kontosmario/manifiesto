@@ -84,7 +84,13 @@ export function AddFijoV2Screen({
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categories = categoriesQuery.data ?? []
   const financeQuery = useFamilyFinance(familyId)
-  const monthlyIncome = financeQuery.data?.monthly_income ?? 0
+  // DINÁMICO: base 0 aunque quede un monthly_income stale post-switch
+  // (espejo del defensivo del dashboard-model/adapter) — sin esto el
+  // paso 2 del wizard mostraba "% de tu sueldo" sobre un sueldo fantasma.
+  const monthlyIncome =
+    financeQuery.data?.income_mode === 'dynamic'
+      ? 0
+      : (financeQuery.data?.monthly_income ?? 0)
   const existingFixedExpensesQuery = useFixedExpenses(familyId)
   const editingFijo = useMemo(
     () =>

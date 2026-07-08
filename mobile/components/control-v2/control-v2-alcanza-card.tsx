@@ -365,7 +365,15 @@ function ControlV2AlcanzaCardImpl({
                 ? formatMoneyShort(Math.max(0, restanteMes))
                 : `${sobrantePresupuestadoMes >= 0 ? '+' : ''}${formatMoneyShort(sobrantePresupuestadoMes)}`
             }
-            sub={alreadyExhausted ? t('control:alcanza.statSubHastaCobrar') : t('control:alcanza.statSubAlCierre')}
+            sub={
+              alreadyExhausted
+                ? t(
+                    isDynamicIncome
+                      ? 'control:alcanza.statSubHastaCobrarDynamic'
+                      : 'control:alcanza.statSubHastaCobrar',
+                  )
+                : t('control:alcanza.statSubAlCierre')
+            }
             text={
               alreadyExhausted
                 ? palette.fg
