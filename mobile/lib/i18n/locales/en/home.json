@@ -192,7 +192,8 @@
     "loggingFor": "LOGGING FOR",
     "saveExpense": "Save expense",
     "today": "today",
-    "yesterday": "yesterday"
+    "yesterday": "yesterday",
+    "habitTagline": "You're not just logging an expense — you're building a habit."
   },
   "assistantButton": {
     "open": "Open assistant",

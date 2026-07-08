@@ -21,7 +21,7 @@
   },
   "emptyState": {
     "introTitle": "Todavía no registras gastos",
-    "introBody": "Aquí ves cada movimiento del hogar: cuánto llevas gastado en el ciclo, tu cupo diario y el detalle por día. Agrega el primero para empezar.",
+    "introBody": "Aquí ves cada movimiento del hogar: cuánto llevas gastado en el ciclo, tu cupo diario y el detalle por día. Cargar el primero no es solo un registro: es el primer día de un hábito.",
     "addFirstCta": "Cargar mi primer gasto",
     "previewEyebrow": "ASÍ SE VA A VER",
     "preview": {

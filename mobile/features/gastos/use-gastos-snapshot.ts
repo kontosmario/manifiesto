@@ -142,7 +142,7 @@ function seedCaches(
   cycleEndIso: string,
   todayIso: string,
 ): void {
-  const { familyId, userId, cupoDiario } = args
+  const { familyId, cupoDiario } = args
   if (!familyId) return
 
   // Hero: misma queryKey que useGastosHeroSummary cuando categoryId=null.

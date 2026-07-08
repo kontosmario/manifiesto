@@ -31,21 +31,23 @@ export function useMonthlyAccounting(
   // dos planos en use-fijos-controller.
   const freeze = options?.freeze ?? true
   const finance = useFamilyFinance(familyId)
+  // Modo dinámico: no hay cobro que confirmar → nunca freeze. Hoisteado
+  // fuera del memo (mismo motivo que use-pay-cycle: el compiler no
+  // preserva la memo con el optional-chain adentro).
+  const isDynamicIncome = finance.data?.income_mode === 'dynamic'
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
     const config = financeToCycleConfig(finance.data)
     // Freeze: si el cobro del mes no fue confirmado, la ventana (y por ende el
     // saldo) se queda en el ciclo anterior. Sin esto el saldo saltaba al ingreso
     // nuevo el día de cobro aunque el user no confirmara.
-    // Modo dinámico: no hay cobro que confirmar → nunca freeze.
-    const pending =
-      finance.data?.income_mode === 'dynamic'
-        ? false
-        : computeIsSalaryPendingConfirmation(
-            config,
-            today,
-            finance.data?.last_salary_confirmed_at ?? null,
-          )
+    const pending = isDynamicIncome
+      ? false
+      : computeIsSalaryPendingConfirmation(
+          config,
+          today,
+          finance.data?.last_salary_confirmed_at ?? null,
+        )
     return computeMonthlyAccountingWindow(config, today, freeze && pending)
   }, [
     finance.data?.cycle_type,
@@ -53,7 +55,7 @@ export function useMonthlyAccounting(
     finance.data?.cycle_anchor_date,
     finance.data?.cycle_length_days,
     finance.data?.last_salary_confirmed_at,
-    finance.data?.income_mode,
+    isDynamicIncome,
     freeze,
   ])
 }

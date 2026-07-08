@@ -192,7 +192,8 @@
     "loggingFor": "REGISTRANDO PARA",
     "saveExpense": "Guardar gasto",
     "today": "hoy",
-    "yesterday": "ayer"
+    "yesterday": "ayer",
+    "habitTagline": "No estás simplemente agregando un gasto: estás creando un hábito."
   },
   "assistantButton": {
     "open": "Abrir asistente",

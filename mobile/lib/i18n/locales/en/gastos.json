@@ -21,7 +21,7 @@
   },
   "emptyState": {
     "introTitle": "You haven't logged any expenses yet",
-    "introBody": "Here you'll see every household movement: how much you've spent this cycle, your daily allowance, and the day-by-day detail. Add your first one to get started.",
+    "introBody": "Here you'll see every household movement: how much you've spent this cycle, your daily allowance, and the day-by-day detail. Logging the first one isn't just a record: it's day one of a habit.",
     "addFirstCta": "Log my first expense",
     "previewEyebrow": "HERE'S HOW IT WILL LOOK",
     "preview": {

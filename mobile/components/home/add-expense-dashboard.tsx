@@ -262,6 +262,19 @@ export function AddExpenseDashboard({
                 {formatMissingFields(missingFields)}
               </Text>
             </View>
+          ) : !advisorSignals || advisorSignals.length === 0 ? (
+            // Eslogan de hábito en el momento de la decisión. Cede el
+            // lugar al helper de campos faltantes y al banner del
+            // asesor (si hay señales activas, ese contexto manda).
+            <View style={styles.helperRow}>
+              <MaterialIcons name="eco" size={14} color={theme.colors.textMuted} />
+              <Text
+                style={[styles.helperText, { color: theme.colors.textMuted }]}
+                numberOfLines={2}
+              >
+                {t('home:addExpenseDashboard.habitTagline')}
+              </Text>
+            </View>
           ) : null}
         </View>
       </RiseView>
