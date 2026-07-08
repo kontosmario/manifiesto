@@ -180,6 +180,13 @@ custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
 5. **Sobrante**: la decisión (meta/acumular/reserva) viaja DENTRO del
    wrapped (Spec B); fallback = sheet standalone. "Acumular" crea un
    income_event con fecha de HOY → ingreso del ciclo nuevo.
+6. **Reserva → "usar en este ciclo"** (`apply_reserve_decision`
+   target='cycle', migración `20260708210000`): re-ancla el override al
+   inicio del ciclo VIGENTE (misma ventana que cycle_disponible). Antes
+   sumaba al starting_balance sin tocar el anchor → en dinámico (anchor
+   stale siempre, nadie confirma cobro) la plata liberada quedaba
+   INVISIBLE. Base al re-anclar: fijo = sueldo; dinámico = 0 (los
+   ingresos entran por extra_income).
 
 ## Switch de Settings (fijo ↔ variable) — semántica
 
