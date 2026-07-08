@@ -1,10 +1,9 @@
 import {
-  authenticateBiometricAccess,
   getBiometricLoginState,
   saveBiometricCredentials,
 } from '@/lib/biometric-auth'
+import { promptBiometricEnrollment } from '@/features/auth/biometric-enrollment-prompt'
 import { supabase } from '@/lib/supabase'
-import i18n from '@/lib/i18n'
 
 // Una cuenta recién creada por social tiene `created_at` ~ ahora; una
 // existente (aunque recién vincule Google/Apple) conserva su created_at
@@ -45,13 +44,11 @@ export async function offerBiometricEnrollmentAfterSocial(): Promise<void> {
     const state = await getBiometricLoginState()
     if (!state.isAvailable) return
 
-    // Sin credenciales → ofrecé activar (prompt). Si el user cancela, no
-    // guardamos nada y salimos sin ruido.
+    // Sin credenciales → ofrecé activar (prompt), con memoria del
+    // rechazo (cooldown 7 días compartido con el resto del priming).
     if (!state.hasSavedCredentials) {
-      const result = await authenticateBiometricAccess({
-        promptMessage: i18n.t('auth:biometric.activatePrompt', { label: state.label }),
-      })
-      if (!result.success) return
+      const accepted = await promptBiometricEnrollment(state.label)
+      if (!accepted) return
     }
 
     // hasSavedCredentials=true → refresca el refresh token guardado (Supabase

@@ -88,6 +88,19 @@ R-3 (sticky biometric/PIN modal) lo resuelve forzando al usuario a
 elegir un método de lock (o a opt-out explícito vía Ajustes) en lugar
 de aceptar el "no thanks" silencioso.
 
+**Cooldown del enrolamiento (2026-07-08).** El rechazo (`user_cancel`)
+ahora persiste `prime_dismissed_biometric` (7 días, el mismo cooldown
+que la pantalla de setup pre-onboarding): la oferta de enrolamiento no
+se re-dispara en cada login con password ni tras cada social sign-in.
+Helper centralizado: `mobile/features/auth/biometric-enrollment-prompt.ts`
+(usado por `persistBiometricCredentials` y
+`offerBiometricEnrollmentAfterSocial`). Los fallos del sistema
+(`system_cancel`, lockout) NO arman el cooldown. Esto respondió al
+reporte de usuario "la app me vuelve a pedir Face ID cada vez que
+entro" — la otra mitad de ese reporte es el **front door por diseño**
+(el escaneo de desbloqueo en cada cold start, ver Estados), que no es
+un bug.
+
 ## Preguntas abiertas para post-launch
 
 - **Ajuste "Sensibilidad de bloqueo"** (Estricto / Normal / Relajado)

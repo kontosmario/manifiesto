@@ -12,6 +12,7 @@ import {
   updateStoredRefreshToken,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
+import { promptBiometricEnrollment } from '@/features/auth/biometric-enrollment-prompt'
 import { dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 import { biometricFeedbackForError } from '@/features/auth/biometric-feedback'
@@ -75,11 +76,11 @@ export function useAuthBiometricController({
       let shouldSaveCredentials = nextBiometricState.hasSavedCredentials
 
       if (!shouldSaveCredentials && options?.shouldPromptSetup) {
-        const biometricResult = await authenticateBiometricAccess({
-          promptMessage: i18n.t('auth:biometric.activatePrompt', { label: nextBiometricState.label }),
-        })
+        // Cooldown-aware: si el usuario rechazó el enrolamiento hace
+        // <7 días, no se le vuelve a ofrecer en cada login.
+        const accepted = await promptBiometricEnrollment(nextBiometricState.label)
 
-        if (!biometricResult.success) {
+        if (!accepted) {
           return
         }
 

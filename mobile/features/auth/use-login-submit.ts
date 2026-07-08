@@ -205,9 +205,12 @@ export function useLoginSubmit({
       //   3. If credentials are already saved → silently refresh the
       //      stored refresh token (auto-recovery from server-side
       //      rotation, no prompt).
-      //   4. Otherwise → fire the "Activa Face ID para entrar más
-      //      rápido la próxima vez." LocalAuthentication prompt and,
-      //      on success, persist email + refresh token to Keychain.
+      //   4. Otherwise → offer the "Activa Face ID para entrar más
+      //      rápido la próxima vez." enrollment via
+      //      `promptBiometricEnrollment`, which honors the 7-day
+      //      `prime_dismissed_biometric` cooldown (a user who declined
+      //      is not re-prompted on every login) and, on success,
+      //      persists email + refresh token to Keychain.
       //
       // Verified call-sites that exercise this branch: this submit hook
       // (password sign-in) is the only producer of `shouldPromptSetup:
@@ -215,12 +218,12 @@ export function useLoginSubmit({
       // sign-in — the call happens before the onboarding redirect and
       // before `onSignedIn()`, regardless of resolution type.
       //
-      // Known UX caveat (R-3 will address): if the user DECLINES the
-      // Face ID enrollment prompt here, no credentials are saved and
-      // the next foreground will land on the bare welcome hero without
-      // any lock layer. The R-3 "sticky biometric/PIN modal" closes
-      // that hole by re-prompting until the user picks a lock method
-      // (or explicitly opts out via Settings).
+      // Decline handling (2026-07-08): a user who taps "Cancelar" on
+      // the enrollment prompt gets a 7-day cooldown
+      // (`prime_dismissed_biometric`) before the offer reappears —
+      // before this, EVERY password login re-fired the prompt, which
+      // users reported as "la app me pide Face ID cada vez que entro".
+      // They can still opt in any time from Settings.
       await persistBiometricCredentials(normalizedEmail, {
         shouldPromptSetup: true,
       })
