@@ -5,7 +5,6 @@ import { clearLastUserProfile } from '@/lib/last-user-cache'
 import { resetAllTours } from '@/features/tours/persistence'
 import { clearAllTourPending } from '@/features/tours/tour-pending-store'
 import { deletePersistentValue } from '@/lib/persistent-kv'
-import { clearBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import { clearPendingNotificationRoute } from '@/lib/notification-pending-route'
 import { clearPin } from '@/lib/pin-lock'
 import { clearProtectionPromptDismissal } from '@/features/auth/protection-prompt-dismissal'
@@ -87,10 +86,14 @@ export async function logoutSession(input: {
     clearAllTourPending(),
     deletePersistentValue('tour-seen.migration-v2-done'),
     deletePersistentValue('tours-backfill-done'),
-    // Pre-onboarding biometric-setup flag (per-user). If the user
-    // signed out mid-onboarding without seeing the screen, they should
-    // see it again on the next login.
-    userId ? clearBiometricSetupShown(userId) : Promise.resolve(),
+    // NO limpiamos `biometric-setup-shown:{userId}` (fix 2026-07-08).
+    // El clear existía "para que quien salió mid-onboarding SIN ver la
+    // pantalla la vea al volver" — pero para esos el flag nunca se setea
+    // (clear = no-op), y para quien SÍ la vio y decidió, borrarlo
+    // re-mostraba "Activa Face ID" en cada re-login (reporte del owner),
+    // encima del prompt nativo del login que ya re-ofrece Face ID con
+    // cooldown de 7 días. El flag es per-user: otra cuenta en el mismo
+    // device tiene su propia key y ve su propia pantalla.
     // Sprint R-3 · R-3.2 — clear the "Configura Face ID o PIN"
     // dismissal stamp so the next sign-in (same or different user)
     // re-evaluates fresh. Without this, a user who dismissed the

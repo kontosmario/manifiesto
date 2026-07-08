@@ -12,7 +12,10 @@ import {
  *
  * Storage: SecureStore on native (survives reinstall on iOS, wipes on
  * Android wipe), localStorage on web — same pattern as `tour-seen.*`
- * and `tours-backfill-done`. Reset on logout in `logout.ts`.
+ * and `tours-backfill-done`. SOBREVIVE al logout (fix 2026-07-08): la
+ * decisión es del usuario y borrarla re-mostraba "Activa Face ID" en
+ * cada re-login mid-onboarding; el re-ofrecimiento de Face ID post
+ * logout lo cubre el prompt nativo del login (cooldown de 7 días).
  *
  * Key namespaced by userId so multiple accounts on the same device
  * each get their own decision.

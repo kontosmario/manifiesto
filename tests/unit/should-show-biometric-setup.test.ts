@@ -7,6 +7,7 @@ describe('shouldShowBiometricSetup', () => {
     onboardingCompletedAt: null,
     biometricSetupShown: false,
     biometricSetupFlagLoaded: true,
+    hasProtectionConfigured: false,
   } as const
 
   it('true when session valid + onboarding incomplete + flag false + loaded', () => {
@@ -53,7 +54,19 @@ describe('shouldShowBiometricSetup', () => {
         onboardingCompletedAt: null,
         biometricSetupShown: false,
         biometricSetupFlagLoaded: false,
+        hasProtectionConfigured: false,
       }),
+    ).toBe(false)
+  })
+
+  it('false cuando el device YA tiene protección (Face ID re-enrolado en el login o PIN)', () => {
+    // Reporte del owner 2026-07-08: re-login mid-onboarding — el prompt
+    // nativo del login re-enrola Face ID y la pantalla "Activa Face ID"
+    // aparecía IGUAL a continuación (doble pedido). Con credenciales o
+    // PIN ya configurados, la pantalla no tiene decisión que pedir —
+    // aunque el flag "ya vista" se haya perdido.
+    expect(
+      shouldShowBiometricSetup({ ...base, hasProtectionConfigured: true }),
     ).toBe(false)
   })
 })

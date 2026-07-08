@@ -131,12 +131,22 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
     const onboardingCompletedAt = profile?.onboarding_completed_at ?? null
     let showBiometricSetup = false
     if (!onboardingCompletedAt) {
-      const shown = await getBiometricSetupShown(userId)
+      // Protección YA configurada (Keychain o PIN) ⇒ la pantalla de
+      // setup no tiene nada que pedir. Cubre el re-login mid-onboarding
+      // donde el prompt nativo del login acaba de re-enrolar Face ID —
+      // sin este check, la pantalla "Activa Face ID" aparecía igual
+      // (doble pedido en el mismo login, reporte del owner 2026-07-08).
+      const [shown, bio, pin] = await Promise.all([
+        getBiometricSetupShown(userId),
+        getBiometricLoginState(),
+        getPinLockState(),
+      ])
       showBiometricSetup = shouldShowBiometricSetup({
         sessionUserId: userId,
         onboardingCompletedAt,
         biometricSetupShown: shown,
         biometricSetupFlagLoaded: true,
+        hasProtectionConfigured: bio.hasSavedCredentials || pin.isSet,
       })
     }
     return resolveDestination({

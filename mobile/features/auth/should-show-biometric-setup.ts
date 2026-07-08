@@ -15,17 +15,26 @@
  * biometric-setup again before the flag resolves. Returning false
  * while the flag is loading lets the AppEntryGate render its loading
  * state instead.
+ *
+ * `hasProtectionConfigured` (2026-07-08): si el device YA tiene
+ * protección activa para entrar (credenciales biométricas en Keychain
+ * o PIN configurado), la decisión que la pantalla pide ya está tomada
+ * — mostrarla igual era el reporte del owner: re-login mid-onboarding
+ * donde el prompt nativo del login re-enrola Face ID y ACTO SEGUIDO
+ * aparecía la pantalla "Activa Face ID" pidiendo lo mismo.
  */
 export function shouldShowBiometricSetup(input: {
   sessionUserId: string | null | undefined
   onboardingCompletedAt: string | null | undefined
   biometricSetupShown: boolean
   biometricSetupFlagLoaded: boolean
+  hasProtectionConfigured: boolean
 }): boolean {
   return Boolean(
     input.sessionUserId &&
       !input.onboardingCompletedAt &&
       !input.biometricSetupShown &&
+      !input.hasProtectionConfigured &&
       input.biometricSetupFlagLoaded,
   )
 }
