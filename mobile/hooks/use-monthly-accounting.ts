@@ -47,7 +47,15 @@ export function useMonthlyAccounting(
       finance.data?.last_salary_confirmed_at ?? null,
       incomeMode,
     )
-    return computeMonthlyAccountingWindow(config, today, freeze && pending)
+    // Dinámico: la ventana de accounting SIGUE el ciclo elegido
+    // (semana/quincena); los sueldos fijos rolling siguen en mes
+    // calendario (ver computeMonthlyAccountingWindow).
+    return computeMonthlyAccountingWindow(
+      config,
+      today,
+      freeze && pending,
+      incomeMode === 'dynamic',
+    )
   }, [
     finance.data?.cycle_type,
     finance.data?.salary_payment_day,

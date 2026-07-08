@@ -121,7 +121,8 @@
     "dynamicSetupBody": "Your home runs on variable income: log the money that comes in and we tell you how much you can spend per day with what you have.",
     "addFirstIncome": "Add income",
     "dynamicSetupA11y": "Log your first income to activate month tracking.",
-    "addIncomeAccessibility": "Add an income"
+    "addIncomeAccessibility": "Add an income",
+    "cycleBalance": "Cycle balance"
   },
   "monthClose": {
     "subtitle": "You closed {{period}} with a positive balance. What do you want to do with that money?",

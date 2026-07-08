@@ -110,7 +110,8 @@
     "incomeModeConfirmTitle_fixed": "Back to fixed salary?",
     "incomeModeConfirmBody_fixed": "Your daily allowance will be calculated from the household's monthly salary again. Make sure your contribution is set.",
     "incomeModeConfirmCta": "Confirm",
-    "incomeModeHelperOn": "On: your budget builds from the income you log. The monthly % savings is turned off."
+    "incomeModeHelperOn": "On: your budget builds from the income you log. The monthly % savings is turned off.",
+    "cycleLabelDynamic": "Cycle"
   },
   "conversion": {
     "rowDisabled": "Off",
@@ -790,7 +791,14 @@
     "minusDay": "Subtract a day",
     "plusDay": "Add a day",
     "days_one": "day",
-    "days_other": "days"
+    "days_other": "days",
+    "cycleCopy": {
+      "monthDayLabel": "DAY OF THE MONTH YOUR CYCLE STARTS",
+      "nextStartLabel": "WHEN DOES YOUR NEXT CYCLE START?",
+      "everyNDaysLabel": "HOW MANY DAYS DOES IT REPEAT EVERY",
+      "helperCustom": "Set when the next cycle starts and how many days it lasts.",
+      "transitionNotice": "You're changing your cycle from {{from}} to {{to}}. The change applies to the next cycle — the current one runs its course."
+    }
   },
   "savingsGoalScreen": {
     "title": "Savings goal",
@@ -915,7 +923,9 @@
   },
   "editCycle": {
     "title": "Pay cycle",
-    "subtitle": "Choose how you get paid. Changing the type applies to your next payday — the current cycle runs its course."
+    "subtitle": "Choose how you get paid. Changing the type applies to your next payday — the current cycle runs its course.",
+    "titleCycle": "Your cycle",
+    "subtitleCycle": "Choose how you want to track your money: by week, fortnight or month. Changing the type applies to the next cycle."
   },
   "editAvatar": {
     "title": "Avatar",

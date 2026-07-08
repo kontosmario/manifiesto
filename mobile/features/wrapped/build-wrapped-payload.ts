@@ -44,6 +44,11 @@ export function buildWrappedPayloadFromSummary({
   // Rango display: si el ciclo es calendario (1→1 del mes siguiente)
   // no mostramos rango porque el periodLabel ya alcanza.
   const periodRange = buildPeriodRange(summary.period_start, summary.period_end)
+  // Período CORTO (< 21 días) = ciclo semanal/quincenal del modo
+  // dinámico — el nombre de mes deja de identificar el período.
+  const periodDays =
+    (Date.parse(summary.period_end) - Date.parse(summary.period_start)) / 86_400_000
+  const isShortPeriod = Number.isFinite(periodDays) && periodDays > 0 && periodDays < 21
 
   // Top categoría: el rollup puede traer category_breakdown como array
   // o como record. Normalizamos a array y picamos la primera.
@@ -77,8 +82,14 @@ export function buildWrappedPayloadFromSummary({
   }, 0)
 
   return {
-    periodLabel: summary.period_label,
-    periodRange,
+    // Ciclos CORTOS (semana/quincena del modo dinámico): el
+    // period_label del server es un nombre de mes ("Julio 2026") que se
+    // repetiría 2-4 veces por mes — el rango real ("7 jul – 13 jul") es
+    // el título honesto, y se anula el subtítulo para no duplicarlo.
+    // Los ciclos ~mensuales (sueldo día 15, calendario) NO cambian:
+    // conservan nombre de mes como título + rango como subtítulo.
+    periodLabel: isShortPeriod && periodRange ? periodRange : summary.period_label,
+    periodRange: isShortPeriod ? null : periodRange,
     totalSpent: Number(summary.total_spent ?? 0),
     // "Tienes $X para administrar" (closing) = TODO lo que entró al
     // ciclo: sueldo base + income_events. Con solo monthly_income, un

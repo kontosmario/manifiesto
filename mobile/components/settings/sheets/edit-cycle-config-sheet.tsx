@@ -12,6 +12,8 @@ interface EditCycleConfigSheetProps {
   isSaving: boolean
   onClose: () => void
   onSave: (next: FinanceCycleConfig) => void
+  /** 'cycle' en modo INGRESO DINÁMICO: título y labels sin "cobro". */
+  copyVariant?: 'salary' | 'cycle'
 }
 
 export function EditCycleConfigSheet({
@@ -20,6 +22,7 @@ export function EditCycleConfigSheet({
   isSaving,
   onClose,
   onSave,
+  copyVariant = 'salary',
 }: EditCycleConfigSheetProps) {
   const { t } = useTranslation()
   const [draft, setDraft] = useState<FinanceCycleConfig>(currentConfig)
@@ -41,8 +44,16 @@ export function EditCycleConfigSheet({
   return (
     <ModalCard
       onClose={onClose}
-      subtitle={t('settings:editCycle.subtitle')}
-      title={t('settings:editCycle.title')}
+      subtitle={t(
+        copyVariant === 'cycle'
+          ? 'settings:editCycle.subtitleCycle'
+          : 'settings:editCycle.subtitle',
+      )}
+      title={t(
+        copyVariant === 'cycle'
+          ? 'settings:editCycle.titleCycle'
+          : 'settings:editCycle.title',
+      )}
       visible={visible}
     >
       <View style={styles.stack}>
@@ -50,6 +61,8 @@ export function EditCycleConfigSheet({
           value={draft}
           onChange={setDraft}
           currentConfig={currentConfig}
+          copyVariant={copyVariant}
+          monthlyDefaultDay={copyVariant === 'cycle' ? 1 : 15}
         />
         <AppButton
           disabled={!dirty}

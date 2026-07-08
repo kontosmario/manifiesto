@@ -258,7 +258,11 @@ function HomeHeroCardImpl({
                 glow={theme.colors.heroAccent}
               />
               <Text style={[styles.label, { color: theme.colors.heroAccent }]}>
-                {t('home:hero.monthBalance')}
+                {data.incomeMode === 'dynamic'
+                  ? // Dinámico: la ventana es el CICLO elegido (semana /
+                    // quincena / mes) — "del mes" quedaba impreciso.
+                    t('home:hero.cycleBalance')
+                  : t('home:hero.monthBalance')}
               </Text>
             </View>
             {data.paydayPending ? (

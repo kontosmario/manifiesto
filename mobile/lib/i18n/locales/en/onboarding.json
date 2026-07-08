@@ -149,7 +149,9 @@
       "row2": "Your balance and daily allowance update instantly, based on what you really have.",
       "row3": "Days without income? That's fine: we spread what's left across the remaining days.",
       "footer": "Ideal for freelance work, sales, tips or income that comes and goes."
-    }
+    },
+    "dynamicCycleEyebrow": "YOUR CYCLE",
+    "dynamicCycleHint": "That's how you'll know how this week, fortnight or month went. You can always change it from Settings."
   },
   "incomeContribution": {
     "title": "Do you contribute to the household income?",

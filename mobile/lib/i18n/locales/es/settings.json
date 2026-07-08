@@ -110,7 +110,8 @@
     "incomeModeConfirmTitle_fixed": "¿Volver a sueldo fijo?",
     "incomeModeConfirmBody_fixed": "Tu cupo diario volverá a calcularse con el sueldo mensual del hogar. Revisa que tu contribución esté cargada.",
     "incomeModeConfirmCta": "Confirmar",
-    "incomeModeHelperOn": "Activo: tu presupuesto se arma con los ingresos que registras. El ahorro mensual por % queda desactivado."
+    "incomeModeHelperOn": "Activo: tu presupuesto se arma con los ingresos que registras. El ahorro mensual por % queda desactivado.",
+    "cycleLabelDynamic": "Ciclo"
   },
   "conversion": {
     "rowDisabled": "Desactivada",
@@ -790,7 +791,14 @@
     "minusDay": "Restar un día",
     "plusDay": "Sumar un día",
     "days_one": "día",
-    "days_other": "días"
+    "days_other": "días",
+    "cycleCopy": {
+      "monthDayLabel": "DÍA DEL MES EN QUE EMPIEZA TU CICLO",
+      "nextStartLabel": "¿CUÁNDO EMPIEZA TU PRÓXIMO CICLO?",
+      "everyNDaysLabel": "CADA CUÁNTOS DÍAS SE REPITE",
+      "helperCustom": "Indica cuándo empieza el próximo ciclo y cuántos días dura.",
+      "transitionNotice": "Estás cambiando tu ciclo de {{from}} a {{to}}. El cambio aplica al próximo ciclo — el actual sigue su curso."
+    }
   },
   "savingsGoalScreen": {
     "title": "Meta de ahorro",
@@ -915,7 +923,9 @@
   },
   "editCycle": {
     "title": "Ciclo de cobro",
-    "subtitle": "Elige cómo cobras. Cambiar el tipo aplica al próximo cobro — el ciclo actual sigue su curso."
+    "subtitle": "Elige cómo cobras. Cambiar el tipo aplica al próximo cobro — el ciclo actual sigue su curso.",
+    "titleCycle": "Tu ciclo",
+    "subtitleCycle": "Elige cómo quieres medir tu dinero: por semana, quincena o mes. Cambiar el tipo aplica al próximo ciclo."
   },
   "editAvatar": {
     "title": "Avatar",

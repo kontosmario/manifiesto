@@ -149,7 +149,9 @@
       "row2": "Tu saldo y tu cupo del día se actualizan al instante, con lo que de verdad tienes.",
       "row3": "¿Días sin ingresos? No pasa nada: repartimos lo que queda entre los días que faltan.",
       "footer": "Ideal para freelance, ventas, propinas o ingresos que van y vienen."
-    }
+    },
+    "dynamicCycleEyebrow": "TU CICLO",
+    "dynamicCycleHint": "Así vas a saber cómo te fue esta semana, esta quincena o este mes. Siempre puedes cambiarlo desde Ajustes."
   },
   "incomeContribution": {
     "title": "¿Aportas al ingreso del hogar?",

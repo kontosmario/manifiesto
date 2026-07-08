@@ -204,6 +204,21 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
     cycleConfigUserTouchedRef.current = true
     setCycleConfig(next)
   }, [])
+  // Al cambiar de régimen de ingreso, resetear el default del ciclo si
+  // el usuario todavía no lo tocó: dinámico arranca en mes CALENDARIO
+  // (día 1 — "¿cómo me fue este mes?"), fijo en día de cobro 15.
+  const handleIncomeModeChange = useCallback(
+    (mode: 'fixed' | 'dynamic') => {
+      actions.setIncomeMode(mode)
+      if (!cycleConfigUserTouchedRef.current) {
+        setCycleConfig({
+          cycle_type: 'monthly',
+          salary_payment_day: mode === 'dynamic' ? 1 : 15,
+        })
+      }
+    },
+    [actions],
+  )
   const scrollRef = useRef<ScrollView>(null)
   const scrollY = useRef(0)
   // Snapshot of the scroll position taken at the moment the user
@@ -250,10 +265,18 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
           if (state.contributesIncome === true) return monthlyIncome > 0
           return true
         }
-        // Ingreso DINÁMICO (sin sueldo fijo): no hay monto ni ciclo que
-        // validar — el presupuesto se construye cargando ingresos
-        // manuales después del onboarding.
-        if (state.incomeMode === 'dynamic') return true
+        // Ingreso DINÁMICO (sin sueldo fijo): no hay monto que validar,
+        // pero el CICLO elegido (semana/quincena/mes) sí — mismo bound
+        // que el path fijo para monthly.
+        if (state.incomeMode === 'dynamic') {
+          if (cycleConfig.cycle_type === 'monthly') {
+            return (
+              cycleConfig.salary_payment_day >= 1 &&
+              cycleConfig.salary_payment_day <= 31
+            )
+          }
+          return true
+        }
         // For rolling cycles (biweekly/weekly/custom), the anchor +
         // length are picked from constrained controls in
         // `CycleConfigSection`, so the only thing that can be invalid
@@ -375,8 +398,10 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         savingsGoalPercent: isDynamicIncome ? 0 : state.savingsGoalPercent,
         usdExchangeRate: existingFinance?.usd_exchange_rate ?? 1000,
         incomeMode: state.incomeMode,
+        // El ciclo elegido aplica en AMBOS modos: en dinámico define la
+        // ventana de "¿cómo me fue este ciclo?" (semana/quincena/mes).
         salaryPaymentDay:
-          !isDynamicIncome && cycleConfig.cycle_type === 'monthly'
+          cycleConfig.cycle_type === 'monthly'
             ? cycleConfig.salary_payment_day
             : 1,
         // Stampeamos la confirmación de sueldo al terminar onboarding.
@@ -398,13 +423,13 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
         currentCycleStartingBalance:
           existingFinance?.current_cycle_starting_balance ?? null,
         currentCycleAnchor: existingFinance?.current_cycle_anchor ?? null,
-        cycleType: isDynamicIncome ? ('monthly' as const) : cycleConfig.cycle_type,
+        cycleType: cycleConfig.cycle_type,
         cycleAnchorDate:
-          isDynamicIncome || cycleConfig.cycle_type === 'monthly'
+          cycleConfig.cycle_type === 'monthly'
             ? null
             : cycleConfig.cycle_anchor_date,
         cycleLengthDays:
-          isDynamicIncome || cycleConfig.cycle_type === 'monthly'
+          cycleConfig.cycle_type === 'monthly'
             ? null
             : cycleConfig.cycle_length_days,
       } as const
@@ -726,6 +751,7 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
               closedByOwner,
               cycleConfig,
               onChangeCycleConfig: handleCycleConfigChange,
+              onChangeIncomeMode: handleIncomeModeChange,
             })}
           </Animated.View>
         </Pressable>
@@ -788,6 +814,7 @@ interface RenderStepContext {
   closedByOwner: boolean
   cycleConfig: FinanceCycleConfig
   onChangeCycleConfig: (next: FinanceCycleConfig) => void
+  onChangeIncomeMode: (mode: 'fixed' | 'dynamic') => void
 }
 
 function renderStep(
@@ -842,7 +869,7 @@ function renderStep(
           monthlyIncomeRaw={state.monthlyIncomeRaw}
           incomeMode={state.incomeMode}
           cycleConfig={ctx.cycleConfig}
-          onChangeIncomeMode={actions.setIncomeMode}
+          onChangeIncomeMode={ctx.onChangeIncomeMode}
           onRequestNumpad={ctx.openIncomeNumpad}
           onChangeCycleConfig={ctx.onChangeCycleConfig}
           isNumpadActive={ctx.numpadTarget === 'income'}

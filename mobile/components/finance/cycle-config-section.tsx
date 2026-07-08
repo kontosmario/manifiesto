@@ -40,19 +40,36 @@ interface CycleConfigSectionProps {
    * prop — no hay config previo. Settings sí lo pasa.
    */
   currentConfig?: FinanceCycleConfig
+  /**
+   * 'salary' (default): copy de cobro ("día en que cobrás") — sueldo
+   * fijo. 'cycle': copy neutral de CICLO ("día en que empieza tu
+   * ciclo") — modo INGRESO DINÁMICO, donde no existe el cobro.
+   */
+  copyVariant?: 'salary' | 'cycle'
+  /** Día default al elegir "Mensual" (dinámico usa 1 = mes calendario). */
+  monthlyDefaultDay?: number
 }
 
-export function CycleConfigSection({ value, onChange, currentConfig }: CycleConfigSectionProps) {
+export function CycleConfigSection({
+  value,
+  onChange,
+  currentConfig,
+  copyVariant = 'salary',
+  monthlyDefaultDay = 15,
+}: CycleConfigSectionProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const today = useMemo(() => normalizeToStartOfDay(new Date()), [])
   const todayIso = useMemo(() => formatLocalDateKey(today), [today])
+  // Sufijo de keys para las 4 strings que nombran el "cobro" — el resto
+  // del copy ya es neutral (Mensual / Cada 14 días / etc.).
+  const isCycleCopy = copyVariant === 'cycle'
 
   const handleTypeChange = (next: FinanceCycleConfig['cycle_type']) => {
     if (next === value.cycle_type) return
     void triggerHaptic('selection')
     if (next === 'monthly') {
-      onChange({ cycle_type: 'monthly', salary_payment_day: 15 })
+      onChange({ cycle_type: 'monthly', salary_payment_day: monthlyDefaultDay })
       return
     }
     if (next === 'biweekly') {
@@ -85,10 +102,15 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
 
   const transitionNotice =
     currentConfig && currentConfig.cycle_type !== value.cycle_type
-      ? t('settings:cycleConfig.transitionNotice', {
-          from: typeLabel(currentConfig.cycle_type),
-          to: typeLabel(value.cycle_type),
-        })
+      ? t(
+          isCycleCopy
+            ? 'settings:cycleConfig.cycleCopy.transitionNotice'
+            : 'settings:cycleConfig.transitionNotice',
+          {
+            from: typeLabel(currentConfig.cycle_type),
+            to: typeLabel(value.cycle_type),
+          },
+        )
       : null
 
   return (
@@ -130,7 +152,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
 
       {value.cycle_type === 'monthly' ? (
         <View>
-          <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.monthDayLabel')}</Text>
+          <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t(isCycleCopy ? 'settings:cycleConfig.cycleCopy.monthDayLabel' : 'settings:cycleConfig.monthDayLabel')}</Text>
           <MonthDayPicker
             value={value.salary_payment_day}
             onChange={(d) => onChange({ cycle_type: 'monthly', salary_payment_day: d })}
@@ -139,7 +161,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
       ) : (
         <View style={styles.rollingStack}>
           <View>
-            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.nextPaydayLabel')}</Text>
+            <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t(isCycleCopy ? 'settings:cycleConfig.cycleCopy.nextStartLabel' : 'settings:cycleConfig.nextPaydayLabel')}</Text>
             <BaseMonthCalendar
               initialYear={anchorYear(value.cycle_anchor_date, today)}
               initialMonth={anchorMonth(value.cycle_anchor_date, today)}
@@ -150,7 +172,7 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
           </View>
           {value.cycle_type === 'custom' ? (
             <View>
-              <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t('settings:cycleConfig.everyNDaysLabel')}</Text>
+              <Text style={[styles.fieldLabel, { color: theme.colors.textMuted }]}>{t(isCycleCopy ? 'settings:cycleConfig.cycleCopy.everyNDaysLabel' : 'settings:cycleConfig.everyNDaysLabel')}</Text>
               <View
                 style={[
                   styles.stepperCard,
@@ -201,7 +223,13 @@ export function CycleConfigSection({ value, onChange, currentConfig }: CycleConf
         </View>
       )}
 
-      <Text style={[styles.helper, { color: theme.colors.textMuted }]}>{t(`settings:cycleConfig.helper.${value.cycle_type}`)}</Text>
+      <Text style={[styles.helper, { color: theme.colors.textMuted }]}>
+        {t(
+          isCycleCopy && value.cycle_type === 'custom'
+            ? 'settings:cycleConfig.cycleCopy.helperCustom'
+            : `settings:cycleConfig.helper.${value.cycle_type}`,
+        )}
+      </Text>
 
       {transitionNotice ? (
         <View

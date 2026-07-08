@@ -121,7 +121,8 @@
     "dynamicSetupBody": "Tu hogar usa ingreso variable: registra el dinero que entra y te decimos cuánto puedes gastar por día con lo que tienes.",
     "addFirstIncome": "Agregar ingreso",
     "dynamicSetupA11y": "Carga tu primer ingreso para activar el seguimiento del mes.",
-    "addIncomeAccessibility": "Agregar un ingreso"
+    "addIncomeAccessibility": "Agregar un ingreso",
+    "cycleBalance": "Saldo del ciclo"
   },
   "monthClose": {
     "subtitle": "Cerraste {{period}} con un saldo a favor. ¿Qué haces con esa plata?",

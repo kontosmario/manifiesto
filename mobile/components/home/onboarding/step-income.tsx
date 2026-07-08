@@ -134,6 +134,24 @@ export function StepIncome({
               {t('onboarding:income.dynamicCard.footer')}
             </Text>
           </View>
+
+          {/* Ciclo del modo variable: "¿cómo te fue esta semana / esta
+              quincena / este mes?" — misma infraestructura de ciclos que
+              los sueldos rolling, con copy neutral (sin "cobro"). */}
+          <View style={styles.dynamicCycleBlock}>
+            <Text style={[styles.eyebrow, styles.dayEyebrow, { color: theme.colors.textMuted }]}>
+              {t('onboarding:income.dynamicCycleEyebrow')}
+            </Text>
+            <CycleConfigSection
+              value={cycleConfig}
+              onChange={onChangeCycleConfig}
+              copyVariant="cycle"
+              monthlyDefaultDay={1}
+            />
+            <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
+              {t('onboarding:income.dynamicCycleHint')}
+            </Text>
+          </View>
         </RiseView>
       ) : (
         <>
@@ -188,6 +206,7 @@ const styles = StyleSheet.create({
   infoHeaderText: { flex: 1, gap: 2 },
   infoTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
   infoKicker: { fontSize: 12, lineHeight: 16 },
+  dynamicCycleBlock: { marginTop: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   infoRowIcon: { marginTop: 1 },
   infoText: { flex: 1, fontSize: 13, lineHeight: 19 },

@@ -89,6 +89,47 @@ El % del sueldo que se aparta no tiene base sin sueldo. Gates:
   `first_cycle_under_budget` (moneda que brota, SVG propio AA) + 3
   pasos + footer de audiencias (`onboarding:income.dynamicCard.*`).
 
+## Ciclos del modo dinámico (fase 3, 2026-07-08)
+
+El usuario dinámico elige su ciclo — SEMANAL / QUINCENAL / MENSUAL (o
+custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
+
+- **Mapeo**: reusa `cycle_type`/`cycle_anchor_date`/`cycle_length_days`
+  existentes (infra de sueldos rolling). Mensual dinámico = día de
+  inicio elegible (default 1 = mes calendario).
+- **Ventana de accounting**: `computeMonthlyAccountingWindow(...,
+  followCycleWindow)` — en dinámico la ventana ES el ciclo rolling
+  (getCurrentPayCycle); los sueldos fijos weekly/biweekly NO cambian
+  (siguen en mes calendario, spec 2026-06-05). Todo lo derivado
+  (saldo, cupo, día N de M, income_events del ciclo, proyección,
+  cierre) sigue automáticamente.
+- **UI**: `CycleConfigSection copyVariant="cycle"` (labels sin
+  "cobro", monthly default día 1) en onboarding (rama dinámica del
+  StepIncome) y en Settings (fila "Ciclo" + EditCycleConfigSheet).
+- **Server (migración `20260708150000`)**: `cycle_disponible` y
+  `velocity_snapshots` computan la ventana vía `compute_pay_cycle`
+  (dinámico sigue su ciclo; fixed conserva la mensual). FIX crítico:
+  el freeze de `home_snapshot` eximió a dinámico — sin eso, al rolar
+  el mes el snapshot quedaba congelado en el ciclo anterior para
+  siempre. El history del snapshot ahora incluye `extra_income` y
+  `savings_goal_amount`.
+- **Wrapped**: períodos cortos (<21 días) titulan con el rango
+  ("7 jul – 13 jul") en vez del nombre de mes repetido.
+- **Cierres**: `try_close_previous_cycle` + cron ya cierran rolling
+  (infra existente); `monthly_summaries` no colisiona (unique por
+  period_start).
+
+## Asistente heurístico en dinámico (fase 3)
+
+- Referencia de ingreso ÚNICA en `use-control-v2-data`:
+  `ingresoRecurrente = Σ income_events del ciclo` en dinámico.
+- Adapter de Control: dinámico reparte el cupo como el override (días
+  restantes − variable gastado) — paridad con Home.
+- `income-volatility`: histórico desde `summaries[].extra_income`.
+- `income-missing`: rama dinámica sin payday — "todavía sin ingresos
+  este ciclo" pasado ~30% del ciclo, CTA a add-income.
+- `fijos-ratio`: copy neutral (sin "sueldo").
+
 ## Pendiente owner
 
 - Aplicar migraciones `20260708130000` y `20260708140000` a prod

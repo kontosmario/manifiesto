@@ -1198,16 +1198,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   onValueChange={handleToggleDynamicIncome}
                   value={isDynamicIncomeMode}
                 />
-                {!isDynamicIncomeMode ? (
-                  <SettingsRow
-                    disabled={!isOwner}
-                    disabledHint={DISABLED_HINT}
-                    icon="autorenew"
-                    label={t('settings:household.payCycle')}
-                    onPress={() => setCycleConfigSheetOpen(true)}
-                    value={cycleConfigValue}
-                  />
-                ) : null}
+                <SettingsRow
+                  disabled={!isOwner}
+                  disabledHint={DISABLED_HINT}
+                  icon="autorenew"
+                  label={
+                    isDynamicIncomeMode
+                      ? t('settings:household.cycleLabelDynamic')
+                      : t('settings:household.payCycle')
+                  }
+                  onPress={() => setCycleConfigSheetOpen(true)}
+                  value={cycleConfigValue}
+                />
                 <SettingsRow
                   disabled={!isOwner}
                   disabledHint={DISABLED_HINT}
@@ -1836,6 +1838,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         visible={incomeSheetOpen}
       />
       <EditCycleConfigSheet
+        copyVariant={isDynamicIncomeMode ? 'cycle' : 'salary'}
         currentConfig={currentCycleConfig}
         isSaving={upsertFamilyFinanceMutation.isPending}
         onClose={() => setCycleConfigSheetOpen(false)}

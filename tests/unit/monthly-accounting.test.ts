@@ -60,3 +60,55 @@ describe('monthly accounting window — non-monthly cycle (calendar month)', () 
     expect(w.days).toBe(28)
   })
 })
+
+describe('monthly accounting window — INGRESO DINÁMICO sigue el ciclo (followCycleWindow)', () => {
+  it('semanal: la ventana ES la semana rolling (anchor 2026-06-01, hoy jun 5)', () => {
+    const w = computeMonthlyAccountingWindow(
+      { cycle_type: 'weekly', cycle_anchor_date: '2026-06-01', cycle_length_days: 7 },
+      D(2026, 6, 5),
+      false,
+      true, // followCycleWindow (dinámico)
+    )
+    expect(w.start).toEqual(D(2026, 6, 1)) // lunes de la semana en curso
+    expect(w.end).toEqual(D(2026, 6, 8))
+    expect(w.days).toBe(7)
+    expect(w.daysIntoMonth).toBe(5) // día 5 del ciclo
+    expect(w.daysRemaining).toBe(3)
+  })
+
+  it('quincenal: ventana de 14 días desde el anchor', () => {
+    const w = computeMonthlyAccountingWindow(
+      { cycle_type: 'biweekly', cycle_anchor_date: '2026-06-01', cycle_length_days: 14 },
+      D(2026, 6, 20),
+      false,
+      true,
+    )
+    // 20 jun cae en el segundo período (15 jun → 29 jun).
+    expect(w.start).toEqual(D(2026, 6, 15))
+    expect(w.end).toEqual(D(2026, 6, 29))
+    expect(w.days).toBe(14)
+  })
+
+  it('mensual dinámico (día 1): igual al mes calendario', () => {
+    const w = computeMonthlyAccountingWindow(
+      { cycle_type: 'monthly', salary_payment_day: 1 },
+      D(2026, 6, 5),
+      false,
+      true,
+    )
+    expect(w.start).toEqual(D(2026, 6, 1))
+    expect(w.end).toEqual(D(2026, 7, 1))
+  })
+
+  it('REGRESIÓN: sin el flag, weekly sigue en mes calendario (sueldos fijos rolling)', () => {
+    const w = computeMonthlyAccountingWindow(
+      { cycle_type: 'weekly', cycle_anchor_date: '2026-06-01', cycle_length_days: 7 },
+      D(2026, 6, 5),
+      false,
+      false,
+    )
+    expect(w.start).toEqual(D(2026, 6, 1))
+    expect(w.end).toEqual(D(2026, 7, 1))
+    expect(w.days).toBe(30)
+  })
+})
