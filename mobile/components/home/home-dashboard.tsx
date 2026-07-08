@@ -351,8 +351,17 @@ export function HomeDashboard({
     () => expensesData.some((e) => !e.commitment_id),
     [expensesData],
   )
-  const onboardingSkippedViaExpense = storedCycleAnchor == null && hasManualExpense
-  const isOnboardingFlow = storedCycleAnchor == null
+  // DINÁMICO: el flujo "confirmá tu primer saldo" NO existe (no hay
+  // cobro que anclar) — anchor null es el estado NATURAL del modo
+  // (nadie confirma cobro, y el switch a dinámico lo limpia a
+  // propósito). Sin esta exención el usuario quedaba "en onboarding"
+  // PARA SIEMPRE: tour del Home deshabilitado y el auto-fire del
+  // Wrapped abortando en silencio (reporte del owner 2026-07-08 — el
+  // wrapped disparó una sola vez mientras quedaba un anchor del
+  // onboarding, y nunca más al limpiarse).
+  const onboardingSkippedViaExpense =
+    !isDynamicIncome && storedCycleAnchor == null && hasManualExpense
+  const isOnboardingFlow = !isDynamicIncome && storedCycleAnchor == null
   // Auto-start the Home guided tour on first visit. Hook is a no-op
   // if the tour was already seen or globally disabled in Settings.
   // Gated on !isOnboardingFlow: we wait for the user to confirm the
