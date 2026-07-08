@@ -212,10 +212,19 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
   // Cuando el saldo del cycle viene de "acumular" del mes anterior,
   // el hero muestra breakdown explícito + chip verde en lugar del
   // chip neutral "Ajustado". El hook matchea la decisión vigente
-  // contra `current_cycle_anchor` (self-correcting al avanzar cycle).
+  // contra el INICIO del ciclo actual (self-correcting al avanzar).
+  // FIJO: el inicio lo representa `current_cycle_anchor` (lo estampa
+  // "Ya cobré" — antes de confirmar, el chip espera: by design).
+  // DINÁMICO: no hay cobro que estampe el anchor (null por diseño) —
+  // sin esta rama la query quedaba deshabilitada y el chip "acumulado"
+  // JAMÁS aparecía tras decidir desde el wrapped (reporte del owner).
+  // El inicio del ciclo dinámico es la ventana de accounting (sigue el
+  // ciclo elegido), cuyo start == period_end del cierre anterior.
   const acumulado = useCurrentCycleAcumulado(
     familyId,
-    dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
+    dashboard.incomeMode === 'dynamic'
+      ? formatLocalDateKey(dashboard.monthlyAccounting.start)
+      : (dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null),
   )
 
   const today = dashboard.todayDate
