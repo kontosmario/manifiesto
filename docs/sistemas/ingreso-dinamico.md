@@ -197,9 +197,10 @@ custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
 
 ## Estado en prod
 
-- Migraciones `20260708130000`, `20260708140000` y `20260708150000`
-  APLICADAS a prod (2026-07-08). Smoke-tests: `cycle_disponible` sano
-  para las 14 familias (incl. 1 dinámica), velocity cron corrido OK,
-  ACLs preservados.
+- Migraciones `20260708130000` … `20260708170000` (las 5 del modo +
+  hotfix `160000`) APLICADAS a prod (2026-07-08). Smoke-tests:
+  `cycle_disponible` sano para las 14 familias (incl. 1 dinámica),
+  velocity cron corrido OK, ACLs preservados, check-in "del ciclo" y
+  close dinámico verificados en prosrc.
 - Deploy del edge fn `control-advisor`: DESCARTADO por el owner (el
   LLM no se usa para income; la capa vigente es la heurística).
