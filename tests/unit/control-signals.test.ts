@@ -430,4 +430,32 @@ describe('control-signals — modo INGRESO DINÁMICO', () => {
     expect(ratio).toBeDefined()
     expect(ratio?.body).not.toMatch(/sueldo/i)
   })
+
+  it('payday-proximity dinámico: mismo id (dismiss estable), copy de fin de ciclo', () => {
+    const args = baseArgs({
+      incomeMode: 'dynamic',
+      ingresoMes: 300_000,
+      ingresoRecurrente: 300_000,
+      diasRestantes: 5,
+      cupoDiario: 20_000,
+    })
+    // restanteMes bajo → sustainable < 70% del cupo → dispara.
+    args.view = { ...args.view, restanteMes: 30_000 }
+    const out = buildControlSignals(args)
+    const payday = out.find((s) => s.id === 'payday-proximity')
+    expect(payday).toBeDefined()
+    expect(payday?.bubbleFrame).toBe('cycle')
+    expect(`${payday?.title} ${payday?.body}`).not.toMatch(/cobro|sueldo/i)
+
+    // Fixed conserva el marco de cobro (regresión).
+    const fixedArgs = baseArgs({
+      diasRestantes: 5,
+      cupoDiario: 20_000,
+    })
+    fixedArgs.view = { ...fixedArgs.view, restanteMes: 30_000 }
+    const fixedOut = buildControlSignals(fixedArgs)
+    const fixedPayday = fixedOut.find((s) => s.id === 'payday-proximity')
+    expect(fixedPayday).toBeDefined()
+    expect(fixedPayday?.bubbleFrame).toBe('payday')
+  })
 })

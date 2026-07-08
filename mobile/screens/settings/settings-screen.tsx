@@ -44,6 +44,7 @@ import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
 import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
 import { EditCycleConfigSheet } from '@/components/settings/sheets/edit-cycle-config-sheet'
+import { IncomeModeConfirmSheet } from '@/components/settings/sheets/income-mode-confirm-sheet'
 import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
 import { ConversionSettingsSheet } from '@/components/settings/sheets/conversion-settings-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -543,39 +544,37 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   }, [t])
 
   // Régimen de ingreso (fijo ↔ variable). Cambiarlo altera cómo se
-  // calcula el cupo diario, así que se confirma con Alert antes de
-  // persistir. Al pasar a dinámico se APAGA el ahorro mensual por %
-  // (no tiene base sin sueldo); al volver a fijo el usuario reconfigura
-  // sueldo y ahorro desde las filas que reaparecen.
+  // calcula el cupo diario, así que se confirma con un sheet del design
+  // system (IncomeModeConfirmSheet, antes Alert nativo) que lista los
+  // efectos. Al pasar a dinámico se APAGA el ahorro mensual por % (no
+  // tiene base sin sueldo) y se LIMPIA el override del ciclo (un saldo
+  // confirmado bajo el régimen de sueldo compondría como base del cupo
+  // dinámico); al volver a fijo el usuario reconfigura sueldo y ahorro
+  // desde las filas que reaparecen.
   const isDynamicIncomeMode = dashboard.incomeMode === 'dynamic'
-  const handleToggleDynamicIncome = useCallback(
-    (value: boolean) => {
-      const nextMode = value ? 'dynamic' : 'fixed'
-      Alert.alert(
-        t(`settings:household.incomeModeConfirmTitle_${nextMode}`),
-        t(`settings:household.incomeModeConfirmBody_${nextMode}`),
-        [
-          { style: 'cancel', text: t('common:actions.cancel') },
-          {
-            text: t('settings:household.incomeModeConfirmCta'),
-            onPress: () =>
-              saveFinanceSnapshot(
-                nextMode === 'dynamic'
-                  ? {
-                      ...financeSnapshot,
-                      incomeMode: nextMode,
-                      savingsGoal: 0,
-                      savingsGoalPercent: 0,
-                    }
-                  : { ...financeSnapshot, incomeMode: nextMode },
-                () => {},
-              ),
-          },
-        ],
-      )
-    },
-    [financeSnapshot, saveFinanceSnapshot, t],
-  )
+  const [incomeModeSheet, setIncomeModeSheet] = useState<{
+    open: boolean
+    nextMode: 'fixed' | 'dynamic'
+  }>({ open: false, nextMode: 'dynamic' })
+  const handleToggleDynamicIncome = useCallback((value: boolean) => {
+    setIncomeModeSheet({ open: true, nextMode: value ? 'dynamic' : 'fixed' })
+  }, [])
+  const handleConfirmIncomeMode = useCallback(() => {
+    const { nextMode } = incomeModeSheet
+    saveFinanceSnapshot(
+      nextMode === 'dynamic'
+        ? {
+            ...financeSnapshot,
+            incomeMode: nextMode,
+            savingsGoal: 0,
+            savingsGoalPercent: 0,
+            currentCycleStartingBalance: null,
+            currentCycleAnchor: null,
+          }
+        : { ...financeSnapshot, incomeMode: nextMode },
+      () => setIncomeModeSheet((prev) => ({ ...prev, open: false })),
+    )
+  }, [incomeModeSheet, financeSnapshot, saveFinanceSnapshot])
 
   const handleSaveSavingsPercent = useCallback(
     (value: number) => {
@@ -1844,6 +1843,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onClose={() => setCycleConfigSheetOpen(false)}
         onSave={handleSaveCycleConfig}
         visible={cycleConfigSheetOpen}
+      />
+      <IncomeModeConfirmSheet
+        visible={incomeModeSheet.open}
+        nextMode={incomeModeSheet.nextMode}
+        isSaving={upsertFamilyFinanceMutation.isPending}
+        onConfirm={handleConfirmIncomeMode}
+        onClose={() => setIncomeModeSheet((prev) => ({ ...prev, open: false }))}
       />
       <ConversionSettingsSheet
         currency={currencyValue}

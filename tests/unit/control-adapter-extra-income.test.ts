@@ -130,4 +130,30 @@ describe('adapter de Control: modo INGRESO DINÁMICO', () => {
     })
     expect(fixed.cupoDiario).toBeCloseTo(1_000_000 / 30, 6)
   })
+
+  it('ignora un monthly_income stale (hogar que cambió a dinámico con sueldo cargado)', () => {
+    // El switch de Settings no zerea contribuciones; el adapter fuerza
+    // la base a 0 (espejo del `when dyn then 0` del SQL cycle_disponible).
+    const { finance, payCycle, monthlyAccounting } = fixtures()
+    const d = buildControlDataFromSnapshot({
+      expenses: [],
+      fixedExpenses: [],
+      finance: { ...finance, monthly_income: 850_000, income_mode: 'dynamic' },
+      summaries: [],
+      payCycle,
+      monthlyAccounting,
+      extraIncome: 200_000,
+      now: NOW,
+    })
+    expect(d.ingresoMes).toBe(200_000)
+    expect(d.monthlyIncome).toBe(0)
+  })
+
+  it('expone incomeMode y el countdown pasa a "fin de ciclo" (días restantes)', () => {
+    const d = buildDynamic(500_000)
+    expect(d.incomeMode).toBe('dynamic')
+    // En dinámico no hay cobro: el countdown del hero = días restantes
+    // de la ventana del ciclo (20 en el fixture), no el salary_day.
+    expect(d.proximoSueldoEnDias).toBe(20)
+  })
 })

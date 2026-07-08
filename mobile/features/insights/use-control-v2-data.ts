@@ -159,6 +159,12 @@ export interface ControlV2ViewModel {
    *  onboarding and CONTROL renders the real cards (with per-card
    *  placeholders for the ones that need historical data). */
   noConfig: boolean
+  /** Modo INGRESO DINÁMICO sin ingresos cargados en el ciclo: el stack
+   *  completo de cards daría $0/NaN engañosos ("Vas bien hoy · LIBRE HOY
+   *  $0"), así que la pantalla muestra la guía "carga tu primer ingreso"
+   *  en su lugar. `false` mientras la query de ingresos hidrata (evita
+   *  flash de la guía para dinámicos que SÍ tienen ingresos). */
+  dynamicNoIncome: boolean
   /**
    * Pre-computed snapshot from the `control_snapshot()` RPC (migration
    * 20260512030000). Exposed as a surface-level field for progressive
@@ -666,6 +672,14 @@ export function useControlV2Data(
   const wrappedSummaryId = wrappedPayload ? (summaries[0]?.id ?? null) : null
   const wrappedSeen = Boolean(summaries[0]?.wrapped_seen_at)
 
+  // Dinámico sin ingresos ESTE ciclo → la pantalla pinta la guía en vez
+  // del stack de cards. Gate en `data !== undefined` (no en el ?? 0)
+  // para no flashear la guía mientras la query de ingresos hidrata.
+  const dynamicNoIncome =
+    signalsIncomeMode === 'dynamic' &&
+    cycleIncomeQuery.data !== undefined &&
+    cycleIncomeQuery.data <= 0
+
   return {
     data,
     view,
@@ -676,6 +690,7 @@ export function useControlV2Data(
     isLoading,
     usingMock,
     noConfig,
+    dynamicNoIncome,
     controlSnapshot,
     wrappedPayload,
     wrappedSummaryId,
@@ -708,7 +723,10 @@ async function fetchControlIntelligencePayload(
   return { summaries, limits, velocity }
 }
 
-function useControlIntelligence(familyId: string) {
+// Exportado (2026-07-08): el Home lo usa para el auto-fire del Wrapped
+// en modo INGRESO DINÁMICO (el path fixed dispara al confirmar cobro,
+// acción que no existe en dinámico). Pasar '' como familyId lo apaga.
+export function useControlIntelligence(familyId: string) {
   return useQuery<ControlIntelligencePayload>({
     queryKey: controlIntelligenceQueryKey(familyId),
     enabled: Boolean(familyId),

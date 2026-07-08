@@ -37,6 +37,9 @@ interface ControlV2AlcanzaCardProps {
    *  is still based on the average pace, but the user knows the math
    *  respects their actual cash-on-hand. */
   cycleStartingBalanceOverride?: number | null
+  /** 'dynamic' = ingreso variable: sin cobro — la timeline y los hints
+   *  hablan de "fin de ciclo" en vez de "próximo sueldo/cobro". */
+  incomeMode?: 'fixed' | 'dynamic'
 }
 
 const MIN_CLOSED_DAYS_FLOOR = 7
@@ -86,10 +89,12 @@ function ControlV2AlcanzaCardImpl({
   diasRestantes,
   diasConGasto = 0,
   cycleStartingBalanceOverride,
+  incomeMode,
 }: ControlV2AlcanzaCardProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const isDark = theme.isDark
+  const isDynamicIncome = incomeMode === 'dynamic'
 
   if (!hasReliableProjection) {
     // A diferencia de las otras tarjetas, "alcanza" NO se activa con un
@@ -98,7 +103,12 @@ function ControlV2AlcanzaCardImpl({
     // tener un ritmo confiable. Por eso el empty muestra la silueta real
     // de la tarjeta (eyebrow + 3 stats + timeline + callout) pero inerte,
     // sin números, con el progreso real hacia la activación.
-    return <ControlV2AlcanzaCardEmpty diasConGasto={diasConGasto} />
+    return (
+      <ControlV2AlcanzaCardEmpty
+        diasConGasto={diasConGasto}
+        isDynamicIncome={isDynamicIncome}
+      />
+    )
   }
 
   // ── Tri-state semantics ──────────────────────────────────────
@@ -192,10 +202,17 @@ function ControlV2AlcanzaCardImpl({
         icon: 'priority-high' as const,
         text:
           restanteMes >= 0
-            ? t('control:alcanza.hintExhaustoQuedan', {
-                amount: formatMoneyShort(Math.max(0, restanteMes)),
-              })
-            : t('control:alcanza.hintExhaustoAgotado'),
+            ? t(
+                isDynamicIncome
+                  ? 'control:alcanza.hintExhaustoQuedanDynamic'
+                  : 'control:alcanza.hintExhaustoQuedan',
+                { amount: formatMoneyShort(Math.max(0, restanteMes)) },
+              )
+            : t(
+                isDynamicIncome
+                  ? 'control:alcanza.hintExhaustoAgotadoDynamic'
+                  : 'control:alcanza.hintExhaustoAgotado',
+              ),
       }
     }
     if (!alcanzaElMes) {
@@ -203,9 +220,12 @@ function ControlV2AlcanzaCardImpl({
         icon: 'trending-down' as const,
         text:
           dailyReduction > 0
-            ? t('control:alcanza.hintReduceDiario', {
-                amount: formatMoneyShort(dailyReduction),
-              })
+            ? t(
+                isDynamicIncome
+                  ? 'control:alcanza.hintReduceDiarioDynamic'
+                  : 'control:alcanza.hintReduceDiario',
+                { amount: formatMoneyShort(dailyReduction) },
+              )
             : t('control:alcanza.hintReduceRitmo', {
                 count: Math.max(1, diasMes - diaAgotamiento),
               }),
@@ -233,7 +253,11 @@ function ControlV2AlcanzaCardImpl({
     : alcanzaElMes
       ? isComfortable
         ? t('control:alcanza.headlineComodo')
-        : t('control:alcanza.headlineJusto')
+        : t(
+            isDynamicIncome
+              ? 'control:alcanza.headlineJustoDynamic'
+              : 'control:alcanza.headlineJusto',
+          )
       : t('control:alcanza.headlineNoAlcanza', { day: diaAgotamiento })
 
   // ── Timeline math (forward-projection only) ─────────────────
@@ -381,7 +405,7 @@ function ControlV2AlcanzaCardImpl({
               <Text
                 style={[styles.timelineLabel, { color: theme.colors.textMuted }]}
               >
-                {t('control:alcanza.timelineProxSueldo')}
+                {t(isDynamicIncome ? 'control:alcanza.timelineFinDeCiclo' : 'control:alcanza.timelineProxSueldo')}
               </Text>
             </View>
             <View style={styles.timelineTrack}>
@@ -478,7 +502,13 @@ function ControlV2AlcanzaCardImpl({
  * textMuted (no es un estado), y el callout comunica la activación real
  * + el progreso hacia ella. Recesado (opacity 0.86), sin shimmer.
  */
-function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
+function ControlV2AlcanzaCardEmpty({
+  diasConGasto,
+  isDynamicIncome = false,
+}: {
+  diasConGasto: number
+  isDynamicIncome?: boolean
+}) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const isDark = theme.isDark
@@ -562,7 +592,7 @@ function ControlV2AlcanzaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
               {t('control:alcanza.timelineHoy')}
             </Text>
             <Text style={[styles.timelineLabel, { color: theme.colors.textMuted }]}>
-              {t('control:alcanza.timelineProxSueldo')}
+              {t(isDynamicIncome ? 'control:alcanza.timelineFinDeCiclo' : 'control:alcanza.timelineProxSueldo')}
             </Text>
           </View>
           <View style={styles.timelineTrack}>

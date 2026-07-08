@@ -68,6 +68,9 @@ export interface UseGastosControllerResult {
   cycleDays: number
   cycleDaysElapsed: number
   cycleLabel: string
+  /** Régimen de ingreso del hogar — el empty state del SectionList lo
+   *  usa para no pedir "Confirma tu cobro" en modo variable. */
+  incomeMode: 'fixed' | 'dynamic'
   // pagination (Phase 4 — virtual scroll)
   /** Loads the next chunk of older days. No-op when `hasNextPage` is
    *  false or already fetching. */
@@ -108,6 +111,10 @@ export function useGastosController(
     () => financeToCycleConfig(financeQuery.data).cycle_type,
     [financeQuery.data],
   )
+  // Régimen de ingreso — el empty state del SectionList lo usa para no
+  // pedir "Confirma tu cobro" en modo variable (no existe esa acción).
+  const incomeMode: 'fixed' | 'dynamic' =
+    financeQuery.data?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
   const cycleLabel = useMemo(
     () => formatCycleLabel(cycle, cycleType),
     [cycle, cycleType],
@@ -427,6 +434,7 @@ export function useGastosController(
     cycleDays,
     cycleDaysElapsed,
     cycleLabel,
+    incomeMode,
     fetchNextPage,
     hasNextPage: Boolean(paginatedQuery.hasNextPage),
     isFetchingNextPage: paginatedQuery.isFetchingNextPage,

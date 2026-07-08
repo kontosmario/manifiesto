@@ -88,12 +88,15 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
   useScreenTour(CONTROL_TOUR)
   // userId → aplica la blocklist del usuario (consistente con el asistente).
   // `signals` ya viene filtrado por blocklist + dismissed desde el hook.
-  const { data, view, ingresosCiclo, signals, noConfig, wrappedPayload, wrappedSummaryId, wrappedSeen } =
+  const { data, view, ingresosCiclo, signals, noConfig, dynamicNoIncome, wrappedPayload, wrappedSummaryId, wrappedSeen } =
     useControlV2Data(familyId, userId)
   // Sonda de la rama de render de Control. Un cambio al entrar (p.ej.
   // loading→content o noConfig→content) = el contenido aparece/cambia =
   // posible parpadeo.
-  useBranchLog('control', noConfig ? 'noConfig' : data ? 'content' : 'loading')
+  useBranchLog(
+    'control',
+    noConfig ? 'noConfig' : dynamicNoIncome ? 'dynamicNoIncome' : data ? 'content' : 'loading',
+  )
   const markWrappedSeen = useMarkCycleWrappedSeen(familyId)
   // Enrich del wrapped con decisión integrada (Spec B) — el replay desde
   // Control debe disparar el flujo de decisión sobre el sobrante si el
@@ -416,13 +419,16 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
     [data.ingresoMes, data.fijosMes, data.libreMes],
   )
 
-  if (noConfig) {
+  if (noConfig || dynamicNoIncome) {
     // Onboarding inicial pendiente: sin `monthly_income` no podemos
     // calcular un cupo diario, así que la pantalla pinta el empty
     // state guiando a configurar el ingreso. Una vez configurado,
     // dejamos pasar aún sin gastos: el adapter calcula `cupoDiario`
     // y las cards que requieren historial muestran su propio
     // placeholder ("Día X de N").
+    // INGRESO DINÁMICO sin ingresos este ciclo: mismo shell, guía
+    // "carga tu primer ingreso" — el stack de cards con $0 ("Vas bien
+    // hoy · LIBRE HOY $0") no le sirve a nadie y confunde.
     return (
       <Screen
         backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
@@ -449,6 +455,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
             <ControlV2EmptyState
               missingIncome={missingIncome}
               missingExpenses={missingExpenses}
+              dynamicNoIncome={dynamicNoIncome}
               onPressSetupIncome={() => {
                 void triggerHaptic('selection')
                 router.push('/(app)/settings')
@@ -456,6 +463,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               onPressAddExpense={() => {
                 void triggerHaptic('selection')
                 router.push('/(app)/add-expense')
+              }}
+              onPressAddIncome={() => {
+                void triggerHaptic('selection')
+                router.push('/(app)/add-income')
               }}
             />
           </View>
@@ -561,6 +572,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   diasRestantes={view.diasRestantes}
                   diasConGasto={view.diasConGasto}
                   cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
+                  incomeMode={data.incomeMode}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -572,6 +584,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
               <ControlV2IngresosCard
                 ingresos={ingresosCiclo}
                 diasMes={data.diasMes}
+                incomeMode={data.incomeMode}
               />
             ) : null}
 
@@ -648,6 +661,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   outlierDaysExcluded={view.outlierDaysExcluded}
                   outlierDaysTotal={view.outlierDaysTotal}
                   onVerCierre={wrappedPayload ? launchWrapped : undefined}
+                  incomeMode={data.incomeMode}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -672,7 +686,12 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
             <TourTarget
               tour={CONTROL_TOUR}
               order={CONTROL_TOUR_STEPS.cobertura.order}
-              text={CONTROL_TOUR_STEPS.cobertura.text}
+              // Dinámico: el paso hablaba de "tu sueldo en días".
+              text={
+                data.incomeMode === 'dynamic'
+                  ? t('states:tour.control.coberturaDynamic')
+                  : CONTROL_TOUR_STEPS.cobertura.text
+              }
             >
               <ControlV2Anchor section="cobertura">
                 <ControlV2CoberturaCard
@@ -683,6 +702,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   diasMes={data.diasMes}
                   fijosRatioPct={fijosRatioPct}
                   cycleStartingBalanceOverride={dashboard.cycleStartingBalanceOverride}
+                  incomeMode={data.incomeMode}
                 />
               </ControlV2Anchor>
             </TourTarget>
@@ -709,6 +729,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
           isSaving={upsertFamilyFinance.isPending}
           onClose={() => setGoalSheetVisible(false)}
           onSubmit={handleGoalSubmit}
+          incomeMode={data.incomeMode}
           // Native Modal mode (no `inline`): the sheet wraps in its
           // own UIViewController and covers the full screen
           // including the tab bar — same family as the Home

@@ -127,7 +127,13 @@ export function ControlHeroTitular({ state }: Props) {
           ) : (
             <FooterStat
               label={t('control:hero.footerDelCupo')}
-              value={`${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`}
+              // Guard 0/0: con cupo $0 (dinámico sin ingresos, o fijos >
+              // ingresos) el ratio daba NaN% en pantalla.
+              value={
+                state.cupoDiario > 0
+                  ? `${Math.round((state.gastoHoy / state.cupoDiario) * 100)}%`
+                  : '—'
+              }
               color={
                 state.gastoHoy > state.cupoDiario ? palette.urgent : theme.colors.heroAccent
               }
@@ -145,7 +151,11 @@ export function ControlHeroTitular({ state }: Props) {
           ) : null}
           <Divider />
           <FooterStat
-            label={t('control:hero.footerAlCobro')}
+            label={
+              state.incomeMode === 'dynamic'
+                ? t('control:hero.footerFinDeCiclo')
+                : t('control:hero.footerAlCobro')
+            }
             value={`${state.proximoSueldoEnDias}d`}
             color={theme.colors.heroText}
           />

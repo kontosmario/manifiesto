@@ -218,6 +218,45 @@ describe('buildFamilyDashboardSnapshot', () => {
       expect(snapshot.savingsGoal).toBe(0)
     })
 
+    it('ignora un monthly_income stale (hogar que cambió a dinámico con sueldo cargado)', () => {
+      // El switch de Settings no zerea contribuciones (dynamic→fixed las
+      // recupera); el modelo fuerza la base a 0 en dinámico para que el
+      // sueldo fantasma no infle el presupuesto.
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({
+          monthly_income: 850_000,
+          income_mode: 'dynamic',
+          savings_goal: 0,
+          savings_goal_percent: 0,
+        }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.monthlyIncome).toBe(0)
+      expect(snapshot.effectiveCycleIncome).toBe(0)
+    })
+
+    it('NUNCA marca cobro pendiente (exención del freeze en el cliente)', () => {
+      // Sin la exención, un dinámico con last_salary_confirmed_at null y
+      // salary_payment_day default quedaba pending ~todo el mes → hero
+      // con "+N días sin cobrar" y ventana congelada en ciclo mensual.
+      const snapshot = buildFamilyDashboardSnapshot({
+        expenses: [],
+        finance: buildFinance({
+          monthly_income: 0,
+          income_mode: 'dynamic',
+          savings_goal: 0,
+          savings_goal_percent: 0,
+          last_salary_confirmed_at: null,
+          salary_payment_day: 1,
+        }),
+        today: new Date('2026-04-20T09:00:00.000Z'),
+      })
+
+      expect(snapshot.isSalaryPendingConfirmation).toBe(false)
+    })
+
     it('NO auto-abre el prompt de saldo inicial del ciclo', () => {
       const snapshot = buildFamilyDashboardSnapshot({
         expenses: [],

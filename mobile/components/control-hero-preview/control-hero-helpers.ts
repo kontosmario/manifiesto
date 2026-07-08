@@ -28,14 +28,19 @@ export interface ControlMessage {
 }
 
 export function resolveControlMessage(state: ControlHeroState): ControlMessage {
+  // Dinámico: no hay "cobro" — los secondaries hablan de fin de ciclo.
+  const isDynamic = state.incomeMode === 'dynamic'
   // 1. Exhausto · pasó del cupo total del ciclo
   if (state.alreadyExhausted) {
     const exceso = Math.max(0, Math.abs(state.libreHoy))
     return {
       primary: i18n.t('control:hero.exhausto.primary'),
-      secondary: i18n.t('control:hero.exhausto.secondary', {
-        days: state.proximoSueldoEnDias,
-      }),
+      secondary: i18n.t(
+        isDynamic
+          ? 'control:hero.exhausto.secondaryDynamic'
+          : 'control:hero.exhausto.secondary',
+        { days: state.proximoSueldoEnDias },
+      ),
       status: 'urgent',
       primaryNumber: exceso,
       primaryLabel: i18n.t('control:hero.exhausto.label'),
@@ -47,7 +52,11 @@ export function resolveControlMessage(state: ControlHeroState): ControlMessage {
     const diasQueAguantas = Math.max(1, state.diaAgotamiento - state.diaActual)
     return {
       primary: i18n.t('control:hero.noAlcanza.primary', { count: diasQueAguantas }),
-      secondary: i18n.t('control:hero.noAlcanza.secondary'),
+      secondary: i18n.t(
+        isDynamic
+          ? 'control:hero.noAlcanza.secondaryDynamic'
+          : 'control:hero.noAlcanza.secondary',
+      ),
       status: 'urgent',
       primaryNumber: diasQueAguantas,
       primaryLabel: i18n.t('control:hero.noAlcanza.label'),

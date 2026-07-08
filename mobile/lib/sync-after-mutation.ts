@@ -129,6 +129,11 @@ export async function syncAllAfterMutation(
     // anterior". Cubre tanto C2 (useUpsertFamilyFinance) como ingresos
     // extra-cobro que ajustan la base del ciclo.
     keys.push(['cycle-acumulado', familyId])
+    // El snapshot de Gastos embebe stats del cupo diario: si el cambio
+    // de income (sueldo, modo, ciclo) no mueve el cupo ≥$1, su queryKey
+    // (que incluye cupoDiario) no cambia y quedaba stale — invalidamos
+    // por prefijo de familia igual que el cluster de expenses.
+    keys.push(['gastos-snapshot', familyId])
   }
 
   // ── Savings

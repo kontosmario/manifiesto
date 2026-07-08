@@ -181,12 +181,22 @@ export function Step2Summary(props: Step2SummaryProps) {
             <ImpactRow
               label={t('fijos:wizard.step2.currentFixed')}
               value={formatMoney(prevTotal)}
-              sub={t('fijos:wizard.step2.pctOfSalary', { pct: pctAntes })}
+              // Sin sueldo (income 0 / modo dinámico) el "% de tu sueldo"
+              // daba un "0%" sin sentido — mismo gate que el bar/libre.
+              sub={
+                monthlyIncome > 0
+                  ? t('fijos:wizard.step2.pctOfSalary', { pct: pctAntes })
+                  : undefined
+              }
             />
             <ImpactRow
               label={t('fijos:wizard.step2.afterAdding')}
               value={formatMoney(nuevoTotal)}
-              sub={t('fijos:wizard.step2.pctOfSalary', { pct: pctDespues })}
+              sub={
+                monthlyIncome > 0
+                  ? t('fijos:wizard.step2.pctOfSalary', { pct: pctDespues })
+                  : undefined
+              }
               emphasis
               deltaPct={deltaPct}
             />

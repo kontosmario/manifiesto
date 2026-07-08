@@ -111,7 +111,15 @@
     "incomeModeConfirmBody_fixed": "Tu cupo diario volverá a calcularse con el sueldo mensual del hogar. Revisa que tu contribución esté cargada.",
     "incomeModeConfirmCta": "Confirmar",
     "incomeModeHelperOn": "Activo: tu presupuesto se arma con los ingresos que registras. El ahorro mensual por % queda desactivado.",
-    "cycleLabelDynamic": "Ciclo"
+    "cycleLabelDynamic": "Ciclo",
+    "incomeModeSheet": {
+      "toDynamicBudget": "Tu cupo diario se calcula con los ingresos que cargues durante el ciclo.",
+      "toDynamicSavings": "El ahorro mensual por % se apaga. Las metas por monto siguen disponibles.",
+      "toDynamicCycle": "Eliges tu ciclo: semana, quincena o mes — desde la fila Ciclo.",
+      "toFixedSalary": "Vuelve el sueldo mensual: revisa tu aporte para que el presupuesto sea real.",
+      "toFixedPayday": "Tu día de cobro vuelve a marcar el inicio del ciclo.",
+      "toFixedSavings": "Si apartabas un % de ahorro, configúralo de nuevo."
+    }
   },
   "conversion": {
     "rowDisabled": "Desactivada",

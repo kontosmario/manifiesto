@@ -295,7 +295,13 @@ export function buildControlDataFromSnapshot(
   // mínimo). La comparación contra payCycle.start cubre el flow normal.
   // Guard: nonNegFinite collapses a NaN/Infinity income (bad DB value)
   // to null → fall back to 0 so it can never propagate into ingresoMes.
-  const monthlyIncomeRaw = nonNegFinite(finance.monthly_income ?? 0) ?? 0
+  // DINÁMICO: el sueldo NO participa del presupuesto aunque el row
+  // conserve un monthly_income stale (p.ej. hogar que cambió de modo en
+  // Settings sin zerear contribuciones) — la base es 0 + income_events.
+  const isDynamicIncome = finance.income_mode === 'dynamic'
+  const monthlyIncomeRaw = isDynamicIncome
+    ? 0
+    : (nonNegFinite(finance.monthly_income ?? 0) ?? 0)
   const cycleAnchorKey = formatLocalDateKey(payCycle.start)
   const storedAnchor = finance.current_cycle_anchor ?? null
   const storedBalance = finance.current_cycle_starting_balance ?? null
@@ -312,7 +318,6 @@ export function buildControlDataFromSnapshot(
   // gastado), espejando a Home (use-home-metrics → computeCycleDisponible
   // con hasCycleOverride true). Sin esto, Control repartía sobre el mes
   // completo y su cupo divergía del Home.
-  const isDynamicIncome = finance.income_mode === 'dynamic'
   const spreadsOverRemainingDays = hasCycleOverride || isDynamicIncome
   // Ingresos extra del ciclo sumados al ingreso efectivo — mismo
   // tratamiento que Home (use-home-metrics): el extra impacta de
@@ -380,10 +385,15 @@ export function buildControlDataFromSnapshot(
 
   // Next salary estimate: `salary_payment_day` is the anchor day each
   // month. Compute days until the next occurrence.
-  const proximoSueldoEnDias = computeDaysUntilSalary(
-    finance.salary_payment_day ?? 1,
-    now,
-  )
+  // DINÁMICO: no hay cobro — el countdown del hero pasa a ser "días al
+  // fin del ciclo" (misma ventana del accounting), y las superficies
+  // eligen el label por `incomeMode` ("fin de ciclo" en vez de "al cobro").
+  const proximoSueldoEnDias = isDynamicIncome
+    ? Math.max(0, Math.round(finiteOr(monthlyAccounting.daysRemaining, 0)))
+    : computeDaysUntilSalary(
+        finance.salary_payment_day ?? 1,
+        now,
+      )
 
   // No-spend weekly progress (anchored to this week's Monday).
   const { metaNoSpendSemana, logrosNoSpendSemana } = computeWeeklyNoSpend(
@@ -487,6 +497,9 @@ export function buildControlDataFromSnapshot(
   return {
     ingresoMes,
     monthlyIncome: monthlyIncomeRaw,
+    // Las cards eligen copy por modo ("al cobro"/"PRÓX. SUELDO" vs
+    // "fin de ciclo") — el dato viaja con el resto del snapshot.
+    incomeMode: (isDynamicIncome ? 'dynamic' : 'fixed') as 'fixed' | 'dynamic',
     fijosMes,
     libreMes,
     cupoDiario,

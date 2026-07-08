@@ -35,6 +35,9 @@ export interface ControlMockData {
    *  histórico de sueldo (income-volatility), donde el override —un ajuste de
    *  UN ciclo— no debe entrar. */
   monthlyIncome: number
+  /** Régimen de ingreso del hogar — las cards eligen copy por modo
+   *  ("al cobro" vs "fin de ciclo"). El mock siempre es 'fixed'. */
+  incomeMode: 'fixed' | 'dynamic'
   /** Fixed monthly commitments (ARS). */
   fijosMes: number
   /** Discretionary budget for the month = ingresoMes - fijosMes. */
@@ -140,6 +143,10 @@ export interface ControlAdvisorTask {
    *  - 'cycle': impactRaw scoped to current cycle (28-31d) → ×(365/cycleDays)
    */
   impactScope?: 'monthly' | 'oneTime' | 'cycle'
+  /** Marco temporal del copy del bubble ('cycle' en modo INGRESO
+   *  DINÁMICO — headline/impact hablan de "fin de ciclo", no de
+   *  "cobro"). Solo lo setean señales con framing de payday. */
+  bubbleFrame?: 'payday' | 'cycle'
   cta: string
   urgency: 'alta' | 'media' | 'baja'
   /**
@@ -184,6 +191,7 @@ export interface ControlAdvisorTask {
 export const CONTROL_MOCK: ControlMockData = {
   ingresoMes: 2_200_000,
   monthlyIncome: 2_200_000,
+  incomeMode: 'fixed',
   fijosMes: 1_250_000,
   libreMes: 950_000,
   cupoDiario: 31_600,

@@ -113,10 +113,28 @@
     "prevMonth": "Mes anterior",
     "nextMonth": "Mes siguiente",
     "dayLabel": "Día {{day}}",
-    "weekdays": ["L", "M", "M", "J", "V", "S", "D"],
+    "weekdays": [
+      "L",
+      "M",
+      "M",
+      "J",
+      "V",
+      "S",
+      "D"
+    ],
     "months": [
-      "enero", "febrero", "marzo", "abril", "mayo", "junio",
-      "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
+      "enero",
+      "febrero",
+      "marzo",
+      "abril",
+      "mayo",
+      "junio",
+      "julio",
+      "agosto",
+      "septiembre",
+      "octubre",
+      "noviembre",
+      "diciembre"
     ]
   },
   "accountDeletion": {
@@ -208,7 +226,8 @@
       "meta": "Tu meta de ahorro como una alcancía digital: ves cuánto llevas guardado y agregas un aporte rápido desde aquí. El objetivo lo ajustas en Ajustes.",
       "streak": "Tu semana del jardín: un punto por día según si registraste un gasto (o marcaste que no gastaste). Registrar a diario hace crecer tu jardín. Toca para abrir Mi jardín.",
       "activity": "Tus movimientos recientes del mes, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca \"Ver todos\" para abrir la pantalla completa.",
-      "fab": "El botón de acciones rápidas. Un toque abre el formulario para registrar un gasto. Manténlo presionado para abrir un menú con más atajos: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos."
+      "fab": "El botón de acciones rápidas. Un toque abre el formulario para registrar un gasto. Manténlo presionado para abrir un menú con más atajos: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos.",
+      "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo."
     },
     "gastos": {
       "hero": "El resumen del mes: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.",
@@ -230,7 +249,8 @@
       "semana": "Resumen de la semana actual frente a la anterior. Si una categoría se disparó esta semana, lo vas a notar aquí antes de que el ciclo se rompa.",
       "vsMes": "Comparación contra el mes pasado. Te indica si vas gastando por encima, por debajo o igual que tu último ciclo cerrado — útil para detectar si el mes está siendo atípico.",
       "patron": "Tu patrón de gasto por día de la semana. Si los miércoles siempre gastas de más o los lunes te cuidas solo, aquí lo ves como una huella propia.",
-      "cobertura": "Tu sueldo en días: de los días del ciclo, cuántos pagan tus fijos, cuántos van a tu ahorro y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera."
+      "cobertura": "Tu sueldo en días: de los días del ciclo, cuántos pagan tus fijos, cuántos van a tu ahorro y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera.",
+      "coberturaDynamic": "Tus ingresos en días: de los días del ciclo, cuántos pagan tus fijos y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera."
     }
   }
 }

@@ -11,8 +11,13 @@ interface ControlV2EmptyStateProps {
   missingIncome: boolean
   /** True si el usuario aún no registró ningún gasto. */
   missingExpenses: boolean
+  /** Modo INGRESO DINÁMICO sin ingresos cargados este ciclo: la guía
+   *  pide cargar el primer ingreso (CTA a add-income) en vez de
+   *  configurar un sueldo. */
+  dynamicNoIncome?: boolean
   onPressSetupIncome: () => void
   onPressAddExpense: () => void
+  onPressAddIncome?: () => void
 }
 
 /**
@@ -27,8 +32,10 @@ interface ControlV2EmptyStateProps {
 export function ControlV2EmptyState({
   missingIncome,
   missingExpenses,
+  dynamicNoIncome = false,
   onPressSetupIncome,
   onPressAddExpense,
+  onPressAddIncome,
 }: ControlV2EmptyStateProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
@@ -42,17 +49,21 @@ export function ControlV2EmptyState({
   // Press scale 0.97 — primary CTA del empty state, lo único interactivo.
   const ctaPress = usePressScale({ pressedScale: 0.97 })
 
-  const heading = missingIncome
-    ? t('control:empty.headingMissingIncome')
-    : missingExpenses
-      ? t('control:empty.headingMissingExpenses')
-      : t('control:empty.headingGathering')
+  const heading = dynamicNoIncome
+    ? t('control:empty.headingDynamicNoIncome')
+    : missingIncome
+      ? t('control:empty.headingMissingIncome')
+      : missingExpenses
+        ? t('control:empty.headingMissingExpenses')
+        : t('control:empty.headingGathering')
 
-  const subtitle = missingIncome
-    ? t('control:empty.subtitleMissingIncome')
-    : missingExpenses
-      ? t('control:empty.subtitleMissingExpenses')
-      : t('control:empty.subtitleGathering')
+  const subtitle = dynamicNoIncome
+    ? t('control:empty.subtitleDynamicNoIncome')
+    : missingIncome
+      ? t('control:empty.subtitleMissingIncome')
+      : missingExpenses
+        ? t('control:empty.subtitleMissingExpenses')
+        : t('control:empty.subtitleGathering')
 
   return (
     <RiseView delay={80}>
@@ -77,7 +88,23 @@ export function ControlV2EmptyState({
         <Text style={[styles.body, { color: muted }]}>{subtitle}</Text>
 
         <View style={styles.ctas}>
-          {missingIncome ? (
+          {dynamicNoIncome ? (
+            <Pressable
+              onPress={onPressAddIncome}
+              onPressIn={ctaPress.onPressIn}
+              onPressOut={ctaPress.onPressOut}
+              accessibilityRole="button"
+              accessibilityLabel={t('control:empty.a11yAddIncome')}
+            >
+              <Animated.View
+                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
+              >
+                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
+                  {t('control:empty.ctaAddIncome')}
+                </Text>
+              </Animated.View>
+            </Pressable>
+          ) : missingIncome ? (
             <Pressable
               onPress={onPressSetupIncome}
               onPressIn={ctaPress.onPressIn}
@@ -114,8 +141,12 @@ export function ControlV2EmptyState({
 
         <View style={[styles.checklist, { borderTopColor: theme.colors.line }]}>
           <ChecklistRow
-            done={!missingIncome}
-            text={t('control:empty.checklistIncome')}
+            done={dynamicNoIncome ? false : !missingIncome}
+            text={
+              dynamicNoIncome
+                ? t('control:empty.checklistIncomeDynamic')
+                : t('control:empty.checklistIncome')
+            }
             textColor={accent}
             mutedColor={muted}
             accentColor={accent}

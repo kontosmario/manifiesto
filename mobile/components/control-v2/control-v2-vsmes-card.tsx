@@ -67,6 +67,9 @@ interface ControlV2VsMesCardProps {
    *  cycle (the same animation that plays after confirming salary).
    *  Undefined when there's no closed cycle with spend to replay. */
   onVerCierre?: () => void
+  /** 'dynamic' = ingreso variable: el empty no habla de "confirmar tu
+   *  cobro" (no existe) sino del cierre automático del ciclo. */
+  incomeMode?: 'fixed' | 'dynamic'
 }
 
 /**
@@ -98,6 +101,7 @@ function ControlV2VsMesCardImpl({
   outlierDaysExcluded,
   outlierDaysTotal,
   onVerCierre,
+  incomeMode,
 }: ControlV2VsMesCardProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
@@ -143,7 +147,11 @@ function ControlV2VsMesCardImpl({
             {t('control:vsmes.emptyHeadline')}
           </Text>
           <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-            {t('control:vsmes.emptyBody')}
+            {t(
+              incomeMode === 'dynamic'
+                ? 'control:vsmes.emptyBodyDynamic'
+                : 'control:vsmes.emptyBody',
+            )}
           </Text>
         </View>
       </RiseView>

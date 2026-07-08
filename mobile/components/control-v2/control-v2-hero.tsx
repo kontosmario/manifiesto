@@ -51,6 +51,7 @@ function ControlV2HeroImpl({
       diasMes: data.diasMes,
       diasRestantes: view.diasRestantes,
       proximoSueldoEnDias: data.proximoSueldoEnDias,
+      incomeMode: data.incomeMode,
       horaActual: data.horaActual,
       minActual: data.minActual,
       horaF: data.horaActual + data.minActual / 60,

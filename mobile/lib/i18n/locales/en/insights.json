@@ -354,6 +354,13 @@
       "body": "A good part of the cycle has passed and no income is logged. If money already came in, log it so your daily allowance reflects what you really have.",
       "impact": "Log income",
       "explanation": "In variable income mode, your budget builds from the income you log. With no income logged, the daily allowance works with $0."
+    },
+    "paydayProximityDynamic": {
+      "cat": "Cycle end",
+      "title": "You have {{remaining}} left and {{days}} days until the cycle closes",
+      "body": "To reach the end of the cycle comfortably, spend up to {{perDay}} per day.",
+      "impact": "Up to {{perDay}} per day",
+      "explanation": "It is what you have left divided by the days until the cycle ends: how much you can spend per day without hitting zero."
     }
   },
   "subscriptions": {

@@ -66,7 +66,11 @@ import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
-import { controlIntelligenceQueryKey } from '@/features/insights/use-control-v2-data'
+import {
+  controlIntelligenceQueryKey,
+  useControlIntelligence,
+} from '@/features/insights/use-control-v2-data'
+import { useMarkCycleWrappedSeen } from '@/features/wrapped/use-mark-cycle-wrapped-seen'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -249,6 +253,21 @@ export function HomeDashboard({
   // se oculta (days=null → PaydayPillV2 devuelve null) y nunca hay
   // "¿Cobraste?" pendiente.
   const isDynamicIncome = dashboard.incomeMode === 'dynamic'
+  // Dinámico: el Wrapped del ciclo recién cerrado se auto-dispara desde
+  // el Home (el path fixed lo dispara al confirmar el cobro, acción que
+  // no existe en este modo). La query solo se enciende en dinámico ('' la
+  // apaga); el flag también frena el sheet standalone de decisión para
+  // que la decisión viaje DENTRO del wrapped (Spec B) y no se pisen.
+  const intelligenceForWrapped = useControlIntelligence(
+    isDynamicIncome ? familyId : '',
+  )
+  const dynamicWrappedPending = useMemo(() => {
+    if (!isDynamicIncome) return false
+    const latest = intelligenceForWrapped.data?.summaries?.[0]
+    if (!latest?.id) return false
+    if (latest.wrapped_seen_at) return false
+    return (latest.expenses_count ?? 0) > 0
+  }, [isDynamicIncome, intelligenceForWrapped.data])
   const pending = useMemo(
     () =>
       isDynamicIncome
@@ -452,6 +471,12 @@ export function HomeDashboard({
     // early-return (caso expenses_count=0, en el que el standalone SÍ es
     // el fallback correcto).
     if (wrappedInFlight) return
+    // Dinámico con wrapped sin ver: el auto-fire del wrapped (efecto de
+    // más abajo) va a llevar la decisión integrada en la closing scene —
+    // abrir el sheet standalone acá lo pisaría. Si el user saltea la
+    // decisión dentro del wrapped, el pending sigue en DB y este sheet
+    // reaparece en el próximo mount (ya sin dynamicWrappedPending).
+    if (dynamicWrappedPending) return
     if (
       pendingDecision &&
       lastShownDecisionIdRef.current !== pendingDecision.monthlySummaryId
@@ -460,7 +485,7 @@ export function HomeDashboard({
       // eslint-disable-next-line react-hooks/set-state-in-effect -- abre el sheet de decisión cuando hay pending; guard por ref evita re-disparos
       setDecisionSheetOpen(true)
     }
-  }, [pendingDecision, splashIsHidden, pending, wrappedInFlight])
+  }, [pendingDecision, splashIsHidden, pending, wrappedInFlight, dynamicWrappedPending])
 
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
@@ -659,6 +684,31 @@ export function HomeDashboard({
     categoryNameById,
     activeGoalForSheet,
     applyDecision,
+  ])
+
+  // Auto-fire del Wrapped en modo DINÁMICO: el ciclo cierra solo (cron
+  // nocturno), nadie confirma cobro → sin este efecto el recap quedaba
+  // enterrado como entrada manual en Control. Ref por summary id evita
+  // re-fires en el mismo mount; el mark-seen inmediato evita que se
+  // re-dispare en cada vuelta al Home (y deja el replay en Control).
+  const markWrappedSeenHome = useMarkCycleWrappedSeen(familyId)
+  const lastAutoWrappedIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!dynamicWrappedPending || !splashIsHidden || wrappedInFlight) return
+    const latest = intelligenceForWrapped.data?.summaries?.[0]
+    if (!latest?.id) return
+    if (lastAutoWrappedIdRef.current === latest.id) return
+    lastAutoWrappedIdRef.current = latest.id
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fireWrapped setea el lock wrappedInFlight (sync) igual que el path fixed; guard por ref evita re-disparos
+    void fireWrappedForClosedCycle()
+    markWrappedSeenHome.mutate(latest.id)
+  }, [
+    dynamicWrappedPending,
+    splashIsHidden,
+    wrappedInFlight,
+    intelligenceForWrapped.data,
+    fireWrappedForClosedCycle,
+    markWrappedSeenHome,
   ])
 
   const handleCycleSheetSave = useCallback((amount: number) => {
@@ -959,7 +1009,13 @@ export function HomeDashboard({
       <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.familyStrip.order}
-        text={HOME_TOUR_STEPS.familyStrip.text}
+        // Dinámico: la cápsula de payday no existe (pill oculto) — el
+        // paso no puede pedir "confirmá tu sueldo"; variante propia.
+        text={
+          isDynamicIncome
+            ? t('states:tour.home.familyStripDynamic')
+            : HOME_TOUR_STEPS.familyStrip.text
+        }
       >
         <FamilyStrip
           members={familyMembers}

@@ -86,6 +86,9 @@ interface DailyGoalSheetProps {
     bufferPercent: number
   }) => void
   inline?: boolean
+  /** 'dynamic' = ingreso variable: los footers hablan de "días de ciclo"
+   *  y "cierras el ciclo con", no de "al cobro". */
+  incomeMode?: 'fixed' | 'dynamic'
 }
 
 /**
@@ -132,8 +135,10 @@ export function DailyGoalSheet({
   onClose,
   onSubmit,
   inline,
+  incomeMode,
 }: DailyGoalSheetProps) {
   const { theme } = useAppTheme()
+  const isDynamicIncome = incomeMode === 'dynamic'
   const { t } = useTranslation()
   const subtitle = useMemo(() => pickGoalSubtitle(userStats), [userStats])
 
@@ -246,7 +251,12 @@ export function DailyGoalSheet({
                 </Text>
                 <View style={[styles.heroFootDot, { backgroundColor: theme.colors.textMuted }]} />
                 <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
-                  {t('control:dailyGoal.heroDiasAlCobro', { count: remainingCycleDays })}
+                  {t(
+                    isDynamicIncome
+                      ? 'control:dailyGoal.heroDiasCiclo'
+                      : 'control:dailyGoal.heroDiasAlCobro',
+                    { count: remainingCycleDays },
+                  )}
                 </Text>
               </>
             ) : (
@@ -353,7 +363,11 @@ export function DailyGoalSheet({
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: theme.colors.text }]}
               >
-                {t('control:dailyGoal.impactActivePrefix')}
+                {t(
+                  isDynamicIncome
+                    ? 'control:dailyGoal.impactActivePrefixDynamic'
+                    : 'control:dailyGoal.impactActivePrefix',
+                )}
                 <Text style={[styles.impactStrong, { color: theme.colors.primary }]}>
                   {formatMoneyShort(projectedCycleSaving)}
                 </Text>

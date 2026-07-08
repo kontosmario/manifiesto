@@ -18,7 +18,9 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface ImpactRowProps {
   label: string
   value: string
-  sub: string
+  /** Ausente cuando no hay base para el "% de tu sueldo" (income 0 /
+   *  modo ingreso variable) — la fila muestra solo monto y delta. */
+  sub?: string
   emphasis?: boolean
   deltaPct?: number
 }
@@ -45,7 +47,9 @@ export function ImpactRow({
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[styles.impactSub, { color: theme.colors.textMuted }]}>{sub}</Text>
+        {sub != null ? (
+          <Text style={[styles.impactSub, { color: theme.colors.textMuted }]}>{sub}</Text>
+        ) : null}
         {deltaPct != null && deltaPct !== 0 ? (
           <Text
             style={[

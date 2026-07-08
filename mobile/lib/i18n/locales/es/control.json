@@ -42,7 +42,12 @@
     "a11ySetupIncome": "Configurar sueldo mensual",
     "a11yAddExpense": "Registrar primer gasto",
     "checklistIncome": "Ingreso mensual configurado",
-    "checklistExpense": "Primer gasto registrado"
+    "checklistExpense": "Primer gasto registrado",
+    "headingDynamicNoIncome": "Carga tus ingresos para empezar",
+    "subtitleDynamicNoIncome": "Tu hogar usa ingreso variable: Control calcula tu cupo diario con lo que entra. Registra tu primer ingreso del ciclo y esta vista se enciende.",
+    "ctaAddIncome": "Agregar ingreso",
+    "a11yAddIncome": "Agregar un ingreso del ciclo",
+    "checklistIncomeDynamic": "Registra un ingreso de este ciclo"
   },
   "hero": {
     "footerRacha": "racha",
@@ -54,13 +59,15 @@
     "exhausto": {
       "primary": "Te pasaste del mes.",
       "secondary": "Faltan {{days}} días al cobro. Cuida lo que queda.",
-      "label": "POR ENCIMA"
+      "label": "POR ENCIMA",
+      "secondaryDynamic": "Faltan {{days}} días para cerrar el ciclo. Cuida lo que queda."
     },
     "noAlcanza": {
       "primary_one": "Te quedas sin plata en {{count}} día.",
       "primary_other": "Te quedas sin plata en {{count}} días.",
       "secondary": "Baja el ritmo o llegas justo al cobro.",
-      "label": "DÍAS HASTA AGOTAR"
+      "label": "DÍAS HASTA AGOTAR",
+      "secondaryDynamic": "Baja el ritmo o llegas justo al fin del ciclo."
     },
     "criticoHoy": {
       "primary": "Vas {{amount}} arriba del cupo.",
@@ -84,7 +91,8 @@
     "bien": {
       "primary": "Vas bien hoy.",
       "label": "LIBRE HOY"
-    }
+    },
+    "footerFinDeCiclo": "fin de ciclo"
   },
   "alcanza": {
     "eyebrow": "HASTA CUÁNDO TE ALCANZA",
@@ -122,7 +130,12 @@
       "a11y": "Hasta cuándo te alcanza: esperando más días con gasto",
       "callout": "Registra gastos en al menos {{days}} días distintos para proyectar hasta qué día del mes te alcanza el dinero libre.",
       "progress": "Gasto en {{progress}} de {{days}} días."
-    }
+    },
+    "headlineJustoDynamic": "Llegas al fin del ciclo, pero ajustado.",
+    "hintExhaustoQuedanDynamic": "Quedan {{amount}} hasta el fin del ciclo. Cuida cada gasto.",
+    "hintExhaustoAgotadoDynamic": "Presupuesto libre agotado. Cuida el ritmo hasta que cierre el ciclo.",
+    "hintReduceDiarioDynamic": "Reduce {{amount}}/día para llegar holgado al fin del ciclo.",
+    "timelineFinDeCiclo": "FIN DE CICLO"
   },
   "ingresos": {
     "eyebrow": "ENTRÓ ESTE CICLO",
@@ -132,7 +145,8 @@
     "kindTransfer": "Transferencia",
     "kindBonus": "Bono",
     "kindGift": "Regalo",
-    "kindOther": "Ingreso"
+    "kindOther": "Ingreso",
+    "headlineDynamic": "Entraron {{total}} este ciclo — tu cupo diario sale de aquí: +{{perDia}}/día."
   },
   "semana": {
     "eyebrow": "CÓMO VA · ÚLTIMOS 7 DÍAS",
@@ -193,7 +207,8 @@
     "recapAtipicosExcluyeNoSum": ". La proyección los excluye para no inflar el cierre.",
     "recapSoloVariables": "Compara solo gastos variables — los fijos no entran.",
     "ctaVerCierre": "Ver el cierre de {{mes}}",
-    "ctaVerCierreA11y": "Ver el cierre de {{mes}} con animación"
+    "ctaVerCierreA11y": "Ver el cierre de {{mes}} con animación",
+    "emptyBodyDynamic": "Cuando cierre tu primer ciclo (es automático), vas a ver aquí cómo vas gastando comparado con el ciclo anterior."
   },
   "patron": {
     "eyebrow": "TU PATRÓN SEMANAL",
@@ -280,7 +295,9 @@
     "hintExcelente": "Excelente: {{pct}}% va a fijos. Tu margen es amplio.",
     "hintSaludable": "Saludable: {{pct}}% va a fijos. Estás dentro del rango ideal (35-50%).",
     "hintAlto": "Alto: {{pct}}% se va a fijos. Revisa si puedes renegociar suscripciones o servicios.",
-    "hintCritico": "Crítico: {{pct}}% va a fijos. Hay que reducir o renegociar para tener margen real."
+    "hintCritico": "Crítico: {{pct}}% va a fijos. Hay que reducir o renegociar para tener margen real.",
+    "eyebrowDynamic": "TUS INGRESOS EN DÍAS",
+    "overrideWorkingWithDynamic": "Trabajando con {{amount}} confirmados — el split refleja la base del ciclo."
   },
   "alcancia": {
     "eyebrow": "TU ALCANCÍA · ESTE CICLO",
@@ -366,7 +383,10 @@
     "impactActiveSuffix_other": " extra para tu ahorro ({{daily}}/día × {{count}} días).",
     "impactEmpty": "Activa una meta diaria un poco más exigente y vas a ver cómo el ahorro del mes se acelera.",
     "exitRamp": "Sin meta diaria",
-    "exitRampA11y": "Quitar mi meta diaria"
+    "exitRampA11y": "Quitar mi meta diaria",
+    "heroDiasCiclo_one": "{{count}} día de ciclo",
+    "heroDiasCiclo_other": "{{count}} días de ciclo",
+    "impactActivePrefixDynamic": "Si cierras cada día con tu meta, terminas el ciclo con "
   },
   "addFixed": {
     "title": "Registrar como fijo",
@@ -522,7 +542,9 @@
     "impactCargaMiembro": "Carga del miembro",
     "impactDeltaIngreso": "Delta ingreso",
     "impactCostoMensual": "Costo mensual",
-    "impactFallback": "Impacto mensual"
+    "impactFallback": "Impacto mensual",
+    "headlineFinDeCiclo": "Fin de ciclo",
+    "impactHastaFinDeCiclo": "Hasta fin de ciclo"
   },
   "coach": {
     "topicCrisis": "Plan integral",

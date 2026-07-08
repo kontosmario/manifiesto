@@ -16,6 +16,9 @@ interface ControlV2IngresosCardProps {
   ingresos: IngresosCiclo
   /** Días del ciclo — para traducir el total a "+$X/día de cupo". */
   diasMes: number
+  /** 'dynamic' = ingreso variable: estos ingresos SON el presupuesto,
+   *  no un extra "además de tu sueldo" — el headline cambia. */
+  incomeMode?: 'fixed' | 'dynamic'
 }
 
 // Glyph monocromo + label por tipo de ingreso → catálogo central
@@ -55,6 +58,7 @@ function formatFechaCorta(isoDate: string): string {
 function ControlV2IngresosCardImpl({
   ingresos,
   diasMes,
+  incomeMode,
 }: ControlV2IngresosCardProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
@@ -102,10 +106,15 @@ function ControlV2IngresosCardImpl({
         </View>
 
         <Text style={[styles.headline, { color: theme.colors.text }]}>
-          {t('control:ingresos.headline', {
-            total: formatMoney(total),
-            perDia: formatMoneyShort(cupoExtraDiario),
-          })}
+          {t(
+            incomeMode === 'dynamic'
+              ? 'control:ingresos.headlineDynamic'
+              : 'control:ingresos.headline',
+            {
+              total: formatMoney(total),
+              perDia: formatMoneyShort(cupoExtraDiario),
+            },
+          )}
         </Text>
 
         <View

@@ -595,27 +595,34 @@ function buildPaydayProximity(
   const remaining = args.view.restanteMes
   const sustainable = remaining / args.diasRestantes
   if (sustainable >= args.cupoDiario * 0.7) return null
+  // DINÁMICO: la matemática es idéntica (diasRestantes ya es del ciclo
+  // elegido) pero el marco "cobro" no existe — copy de fin de ciclo.
+  const keys =
+    args.incomeMode === 'dynamic'
+      ? 'insights:signals.paydayProximityDynamic'
+      : 'insights:signals.paydayProximity'
   return {
     id: 'payday-proximity',
     emoji: '📆',
-    cat: i18n.t('insights:signals.paydayProximity.cat'),
-    title: i18n.t('insights:signals.paydayProximity.title', {
+    cat: i18n.t(`${keys}.cat`),
+    title: i18n.t(`${keys}.title`, {
       remaining: fmt(remaining),
       days: args.diasRestantes,
     }),
-    body: i18n.t('insights:signals.paydayProximity.body', {
+    body: i18n.t(`${keys}.body`, {
       perDay: fmt(sustainable),
     }),
-    impact: i18n.t('insights:signals.paydayProximity.impact', {
+    impact: i18n.t(`${keys}.impact`, {
       perDay: fmt(sustainable),
     }),
     impactRaw: Math.round((args.cupoDiario - sustainable) * args.diasRestantes),
     impactScope: 'cycle',
+    bubbleFrame: args.incomeMode === 'dynamic' ? 'cycle' : 'payday',
     cta: i18n.t('insights:cta.entendido'),
     urgency: sustainable < args.cupoDiario * 0.5 ? 'alta' : 'media',
     confidence: 1.0,
     dataDays: args.view.detalleDias.length,
-    dummyExplanation: i18n.t('insights:signals.paydayProximity.explanation'),
+    dummyExplanation: i18n.t(`${keys}.explanation`),
     action: { kind: 'dismiss', dismissId: 'payday-proximity' },
   }
 }

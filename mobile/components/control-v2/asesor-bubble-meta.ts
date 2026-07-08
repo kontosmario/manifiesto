@@ -106,7 +106,12 @@ export function bubbleHeadline(task: ControlAdvisorTask): string {
   if (id === 'weekly-pattern') return i18n.t('control:advisorBubble.headlineWeeklyPattern')
   if (id === 'fijos-ratio') return i18n.t('control:advisorBubble.headlineFijosRatio')
   if (id === 'stress-week') return i18n.t('control:advisorBubble.headlineStressWeek')
-  if (id === 'payday-proximity') return i18n.t('control:advisorBubble.headlinePaydayProximity')
+  if (id === 'payday-proximity')
+    return i18n.t(
+      task.bubbleFrame === 'cycle'
+        ? 'control:advisorBubble.headlineFinDeCiclo'
+        : 'control:advisorBubble.headlinePaydayProximity',
+    )
   if (id === 'start-splurge') return i18n.t('control:advisorBubble.headlineStartSplurge')
   if (id === 'end-acceleration') return i18n.t('control:advisorBubble.headlineEndAcceleration')
   if (id.startsWith('cap-')) return i18n.t('control:advisorBubble.headlineCap')
@@ -160,7 +165,12 @@ export function impactChipLabel(task: ControlAdvisorTask): string {
   if (id === 'weekly-pattern') return i18n.t('control:advisorBubble.impactPremiumSemanal')
   if (id === 'fijos-ratio') return i18n.t('control:advisorBubble.impactExcesoUmbral')
   if (id === 'stress-week') return i18n.t('control:advisorBubble.impactAReservar')
-  if (id === 'payday-proximity') return i18n.t('control:advisorBubble.impactHastaCobro')
+  if (id === 'payday-proximity')
+    return i18n.t(
+      task.bubbleFrame === 'cycle'
+        ? 'control:advisorBubble.impactHastaFinDeCiclo'
+        : 'control:advisorBubble.impactHastaCobro',
+    )
   if (id === 'start-splurge') return i18n.t('control:advisorBubble.impactSobreGastoInicial')
   if (id === 'end-acceleration') return i18n.t('control:advisorBubble.impactAceleracionCierre')
   if (id.startsWith('zombie-')) return i18n.t('control:advisorBubble.impactAhorroAnual')

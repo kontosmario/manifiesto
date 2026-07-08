@@ -17,6 +17,9 @@ interface ControlV2CoberturaCardProps {
   diasMes: number
   fijosRatioPct: number
   cycleStartingBalanceOverride?: number | null
+  /** 'dynamic' = ingreso variable: el eyebrow y el callout de override
+   *  hablan de "tus ingresos" en vez de "tu sueldo". */
+  incomeMode?: 'fixed' | 'dynamic'
 }
 
 interface SegmentTone {
@@ -57,10 +60,12 @@ function ControlV2CoberturaCardImpl({
   diasMes,
   fijosRatioPct,
   cycleStartingBalanceOverride,
+  incomeMode,
 }: ControlV2CoberturaCardProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const isDark = theme.isDark
+  const isDynamicIncome = incomeMode === 'dynamic'
 
   // Day breakdown (rounded so the labels stay clean integers).
   const safeIngreso = ingresoMes > 0 ? ingresoMes : 1
@@ -196,7 +201,11 @@ function ControlV2CoberturaCardImpl({
         <View style={styles.eyebrowRow}>
           <BreatheDot size={7} color={palette.fg} glow={palette.fg} />
           <Text style={[styles.eyebrow, { color: palette.fg }]} numberOfLines={1}>
-            {t('control:cobertura.eyebrow')}
+            {t(
+              isDynamicIncome
+                ? 'control:cobertura.eyebrowDynamic'
+                : 'control:cobertura.eyebrow',
+            )}
           </Text>
           <View
             style={[
@@ -268,9 +277,12 @@ function ControlV2CoberturaCardImpl({
             <Text
               style={[styles.overrideText, { color: theme.colors.textMuted }]}
             >
-              {t('control:cobertura.overrideWorkingWith', {
-                amount: formatMoneyShort(cycleStartingBalanceOverride),
-              })}
+              {t(
+                isDynamicIncome
+                  ? 'control:cobertura.overrideWorkingWithDynamic'
+                  : 'control:cobertura.overrideWorkingWith',
+                { amount: formatMoneyShort(cycleStartingBalanceOverride) },
+              )}
             </Text>
           </View>
         ) : null}

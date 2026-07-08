@@ -92,7 +92,21 @@ export function buildFamilyDashboardSnapshot({
     salaryPaymentDay,
   )
   const lastSalaryConfirmedDate = parseConfirmedDate(finance?.last_salary_confirmed_at ?? null)
+  // Modo dinámico: sin sueldo fijo — monthly_income queda 0 y el ciclo
+  // se fondea con income_events (entran como cycleExtraIncome en
+  // use-home-metrics). Cambia el reparto del cupo (días restantes) y
+  // suprime los prompts de sueldo/saldo-inicial. Derivado ACÁ (antes del
+  // pending) porque el freeze de cobro también depende de él.
+  const incomeMode: 'fixed' | 'dynamic' =
+    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const isDynamicIncome = incomeMode === 'dynamic'
+  // DINÁMICO: no hay cobro que confirmar — sin esta exención (que la
+  // fuente canónica computeIsSalaryPendingConfirmation y el server ya
+  // tienen), last_salary_confirmed_at nunca se re-stampa y el pending
+  // quedaba true ~todo el mes → hero con "+N días sin cobrar" y, en
+  // ciclo mensual, getCurrentPayCycle congelado en la ventana anterior.
   const isSalaryPendingConfirmation =
+    !isDynamicIncome &&
     todayDate >= currentMonthPayDate &&
     (!lastSalaryConfirmedDate || lastSalaryConfirmedDate < currentMonthPayDate)
   const cycleConfig = financeToCycleConfig(finance ?? undefined)
@@ -162,14 +176,11 @@ export function buildFamilyDashboardSnapshot({
     window: { start: accounting.start, end: accounting.end },
     today: todayDate,
   })
-  const monthlyIncome = finance?.monthly_income ?? 0
-  // Modo dinámico: sin sueldo fijo — monthly_income queda 0 y el ciclo
-  // se fondea con income_events (entran como cycleExtraIncome en
-  // use-home-metrics). Cambia el reparto del cupo (días restantes) y
-  // suprime los prompts de sueldo/saldo-inicial.
-  const incomeMode: 'fixed' | 'dynamic' =
-    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
-  const isDynamicIncome = incomeMode === 'dynamic'
+  // DINÁMICO: el sueldo NO participa del presupuesto aunque el row
+  // conserve un monthly_income stale (p.ej. hogar que cambió de modo en
+  // Settings con contribuciones cargadas) — la base es 0 + income_events.
+  // Espeja el defensivo del adapter de Control y del SQL cycle_disponible.
+  const monthlyIncome = isDynamicIncome ? 0 : (finance?.monthly_income ?? 0)
   // Dinámico: el ahorro mensual por % del sueldo NO aplica — defensivo
   // (espeja `eff_savings = 0 when dyn` del SQL cycle_disponible), por si
   // un fixed→dynamic dejó un savings_goal stale en DB.

@@ -354,6 +354,13 @@
       "body": "Va una buena parte del ciclo y no registraste ingresos. Si ya te entró dinero, cárgalo para que tu cupo diario refleje lo que de verdad tienes.",
       "impact": "Registrar ingresos",
       "explanation": "En modo de ingreso variable, tu presupuesto se arma con los ingresos que registras. Sin ingresos cargados, el cupo del día trabaja con $0."
+    },
+    "paydayProximityDynamic": {
+      "cat": "Fin del ciclo",
+      "title": "Te quedan {{remaining}} y faltan {{days}} días para cerrar el ciclo",
+      "body": "Para llegar bien al fin del ciclo, gasta hasta {{perDay}} por día.",
+      "impact": "Hasta {{perDay}} por día",
+      "explanation": "Es lo que te queda dividido por los días hasta el fin del ciclo: cuánto puedes gastar por día para no quedar en cero."
     }
   },
   "subscriptions": {

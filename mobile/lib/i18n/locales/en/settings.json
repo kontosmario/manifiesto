@@ -111,7 +111,15 @@
     "incomeModeConfirmBody_fixed": "Your daily allowance will be calculated from the household's monthly salary again. Make sure your contribution is set.",
     "incomeModeConfirmCta": "Confirm",
     "incomeModeHelperOn": "On: your budget builds from the income you log. The monthly % savings is turned off.",
-    "cycleLabelDynamic": "Cycle"
+    "cycleLabelDynamic": "Cycle",
+    "incomeModeSheet": {
+      "toDynamicBudget": "Your daily budget is built from the income you log during the cycle.",
+      "toDynamicSavings": "Monthly % savings turns off. Amount-based goals stay available.",
+      "toDynamicCycle": "You choose your cycle: week, fortnight or month — from the Cycle row.",
+      "toFixedSalary": "Monthly salary is back: review your contribution so the budget is real.",
+      "toFixedPayday": "Your payday marks the start of the cycle again.",
+      "toFixedSavings": "If you used to set aside a % for savings, set it up again."
+    }
   },
   "conversion": {
     "rowDisabled": "Off",

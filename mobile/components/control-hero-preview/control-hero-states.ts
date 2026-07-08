@@ -39,6 +39,10 @@ export interface ControlHeroState {
   diasMes: number
   diasRestantes: number
   proximoSueldoEnDias: number
+  /** Régimen de ingreso — en 'dynamic' el countdown es "fin de ciclo"
+   *  (no hay cobro) y los labels eligen la variante _dynamic. Opcional:
+   *  los estados de preview del design-lab no lo setean (= 'fixed'). */
+  incomeMode?: 'fixed' | 'dynamic'
   horaActual: number
   minActual: number
   horaF: number

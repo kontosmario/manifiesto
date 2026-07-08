@@ -40,6 +40,9 @@ export interface BuildGastosEmptyStateArgs {
   /** DB tiene expenses recientes pero fuera del cycle visible (cycle
    *  frozen por falta de confirm cobro). */
   hasRecentExpensesOutsideCycle: boolean
+  /** Modo ingreso variable: no existe "confirmar cobro", así que el
+   *  variant `pending-confirm` no aplica — cae al empty neutro. */
+  isDynamicIncome?: boolean
   /** Callback al tappear "Limpiar filtros" en el variant `filtered`. */
   onClearFilters: () => void
   /** Callback al tappear "Confirmar cobro" en el variant
@@ -55,6 +58,7 @@ export function buildGastosEmptyState(
     filteredCount,
     hasAnyFilter,
     hasRecentExpensesOutsideCycle,
+    isDynamicIncome = false,
     onClearFilters,
     onGoToHome,
   } = args
@@ -65,7 +69,10 @@ export function buildGastosEmptyState(
     // El gate principal del isEmptyAccount ya valida que el branch del
     // SectionList se monte cuando hasRecentExpensesOutsideCycle es
     // true, así que esta condición aquí es defensiva.
-    if (hasRecentExpensesOutsideCycle) {
+    // Dinámico: no hay cobro que confirmar — al inicio de un ciclo
+    // nuevo (semana/quincena) con actividad previa este variant pedía
+    // "Confirma tu cobro", una acción que no existe en el modo.
+    if (hasRecentExpensesOutsideCycle && !isDynamicIncome) {
       return {
         kind: 'pending-confirm',
         primary: i18n.t('gastos:emptyVariants.pendingConfirm.primary'),

@@ -42,7 +42,12 @@
     "a11ySetupIncome": "Set up monthly salary",
     "a11yAddExpense": "Log first expense",
     "checklistIncome": "Monthly income set up",
-    "checklistExpense": "First expense logged"
+    "checklistExpense": "First expense logged",
+    "headingDynamicNoIncome": "Log your income to get started",
+    "subtitleDynamicNoIncome": "Your household uses variable income: Control builds your daily budget from what comes in. Log your first income of the cycle and this view lights up.",
+    "ctaAddIncome": "Add income",
+    "a11yAddIncome": "Add an income for this cycle",
+    "checklistIncomeDynamic": "Log an income for this cycle"
   },
   "hero": {
     "footerRacha": "streak",
@@ -54,13 +59,15 @@
     "exhausto": {
       "primary": "You're over budget for the month.",
       "secondary": "{{days}} days to payday. Watch what's left.",
-      "label": "OVER"
+      "label": "OVER",
+      "secondaryDynamic": "{{days}} days left until the cycle closes. Watch what is left."
     },
     "noAlcanza": {
       "primary_one": "You run out of money in {{count}} day.",
       "primary_other": "You run out of money in {{count}} days.",
       "secondary": "Ease the pace or you'll just barely reach payday.",
-      "label": "DAYS TO EMPTY"
+      "label": "DAYS TO EMPTY",
+      "secondaryDynamic": "Slow down or you will barely make it to the end of the cycle."
     },
     "criticoHoy": {
       "primary": "You're {{amount}} over your allowance.",
@@ -84,7 +91,8 @@
     "bien": {
       "primary": "You're doing well today.",
       "label": "FREE TODAY"
-    }
+    },
+    "footerFinDeCiclo": "cycle end"
   },
   "alcanza": {
     "eyebrow": "HOW LONG IT LASTS",
@@ -122,7 +130,12 @@
       "a11y": "How long it lasts: waiting for more days with spending",
       "callout": "Log expenses on at least {{days}} different days to project how far into the month your free money lasts.",
       "progress": "Spending on {{progress}} of {{days}} days."
-    }
+    },
+    "headlineJustoDynamic": "You make it to the end of the cycle, but barely.",
+    "hintExhaustoQuedanDynamic": "{{amount}} left until the cycle ends. Watch every expense.",
+    "hintExhaustoAgotadoDynamic": "Free budget exhausted. Watch your pace until the cycle closes.",
+    "hintReduceDiarioDynamic": "Cut {{amount}}/day to reach the end of the cycle comfortably.",
+    "timelineFinDeCiclo": "CYCLE END"
   },
   "ingresos": {
     "eyebrow": "CAME IN THIS CYCLE",
@@ -132,7 +145,8 @@
     "kindTransfer": "Transfer",
     "kindBonus": "Bonus",
     "kindGift": "Gift",
-    "kindOther": "Income"
+    "kindOther": "Income",
+    "headlineDynamic": "{{total}} came in this cycle — your daily budget comes from here: +{{perDia}}/day."
   },
   "semana": {
     "eyebrow": "HOW IT'S GOING · LAST 7 DAYS",
@@ -193,7 +207,8 @@
     "recapAtipicosExcluyeNoSum": ". The projection excludes them so it doesn't inflate the close.",
     "recapSoloVariables": "Compares variable expenses only — fixed expenses don't count.",
     "ctaVerCierre": "See {{mes}}'s close",
-    "ctaVerCierreA11y": "See {{mes}}'s close with animation"
+    "ctaVerCierreA11y": "See {{mes}}'s close with animation",
+    "emptyBodyDynamic": "Once your first cycle closes (it happens automatically), you will see here how your spending compares to the previous cycle."
   },
   "patron": {
     "eyebrow": "YOUR WEEKLY PATTERN",
@@ -280,7 +295,9 @@
     "hintExcelente": "Excellent: {{pct}}% goes to fixed expenses. Your margin is wide.",
     "hintSaludable": "Healthy: {{pct}}% goes to fixed expenses. You're in the ideal range (35-50%).",
     "hintAlto": "High: {{pct}}% goes to fixed expenses. Check whether you can renegotiate subscriptions or services.",
-    "hintCritico": "Critical: {{pct}}% goes to fixed expenses. You need to cut or renegotiate to get real margin."
+    "hintCritico": "Critical: {{pct}}% goes to fixed expenses. You need to cut or renegotiate to get real margin.",
+    "eyebrowDynamic": "YOUR INCOME IN DAYS",
+    "overrideWorkingWithDynamic": "Working with {{amount}} confirmed — the split reflects the cycle base."
   },
   "alcancia": {
     "eyebrow": "YOUR PIGGY BANK · THIS CYCLE",
@@ -366,7 +383,10 @@
     "impactActiveSuffix_other": " extra for your savings ({{daily}}/day × {{count}} days).",
     "impactEmpty": "Activate a slightly tougher daily goal and watch how the month's savings speed up.",
     "exitRamp": "No daily goal",
-    "exitRampA11y": "Remove my daily goal"
+    "exitRampA11y": "Remove my daily goal",
+    "heroDiasCiclo_one": "{{count}} cycle day",
+    "heroDiasCiclo_other": "{{count}} cycle days",
+    "impactActivePrefixDynamic": "If you close each day at your goal, you end the cycle with "
   },
   "addFixed": {
     "title": "Log as fixed",
@@ -522,7 +542,9 @@
     "impactCargaMiembro": "Member's load",
     "impactDeltaIngreso": "Income delta",
     "impactCostoMensual": "Monthly cost",
-    "impactFallback": "Monthly impact"
+    "impactFallback": "Monthly impact",
+    "headlineFinDeCiclo": "Cycle end",
+    "impactHastaFinDeCiclo": "Until cycle end"
   },
   "coach": {
     "topicCrisis": "Full plan",
