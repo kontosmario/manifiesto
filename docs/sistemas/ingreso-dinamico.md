@@ -130,7 +130,11 @@ custom) — y "¿cómo me fue este ciclo?" se mide sobre ESA ventana:
   este ciclo" pasado ~30% del ciclo, CTA a add-income.
 - `fijos-ratio`: copy neutral (sin "sueldo").
 
-## Pendiente owner
+## Estado en prod
 
-- Aplicar migraciones `20260708130000` y `20260708140000` a prod
-  (coordinadas con build) + deploy del edge fn `control-advisor`.
+- Migraciones `20260708130000`, `20260708140000` y `20260708150000`
+  APLICADAS a prod (2026-07-08). Smoke-tests: `cycle_disponible` sano
+  para las 14 familias (incl. 1 dinámica), velocity cron corrido OK,
+  ACLs preservados.
+- Deploy del edge fn `control-advisor`: DESCARTADO por el owner (el
+  LLM no se usa para income; la capa vigente es la heurística).
