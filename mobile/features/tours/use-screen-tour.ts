@@ -169,8 +169,13 @@ export function useScreenTour(
         // unscrolled layout (evita drift si la pantalla está scrolleada).
         await resetScrollToTop(tour)
         if (cancelled) return
-        firedRef.current = true
-        ctxRef.current.start(tour)
+        // Latchea SOLO si el tour arrancó de verdad: con 0 pasos
+        // registrados (p.ej. Control en la rama empty del modo
+        // dinámico) start() es no-op — latchear igual dejaba el tour
+        // muerto para toda la vida del mount aunque el usuario cargara
+        // ingresos y las cards aparecieran. Sin latch, el próximo
+        // focus (volver de add-income) re-dispara con targets vivos.
+        firedRef.current = ctxRef.current.start(tour)
       }, startDelayMs)
     })()
 

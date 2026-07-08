@@ -1039,17 +1039,14 @@ export function HomeDashboard({
         onPressAssistant={handlePressAssistant}
         actionsRef={headerActionsTourRef}
       />
-      <TourTarget
-        tour={HOME_TOUR}
-        order={HOME_TOUR_STEPS.familyStrip.order}
-        // Dinámico: la cápsula de payday no existe (pill oculto) — el
-        // paso no puede pedir "confirmá tu sueldo"; variante propia.
-        text={
-          isDynamicIncome
-            ? t('states:tour.home.familyStripDynamic')
-            : HOME_TOUR_STEPS.familyStrip.text
-        }
-      >
+      {/* Paso familyStrip del tour — 4 ramas por (modo, solo):
+          · dinámico+solo: SKIP total (sin pill de payday ni avatares la
+            fila queda vacía — highlightearla confunde; el paso no se
+            registra y el tour lo saltea solo).
+          · dinámico+familia: variante sin "cobro" (familyStripDynamic).
+          · fijo+solo: variante sin "grupo familiar" (familyStripSolo).
+          · fijo+familia: copy original. */}
+      {isDynamicIncome && isSolo ? (
         <FamilyStrip
           members={familyMembers}
           daysUntilPayday={days}
@@ -1057,7 +1054,27 @@ export function HomeDashboard({
           onPaydayPress={handleChipConfirmTracked}
           showMembers={!isSolo}
         />
-      </TourTarget>
+      ) : (
+        <TourTarget
+          tour={HOME_TOUR}
+          order={HOME_TOUR_STEPS.familyStrip.order}
+          text={
+            isDynamicIncome
+              ? t('states:tour.home.familyStripDynamic')
+              : isSolo
+                ? t('states:tour.home.familyStripSolo')
+                : HOME_TOUR_STEPS.familyStrip.text
+          }
+        >
+          <FamilyStrip
+            members={familyMembers}
+            daysUntilPayday={days}
+            paydayPending={pending}
+            onPaydayPress={handleChipConfirmTracked}
+            showMembers={!isSolo}
+          />
+        </TourTarget>
+      )}
       {/* La card de "confirma tu saldo" se confirma DENTRO de un Modal
           full-screen (NumericEditSheet). Si la desmontáramos al instante en
           que el dato flippea, el colapso correría OCULTO detrás del modal y la
@@ -1081,7 +1098,13 @@ export function HomeDashboard({
       <TourTarget
         tour={HOME_TOUR}
         order={HOME_TOUR_STEPS.hero.order}
-        text={HOME_TOUR_STEPS.hero.text}
+        // Dinámico: la ventana del hero ES el ciclo elegido — "a fin de
+        // mes" solo es cierto en fijo (accounting mensual).
+        text={
+          isDynamicIncome
+            ? t('states:tour.home.heroDynamic')
+            : HOME_TOUR_STEPS.hero.text
+        }
       >
         <HomeHeroCard
           data={homeMetrics.hero}

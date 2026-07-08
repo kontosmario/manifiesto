@@ -107,11 +107,15 @@ export function TourProvider({
     [onStop],
   )
 
-  const start = useCallback((tour: TourKey, fromIndex = 0) => {
+  // Devuelve si el tour ARRANCÓ: con 0 pasos registrados (p.ej. la
+  // pantalla está en un empty state sin TourTargets) es un no-op y el
+  // caller no debe latchear su "ya disparé" (use-screen-tour).
+  const start = useCallback((tour: TourKey, fromIndex = 0): boolean => {
     const list = stepsRef.current.get(tour) ?? []
-    if (list.length === 0) return
+    if (list.length === 0) return false
     setActiveTour(tour)
     setActiveIndex(Math.max(0, Math.min(fromIndex, list.length - 1)))
+    return true
   }, [])
 
   const next = useCallback(() => {
@@ -136,6 +140,26 @@ export function TourProvider({
     const list = stepsRef.current.get(activeTour) ?? []
     onStepChange(activeTour, activeIndex, list.length)
   }, [activeTour, activeIndex, onStepChange])
+
+  // Re-sync defensivo (auditoría tours 2026-07-08): si los targets se
+  // desmontan a MITAD de tour (p.ej. la pantalla flippea a un empty
+  // state por un refetch), la lista se achica pero activeIndex no —
+  // currentStep quedaba null con el scrim arriba y SIN tooltip (el
+  // botón "Saltar" vive en el tooltip → usuario atrapado en iOS). Con
+  // lista vacía cerramos el tour; con índice fuera de rango clampeamos
+  // al último paso vivo. `measureToken` cambia en cada register/
+  // unregister, así el efecto re-evalúa cuando la lista muta.
+  useEffect(() => {
+    if (!activeTour) return
+    const steps = stepsRef.current.get(activeTour) ?? []
+    if (steps.length === 0) {
+      stop(false)
+      return
+    }
+    if (activeIndex > steps.length - 1) {
+      setActiveIndex(steps.length - 1)
+    }
+  }, [activeTour, activeIndex, measureToken, stop])
 
   const list = activeTour ? stepsRef.current.get(activeTour) ?? [] : []
   const currentStep: RegisteredStep | null = list[activeIndex] ?? null

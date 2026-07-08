@@ -225,19 +225,21 @@
       "fixed": "El lado de gastos fijos: cuántos ya pagaste y cuál vence próximo, para que no se te pase ninguno. Son los pagos que se repiten cada ciclo (alquiler, servicios, suscripciones). Toca para ver el detalle en Fijos.",
       "meta": "Tu meta de ahorro como una alcancía digital: ves cuánto llevas guardado y agregas un aporte rápido desde aquí. El objetivo lo ajustas en Ajustes.",
       "streak": "Tu semana del jardín: un punto por día según si registraste un gasto (o marcaste que no gastaste). Registrar a diario hace crecer tu jardín. Toca para abrir Mi jardín.",
-      "activity": "Tus movimientos recientes del mes, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca \"Ver todos\" para abrir la pantalla completa.",
+      "activity": "Tus movimientos recientes del ciclo, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca \"Ver todos\" para abrir la pantalla completa.",
       "fab": "El botón de acciones rápidas. Un toque abre el formulario para registrar un gasto. Manténlo presionado para abrir un menú con más atajos: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos.",
-      "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo."
+      "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo.",
+      "heroDynamic": "Tu tarjeta principal: lo que te queda disponible en el ciclo, cuánto puedes gastar por día para llegar bien al fin del ciclo y con cuánto vas a cerrar. Si aún no cargaste ingresos, aquí encontrarás el atajo para hacerlo.",
+      "familyStripSolo": "Tu ciclo en curso y los días que faltan para tu próximo cobro. Cuando recibas tu sueldo, toca la cápsula para confirmarlo y arrancar un ciclo nuevo."
     },
     "gastos": {
-      "hero": "El resumen del mes: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el mes.",
+      "hero": "El resumen del ciclo: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el ciclo.",
       "streak": "Tu racha de días registrando gastos. Cada día que cargas al menos un gasto (o marcas que no gastaste) suma un día a tu jardín. La racha desbloquea escudos y recompensas.",
-      "calendar": "El calendario del mes con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.",
+      "calendar": "El calendario del ciclo con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.",
       "filters": "Filtros rápidos por categoría. Toca un chip y la lista de abajo se ajusta al instante — útil para ver, por ejemplo, cuánto llevas en supermercado o en transporte.",
-      "list": "Tu lista de movimientos del mes, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba."
+      "list": "Tu lista de movimientos del ciclo, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba."
     },
     "fijos": {
-      "hero": "Tus gastos fijos del mes: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.",
+      "hero": "Tus gastos fijos del ciclo: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.",
       "calendar": "Lo que toca pagar este ciclo, de lo más cercano a lo más lejano. Cada ticket muestra el pago, su monto y cuánto falta; en rojo, los que vencen en uno o dos días y conviene poner al día.",
       "list": "Tus fijos agrupados por categoría (luz, alquiler, suscripciones…). Toca uno para abrirlo y marcarlo como pagado, o deslízalo a la izquierda para eliminarlo.",
       "addButton": "Aquí agregas un fijo nuevo. Suma una renta, una suscripción o cualquier compromiso recurrente — defines cada cuánto vence y la app lo añade automáticamente al ciclo."
@@ -247,10 +249,11 @@
       "alcanza": "¿Te alcanza hasta fin de ciclo? Estimamos cómo vas a cerrar si sigues a este ritmo de gasto. Si no llega, te dice qué día se te acabaría el dinero y cuánto convendría recortar por día.",
       "alcancia": "Tu alcancía del mes: lo que te sobra cada día por gastar menos que tu cupo se acumula aquí como una sugerencia de ahorro. Con un toque en el botón lo mueves a tu meta.",
       "semana": "Resumen de la semana actual frente a la anterior. Si una categoría se disparó esta semana, lo vas a notar aquí antes de que el ciclo se rompa.",
-      "vsMes": "Comparación contra el mes pasado. Te indica si vas gastando por encima, por debajo o igual que tu último ciclo cerrado — útil para detectar si el mes está siendo atípico.",
+      "vsMes": "Comparación contra el ciclo pasado. Te indica si vas gastando por encima, por debajo o igual que tu último ciclo cerrado — útil para detectar si el ciclo está siendo atípico.",
       "patron": "Tu patrón de gasto por día de la semana. Si los miércoles siempre gastas de más o los lunes te cuidas solo, aquí lo ves como una huella propia.",
       "cobertura": "Tu sueldo en días: de los días del ciclo, cuántos pagan tus fijos, cuántos van a tu ahorro y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera.",
-      "coberturaDynamic": "Tus ingresos en días: de los días del ciclo, cuántos pagan tus fijos y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera."
+      "coberturaDynamic": "Tus ingresos en días: de los días del ciclo, cuántos pagan tus fijos y cuántos te quedan libres. Cuanto menos se lleven los fijos, más margen real tienes. Es uno de los números más importantes para tu salud financiera.",
+      "alcanciaDynamic": "Tu alcancía del ciclo: lo que te sobra cada día por gastar menos que tu cupo se acumula aquí como una sugerencia de ahorro. Con un toque en el botón lo mueves a tu meta."
     }
   }
 }

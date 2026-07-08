@@ -29,7 +29,9 @@ export interface TourContextValue {
   unregisterStep: (tour: TourKey, order: number) => void
 
   // Tour control
-  start: (tour: TourKey, fromIndex?: number) => void
+  /** Arranca el tour. Devuelve `false` (no-op) si no hay pasos
+   *  registrados — el caller no debe latchear su "ya disparé". */
+  start: (tour: TourKey, fromIndex?: number) => boolean
   stop: (completed?: boolean) => void
   next: () => void
   prev: () => void

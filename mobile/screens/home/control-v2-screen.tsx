@@ -603,7 +603,13 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
             <TourTarget
               tour={CONTROL_TOUR}
               order={CONTROL_TOUR_STEPS.alcancia.order}
-              text={CONTROL_TOUR_STEPS.alcancia.text}
+              // Dinámico: la ventana de la alcancía es el ciclo elegido
+              // — "del mes" solo es cierto en fijo (accounting mensual).
+              text={
+                data.incomeMode === 'dynamic'
+                  ? t('states:tour.control.alcanciaDynamic')
+                  : CONTROL_TOUR_STEPS.alcancia.text
+              }
             >
               <ControlV2Anchor section="alcancia">
                 <ControlV2AlcanciaCard
