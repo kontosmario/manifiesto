@@ -19,7 +19,10 @@ const googlePlugin: PluginEntry | null = GOOGLE_IOS_URL_SCHEME
 const config: ExpoConfig = {
   name: 'Manifiesto',
   slug: 'manifiesto',
-  version: '1.0.0',
+  // 1.1.0: con 1.0 (build 12) LIVE en el App Store, la próxima
+  // submission exige una versión de marketing nueva — los features de
+  // esta release (jardín familiar, ingreso variable) justifican minor.
+  version: '1.1.0',
   icon: './assets/brand/ios-icon-light.png',
   orientation: 'portrait',
   scheme: 'manifiesto',
@@ -252,7 +255,12 @@ const config: ExpoConfig = {
     // VERIFICADO (con internet real el error se surfacea como demora),
     // auto-recuperación del bridge-error (poll 5s) y Reintentar incondicional,
     // y re-señalización de DESTINATION_READY al reentrar a bridging.
-    buildNumber: '12',
+    // Build 13 (2026-07-08, v1.1.0): jardín/racha FAMILIAR, modo de
+    // INGRESO VARIABLE por ciclos (semana/quincena/mes), rating nativo,
+    // fix del re-prompt de FaceID, eslogan de hábito, + auditoría
+    // backend completa (156 fns) y code review exhaustivo (8 finders +
+    // verificación adversarial) con suite E2E SQL contra prod en verde.
+    buildNumber: '13',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
