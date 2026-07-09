@@ -14,6 +14,7 @@ import type { FamilyFinance } from '@/features/finance/use-family-finance'
 import type { MonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { PayCycle } from '@/utils/pay-cycle'
 import { computeFixedExpenseCycleSummary } from '@/features/fixed-expenses/commitment-cycle-summary'
+import { effectiveMonthlyIncome, effectiveSavingsGoal } from '@/features/finance/family-finance.model'
 import { finiteOr, isFiniteNumber, nonNegFinite, safeDiv } from '@/features/insights/signal-guards'
 import i18n from '@/lib/i18n'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
@@ -299,9 +300,9 @@ export function buildControlDataFromSnapshot(
   // conserve un monthly_income stale (p.ej. hogar que cambió de modo en
   // Settings sin zerear contribuciones) — la base es 0 + income_events.
   const isDynamicIncome = finance.income_mode === 'dynamic'
-  const monthlyIncomeRaw = isDynamicIncome
-    ? 0
-    : (nonNegFinite(finance.monthly_income ?? 0) ?? 0)
+  // effectiveMonthlyIncome = fuente única del defensivo dinámico;
+  // nonNegFinite se compone encima porque normalize NO finite-guardea.
+  const monthlyIncomeRaw = nonNegFinite(effectiveMonthlyIncome(finance)) ?? 0
   const cycleAnchorKey = formatLocalDateKey(payCycle.start)
   const storedAnchor = finance.current_cycle_anchor ?? null
   const storedBalance = finance.current_cycle_starting_balance ?? null
@@ -343,12 +344,7 @@ export function buildControlDataFromSnapshot(
   // Guard: pressureTotal is computed elsewhere; clamp it non-negative
   // finite so a bad fixed-expense amount can't drive libreMes to NaN.
   const fijosMes = nonNegFinite(commitmentSummary.pressureTotal) ?? 0
-  // Dinámico: el ahorro mensual por % del sueldo no aplica — defensivo
-  // (espejo del `eff_savings = 0 when dyn` del SQL y del dashboard
-  // model), por si un fixed→dynamic dejó savings_goal stale.
-  const ahorroMes = isDynamicIncome
-    ? 0
-    : (nonNegFinite(finance.savings_goal ?? 0) ?? 0)
+  const ahorroMes = nonNegFinite(effectiveSavingsGoal(finance)) ?? 0
   // libreMes is already floored at 0; with the finite inputs above it is
   // guaranteed a finite value in [0, ingresoMes].
   const libreMes = Math.max(0, ingresoMes - fijosMes - ahorroMes)

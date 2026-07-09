@@ -101,6 +101,14 @@ export interface HomeHeroMetrics {
    */
   hasCycleIncome: boolean
   /**
+   * `true` mientras la query de ingresos del ciclo hidrata en modo
+   * dinámico (home_snapshot no seedea esa key). El hero NO debe decidir
+   * el estado vacío con el dato ausente — sin este flag, un dinámico
+   * CON ingresos flasheaba "Cargá tu primer ingreso" en cold start
+   * (espejo de `dynamicIncomeHydrating` de Control).
+   */
+  cycleIncomeHydrating: boolean
+  /**
    * Sueldo mensual base — usado por el hero para mostrar el breakdown
    * "$X sueldo · $Y acumulado de mayo" cuando `acumulado != null`.
    * Siempre poblado (0 cuando `incomeConfigured === false`).
@@ -386,6 +394,8 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       incomeConfigured,
       incomeMode: dashboard.incomeMode,
       hasCycleIncome: cycleExtraIncome > 0,
+      cycleIncomeHydrating:
+        dashboard.incomeMode === 'dynamic' && cycleIncomeQuery.isLoading,
       monthlyIncome: dashboard.monthlyIncome,
       acumulado,
       monthlyReserveAmount,
@@ -459,6 +469,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.incomeMode,
     dashboard.familyFinanceQuery.data?.monthly_reserve_amount,
     cycleExtraIncome,
+    cycleIncomeQuery.isLoading,
     expenses,
     comparisonQuery.data,
     fijosSummary,

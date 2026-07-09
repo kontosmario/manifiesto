@@ -40,6 +40,9 @@ export function StepFamilySummary({
     parsedContribution > 0
       ? parsedContribution
       : 0
+  // Hogar de ingreso DINÁMICO: no existe el aporte mensual (el paso de
+  // contribución se salta), así que la línea aporta/no-aporta no aplica.
+  const dynamicHousehold = pendingFamily.income_mode === 'dynamic'
 
   return (
     <View style={styles.stack}>
@@ -122,18 +125,20 @@ export function StepFamilySummary({
                 {(pendingDisplayName || t('onboarding:familySummary.youName')) +
                   t('onboarding:familySummary.youSuffix')}
               </Text>
-              <Text
-                style={[
-                  styles.memberContribution,
-                  { color: theme.colors.primary },
-                ]}
-              >
-                {pendingContribution > 0
-                  ? t('onboarding:familySummary.willContribute', {
-                      amount: formatMoneyShort(pendingContribution),
-                    })
-                  : t('onboarding:familySummary.wontContribute')}
-              </Text>
+              {!dynamicHousehold ? (
+                <Text
+                  style={[
+                    styles.memberContribution,
+                    { color: theme.colors.primary },
+                  ]}
+                >
+                  {pendingContribution > 0
+                    ? t('onboarding:familySummary.willContribute', {
+                        amount: formatMoneyShort(pendingContribution),
+                      })
+                    : t('onboarding:familySummary.wontContribute')}
+                </Text>
+              ) : null}
             </View>
           </View>
         </View>

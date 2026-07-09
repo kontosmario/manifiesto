@@ -28,6 +28,7 @@ import { Step2Summary } from '@/components/fijos/add-fijo-parts/step2-summary'
 import { StepDots, StepHeader } from '@/components/fijos/add-fijo-parts/step-header'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { railTileWidth, RAIL_TILE_HEIGHT } from '@/components/home/category-horizontal-rail'
+import { effectiveMonthlyIncome } from '@/features/finance/family-finance.model'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import {
   useCreateFixedExpense,
@@ -84,13 +85,9 @@ export function AddFijoV2Screen({
   const categoriesQuery = useFixedExpenseCategories(familyId)
   const categories = categoriesQuery.data ?? []
   const financeQuery = useFamilyFinance(familyId)
-  // DINÁMICO: base 0 aunque quede un monthly_income stale post-switch
-  // (espejo del defensivo del dashboard-model/adapter) — sin esto el
-  // paso 2 del wizard mostraba "% de tu sueldo" sobre un sueldo fantasma.
-  const monthlyIncome =
-    financeQuery.data?.income_mode === 'dynamic'
-      ? 0
-      : (financeQuery.data?.monthly_income ?? 0)
+  // DINÁMICO: base 0 aunque quede un monthly_income stale post-switch —
+  // sin esto el paso 2 mostraba "% de tu sueldo" sobre un sueldo fantasma.
+  const monthlyIncome = effectiveMonthlyIncome(financeQuery.data)
   const existingFixedExpensesQuery = useFixedExpenses(familyId)
   const editingFijo = useMemo(
     () =>

@@ -246,9 +246,13 @@
     "incomeVolatility": {
       "cat": "Income",
       "titleBetter": "You earned {{amount}} this month — more than usual",
+      "titleBetterDynamic": "Last cycle {{amount}} came in — more than usual",
       "titleWorse": "You earned {{amount}} this month — less than usual",
+      "titleWorseDynamic": "Last cycle {{amount}} came in — less than usual",
       "bodyBetter": "Other months you earned around {{avg}}; this month {{delta}} more came in. Good time to save a bit of that difference.",
+      "bodyBetterDynamic": "Previous cycles brought in around {{avg}}; the last one closed with {{delta}} more. Good time to save a bit of that difference.",
       "bodyWorse": "Other months you earned around {{avg}}; this month {{delta}} less came in. Watch your spending until it recovers.",
+      "bodyWorseDynamic": "Previous cycles brought in around {{avg}}; the last one closed with {{delta}} less. Watch your spending until it recovers.",
       "explanation": "It compares what you earned this month with what you usually earn. If quite a bit less comes in, it's worth watching spending; if more comes in, save the difference."
     },
     "subUsage": {

@@ -180,6 +180,12 @@ export function useConsumeFamilyInvite(userId?: string) {
 export interface FamilyPeek {
   family_id: string
   family_code: string
+  /** Régimen de ingreso del hogar destino. 'dynamic' → el onboarding
+   *  del joiner salta el paso de contribución (el server fuerza
+   *  monthly_income = 0 en dinámico y la fila "Mi contribución" ni se
+   *  muestra). Opcional: backends previos al deploy 2026-07-08 no lo
+   *  devuelven — ausente se comporta como 'fixed' (se pide aporte). */
+  income_mode?: 'fixed' | 'dynamic'
   members: Array<{
     display_name: string
     avatar_animal: string | null

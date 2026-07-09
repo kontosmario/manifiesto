@@ -94,13 +94,32 @@ function clampStep(value: number): OnboardingStepId {
   return value as OnboardingStepId
 }
 
+/** Joiner hacia un hogar de ingreso DINÁMICO: no hay aporte mensual que
+ *  declarar (el server fuerza monthly_income = 0 y la fila "Mi
+ *  contribución" está oculta en Settings), así que el paso 4
+ *  (StepIncomeContribution) se salta. Con `income_mode` ausente en el
+ *  peek (backend viejo) se asume 'fixed' y el paso se muestra como
+ *  siempre. */
+function skipsContributionStep(state: OnboardingDraft): boolean {
+  return (
+    state.familyMode === 'joined' &&
+    state.pendingFamily?.income_mode === 'dynamic'
+  )
+}
+
 function reducer(state: OnboardingDraft, action: Action): OnboardingDraft {
   switch (action.type) {
     case 'setStep':
       return { ...state, step: clampStep(action.step) }
     case 'next':
+      if (state.step === 3 && skipsContributionStep(state)) {
+        return { ...state, step: 5 }
+      }
       return { ...state, step: clampStep(state.step + 1) }
     case 'back':
+      if (state.step === 5 && skipsContributionStep(state)) {
+        return { ...state, step: 3 }
+      }
       return { ...state, step: clampStep(state.step - 1) }
     case 'setDisplayName':
       return { ...state, displayName: action.value }

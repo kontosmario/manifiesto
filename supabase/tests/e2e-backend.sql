@@ -119,6 +119,11 @@ begin
          cycle_type = 'weekly', cycle_anchor_date = v_today,
          cycle_length_days = 7
    where family_id = v_family;
+  -- Trigger del switch de modo (20260708250000 R5): dinámico ⇒ 0
+  select monthly_income into v_amount from public.family_finance where family_id = v_family;
+  if v_amount <> 0 then
+    raise exception 'E2E FAIL [3pre]: el trigger del switch no zereó monthly_income (%)', v_amount;
+  end if;
 
   -- Ingresos y gastos en la semana ANTERIOR [hoy-7, hoy)
   insert into public.income_events (family_id, created_by, amount, kind, description, event_date)
@@ -261,6 +266,21 @@ begin
     raise exception 'E2E FAIL [7c]: recompute estampó sueldo fantasma % en dinámico', v_amount;
   end if;
 
+  -- 7d · Contrato de error del rate limit (fix R3 20260708250000): el
+  --      cliente parsea errcode 54000 + hint retry_after_N — un RAISE
+  --      genérico rompe el copy localizado de 7 RPCs.
+  begin
+    for v_n in 1..25 loop
+      perform public.enforce_rate_limit('e2e_contract_probe', 3, 60);
+    end loop;
+    raise exception 'E2E FAIL [7d]: enforce_rate_limit nunca lanzó';
+  exception
+    when sqlstate '54000' then
+      null; -- contrato OK
+    when others then
+      raise exception 'E2E FAIL [7d]: errcode inesperado % (%)', sqlstate, sqlerrm;
+  end;
+
   ------------------------------------------------------------------
   -- 8 · INVITE → CONSUME → contribución → SALIDA de miembro
   ------------------------------------------------------------------
@@ -274,6 +294,11 @@ begin
   v_res := public.peek_family_invite(v_code);
   if (v_res->>'member_count')::int <> 1 then
     raise exception 'E2E FAIL [8]: peek member_count=% (esperaba 1)', v_res->>'member_count';
+  end if;
+  -- 8b · El peek expone income_mode (fix R6): el paso 4 del onboarding
+  --      del joiner lo usa para no pedir un aporte inerte en dinámico.
+  if v_res->>'income_mode' <> 'dynamic' then
+    raise exception 'E2E FAIL [8b]: peek income_mode=% (esperaba dynamic)', v_res->>'income_mode';
   end if;
   perform public.consume_family_invite(v_code);
   if not exists (select 1 from public.family_members

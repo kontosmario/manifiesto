@@ -17,10 +17,13 @@ import {
 } from '@/features/gastos/use-gastos-endpoints'
 import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
 import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
-import { computeCupoDiario } from '@/features/gastos/cupo-diario'
+import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
+import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { resolveIncomeMode } from '@/features/finance/family-finance.model'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { financeToCycleConfig } from '@/utils/finance-cycle-config'
 import { formatCycleLabel } from '@/utils/format-cycle-label'
@@ -113,8 +116,7 @@ export function useGastosController(
   )
   // Régimen de ingreso — el empty state del SectionList lo usa para no
   // pedir "Confirma tu cobro" en modo variable (no existe esa acción).
-  const incomeMode: 'fixed' | 'dynamic' =
-    financeQuery.data?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const incomeMode = resolveIncomeMode(financeQuery.data)
   const cycleLabel = useMemo(
     () => formatCycleLabel(cycle, cycleType),
     [cycle, cycleType],
@@ -122,17 +124,31 @@ export function useGastosController(
 
   // Cupo diario canónico — pasado al server para anchorar moods. Redondeado
   // vía helper compartido para que la queryKey del calendar coincida con la
-  // del snapshot y el warm-prefetch (ver cupo-diario.ts).
+  // del snapshot y el warm-prefetch (ver cupo-diario.ts). Base dinámica =
+  // ingresos del ciclo + override (misma query que el screen/warm).
+  const cupoIncomeQuery = useCycleIncomeEventsTotal(
+    familyId,
+    formatLocalDateKey(dashboard.monthlyAccounting.start),
+    formatLocalDateKey(dashboard.monthlyAccounting.end),
+  )
   const cupoDiario = useMemo(
     () =>
       computeCupoDiario({
-        monthlyIncome: dashboard.monthlyIncome,
+        monthlyIncome: resolveCupoIncomeBase({
+          incomeMode,
+          monthlyIncome: dashboard.monthlyIncome,
+          cycleIncomeTotal: cupoIncomeQuery.data ?? 0,
+          cycleStartingBalanceOverride: dashboard.cycleStartingBalanceOverride,
+        }),
         fixedExpensesMonthlyTotal: dashboard.fixedExpensesMonthlyTotal,
         savingsGoal: dashboard.savingsGoal,
         cycleDays,
       }),
     [
+      incomeMode,
       dashboard.monthlyIncome,
+      dashboard.cycleStartingBalanceOverride,
+      cupoIncomeQuery.data,
       dashboard.fixedExpensesMonthlyTotal,
       dashboard.savingsGoal,
       cycleDays,

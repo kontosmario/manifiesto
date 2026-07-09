@@ -29,3 +29,21 @@ export function computeCupoDiario({
   const libre = Math.max(0, monthlyIncome - fixedExpensesMonthlyTotal - savingsGoal)
   return cycleDays > 0 ? Math.round(libre / cycleDays) : 0
 }
+
+/** Base de ingreso para el cupo según el modo (review 2026-07-08).
+ *  En DINÁMICO el sueldo es 0 por diseño y el presupuesto real del ciclo
+ *  es Σ income_events + override (reserva liberada / saldo confirmado);
+ *  sin esta base los moods del calendario de Gastos caían al fallback
+ *  de promedio y contradecían el cupo que Home/Control anuncian. Es un
+ *  agregado ESTABLE ante gastos (solo cambia con ingresos) — apto para
+ *  queryKey. AMBOS call-sites (screen + warm-prefetch) DEBEN derivarla
+ *  por acá para que las keys coincidan. */
+export function resolveCupoIncomeBase(args: {
+  incomeMode: 'fixed' | 'dynamic'
+  monthlyIncome: number
+  cycleIncomeTotal: number
+  cycleStartingBalanceOverride: number | null
+}): number {
+  if (args.incomeMode !== 'dynamic') return args.monthlyIncome
+  return args.cycleIncomeTotal + (args.cycleStartingBalanceOverride ?? 0)
+}

@@ -246,9 +246,13 @@
     "incomeVolatility": {
       "cat": "Ingreso",
       "titleBetter": "Cobraste {{amount}} este mes — más que de costumbre",
+      "titleBetterDynamic": "El ciclo pasado te entró {{amount}} — más que de costumbre",
       "titleWorse": "Cobraste {{amount}} este mes — menos que de costumbre",
+      "titleWorseDynamic": "El ciclo pasado te entró {{amount}} — menos que de costumbre",
       "bodyBetter": "Otros meses cobrabas cerca de {{avg}}; este mes te entró {{delta}} más. Buen momento para guardar un poco de esa diferencia.",
+      "bodyBetterDynamic": "En ciclos anteriores entraba cerca de {{avg}}; el último cerró con {{delta}} más. Buen momento para guardar un poco de esa diferencia.",
       "bodyWorse": "Otros meses cobrabas cerca de {{avg}}; este mes te entró {{delta}} menos. Cuida los gastos hasta que se recupere.",
+      "bodyWorseDynamic": "En ciclos anteriores entraba cerca de {{avg}}; el último cerró con {{delta}} menos. Cuida los gastos hasta que se recupere.",
       "explanation": "Compara lo que cobraste este mes con lo que sueles cobrar. Si entra bastante menos, conviene cuidar los gastos; si entra más, guarda la diferencia."
     },
     "subUsage": {

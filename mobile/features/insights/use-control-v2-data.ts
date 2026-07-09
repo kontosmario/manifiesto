@@ -16,6 +16,7 @@ import { useQuery, type QueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import i18n from '@/lib/i18n'
 import { useExpenses } from '@/features/expenses/use-expenses'
+import { resolveIncomeMode } from '@/features/finance/family-finance.model'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useCategories } from '@/features/categories/use-categories'
@@ -528,8 +529,7 @@ export function useControlV2Data(
   const demoFilter = useAssistantDemoFilter()
   // Hoisteado fuera del memo (el compiler no preserva la memo con el
   // optional-chain adentro — mismo patrón que use-monthly-accounting).
-  const signalsIncomeMode: 'fixed' | 'dynamic' =
-    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const signalsIncomeMode = resolveIncomeMode(finance)
   const computedSignals = useMemo<ControlAdvisorTask[]>(() => {
     // TESTING flag (Settings → Desarrollo → "Modo demo del asistente").
     // When ON, replace computed signals with a curated fixture
@@ -682,10 +682,19 @@ export function useControlV2Data(
   // flag hermano `dynamicIncomeHydrating` cubre esa ventana con el shell
   // neutro (sin él, un dinámico sin ingresos veía el stack con $0 un
   // instante antes de saltar a la guía).
+  // El OVERRIDE del ciclo (reserva liberada / saldo confirmado) también
+  // es presupuesto real: sin este término, la plata liberada quedaba
+  // tapada por la guía (review 2026-07-08). Mismo idiom del adapter.
+  const controlCycleAnchorKey = formatLocalDateKey(payCycle.start)
+  const hasCycleOverride =
+    finance?.current_cycle_anchor === controlCycleAnchorKey &&
+    typeof finance?.current_cycle_starting_balance === 'number' &&
+    finance.current_cycle_starting_balance >= 0
   const dynamicNoIncome =
     signalsIncomeMode === 'dynamic' &&
     cycleIncomeQuery.data !== undefined &&
-    cycleIncomeQuery.data <= 0
+    cycleIncomeQuery.data <= 0 &&
+    !hasCycleOverride
   const dynamicIncomeHydrating =
     signalsIncomeMode === 'dynamic' && cycleIncomeQuery.isLoading
 

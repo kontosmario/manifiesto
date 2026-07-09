@@ -60,16 +60,20 @@ export function resolveDeviceTimezone(): string {
 /**
  * Set de días-con-actividad DEL HOGAR (jardín familiar, 2026-07-08):
  * el gasto de CUALQUIER miembro ∪ los días marcados sin-gasto plantan
- * el brote del día para toda la familia. No filtra por autor — ese es
- * exactamente el punto del cambio.
+ * el brote del día para toda la familia. No filtra por CUÁL miembro —
+ * ese es el punto del cambio — pero SÍ excluye created_by NULL (autor
+ * de cuenta borrada): el trigger del server, recompute_family_streak y
+ * el weekActivity de use-streak los ignoran; sin este espejo el jardín
+ * pintaba brotes en días que la racha cuenta como huecos.
  */
 export function familyActivityDays(
-  expenses: ReadonlyArray<{ created_at: string; created_by?: string | null }>,
+  expenses: ReadonlyArray<{ created_at: string; created_by: string | null }>,
   markedDaysIso: readonly string[],
   tz: string,
 ): Set<string> {
   const activity = new Set<string>(markedDaysIso)
   for (const e of expenses) {
+    if (!e.created_by) continue
     activity.add(isoDay(new Date(e.created_at), tz))
   }
   return activity

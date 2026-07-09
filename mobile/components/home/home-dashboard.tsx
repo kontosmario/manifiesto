@@ -517,6 +517,11 @@ export function HomeDashboard({
     intelligenceForWrapped.isError,
   ])
 
+  // `.mutateAsync`/`.mutate` son estables por contrato de React Query;
+  // el objeto de useMutation NO (identidad nueva por render). Depender
+  // del objeto anulaba los useCallback de abajo y re-corría el efecto
+  // de auto-fire del wrapped en cada render (review 2026-07-08).
+  const applyDecisionMutateAsync = applyDecision.mutateAsync
   const handleApplyDecision = useCallback(
     async (input: ApplyDecisionInput) => {
       // Sin catch esto era un unhandled rejection: el RPC puede fallar
@@ -524,13 +529,13 @@ export function HomeDashboard({
       // un "Uncaught (in promise)" en consola. El sheet queda abierto
       // para reintentar.
       try {
-        await applyDecision.mutateAsync(input)
+        await applyDecisionMutateAsync(input)
         setDecisionSheetOpen(false)
       } catch {
         toast.error(t('home:dashboard.saveDecisionError'))
       }
     },
-    [applyDecision],
+    [applyDecisionMutateAsync],
   )
 
   // "Decidir más tarde" cierra el sheet pero NO persiste una decisión
@@ -557,6 +562,7 @@ export function HomeDashboard({
   // Declarado ANTES de fireWrappedForClosedCycle: el flujo de auto-fire
   // dinámico stampa como visto el summary REALMENTE reproducido.
   const markWrappedSeenHome = useMarkCycleWrappedSeen(familyId)
+  const markWrappedSeenMutate = markWrappedSeenHome.mutate
   // Dispara el "Manifiesto Wrapped" del ciclo recién cerrado. Gating:
   //   - Solo en flow recurrente (NO en onboarding — el primer cobro
   //     no cierra nada).
@@ -702,7 +708,7 @@ export function HomeDashboard({
               // feedback al user sale de aquí. Re-throw para que la
               // CTA NO dispare confetti en el path de error.
               try {
-                await applyDecision.mutateAsync(input)
+                await applyDecisionMutateAsync(input)
               } catch (err) {
                 toast.error(t('home:dashboard.saveDecisionError'))
                 throw err
@@ -713,7 +719,7 @@ export function HomeDashboard({
     )
     // Auto-fire dinámico: visto = el row que ACABAMOS de reproducir.
     if (opts?.markSeenAfterPlay && summaryId) {
-      markWrappedSeenHome.mutate(summaryId)
+      markWrappedSeenMutate(summaryId)
     }
     // Wrapped lanzado. `lastShownDecisionIdRef` ya quedó seteado más
     // arriba si correspondía → el standalone NO se abre detrás. Podemos
@@ -726,8 +732,8 @@ export function HomeDashboard({
     familyId,
     categoryNameById,
     activeGoalForSheet,
-    applyDecision,
-    markWrappedSeenHome,
+    applyDecisionMutateAsync,
+    markWrappedSeenMutate,
   ])
 
   // Auto-fire del Wrapped en modo DINÁMICO: el ciclo cierra solo (cron
@@ -1054,27 +1060,11 @@ export function HomeDashboard({
             registra y el tour lo saltea solo).
           · dinámico+familia: variante sin "cobro" (familyStripDynamic).
           · fijo+solo: variante sin "grupo familiar" (familyStripSolo).
-          · fijo+familia: copy original. */}
-      {isDynamicIncome && isSolo ? (
-        <FamilyStrip
-          members={familyMembers}
-          daysUntilPayday={days}
-          paydayPending={pending}
-          onPaydayPress={handleChipConfirmTracked}
-          showMembers={!isSolo}
-        />
-      ) : (
-        <TourTarget
-          tour={HOME_TOUR}
-          order={HOME_TOUR_STEPS.familyStrip.order}
-          text={
-            isDynamicIncome
-              ? t('states:tour.home.familyStripDynamic')
-              : isSolo
-                ? t('states:tour.home.familyStripSolo')
-                : HOME_TOUR_STEPS.familyStrip.text
-          }
-        >
+          · fijo+familia: copy original.
+          La strip se define UNA sola vez (familyStripNode) — solo varía
+          el wrapper del tour. */}
+      {(() => {
+        const familyStripNode = (
           <FamilyStrip
             members={familyMembers}
             daysUntilPayday={days}
@@ -1082,8 +1072,24 @@ export function HomeDashboard({
             onPaydayPress={handleChipConfirmTracked}
             showMembers={!isSolo}
           />
-        </TourTarget>
-      )}
+        )
+        if (isDynamicIncome && isSolo) return familyStripNode
+        return (
+          <TourTarget
+            tour={HOME_TOUR}
+            order={HOME_TOUR_STEPS.familyStrip.order}
+            text={
+              isDynamicIncome
+                ? t('states:tour.home.familyStripDynamic')
+                : isSolo
+                  ? t('states:tour.home.familyStripSolo')
+                  : HOME_TOUR_STEPS.familyStrip.text
+            }
+          >
+            {familyStripNode}
+          </TourTarget>
+        )
+      })()}
       {/* La card de "confirma tu saldo" se confirma DENTRO de un Modal
           full-screen (NumericEditSheet). Si la desmontáramos al instante en
           que el dato flippea, el colapso correría OCULTO detrás del modal y la

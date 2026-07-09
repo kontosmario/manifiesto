@@ -145,6 +145,10 @@ const SENSITIVE_QUERY_ROOTS = new Set<string>([
   'monthly-summaries',
   'velocity-snapshots',
   'income-events',
+  // El match es por string EXACTO del root — la key hermana del agregado
+  // del ciclo escapaba al Set y persistía un total financiero en
+  // plaintext (review 2026-07-08).
+  'income-events-cycle-sum',
   'subscriptions-zombie',
   'home-telemetry',
   'push-subscription',

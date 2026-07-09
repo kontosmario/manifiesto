@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
+import {
+  effectiveMonthlyIncome,
+  effectiveSavingsGoal,
+  resolveIncomeMode,
+} from '@/features/finance/family-finance.model'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
@@ -136,7 +141,12 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     return m
   }, [categoriesQuery.data])
 
-  const monthlyIncomeForSummary = financeQuery.data?.monthly_income ?? 0
+  // effectiveMonthlyIncome: en dinámico es 0 aunque la columna traiga un
+  // sueldo stale — sin esto el detalle de cada fijo mostraba "% de tu
+  // sueldo mensual" contra un sueldo que el modo declara inexistente
+  // (review 2026-07-08; el hero ya lo tapaba con showIncomeStats, el
+  // panel de detalle no).
+  const monthlyIncomeForSummary = effectiveMonthlyIncome(financeQuery.data)
   const summary = useMemo(() => {
     if (items.length === 0) return DEFAULT_SUMMARY
     return summarizeFijos({
@@ -248,8 +258,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     [filteredItems, categories],
   )
 
-  const monthlyIncome = financeQuery.data?.monthly_income ?? 0
-  const savingsGoal = Math.max(0, financeQuery.data?.savings_goal ?? 0)
+  const monthlyIncome = effectiveMonthlyIncome(financeQuery.data)
+  const savingsGoal = Math.max(0, effectiveSavingsGoal(financeQuery.data))
   // "Dinero libre este mes" es lo que queda DESPUÉS de que el usuario
   // pagó sus fijos Y reservó lo que tenía planeado ahorrar — la
   // misma fórmula canónica que usan Control/Home/Daily Budget Engine
@@ -266,8 +276,7 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     monthlyIncome > 0 ? Math.round((summary.total / monthlyIncome) * 100) : 0
   // Dinámico: "dinero libre" y "% de tu sueldo" no tienen base (no hay
   // sueldo) — el hero oculta esa fila.
-  const incomeMode: 'fixed' | 'dynamic' =
-    financeQuery.data?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const incomeMode = resolveIncomeMode(financeQuery.data)
 
   const cycleType = useMemo(
     () => financeToCycleConfig(financeQuery.data).cycle_type,

@@ -272,3 +272,99 @@ describe('buildWrappedPayloadFromSummary', () => {
     expect(payload.mood).toBe('great')
   })
 })
+
+describe('buildWrappedPayloadFromSummary — períodos cortos e ingreso del ciclo', () => {
+  it('período CORTO (7 días): el rango reemplaza al periodLabel y periodRange va null', () => {
+    // Ciclo semanal del modo dinámico: el period_label del server sería
+    // "Julio 2026" repetido 4 veces al mes — el rango es el título honesto
+    // y se anula el subtítulo para no duplicarlo.
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        period_start: '2026-07-07',
+        period_end: '2026-07-14',
+        period_label: 'Julio 2026',
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    // period_end exclusivo → día display = 13 jul
+    expect(payload.periodLabel).toBe('7 jul – 13 jul')
+    expect(payload.periodRange).toBeNull()
+  })
+
+  it('período mensual calendario (1→1, 31 días): periodLabel = period_label y sin rango', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        period_start: '2026-03-01',
+        period_end: '2026-04-01',
+        period_label: 'Marzo 2026',
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.periodLabel).toBe('Marzo 2026')
+    expect(payload.periodRange).toBeNull()
+  })
+
+  it('período mensual rolling (15→15): conserva period_label como título + rango como subtítulo', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        period_start: '2026-03-15',
+        period_end: '2026-04-15',
+        period_label: 'Marzo 2026',
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.periodLabel).toBe('Marzo 2026')
+    expect(payload.periodRange).toBe('15 mar – 14 abr')
+  })
+
+  it('monthlyIncome suma sueldo base + extra_income del ciclo', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({ monthly_income: 100_000, extra_income: 30_000 }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.monthlyIncome).toBe(130_000)
+  })
+
+  it('hogar de ingreso DINÁMICO (sueldo 0 por diseño): monthlyIncome = extra_income', () => {
+    // Sin la suma, un hogar dinámico veía "$0 para administrar" en el closing.
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({ monthly_income: 0, extra_income: 500_000 }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.monthlyIncome).toBe(500_000)
+  })
+
+  it('monthlyIncome coerce null/undefined a 0', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        monthly_income: null as any,
+        extra_income: undefined as any,
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.monthlyIncome).toBe(0)
+  })
+
+  it('numeric-as-string de PostgREST se coerce correcto (income, extra, spent)', () => {
+    // PostgREST devuelve columnas `numeric` como string por default.
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        monthly_income: '100000.00' as any,
+        extra_income: '30000.00' as any,
+        total_spent: '50000.00' as any,
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.monthlyIncome).toBe(130_000)
+    expect(payload.totalSpent).toBe(50_000)
+    // veredicto = 100k + 30k − 50k gasto − 0 ahorro comprometido
+    expect(payload.savingsDelta).toBe(80_000)
+  })
+})

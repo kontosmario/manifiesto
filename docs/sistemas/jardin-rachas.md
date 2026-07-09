@@ -113,10 +113,11 @@ NO extiende el jardín hacia atrás (evita semanas de "salteados" falsos); back-
 DENTRO de tu período sí llena el brote de ese día. Días previos a tu inicio = tenues
 (`pre`), nunca "salteados".
 
-> **Nota 14 vs 35 días:** `markedDaysIso` (días sin-gasto) está limitado a 14 por el
-> query de `useStreak`. Los días sin-gasto más viejos que 14 no aparecen en la grilla
-> (los días con gasto real sí, vienen completos de `expenses`). Si en QA aparece un
-> hueco viejo incorrecto, ampliar el `LIMIT` de `fetchMarkedDays` a 35.
+> **Nota días marcados:** `markedDaysIso` (días sin-gasto) cubre los 35 días de la
+> grilla: `fetchMarkedDays` trae hasta 105 filas (por si la familia marca varios por
+> día) y deduplica a 35 días DISTINTOS (`use-streak.ts`). Los días con gasto real
+> vienen completos de `expenses`. Un hueco viejo incorrecto en QA ya no puede venir
+> de este límite — buscar en el anclaje (`gardenFirstActivity`) o en el replay.
 
 ## Las 4 vistas
 

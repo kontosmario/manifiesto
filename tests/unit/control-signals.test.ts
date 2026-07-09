@@ -405,16 +405,57 @@ describe('control-signals — modo INGRESO DINÁMICO', () => {
         top_expense: null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
       }) as any
+    // Semántica post-review 2026-07-08: en dinámico se comparan ciclos
+    // CERRADOS entre sí (último cierre vs promedio de los anteriores) —
+    // la suma PARCIAL del ciclo en curso (ingresoRecurrente) NO
+    // participa (daba falso "tu ingreso bajó" toda la primera mitad
+    // de cada ciclo).
     const out = buildControlSignals(
       baseArgs({
         incomeMode: 'dynamic',
-        // Este ciclo entraron 800k; histórico ~500k → +60% dispara.
-        ingresoRecurrente: 800_000,
-        ingresoMes: 800_000,
-        summaries: [summary(500_000, 1), summary(500_000, 2)],
+        // Parcial del ciclo en curso bajo a propósito: debe ser ignorado.
+        ingresoRecurrente: 100_000,
+        ingresoMes: 100_000,
+        // Último cierre 800k vs histórico 500k → +60% dispara.
+        summaries: [summary(800_000, 1), summary(500_000, 2), summary(500_000, 3)],
       }),
     )
     expect(out.find((s) => s.id === 'income-volatility')).toBeDefined()
+  })
+
+  it('income-volatility dinámico NO dispara por el parcial del ciclo en curso', () => {
+    const summary = (extra: number, i: number): MonthlySummaryHistory =>
+      ({
+        id: `s-${i}`,
+        period_start: `2026-0${4 + i}-01`,
+        period_end: `2026-0${5 + i}-01`,
+        period_label: `Mes ${i}`,
+        total_variable_spent: 100_000,
+        total_spent: 120_000,
+        expenses_count: 10,
+        monthly_income: 0,
+        savings_delta: 0,
+        extra_income: extra,
+        savings_goal_amount: 0,
+        category_breakdown: null,
+        daily_totals: null,
+        delta_vs_previous_percent: null,
+        mood: null,
+        top_expense: null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test scaffolding
+      }) as any
+    const out = buildControlSignals(
+      baseArgs({
+        incomeMode: 'dynamic',
+        // Día 2 del ciclo: entró apenas el 20% del histórico — con la
+        // semántica vieja esto emitía "tu ingreso bajó $400k" casi todo
+        // el ciclo. Los cierres son estables → sin señal.
+        ingresoRecurrente: 100_000,
+        ingresoMes: 100_000,
+        summaries: [summary(500_000, 1), summary(500_000, 2), summary(500_000, 3)],
+      }),
+    )
+    expect(out.find((s) => s.id === 'income-volatility')).toBeUndefined()
   })
 
   it('fijos-ratio dinámico usa el copy neutral (sin "sueldo")', () => {

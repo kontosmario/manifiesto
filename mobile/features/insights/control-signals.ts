@@ -1349,27 +1349,31 @@ function buildIncomeVolatility(
   args: BuildSignalsArgs,
 ): ControlAdvisorTask | null {
   if (args.summaries.length < 2) return null
-  // Comparar el sueldo RECURRENTE contra el histórico de sueldo. Con override
-  // activo, ingresoMes = la caja del ciclo (un ajuste de UN ciclo) → compararla
-  // vs el take-home histórico daría un falso "tu ingreso bajó/subió $X".
-  // ingresoRecurrente = family_finance.monthly_income (sin override ni extras).
-  // DINÁMICO: la referencia son los income_events — ingresoRecurrente llega
-  // como Σ del ciclo y el histórico sale de `extra_income` de los cierres
-  // (monthly_income histórico es 0 por diseño en dinámico).
+  // FIJO: comparar el sueldo RECURRENTE contra el histórico de sueldo. Con
+  // override activo, ingresoMes = la caja del ciclo (un ajuste de UN ciclo)
+  // → compararla vs el take-home histórico daría un falso "bajó/subió $X".
+  // ingresoRecurrente = family_finance.monthly_income (sin override/extras).
   const isDynamic = args.incomeMode === 'dynamic'
-  const income = args.ingresoRecurrente ?? args.ingresoMes
+  // DINÁMICO: comparar ciclos CERRADOS entre sí (último cierre vs promedio
+  // de los 2-3 anteriores) — la suma PARCIAL del ciclo en curso contra
+  // ciclos completos daba un falso "tu ingreso bajó X%" toda la primera
+  // mitad de cada ciclo (review 2026-07-08). Con ingreso variable, un
+  // único ciclo de historia no es baseline: se exigen ≥2 de historia.
+  const income = isDynamic
+    ? finiteOr(Number(args.summaries[0]?.extra_income ?? 0), 0)
+    : (args.ingresoRecurrente ?? args.ingresoMes)
   if (!isFiniteNumber(income) || income <= 0) return null
+  const historyPool = isDynamic ? args.summaries.slice(1, 4) : args.summaries.slice(0, 3)
+  if (historyPool.length < (isDynamic ? 2 : 1)) return null
   const historicalAvg =
-    args.summaries
-      .slice(0, 3)
-      .reduce(
-        (s, x) =>
-          s +
-          (isDynamic
-            ? finiteOr(Number(x.extra_income ?? 0), 0)
-            : x.monthly_income),
-        0,
-      ) / Math.min(3, args.summaries.length)
+    historyPool.reduce(
+      (s, x) =>
+        s +
+        (isDynamic
+          ? finiteOr(Number(x.extra_income ?? 0), 0)
+          : x.monthly_income),
+      0,
+    ) / historyPool.length
   if (!isFiniteNumber(historicalAvg) || historicalAvg <= 0) return null
   const delta = income - historicalAvg
   const pct = (delta / historicalAvg) * 100
@@ -1382,22 +1386,35 @@ function buildIncomeVolatility(
     id: 'income-volatility',
     emoji: better ? '📈' : '📉',
     cat: i18n.t('insights:signals.incomeVolatility.cat'),
+    // DINÁMICO: el monto describe el ciclo CERRADO, no el corriente —
+    // el copy base ("este mes") mentiría; las variantes *Dynamic hablan
+    // de "el ciclo pasado" (review 2026-07-08).
     title: better
-      ? i18n.t('insights:signals.incomeVolatility.titleBetter', {
-          amount: fmt(income),
-        })
-      : i18n.t('insights:signals.incomeVolatility.titleWorse', {
-          amount: fmt(income),
-        }),
+      ? i18n.t(
+          isDynamic
+            ? 'insights:signals.incomeVolatility.titleBetterDynamic'
+            : 'insights:signals.incomeVolatility.titleBetter',
+          { amount: fmt(income) },
+        )
+      : i18n.t(
+          isDynamic
+            ? 'insights:signals.incomeVolatility.titleWorseDynamic'
+            : 'insights:signals.incomeVolatility.titleWorse',
+          { amount: fmt(income) },
+        ),
     body: better
-      ? i18n.t('insights:signals.incomeVolatility.bodyBetter', {
-          avg: fmt(historicalAvg),
-          delta: fmt(Math.abs(delta)),
-        })
-      : i18n.t('insights:signals.incomeVolatility.bodyWorse', {
-          avg: fmt(historicalAvg),
-          delta: fmt(Math.abs(delta)),
-        }),
+      ? i18n.t(
+          isDynamic
+            ? 'insights:signals.incomeVolatility.bodyBetterDynamic'
+            : 'insights:signals.incomeVolatility.bodyBetter',
+          { avg: fmt(historicalAvg), delta: fmt(Math.abs(delta)) },
+        )
+      : i18n.t(
+          isDynamic
+            ? 'insights:signals.incomeVolatility.bodyWorseDynamic'
+            : 'insights:signals.incomeVolatility.bodyWorse',
+          { avg: fmt(historicalAvg), delta: fmt(Math.abs(delta)) },
+        ),
     impact: fmtDelta(delta),
     impactRaw: Math.abs(Math.round(delta)),
     cta: better ? i18n.t('insights:cta.verMeta') : i18n.t('insights:cta.verFijos'),

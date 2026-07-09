@@ -365,8 +365,13 @@ export function OnboardingScreen({ userId }: OnboardingScreenProps) {
       // family_finance / savings_goal upserts are skipped — those
       // already exist for the family.
       if (state.familyMode === 'joined' && state.pendingFamily) {
+        // Hogar destino DINÁMICO: el paso de contribución se saltó — 0
+        // explícito (el server igual fuerza monthly_income = 0).
         const contribution =
-          state.contributesIncome === true ? monthlyIncome : 0
+          state.pendingFamily.income_mode !== 'dynamic' &&
+          state.contributesIncome === true
+            ? monthlyIncome
+            : 0
         await consumeInvite.mutateAsync({
           code: state.pendingFamily.family_code,
           monthlyIncomeContribution: contribution,

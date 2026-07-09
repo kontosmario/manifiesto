@@ -68,9 +68,21 @@ function HomeHeroCardImpl({
   const reduceMotion = useReducedMotion()
   // Modo dinámico sin ingresos cargados este ciclo → estado vacío con
   // CTA a add-income (el setup clásico empuja a configurar SUELDO, que
-  // es justo lo que este hogar no tiene).
+  // es justo lo que este hogar no tiene). El override del ciclo
+  // (reserva liberada / saldo confirmado) TAMBIÉN es presupuesto real:
+  // sin `!cycleAdjusted`, la plata liberada quedaba tapada por el empty
+  // (review 2026-07-08 — la misma clase de bug que 20260708210000 cerró
+  // server-side). Y mientras la query de ingresos hidrata no se decide
+  // el empty (flash de CTA equivocado en cold start). Tradeoff aceptado:
+  // la cohorte SIN ingresos ve el hero con $0 ese instante en vez del
+  // CTA — preferible a mostrarle "cargá tu primer ingreso" a un hogar
+  // con plata cargada.
   const dynamicSetup =
-    data.incomeConfigured && data.incomeMode === 'dynamic' && !data.hasCycleIncome
+    data.incomeConfigured &&
+    data.incomeMode === 'dynamic' &&
+    !data.hasCycleIncome &&
+    !data.cycleAdjusted &&
+    !data.cycleIncomeHydrating
   const showSetup = !data.incomeConfigured || dynamicSetup
   const projPositive = data.projectedClose >= 0
   const projColor = projPositive ? theme.colors.heroAccent : '#F8D1C3'

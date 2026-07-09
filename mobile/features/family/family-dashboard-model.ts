@@ -2,7 +2,10 @@ import type { Expense } from '@/features/expenses/use-expenses'
 import { DAY_MS } from '@/utils/time'
 import {
   deriveSavingsGoalPercent,
+  effectiveMonthlyIncome,
+  effectiveSavingsGoal,
   resolveFlexibleTargetPercent,
+  resolveIncomeMode,
   TARGET_ESSENTIALS_PERCENT,
 } from '@/features/finance/family-finance.model'
 import {
@@ -97,8 +100,7 @@ export function buildFamilyDashboardSnapshot({
   // use-home-metrics). Cambia el reparto del cupo (días restantes) y
   // suprime los prompts de sueldo/saldo-inicial. Derivado ACÁ (antes del
   // pending) porque el freeze de cobro también depende de él.
-  const incomeMode: 'fixed' | 'dynamic' =
-    finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+  const incomeMode = resolveIncomeMode(finance)
   const isDynamicIncome = incomeMode === 'dynamic'
   // DINÁMICO: no hay cobro que confirmar — sin esta exención (que la
   // fuente canónica computeIsSalaryPendingConfirmation y el server ya
@@ -176,15 +178,10 @@ export function buildFamilyDashboardSnapshot({
     window: { start: accounting.start, end: accounting.end },
     today: todayDate,
   })
-  // DINÁMICO: el sueldo NO participa del presupuesto aunque el row
-  // conserve un monthly_income stale (p.ej. hogar que cambió de modo en
-  // Settings con contribuciones cargadas) — la base es 0 + income_events.
-  // Espeja el defensivo del adapter de Control y del SQL cycle_disponible.
-  const monthlyIncome = isDynamicIncome ? 0 : (finance?.monthly_income ?? 0)
-  // Dinámico: el ahorro mensual por % del sueldo NO aplica — defensivo
-  // (espeja `eff_savings = 0 when dyn` del SQL cycle_disponible), por si
-  // un fixed→dynamic dejó un savings_goal stale en DB.
-  const savingsGoal = isDynamicIncome ? 0 : (finance?.savings_goal ?? 0)
+  // Fuente única del defensivo dinámico (sueldo/ahorro stale ⇒ 0):
+  // family-finance.model, espejo del SQL cycle_disponible.
+  const monthlyIncome = effectiveMonthlyIncome(finance)
+  const savingsGoal = effectiveSavingsGoal(finance)
   const savingsGoalPercent =
     typeof finance?.savings_goal_percent === 'number'
       ? finance.savings_goal_percent
@@ -268,7 +265,7 @@ export function buildFamilyDashboardSnapshot({
   // se mantiene el savings_goal configurado (la meta es la meta;
   // el extra del UP es bonus, no objetivo de ahorro mayor).
   // Owner feedback iterado 2026-06-08.
-  const effectiveSavingsGoal = overrideIsDown
+  const cycleEffectiveSavingsGoal = overrideIsDown
     ? Math.max(0, Math.round(effectiveCycleIncome * (savingsGoalPercent / 100)))
     : savingsGoal
   // Variable spend that "counts" toward this cycle = ALL variable spent this
@@ -284,11 +281,11 @@ export function buildFamilyDashboardSnapshot({
   const flexibleTargetAmount = derivePercentAmount(effectiveCycleIncome, targetFlexiblePercent)
   const cycleBalanceBeforeSavings =
     effectiveCycleIncome -
-    effectiveSavingsGoal -
+    cycleEffectiveSavingsGoal -
     effectiveCommitmentPressure -
     variableSpentForCycleMetrics
-  const savingsSpent = Math.min(effectiveSavingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
-  const savingsRemaining = Math.max(0, effectiveSavingsGoal - savingsSpent)
+  const savingsSpent = Math.min(cycleEffectiveSavingsGoal, Math.max(0, -cycleBalanceBeforeSavings))
+  const savingsRemaining = Math.max(0, cycleEffectiveSavingsGoal - savingsSpent)
   const flexibleDelta = variableSpentForCycleMetrics - flexibleTargetAmount
   const flexibleRemaining = Math.max(0, flexibleTargetAmount - variableSpentForCycleMetrics)
   const totalAvailable = cycleBalanceBeforeSavings + savingsSpent
@@ -335,7 +332,7 @@ export function buildFamilyDashboardSnapshot({
     // si override es DOWN, recalculado al cobro real con el percent
     // configurado. Sino, igual al savings_goal stored. Esto alinea
     // el chip ("Ahorrando \$X") con la realidad del ciclo en curso.
-    savingsGoal: effectiveSavingsGoal,
+    savingsGoal: cycleEffectiveSavingsGoal,
     savingsGoalPercent,
     savingsRemaining,
     savingsSpent,

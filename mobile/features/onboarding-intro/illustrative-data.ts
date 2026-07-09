@@ -28,6 +28,7 @@ export const INTRO_HERO_METRICS: HomeHeroMetrics = {
   incomeConfigured: true,
   incomeMode: 'fixed',
   hasCycleIncome: false,
+  cycleIncomeHydrating: false,
   monthlyIncome: 1_200_000,
   acumulado: null,
   monthlyReserveAmount: 0,

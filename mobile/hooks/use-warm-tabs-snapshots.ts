@@ -7,7 +7,9 @@ import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { prefetchGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { prefetchControlIntelligence } from '@/features/insights/use-control-v2-data'
-import { computeCupoDiario } from '@/features/gastos/cupo-diario'
+import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
+import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 
 /**
  * Warm-up de los snapshots de los tabs Gastos y Control después que
@@ -37,23 +39,43 @@ export function useWarmTabsSnapshots(): void {
 
   // Compute cupoDiario igual que GastosV2Screen — keys deben matchear
   // exactamente para que el cache hit funcione cuando el user mounte
-  // el screen.
+  // el screen. La base dinámica (ingresos del ciclo + override) sale de
+  // la MISMA query react-query que usa el screen: al momento del warm y
+  // del mount leen el mismo valor del cache → misma key.
   const monthlyIncome = dashboard.monthlyIncome
   const fixedExpensesMonthlyTotal = dashboard.fixedExpensesMonthlyTotal
   const savingsGoal = dashboard.savingsGoal
   const cycleDays = cycle.days
   const cycleStartIso = cycle.start.toISOString()
   const cycleEndIso = cycle.end.toISOString()
+  const cupoIncomeQuery = useCycleIncomeEventsTotal(
+    familyId,
+    formatLocalDateKey(dashboard.monthlyAccounting.start),
+    formatLocalDateKey(dashboard.monthlyAccounting.end),
+  )
+  const cupoIncomeTotal = cupoIncomeQuery.data ?? 0
+  const cupoIncomeLoading = cupoIncomeQuery.isLoading
+  const incomeMode = dashboard.incomeMode
+  const cycleStartingBalanceOverride = dashboard.cycleStartingBalanceOverride
 
   useEffect(() => {
     if (!familyId || !userId || cycleDays <= 0) return
+    // Dinámico: esperar a que la base del cupo resuelva — sin este gate
+    // el warm disparaba DOS gastos_snapshot por cold start (uno con base
+    // 0 que nadie lee, otro con la real) — review 2026-07-08.
+    if (incomeMode === 'dynamic' && cupoIncomeLoading) return
     // Mismo helper compartido que GastosV2Screen + el controller. El queryKey
     // del gastos_snapshot incluye cupoDiario; si el warm calculara distinto
     // que el screen, el cache no haría hit → cold-start → null-gate. El
     // redondeo (computeCupoDiario) absorbe el drift sub-peso entre el momento
     // del warm-prefetch y el del mount.
     const cupoDiario = computeCupoDiario({
-      monthlyIncome,
+      monthlyIncome: resolveCupoIncomeBase({
+        incomeMode,
+        monthlyIncome,
+        cycleIncomeTotal: cupoIncomeTotal,
+        cycleStartingBalanceOverride,
+      }),
       fixedExpensesMonthlyTotal,
       savingsGoal,
       cycleDays,
@@ -82,6 +104,10 @@ export function useWarmTabsSnapshots(): void {
     familyId,
     userId,
     monthlyIncome,
+    incomeMode,
+    cupoIncomeTotal,
+    cupoIncomeLoading,
+    cycleStartingBalanceOverride,
     fixedExpensesMonthlyTotal,
     savingsGoal,
     cycleDays,

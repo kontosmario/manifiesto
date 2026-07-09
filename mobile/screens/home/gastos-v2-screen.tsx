@@ -39,6 +39,7 @@ import {
   useRecentExpenses,
 } from '@/features/expenses/use-expenses'
 import {
+  useCycleIncomeEventsTotal,
   useDeleteIncomeEvent,
   useIncomeEvents,
   type IncomeEvent,
@@ -47,7 +48,8 @@ import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
-import { computeCupoDiario } from '@/features/gastos/cupo-diario'
+import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
+import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { useBranchLog, useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
@@ -136,16 +138,34 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
   useScreenLifecycleLog('Gastos')
   const { cycle, today } = usePayCycle(familyId)
   const dashboard = useFamilyDashboard(familyId)
+  // Dinámico: la base del cupo son los ingresos del ciclo + override —
+  // con el sueldo (0) los moods del calendario caían al fallback de
+  // promedio y contradecían el cupo de Home/Control (review 2026-07-08).
+  // La MISMA derivación vive en use-warm-tabs-snapshots (keys deben
+  // matchear) — cualquier cambio va en resolveCupoIncomeBase, no acá.
+  const cupoIncomeQuery = useCycleIncomeEventsTotal(
+    familyId,
+    formatLocalDateKey(dashboard.monthlyAccounting.start),
+    formatLocalDateKey(dashboard.monthlyAccounting.end),
+  )
   const cupoDiario = useMemo(
     () =>
       computeCupoDiario({
-        monthlyIncome: dashboard.monthlyIncome,
+        monthlyIncome: resolveCupoIncomeBase({
+          incomeMode: dashboard.incomeMode,
+          monthlyIncome: dashboard.monthlyIncome,
+          cycleIncomeTotal: cupoIncomeQuery.data ?? 0,
+          cycleStartingBalanceOverride: dashboard.cycleStartingBalanceOverride,
+        }),
         fixedExpensesMonthlyTotal: dashboard.fixedExpensesMonthlyTotal,
         savingsGoal: dashboard.savingsGoal,
         cycleDays: cycle.days,
       }),
     [
+      dashboard.incomeMode,
       dashboard.monthlyIncome,
+      dashboard.cycleStartingBalanceOverride,
+      cupoIncomeQuery.data,
       dashboard.fixedExpensesMonthlyTotal,
       dashboard.savingsGoal,
       cycle.days,

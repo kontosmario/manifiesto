@@ -8,6 +8,34 @@ import i18n from '@/lib/i18n'
  *    sobre los días restantes del ciclo. */
 export type IncomeMode = 'fixed' | 'dynamic'
 
+/** Modo resuelto de un payload/row crudo: 'fixed' salvo 'dynamic'
+ *  explícito. Fuente única del criterio — usar SIEMPRE esto en vez del
+ *  ternario inline (el default en un solo lugar). */
+export function resolveIncomeMode(
+  finance?: { income_mode?: IncomeMode | null } | null,
+): IncomeMode {
+  return finance?.income_mode === 'dynamic' ? 'dynamic' : 'fixed'
+}
+
+/** Sueldo EFECTIVO del hogar para lectores de presupuesto: en dinámico
+ *  es 0 aunque la columna traiga un valor stale (>0 hasta que el trigger
+ *  del switch/recompute lo pise). Espeja el defensivo del SQL
+ *  (cycle_disponible / velocity). Read-side only — los write paths del
+ *  onboarding arman su propio input. */
+export function effectiveMonthlyIncome(
+  finance?: { income_mode?: IncomeMode | null; monthly_income?: number | null } | null,
+): number {
+  return resolveIncomeMode(finance) === 'dynamic' ? 0 : (finance?.monthly_income ?? 0)
+}
+
+/** Gemelo de effectiveMonthlyIncome para el ahorro mensual: el ahorro
+ *  por % no aplica en dinámico. */
+export function effectiveSavingsGoal(
+  finance?: { income_mode?: IncomeMode | null; savings_goal?: number | null } | null,
+): number {
+  return resolveIncomeMode(finance) === 'dynamic' ? 0 : (finance?.savings_goal ?? 0)
+}
+
 export interface FinanceStoragePayload {
   daily_budget_buffer_mode: 'none' | 'fixed' | 'percent'
   daily_budget_buffer_value: number
@@ -257,7 +285,7 @@ export function normalizeFinancePayload(
     })(),
     usd_rate_enabled: payload?.usd_rate_enabled === true,
     // Lectura: siempre resuelto ('fixed' salvo 'dynamic' explícito).
-    income_mode: payload?.income_mode === 'dynamic' ? 'dynamic' : 'fixed',
+    income_mode: resolveIncomeMode(payload),
     salary_payment_day:
       Number.isInteger(salaryPaymentDay) && salaryPaymentDay >= 1 && salaryPaymentDay <= 31
         ? salaryPaymentDay
