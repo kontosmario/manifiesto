@@ -438,19 +438,6 @@ async function processCoalescedRelay() {
 
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
 
-  // Marcado POR-FILA-TERMINAL (ver terminalRowIds): una fila se marca pushed si
-  // algún destinatario vivo la recibió ('ok') o si todos sus endpoints están
-  // muertos ('removed'); si nadie vivo la recibió (todo 'error', o mix
-  // removed+error) queda sin marcar → reintento seguro sin dup. Se marca por-chunk
-  // (no al final) para que un timeout del edge fn a mitad del drenaje no re-envíe
-  // lo ya enviado la próxima corrida.
-  //
-  // Trade-off conocido (single pushed_at, no per-destinatario): en una fila que
-  // abanica a varios destinatarios (family-wide, o multi-device), si UNO recibe
-  // 'ok' y otro 'error', se marca por el 'ok' → el destinatario en 'error' no
-  // recibe el push por esta fila (sí ve el feed in-app). Reintentarlo dupearía a
-  // quien ya recibió. Entregar a ambos sin dup exigiría tracking por (fila,
-  // destinatario) — follow-up si se vuelve material.
   let sent = 0
   let marked = 0
   const markPushed = async (ids: string[]) => {
@@ -473,14 +460,38 @@ async function processCoalescedRelay() {
     }
   }
 
+  // Enviar en chunks acumulando un statuses GLOBAL alineado con `messages`. Un
+  // chunk cuyo invoke falla deja sus índices en 'error' (fill inicial) → no
+  // terminal → reintento. El marcado se hace UNA vez, DESPUÉS del drenaje, con
+  // terminalRowIds sobre el statuses completo: así una fila que abanica a través
+  // de un borde de chunk (>500 mensajes: family-wide, o multi-device) se evalúa
+  // con TODOS sus tickets, no con la vista parcial de un chunk (que marcaría de
+  // más y perdería un 'error' del otro lado del borde). A la escala actual el
+  // drenaje es 1 chunk; a >500 msgs se difiere el marcado al final del run (el
+  // costo sería un re-envío si el edge fn excede su wall-clock a mitad del
+  // drenaje —improbable hasta miles de msgs— y sería un dup, no una pérdida).
+  const allStatuses: TicketStatus[] = new Array(messages.length).fill('error')
   for (let i = 0; i < messages.length; i += SEND_CHUNK_SIZE) {
-    const mChunk = messages.slice(i, i + SEND_CHUNK_SIZE)
-    const rChunk = rowIdsByIndex.slice(i, i + SEND_CHUNK_SIZE)
-    const statuses = await sendCoalesced(admin, mChunk)
-    if (statuses === null) continue // invoke falló entero → reintento próxima corrida
-    for (const st of statuses) if (st === 'ok') sent++
-    await markPushed([...terminalRowIds(statuses, rChunk)])
+    const statuses = await sendCoalesced(admin, messages.slice(i, i + SEND_CHUNK_SIZE))
+    if (statuses === null) continue // invoke falló → índices quedan 'error' → reintento
+    for (let k = 0; k < statuses.length; k++) {
+      allStatuses[i + k] = statuses[k]
+      if (statuses[k] === 'ok') sent++
+    }
   }
+
+  // Marcado POR-FILA-TERMINAL (ver terminalRowIds): una fila se marca pushed si
+  // algún destinatario vivo la recibió ('ok') o si todos sus endpoints están
+  // muertos ('removed'); si nadie vivo la recibió (todo 'error', o mix
+  // removed+error) queda sin marcar → reintento seguro sin dup.
+  //
+  // Trade-off conocido (single pushed_at, no per-destinatario): en una fila que
+  // abanica a varios destinatarios (family-wide, o multi-device), si UNO recibe
+  // 'ok' y otro 'error', se marca por el 'ok' → el destinatario en 'error' no
+  // recibe el push por esta fila (sí ve el feed in-app). Reintentarlo dupearía a
+  // quien ya recibió. Entregar a ambos sin dup exigiría tracking por (fila,
+  // destinatario) — follow-up si se vuelve material.
+  await markPushed([...terminalRowIds(allStatuses, rowIdsByIndex)])
 
   // Filas sin ningún mensaje (in-app-only: usuario sin token Expo, o family-wide
   // sin miembros con token). Nunca se intentan por push → marcarlas para que no

@@ -295,3 +295,14 @@ Deno.test('terminalRowIds: todos removed de una fila → marca (todos los endpoi
   const { terminalRowIds } = await coalescing()
   assertEquals(terminalRowIds(['removed', 'removed'], [['r'], ['r']]), new Set(['r']))
 })
+
+Deno.test('terminalRowIds: fila dispersa (índices no adyacentes, straddle de chunk) removed+error → no marca', async () => {
+  const { terminalRowIds } = await coalescing()
+  // 'r' aparece en el índice 0 ('removed') y el 3 ('error'), con otras filas en
+  // medio. La agregación GLOBAL (el caller pasa allStatuses del run entero, no el
+  // slice del chunk) debe ver ambos tickets de 'r' → nadie vivo la recibió → no
+  // marca. Esto es el caso que un marcado per-chunk perdería en el borde de 500.
+  const statuses = ['removed', 'ok', 'ok', 'error'] as Array<'ok' | 'error' | 'removed'>
+  const rowIds = [['r'], ['a'], ['b'], ['r']]
+  assertEquals(terminalRowIds(statuses, rowIds), new Set(['a', 'b']))
+})
