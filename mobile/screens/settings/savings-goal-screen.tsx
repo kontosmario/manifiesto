@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
@@ -172,6 +172,61 @@ function SavingsGoalViewer({
   const remove = useDeleteSavingsGoal(familyId, userId)
   const reauth = useRequireReauth()
 
+  // Metas SECUENCIALES: al cumplir la meta vigente se habilita crear la
+  // próxima. Retiramos la cumplida (isActive:false) ANTES de abrir el wizard,
+  // así NUNCA hay dos metas activas a la vez (el read-path activo toma la más
+  // vieja → dos activas mostraría la cumplida en Home/Control). El ref guarda
+  // la meta retirada para reactivarla si el usuario cancela sin crear la nueva.
+  const [nextWizardOpen, setNextWizardOpen] = useState(false)
+  const reactivateGoalRef = useRef<SavingsGoal | null>(null)
+
+  const buildGoalInput = (g: SavingsGoal, isActive: boolean) => ({
+    input: {
+      title: g.title,
+      emoji: g.emoji,
+      goalAmount: g.goalAmount,
+      currentAmount: g.currentAmount,
+      targetMonths: g.targetMonths,
+      isActive,
+    },
+    existingId: g.id,
+  })
+
+  const handleCreateNext = async () => {
+    // El botón se deshabilita con loading={upsert.isPending}, pero además
+    // guardamos contra un doble-tap en vuelo.
+    if (upsert.isPending) return
+    try {
+      // Retiro atómico-por-mutación de la meta cumplida antes de abrir el wizard.
+      // (Trade-off conocido y de bajo impacto: si el usuario MATA la app con el
+      // wizard abierto en vez de cancelar, la meta queda retirada sin reemplazo
+      // — estado recuperable desde Ajustes o re-tocando "Crear próxima meta".)
+      await upsert.mutateAsync(buildGoalInput(goal, false))
+    } catch {
+      // La onError del hook ya muestra el toast; no abrimos el wizard.
+      return
+    }
+    reactivateGoalRef.current = goal
+    setNextWizardOpen(true)
+  }
+
+  const handleNextGoalCreated = () => {
+    // Se creó la próxima meta → la cumplida queda retirada (no reactivar).
+    reactivateGoalRef.current = null
+    setNextWizardOpen(false)
+  }
+
+  const handleNextWizardClose = () => {
+    setNextWizardOpen(false)
+    // Canceló sin crear → reactivá la meta cumplida para no dejar al usuario
+    // sin meta activa.
+    const toReactivate = reactivateGoalRef.current
+    reactivateGoalRef.current = null
+    if (toReactivate) {
+      upsert.mutate(buildGoalInput(toReactivate, true))
+    }
+  }
+
   // ── Derived insight ──────────────────────────────────────────────
   const goalAmount = goal.goalAmount
   const currentAmount = goal.currentAmount
@@ -271,9 +326,20 @@ function SavingsGoalViewer({
               {t('settings:savingsGoalScreen.noTarget')}
             </Text>
           ) : currentAmount >= goalAmount ? (
-            <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
-              {t('settings:savingsGoalScreen.reached')}
-            </Text>
+            <View style={styles.reachedStack}>
+              <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
+                {t('settings:savingsGoalScreen.reached')}
+              </Text>
+              <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+                {t('settings:savingsGoalScreen.sequentialDisclaimer')}
+              </Text>
+              <AppButton
+                variant="primary"
+                label={t('settings:savingsGoalScreen.createNext')}
+                loading={upsert.isPending}
+                onPress={() => void handleCreateNext()}
+              />
+            </View>
           ) : (
             <>
               {/* Progress bar */}
@@ -367,6 +433,17 @@ function SavingsGoalViewer({
         onConfirmed={reauth.onConfirmed}
         onCancel={reauth.onCancel}
       />
+
+      {/* Wizard de la PRÓXIMA meta (metas secuenciales). Al crear, retira la
+          meta cumplida a historial (handleNextGoalCreated). Cancelar no cambia
+          nada: la meta cumplida sigue activa. */}
+      <CreateSavingsGoalWizardSheet
+        visible={nextWizardOpen}
+        familyId={familyId}
+        userId={userId}
+        onCreated={handleNextGoalCreated}
+        onClose={handleNextWizardClose}
+      />
     </View>
   )
 }
@@ -419,6 +496,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
+  },
+  reachedStack: {
+    gap: 12,
   },
   emptyCard: {
     borderWidth: 1,

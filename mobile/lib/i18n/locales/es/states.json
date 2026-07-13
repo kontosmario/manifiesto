@@ -170,7 +170,7 @@
   },
   "addFab": {
     "label": "Agregar gasto",
-    "hint": "Mantén presionado para más acciones",
+    "hint": "Abre el menú para registrar un gasto, ingreso, gasto fijo, importar y más",
     "registered": "Día sin gastos registrado",
     "markFailed": "No se pudo marcar. Reintenta en un momento.",
     "needSession": "Necesitas estar en sesión para importar.",
@@ -226,7 +226,7 @@
       "meta": "Tu meta de ahorro como una alcancía digital: ves cuánto llevas guardado y agregas un aporte rápido desde aquí. El objetivo lo ajustas en Ajustes.",
       "streak": "Tu semana del jardín: un punto por día según si registraste un gasto (o marcaste que no gastaste). Registrar a diario hace crecer tu jardín. Toca para abrir Mi jardín.",
       "activity": "Tus movimientos recientes del ciclo, ordenados por fecha. Desliza una fila hacia la izquierda para editar o borrar, o toca \"Ver todos\" para abrir la pantalla completa.",
-      "fab": "El botón de acciones rápidas. Un toque abre el formulario para registrar un gasto. Manténlo presionado para abrir un menú con más atajos: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos.",
+      "fab": "El botón de acciones rápidas. Tócalo para abrir un menú con todo lo que puedes sumar: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos.",
       "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo.",
       "heroDynamic": "Tu tarjeta principal: lo que te queda disponible en el ciclo, cuánto puedes gastar por día para llegar bien al fin del ciclo y con cuánto vas a cerrar. Si aún no cargaste ingresos, aquí encontrarás el atajo para hacerlo.",
       "familyStripSolo": "Tu ciclo en curso y los días que faltan para tu próximo cobro. Cuando recibas tu sueldo, toca la cápsula para confirmarlo y arrancar un ciclo nuevo."

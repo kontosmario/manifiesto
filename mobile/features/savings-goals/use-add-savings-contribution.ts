@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import i18n from '@/lib/i18n'
 import {
+  contributionCompletedGoal,
   mapSavingsGoalRow,
   type SavingsGoal,
   type SavingsGoalRow,
@@ -9,6 +10,8 @@ import {
 import { savingsGoalQueryKey } from '@/features/savings-goals/use-savings-goal'
 import { latestSavingsGoalQueryKey } from '@/features/savings-goals/use-latest-savings-goal'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
+import { confetti } from '@/lib/confetti-bus'
+import { triggerHaptic } from '@/lib/haptics'
 
 interface AddContributionInput {
   goalId: string
@@ -37,7 +40,7 @@ export function useAddSavingsContribution(
       if (!data) throw new Error(i18n.t('settings:savingsGoalValidation.contributionFailed'))
       return mapSavingsGoalRow(data as SavingsGoalRow)
     },
-    onSuccess: (updated) => {
+    onSuccess: (updated, { amount }) => {
       // Optimistic-seed la query activa Y la latest con la goal recién
       // actualizada; evita un blink mientras el invalidate refetcha.
       // Code review M6 mobile FIX-ROUND: latest también la consume
@@ -45,6 +48,14 @@ export function useAddSavingsContribution(
       if (familyId) {
         queryClient.setQueryData(savingsGoalQueryKey(familyId), updated)
         queryClient.setQueryData(latestSavingsGoalQueryKey(familyId), updated)
+      }
+      // Celebración al CRUZAR el 100% (una sola vez): este aporte llevó la meta
+      // de <objetivo a >=objetivo. No dispara en aportes extra a una meta ya
+      // cumplida (previousAmount ya estaría >= goalAmount).
+      const previousAmount = updated.currentAmount - amount
+      if (contributionCompletedGoal(previousAmount, updated)) {
+        confetti.celebrate({ origin: 'center' })
+        void triggerHaptic('success')
       }
     },
     // Code review H3 (sprint A, 2026-06-08): un aporte mueve el chip

@@ -821,6 +821,8 @@
     "deleteReauth": "Eliminar meta",
     "noTarget": "Tu meta no tiene un objetivo definido todavía.",
     "reached": "🎉 ¡Ya alcanzaste tu meta!",
+    "sequentialDisclaimer": "Una meta a la vez: al crear la próxima, esta cumplida pasa a tu historial. Así mantienes el foco sin abrumarte.",
+    "createNext": "Crear próxima meta",
     "remainingPrefix": "Te falta",
     "monthlyPlan_one": "Ahorrando {{amount}} por mes, llegas en {{count}} mes.",
     "monthlyPlan_other": "Ahorrando {{amount}} por mes, llegas en {{count}} meses.",

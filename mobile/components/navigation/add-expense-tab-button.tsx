@@ -56,13 +56,13 @@ import { useAppTheme } from '@/theme/theme-provider'
 export { decideNoSpendPetal, type NoSpendPetalDecision }
 
 /**
- * Center-stage FAB for "Agregar gasto".
+ * Center-stage FAB for "Agregar".
  *
- * Two interactions:
- *   · Tap (haptic light) → opens the add-expense form (most common
- *     action, kept frictionless)
- *   · Long-press (haptic medium) → opens a Speed Dial with 3 quick
- *     actions: Gasto / Fijo / Meta
+ * Tap (haptic light) → opens the quick-actions menu (Gasto as the primary
+ * tile, then Importar / Día sin gasto / Ingreso / Fijo). Everything is
+ * discoverable on the first tap — no hidden gesture. (Previously tap went
+ * straight to add-expense and the menu was long-press-only, which left the
+ * extra actions invisible.)
  *
  * Motion:
  *   · scale 0.93 on press, immediate visual feedback
@@ -182,27 +182,24 @@ export function AddExpenseTabButton({
     },
   })
   // expo-router passes its own onPress + onLongPress through tabBarButton
-  // props. We discard them — our handlers below define the actual
-  // behavior (tap → add-expense, long-press → speed dial). If we
-  // didn't extract them, the trailing `{...pressableProps}` spread
-  // would silently override our handlers, which is exactly what was
-  // happening before this fix (long-press never triggered the menu).
+  // props. We discard them — our handler below defines the actual behavior
+  // (tap → quick-actions menu). If we didn't extract them, the trailing
+  // `{...pressableProps}` spread would silently override our handler.
   void forwardedOnPress
   void forwardedOnLongPress
 
   const resolveForwardedStyle = (state: PressableStateCallbackType) =>
     typeof style === 'function' ? style(state) : style
 
+  // Un toque ABRE el menú de acciones (gasto/importar/día sin gasto/ingreso/
+  // fijo), con "Gasto" como tile principal. Descubrible al primer toque, sin
+  // gesto oculto (reemplaza el modelo tap=gasto + long-press=menú, que dejaba
+  // el menú invisible). Cargar gasto = 2 toques (el 2º sobre el tile "Gasto").
   const handlePress = useCallback(() => {
     void triggerHaptic('light')
     triggerBurst()
-    router.push('/(app)/add-expense')
-  }, [router, triggerBurst])
-
-  const handleLongPress = useCallback(() => {
-    void triggerHaptic('medium')
     setQuickActionsVisible(true)
-  }, [])
+  }, [triggerBurst])
 
   // Semantic accent tints per action role. Each ring telegraphs the
   // action's category at-a-glance (positive cashflow vs scheduled
@@ -359,10 +356,8 @@ export function AddExpenseTabButton({
           color: withAlpha('#FFFFFF', 0.2),
           radius: 40,
         }}
-        delayLongPress={350}
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={handlePress}
-        onLongPress={handleLongPress}
         onPressIn={(event) => {
           pressScale.onPressIn()
           onPressIn?.(event)

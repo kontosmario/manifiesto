@@ -35,6 +35,22 @@ export interface SavingsGoalInput {
   isActive: boolean
 }
 
+/**
+ * True when a contribution pushed the goal from below its target to met/over
+ * — the single 0→1 completion crossing. Used to celebrate ONCE, not on every
+ * further contribution to an already-complete goal.
+ */
+export function contributionCompletedGoal(
+  previousAmount: number,
+  goal: Pick<SavingsGoal, 'currentAmount' | 'goalAmount'>,
+): boolean {
+  return (
+    goal.goalAmount > 0 &&
+    previousAmount < goal.goalAmount &&
+    goal.currentAmount >= goal.goalAmount
+  )
+}
+
 export function mapSavingsGoalRow(row: SavingsGoalRow): SavingsGoal {
   return {
     id: row.id,

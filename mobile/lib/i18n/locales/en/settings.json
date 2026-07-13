@@ -821,6 +821,8 @@
     "deleteReauth": "Delete goal",
     "noTarget": "Your goal doesn't have a defined target yet.",
     "reached": "🎉 You've reached your goal!",
+    "sequentialDisclaimer": "One goal at a time: when you create the next one, this completed goal moves to your history. That keeps you focused without feeling overwhelmed.",
+    "createNext": "Create next goal",
     "remainingPrefix": "You still need",
     "monthlyPlan_one": "Saving {{amount}} per month, you'll get there in {{count}} month.",
     "monthlyPlan_other": "Saving {{amount}} per month, you'll get there in {{count}} months.",
