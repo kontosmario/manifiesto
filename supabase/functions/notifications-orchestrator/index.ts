@@ -273,10 +273,13 @@ const SEVERITY_RANK: Record<string, number> = {
 }
 
 // Body combinado: junta los headlines (title de cada fila) por " · ", ordenados
-// por hora, cap 3 + "y N más".
+// por hora, cap 3 + "y N más". El `?? ''` en created_at es defensivo: si el edge
+// fn se deployara ANTES de la migración 20260713120000 (orden incorrecto), el
+// list_unpushed viejo no trae created_at → localeCompare(undefined) crashearía el
+// relay. Con el fallback degrada a orden estable sin romper.
 export function combineBody(rows: CoalescibleRow[]): string {
   const headlines = [...rows]
-    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .sort((a, b) => (a.created_at ?? '').localeCompare(b.created_at ?? ''))
     .map((r) => r.title.trim())
     .filter((h) => h.length > 0)
   if (headlines.length <= COMBINED_MAX_ITEMS) return headlines.join(' · ')
@@ -288,8 +291,22 @@ function highestSeverityRow(rows: CoalescibleRow[]): CoalescibleRow {
   return [...rows].sort(
     (a, b) =>
       (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
-      a.created_at.localeCompare(b.created_at),
+      (a.created_at ?? '').localeCompare(b.created_at ?? ''),
   )[0]
+}
+
+// send-family-push batchea SOLO a Expo (sendExpoBatch en el path batch). Un
+// endpoint web-push (URL VAPID/FCM) le daría a Expo un ticket 'error' PERMANENTE
+// (no 'DeviceNotRegistered' → nunca se prunea), y bajo el marcado por-fila una
+// fila cuyo único endpoint es web quedaría sin marcar → retry-storm. El path
+// directo legacy rutea web a sendWebPush; el batch no. Filtramos Expo-only acá:
+// un usuario solo-web no recibe push por el relay coalescido (limitación conocida,
+// ~0 en la app mobile) y sus filas caen al marcado in-app-only.
+function isExpoEndpoint(endpoint: string): boolean {
+  return (
+    endpoint.startsWith('ExponentPushToken[') ||
+    endpoint.startsWith('ExpoPushToken[')
+  )
 }
 
 // Agrupa por DESTINATARIO (usuario) y arma UN mensaje por usuario, fan-out a sus
@@ -302,6 +319,7 @@ export function buildCoalescedMessages(
 ): { messages: ExpoPushMessage[]; rowIdsByIndex: string[][] } {
   const byUser = new Map<string, { familyId: string; endpoints: string[] }>()
   for (const t of tokens) {
+    if (!isExpoEndpoint(t.endpoint)) continue
     let entry = byUser.get(t.user_id)
     if (!entry) {
       entry = { familyId: t.family_id, endpoints: [] }
@@ -331,18 +349,18 @@ export function buildCoalescedMessages(
   return { messages, rowIdsByIndex }
 }
 
-// Envía un chunk de mensajes (send-family-push batchea a Expo 100/req).
-// Devuelve la cantidad de 'ok' (para el log de 'sent'), o null si la invocación
-// falló ENTERA (el chunk no se intentó → sus filas se reintentan sin marcar).
-// Un 'error'/'removed' por-ticket NO gatea reintento: el chunk SÍ se intentó,
-// así que sus filas se marcan igual. Reintentar por un 'error' por-ticket
-// re-pushearía el combinado a los destinatarios que YA lo recibieron (una fila
-// que abanica a varios mensajes —family-wide o multi-device— comparte id en
-// todos), causando un dup en cada corrida. Ver processCoalescedRelay.
+type TicketStatus = 'ok' | 'error' | 'removed'
+
+// Envía un chunk de mensajes (send-family-push batchea a Expo 100/req). Devuelve
+// el array POSICIONAL de statuses (statuses[j] ↔ messages[j]), o null si la
+// invocación falló ENTERA (edge fn caído / 5xx / 401). OJO: send-family-push
+// devuelve HTTP 200 aun cuando Expo está caído (deja 'error' y sigue), así que
+// `null` NO cubre un outage de Expo — ese caso se detecta por-fila en el caller
+// (una fila con todos sus tickets en 'error' no se entregó → no se marca).
 async function sendCoalesced(
   admin: ReturnType<typeof adminClient>,
   messages: ExpoPushMessage[],
-): Promise<number | null> {
+): Promise<TicketStatus[] | null> {
   const sendResponse = await admin.functions.invoke('send-family-push', {
     body: { messages },
   })
@@ -350,11 +368,27 @@ async function sendCoalesced(
     console.error('send-family-push failed', sendResponse.error)
     return null
   }
-  const statuses = ((sendResponse.data as { statuses?: unknown } | null)?.statuses ??
-    []) as Array<'ok' | 'error' | 'removed'>
-  let sent = 0
-  for (const st of statuses) if (st === 'ok') sent++
-  return sent
+  return ((sendResponse.data as { statuses?: unknown } | null)?.statuses ??
+    []) as TicketStatus[]
+}
+
+// Ids de fila con ≥1 ticket terminal ('ok' entregado | 'removed' device muerto)
+// dado el array posicional de statuses y las filas por-índice del chunk. Una fila
+// cuyos tickets fueron TODOS 'error' (o sin status: array corto) NO es terminal →
+// no se marca → reintento seguro (no se entregó a nadie). Función pura para poder
+// testear el invariante anti-pérdida sin red.
+export function terminalRowIds(
+  statuses: TicketStatus[],
+  rowIdsByIndex: string[][],
+): Set<string> {
+  const terminal = new Set<string>()
+  for (let j = 0; j < rowIdsByIndex.length; j++) {
+    const st = statuses[j]
+    if (st === 'ok' || st === 'removed') {
+      for (const id of rowIdsByIndex[j]) terminal.add(id)
+    }
+  }
+  return terminal
 }
 
 // Mensajes por invoke a send-family-push (acota el payload; send-family-push
@@ -381,34 +415,47 @@ async function processCoalescedRelay() {
 
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
 
-  // Marcado "marca lo intentado": una fila se marca pushed cuando el chunk que
-  // la contiene se ENVIÓ (invoke ok), sin importar el ticket por-fila. Solo un
-  // chunk que NO se intentó (invoke falló entero) deja sus filas sin marcar →
-  // reintento SEGURO (nunca se entregaron). Se marca por-chunk (no al final)
-  // para que un timeout del edge fn a mitad del drenaje no re-envíe lo ya
-  // enviado la próxima corrida. Trade-off aceptado: una fila cuyo único
-  // destinatario tuvo error transitorio se pierde (igual que el relay
-  // pre-coalescing) — preferible a re-pushear a quien ya la recibió.
+  // Marcado POR-FILA-TERMINAL: una fila se marca pushed sólo si tuvo ≥1 ticket
+  // terminal ('ok' entregado, o 'removed' device muerto) en este chunk. Si TODOS
+  // sus tickets fueron 'error' (Expo 429/5xx/caído — send-family-push devuelve 200
+  // igual) la fila no se entregó a NADIE → queda sin marcar → reintento seguro
+  // (cero riesgo de dup). Una fila con algún 'ok' se marca aunque otro de sus
+  // tickets errore (fan-out parcial: reintentar re-pushearía a quien ya recibió).
+  // Se marca por-chunk (no al final) para que un timeout del edge fn a mitad del
+  // drenaje no re-envíe lo ya enviado la próxima corrida.
   let sent = 0
   let marked = 0
   const markPushed = async (ids: string[]) => {
     if (ids.length === 0) return
-    const res = await admin.rpc('mark_notifications_pushed', { p_ids: ids })
-    if (res.error) console.error('mark_notifications_pushed failed', res.error)
-    else marked += typeof res.data === 'number' ? res.data : 0
+    // Entregamos ANTES de marcar; si el mark falla en silencio la fila queda
+    // pushed_at NULL y la próxima corrida la re-pushea (el spam que este feature
+    // elimina). No hay atomicidad posible entre Expo y Postgres, pero un retry
+    // corto cierra casi toda la ventana de un blip de DB.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await admin.rpc('mark_notifications_pushed', { p_ids: ids })
+      if (!res.error) {
+        marked += typeof res.data === 'number' ? res.data : 0
+        return
+      }
+      console.error('mark_notifications_pushed failed', {
+        attempt,
+        error: res.error,
+      })
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 200 * (attempt + 1)))
+    }
   }
 
   for (let i = 0; i < messages.length; i += SEND_CHUNK_SIZE) {
     const mChunk = messages.slice(i, i + SEND_CHUNK_SIZE)
     const rChunk = rowIdsByIndex.slice(i, i + SEND_CHUNK_SIZE)
-    const chunkSent = await sendCoalesced(admin, mChunk)
-    if (chunkSent === null) continue // chunk no intentado → reintento próxima corrida
-    sent += chunkSent
-    await markPushed([...new Set(rChunk.flat())])
+    const statuses = await sendCoalesced(admin, mChunk)
+    if (statuses === null) continue // invoke falló entero → reintento próxima corrida
+    for (const st of statuses) if (st === 'ok') sent++
+    await markPushed([...terminalRowIds(statuses, rChunk)])
   }
 
-  // Filas sin ningún mensaje (in-app-only: usuario sin token, o family-wide sin
-  // miembros con token). Nunca se intentan por push → marcarlas para que no
+  // Filas sin ningún mensaje (in-app-only: usuario sin token Expo, o family-wide
+  // sin miembros con token). Nunca se intentan por push → marcarlas para que no
   // queden re-seleccionadas indefinidamente.
   const inAnyMessage = new Set(rowIdsByIndex.flat())
   await markPushed(rows.filter((r) => !inAnyMessage.has(r.id)).map((r) => r.id))

@@ -137,12 +137,20 @@ function crow(over: Partial<CRow>): CRow {
   }
 }
 
+// Endpoint Expo válido: buildCoalescedMessages filtra los que no lo son (web-push
+// va por otro path). Los tokens de test deben usar este formato.
+const ept = (s: string) => `ExponentPushToken[${s}]`
+
 async function coalescing(): Promise<{
   buildCoalescedMessages: (
     rows: CRow[],
     tokens: Array<{ family_id: string; user_id: string; endpoint: string }>,
   ) => { messages: Array<{ to: string; title: string; body: string; data: unknown }>; rowIdsByIndex: string[][] }
   combineBody: (rows: CRow[]) => string
+  terminalRowIds: (
+    statuses: Array<'ok' | 'error' | 'removed'>,
+    rowIdsByIndex: string[][],
+  ) => Set<string>
   COMBINED_PUSH_TITLE: string
 }> {
   const mod = await import('./index.ts')
@@ -155,7 +163,7 @@ Deno.test('coalescing: 2 filas del mismo usuario → 1 push combinado', async ()
     crow({ id: 'r1', title: 'Netflix vence hoy', created_at: '2026-07-13T12:00:00Z', severity: 'medium', metadata: { route: '/fixed' } }),
     crow({ id: 'r2', title: 'Subió Seguro auto', created_at: '2026-07-13T12:05:00Z', severity: 'low', metadata: { route: '/control' } }),
   ]
-  const tokens = [{ family_id: 'f1', user_id: 'u1', endpoint: 'tok1' }]
+  const tokens = [{ family_id: 'f1', user_id: 'u1', endpoint: ept('t1') }]
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
   assertEquals(messages.length, 1)
   assertEquals(messages[0].title, COMBINED_PUSH_TITLE)
@@ -168,7 +176,7 @@ Deno.test('coalescing: 2 filas del mismo usuario → 1 push combinado', async ()
 Deno.test('coalescing: 1 fila → push individual (título de la fila, no el combinado)', async () => {
   const { buildCoalescedMessages, COMBINED_PUSH_TITLE } = await coalescing()
   const rows = [crow({ id: 'r1', title: '$12.000 para hoy', body: 'cuerpo' })]
-  const tokens = [{ family_id: 'f1', user_id: 'u1', endpoint: 'tok1' }]
+  const tokens = [{ family_id: 'f1', user_id: 'u1', endpoint: ept('t1') }]
   const { messages } = buildCoalescedMessages(rows, tokens)
   assertEquals(messages.length, 1)
   assertEquals(messages[0].title, '$12.000 para hoy')
@@ -180,13 +188,13 @@ Deno.test('coalescing: fila family-wide (user_id null) explota a cada miembro co
   const { buildCoalescedMessages } = await coalescing()
   const rows = [crow({ id: 'fw', user_id: null, title: 'Fijo del hogar' })]
   const tokens = [
-    { family_id: 'f1', user_id: 'u1', endpoint: 'tokA' },
-    { family_id: 'f1', user_id: 'u2', endpoint: 'tokB' },
-    { family_id: 'f2', user_id: 'u3', endpoint: 'tokC' }, // otra familia → no la recibe
+    { family_id: 'f1', user_id: 'u1', endpoint: ept('A') },
+    { family_id: 'f1', user_id: 'u2', endpoint: ept('B') },
+    { family_id: 'f2', user_id: 'u3', endpoint: ept('C') }, // otra familia → no la recibe
   ]
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
   assertEquals(messages.length, 2)
-  assertEquals(new Set(messages.map((m) => m.to)), new Set(['tokA', 'tokB']))
+  assertEquals(new Set(messages.map((m) => m.to)), new Set([ept('A'), ept('B')]))
   assertEquals(rowIdsByIndex.every((ids) => ids.length === 1 && ids[0] === 'fw'), true)
 })
 
@@ -198,13 +206,13 @@ Deno.test('coalescing: dos usuarios distintos → un push por usuario (no cruzad
     crow({ id: 'b1', user_id: 'u2', title: 'B1' }),
   ]
   const tokens = [
-    { family_id: 'f1', user_id: 'u1', endpoint: 'tok1' },
-    { family_id: 'f1', user_id: 'u2', endpoint: 'tok2' },
+    { family_id: 'f1', user_id: 'u1', endpoint: ept('t1') },
+    { family_id: 'f1', user_id: 'u2', endpoint: ept('t2') },
   ]
   const { messages } = buildCoalescedMessages(rows, tokens)
   assertEquals(messages.length, 2)
-  const u1 = messages.find((m) => m.to === 'tok1')!
-  const u2 = messages.find((m) => m.to === 'tok2')!
+  const u1 = messages.find((m) => m.to === ept('t1'))!
+  const u2 = messages.find((m) => m.to === ept('t2'))!
   assertEquals(u1.title, COMBINED_PUSH_TITLE) // u1 tiene 2 → combinado
   assertEquals(u2.title, 'B1') // u2 tiene 1 → individual
 })
@@ -215,4 +223,63 @@ Deno.test('combineBody: cap 3 + "y N más", ordenado por hora', async () => {
     crow({ id: `r${n}`, title: `T${n}`, created_at: `2026-07-13T12:0${n}:00Z` }),
   )
   assertEquals(combineBody(rows), 'T1 · T2 · T3 y 2 más')
+})
+
+Deno.test('combineBody: created_at ausente no crashea (shape viejo / deploy invertido)', async () => {
+  const { combineBody } = await coalescing()
+  const rows = [
+    crow({ id: 'r1', title: 'A', created_at: undefined as unknown as string }),
+    crow({ id: 'r2', title: 'B', created_at: undefined as unknown as string }),
+  ]
+  // No debe lanzar; el orden degrada a estable.
+  assertEquals(combineBody(rows), 'A · B')
+})
+
+Deno.test('buildCoalescedMessages: descarta endpoints no-Expo (web-push)', async () => {
+  const { buildCoalescedMessages } = await coalescing()
+  const rows = [crow({ id: 'r1', user_id: 'u1', title: 'Hola' })]
+  const tokens = [
+    { family_id: 'f1', user_id: 'u1', endpoint: 'https://fcm.googleapis.com/wp/abc' }, // web → filtrado
+    { family_id: 'f1', user_id: 'u1', endpoint: ept('t1') }, // expo → sí
+  ]
+  const { messages } = buildCoalescedMessages(rows, tokens)
+  assertEquals(messages.length, 1)
+  assertEquals(messages[0].to, ept('t1'))
+})
+
+Deno.test('buildCoalescedMessages: usuario solo-web → sin mensaje (cae a in-app-only)', async () => {
+  const { buildCoalescedMessages } = await coalescing()
+  const rows = [crow({ id: 'r1', user_id: 'u1' })]
+  const tokens = [
+    { family_id: 'f1', user_id: 'u1', endpoint: 'https://updates.push.services.mozilla.com/wpush/xyz' },
+  ]
+  const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
+  assertEquals(messages.length, 0)
+  assertEquals(rowIdsByIndex.length, 0)
+})
+
+// terminalRowIds es el corazón del anti-pérdida: sólo las filas con ≥1 ticket
+// terminal ('ok'|'removed') se marcan; las que fueron TODO 'error' se reintentan.
+Deno.test('terminalRowIds: ok|removed marcan; all-error no marca (reintento)', async () => {
+  const { terminalRowIds } = await coalescing()
+  const rowIds = [['a'], ['b'], ['c'], ['d']]
+  const statuses = ['ok', 'removed', 'error', 'ok'] as Array<'ok' | 'error' | 'removed'>
+  assertEquals(terminalRowIds(statuses, rowIds), new Set(['a', 'b', 'd']))
+})
+
+Deno.test('terminalRowIds: fan-out — 1 ok + 1 error de la MISMA fila → marca (no reintenta a quien ya recibió)', async () => {
+  const { terminalRowIds } = await coalescing()
+  // La fila 'x' abanica a 2 endpoints (2 mensajes con el mismo id).
+  const rowIds = [['x'], ['x']]
+  const statuses = ['ok', 'error'] as Array<'ok' | 'error' | 'removed'>
+  assertEquals(terminalRowIds(statuses, rowIds), new Set(['x']))
+})
+
+Deno.test('terminalRowIds: Expo caído (todo error) o statuses corto → set vacío (todo se reintenta)', async () => {
+  const { terminalRowIds } = await coalescing()
+  const rowIds = [['a'], ['b'], ['c']]
+  // Outage total: todos error.
+  assertEquals(terminalRowIds(['error', 'error', 'error'], rowIds), new Set())
+  // statuses más corto que el chunk: los índices sin status no son terminales.
+  assertEquals(terminalRowIds(['ok'], rowIds), new Set(['a']))
 })

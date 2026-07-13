@@ -18,6 +18,11 @@
 -- El orden inverso (migración primero) es seguro: el edge fn viejo sigue
 -- pusheando inline y el allow-list ampliado nunca re-selecciona filas ya
 -- pusheadas (filtro pushed_at is null).
+-- Nota: esta migración agrega severity+created_at al retorno. El edge fn nuevo
+-- ordena por created_at; si se deployara ANTES (shape viejo de 7 cols), leería
+-- created_at=undefined. El código es defensivo (combineBody/highestSeverityRow
+-- usan `created_at ?? ''`), así que NO crashea el relay — pero igual perdería
+-- check-ins como arriba. El orden sigue siendo obligatorio.
 -- Validar en staging: (a) 2 push juntas → 1, (b) los check-ins siguen llegando.
 
 -- (1) El allow-list del relay ahora incluye los check-ins + fixed_upcoming, con:
