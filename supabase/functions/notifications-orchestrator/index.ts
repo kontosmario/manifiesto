@@ -376,21 +376,40 @@ async function sendCoalesced(
     []) as TicketStatus[]
 }
 
-// Ids de fila con ≥1 ticket terminal ('ok' entregado | 'removed' device muerto)
-// dado el array posicional de statuses y las filas por-índice del chunk. Una fila
-// cuyos tickets fueron TODOS 'error' (o sin status: array corto) NO es terminal →
-// no se marca → reintento seguro (no se entregó a nadie). Función pura para poder
-// testear el invariante anti-pérdida sin red.
+// Ids de fila "terminales" (marcar pushed) dado el array posicional de statuses y
+// las filas por-índice del chunk. Una fila abanica a varios índices (multi-device
+// o family-wide); se AGREGA por fila a través de TODOS sus índices:
+//   · algún 'ok'      → alguien vivo la recibió → terminal (reintentar la
+//                       re-pushearía a quien ya la tiene).
+//   · todos 'removed' → todos los endpoints muertos (DeviceNotRegistered,
+//                       pruneados este run) → terminal, no hay a quién reintentar.
+//   · algún 'error' sin ningún 'ok' → NADIE vivo la recibió → NO terminal →
+//                       reintento seguro (el 'error' es transitorio; un 'removed'
+//                       acompañante ya se pruneó, así que el reintento no dupea).
+//                       Cubre el outage total, el 429 de un batch, y el mix
+//                       removed+error. Un índice sin status (array corto, que
+//                       send-family-push no produce) cuenta como no-'removed' →
+//                       conservador (reintento).
+// Función pura para testear el invariante anti-pérdida sin red.
 export function terminalRowIds(
   statuses: TicketStatus[],
   rowIdsByIndex: string[][],
 ): Set<string> {
-  const terminal = new Set<string>()
+  const hasOk = new Set<string>()
+  const hasNonRemoved = new Set<string>()
+  const seen = new Set<string>()
   for (let j = 0; j < rowIdsByIndex.length; j++) {
     const st = statuses[j]
-    if (st === 'ok' || st === 'removed') {
-      for (const id of rowIdsByIndex[j]) terminal.add(id)
+    for (const id of rowIdsByIndex[j]) {
+      seen.add(id)
+      if (st === 'ok') hasOk.add(id)
+      if (st !== 'removed') hasNonRemoved.add(id)
     }
+  }
+  const terminal = new Set<string>()
+  for (const id of seen) {
+    // terminal = tiene 'ok'  OR  todos sus tickets fueron 'removed'.
+    if (hasOk.has(id) || !hasNonRemoved.has(id)) terminal.add(id)
   }
   return terminal
 }
@@ -419,14 +438,19 @@ async function processCoalescedRelay() {
 
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
 
-  // Marcado POR-FILA-TERMINAL: una fila se marca pushed sólo si tuvo ≥1 ticket
-  // terminal ('ok' entregado, o 'removed' device muerto) en este chunk. Si TODOS
-  // sus tickets fueron 'error' (Expo 429/5xx/caído — send-family-push devuelve 200
-  // igual) la fila no se entregó a NADIE → queda sin marcar → reintento seguro
-  // (cero riesgo de dup). Una fila con algún 'ok' se marca aunque otro de sus
-  // tickets errore (fan-out parcial: reintentar re-pushearía a quien ya recibió).
-  // Se marca por-chunk (no al final) para que un timeout del edge fn a mitad del
-  // drenaje no re-envíe lo ya enviado la próxima corrida.
+  // Marcado POR-FILA-TERMINAL (ver terminalRowIds): una fila se marca pushed si
+  // algún destinatario vivo la recibió ('ok') o si todos sus endpoints están
+  // muertos ('removed'); si nadie vivo la recibió (todo 'error', o mix
+  // removed+error) queda sin marcar → reintento seguro sin dup. Se marca por-chunk
+  // (no al final) para que un timeout del edge fn a mitad del drenaje no re-envíe
+  // lo ya enviado la próxima corrida.
+  //
+  // Trade-off conocido (single pushed_at, no per-destinatario): en una fila que
+  // abanica a varios destinatarios (family-wide, o multi-device), si UNO recibe
+  // 'ok' y otro 'error', se marca por el 'ok' → el destinatario en 'error' no
+  // recibe el push por esta fila (sí ve el feed in-app). Reintentarlo dupearía a
+  // quien ya recibió. Entregar a ambos sin dup exigiría tracking por (fila,
+  // destinatario) — follow-up si se vuelve material.
   let sent = 0
   let marked = 0
   const markPushed = async (ids: string[]) => {

@@ -283,3 +283,15 @@ Deno.test('terminalRowIds: Expo caído (todo error) o statuses corto → set vac
   // statuses más corto que el chunk: los índices sin status no son terminales.
   assertEquals(terminalRowIds(['ok'], rowIds), new Set(['a']))
 })
+
+Deno.test('terminalRowIds: mix removed+error de la MISMA fila → NO marca (nadie vivo recibió → reintento)', async () => {
+  const { terminalRowIds } = await coalescing()
+  // Fila 'r' abanica a device muerto ('removed', se prunea) + device vivo con
+  // error transitorio. Nadie vivo la recibió → debe reintentarse, no marcarse.
+  assertEquals(terminalRowIds(['removed', 'error'], [['r'], ['r']]), new Set())
+})
+
+Deno.test('terminalRowIds: todos removed de una fila → marca (todos los endpoints muertos, nada que reintentar)', async () => {
+  const { terminalRowIds } = await coalescing()
+  assertEquals(terminalRowIds(['removed', 'removed'], [['r'], ['r']]), new Set(['r']))
+})
