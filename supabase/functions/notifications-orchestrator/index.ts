@@ -296,17 +296,21 @@ function highestSeverityRow(rows: CoalescibleRow[]): CoalescibleRow {
 }
 
 // send-family-push batchea SOLO a Expo (sendExpoBatch en el path batch). Un
-// endpoint web-push (URL VAPID/FCM) le daría a Expo un ticket 'error' PERMANENTE
-// (no 'DeviceNotRegistered' → nunca se prunea), y bajo el marcado por-fila una
-// fila cuyo único endpoint es web quedaría sin marcar → retry-storm. El path
-// directo legacy rutea web a sendWebPush; el batch no. Filtramos Expo-only acá:
-// un usuario solo-web no recibe push por el relay coalescido (limitación conocida,
-// ~0 en la app mobile) y sus filas caen al marcado in-app-only.
-function isExpoEndpoint(endpoint: string): boolean {
-  return (
-    endpoint.startsWith('ExponentPushToken[') ||
-    endpoint.startsWith('ExpoPushToken[')
-  )
+// endpoint web-push le daría a Expo un ticket 'error' PERMANENTE (no
+// 'DeviceNotRegistered' → nunca se prunea), y bajo el marcado por-fila una fila
+// cuyo único endpoint es web quedaría sin marcar → retry-storm. El path directo
+// legacy rutea web a sendWebPush; el batch no. Excluimos web acá.
+//
+// Filtro por EXCLUSIÓN (no whitelist de prefijo): un endpoint web-push es SIEMPRE
+// una URL (https://fcm… / VAPID / Mozilla); un push token de Expo NUNCA lo es.
+// Excluir por URL evita descartar un token Expo de formato inesperado (que
+// cortaría TODO el push a ese usuario) — la lógica canónica isExpoSubscription
+// (send-family-push) además reconoce Expo por sentinels p256dh/auth='expo' que
+// fetchPushTokens no trae, así que un whitelist por prefijo daría falsos
+// negativos. Un usuario solo-web queda sin mensaje → cae a in-app-only.
+function isBatchDeliverable(endpoint: string): boolean {
+  const e = endpoint.trim()
+  return !e.startsWith('http://') && !e.startsWith('https://')
 }
 
 // Agrupa por DESTINATARIO (usuario) y arma UN mensaje por usuario, fan-out a sus
@@ -319,7 +323,7 @@ export function buildCoalescedMessages(
 ): { messages: ExpoPushMessage[]; rowIdsByIndex: string[][] } {
   const byUser = new Map<string, { familyId: string; endpoints: string[] }>()
   for (const t of tokens) {
-    if (!isExpoEndpoint(t.endpoint)) continue
+    if (!isBatchDeliverable(t.endpoint)) continue
     let entry = byUser.get(t.user_id)
     if (!entry) {
       entry = { familyId: t.family_id, endpoints: [] }
