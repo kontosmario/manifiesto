@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NoSpendConfirmSheet } from '@/components/gastos/no-spend-confirm-sheet'
 import { useCategories, type Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -51,9 +51,9 @@ import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import {
   markAddFabHintSeen,
-  useAddFabHint,
+  noteAddFabTap,
+  shouldShowAddFabTip,
 } from '@/components/navigation/addfab-hint-store'
-import { useToursSeen } from '@/features/tours/use-tours-seen'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -201,38 +201,38 @@ export function AddExpenseTabButton({
   const handlePress = useCallback(() => {
     void triggerHaptic('light')
     triggerBurst()
+    // Cuenta hacia el tip de descubribilidad del long-press (ver más abajo).
+    void noteAddFabTap()
     router.push('/(app)/add-expense')
   }, [router, triggerBurst])
 
   const handleLongPress = useCallback(() => {
     void triggerHaptic('medium')
     // El usuario descubrió el gesto → no volver a mostrar el tip.
-    markAddFabHintSeen()
+    void markAddFabHintSeen()
     setQuickActionsVisible(true)
   }, [])
 
   // Descubribilidad del long-press: el menú de atajos (ingreso/fijo/importar/
-  // día sin gasto) es invisible sin señal. Mostramos un tip una sola vez
-  // (persistente vía addfab-hint-store), pero SOLO a quien ya vio el tour del
-  // Home en una sesión previa — el tour ya explica el gesto a los usuarios
-  // nuevos, así que no lo duplicamos ni lo pisamos durante el onboarding.
-  const addFabHint = useAddFabHint()
-  const homeTourSeen = useToursSeen().isSeen(HOME_TOUR)
-  const tipEligibleRef = useRef<boolean | null>(null)
+  // día sin gasto) es invisible sin señal. Al arrancar (Home a la vista),
+  // mostramos un tip UNA vez si el usuario ya usó el "+" varias veces sin
+  // descubrir el gesto. El check espera la hidratación (sin race) y es
+  // behavior-based (nunca dispara en onboarding).
   useEffect(() => {
-    if (!addFabHint.hydrated) return
-    // Elegibilidad capturada UNA vez ya hidratada (evita mostrarlo a un usuario
-    // en pleno onboarding cuyo tour aún no corrió este arranque).
-    if (tipEligibleRef.current === null) {
-      tipEligibleRef.current = homeTourSeen && !addFabHint.seen
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    void shouldShowAddFabTip().then((show) => {
+      if (cancelled || !show) return
+      timer = setTimeout(() => {
+        toast.info(t('states:addFab.tip'))
+        void markAddFabHintSeen()
+      }, 1500)
+    })
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
     }
-    if (!tipEligibleRef.current || addFabHint.seen) return
-    const timer = setTimeout(() => {
-      toast.info(t('states:addFab.tip'))
-      markAddFabHintSeen()
-    }, 2500)
-    return () => clearTimeout(timer)
-  }, [addFabHint.hydrated, addFabHint.seen, homeTourSeen, t])
+  }, [t])
 
   // Semantic accent tints per action role. Each ring telegraphs the
   // action's category at-a-glance (positive cashflow vs scheduled

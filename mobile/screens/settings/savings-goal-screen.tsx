@@ -193,8 +193,14 @@ function SavingsGoalViewer({
   })
 
   const handleCreateNext = async () => {
+    // El botón se deshabilita con loading={upsert.isPending}, pero además
+    // guardamos contra un doble-tap en vuelo.
+    if (upsert.isPending) return
     try {
       // Retiro atómico-por-mutación de la meta cumplida antes de abrir el wizard.
+      // (Trade-off conocido y de bajo impacto: si el usuario MATA la app con el
+      // wizard abierto en vez de cancelar, la meta queda retirada sin reemplazo
+      // — estado recuperable desde Ajustes o re-tocando "Crear próxima meta".)
       await upsert.mutateAsync(buildGoalInput(goal, false))
     } catch {
       // La onError del hook ya muestra el toast; no abrimos el wizard.
@@ -330,6 +336,7 @@ function SavingsGoalViewer({
               <AppButton
                 variant="primary"
                 label={t('settings:savingsGoalScreen.createNext')}
+                loading={upsert.isPending}
                 onPress={() => void handleCreateNext()}
               />
             </View>

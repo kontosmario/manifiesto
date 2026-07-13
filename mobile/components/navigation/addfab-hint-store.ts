@@ -1,68 +1,73 @@
-// One-time discoverability flag for the central "+" FAB long-press (the
-// speed-dial of extra actions: ingreso, fijo, importar, día sin gasto). Users
-// don't discover the gesture on their own, so we surface a coach-mark pill
-// until they either use the long-press or the hint times out once.
+// One-time discoverability hint for the central "+" FAB long-press (the
+// speed-dial: ingreso, fijo, importar, día sin gasto). Users don't discover the
+// gesture on their own.
 //
-// Persistence: SecureStore on native, localStorage on web (same as
-// control-visit-store).
+// Trigger = BEHAVIOR, not the tour/profile state: we surface a one-time tip only
+// after the user has tapped the "+" a few times WITHOUT ever long-pressing. This
+// is reliable (a local counter, no dependency on profile/tour hydration) and
+// never fires during onboarding (it requires repeated real use first), so it
+// doesn't duplicate the Home tour's FAB step.
+//
+// Persistence: SecureStore on native, localStorage on web.
 
-import { useEffect, useState } from 'react'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 
-const STORAGE_KEY = 'addfab-hint-seen:v1'
+const STORAGE_KEY = 'addfab-hint:v2'
+const TIP_AFTER_TAPS = 3
 
-let seen = false
-let hydrated = false
-const listeners = new Set<(v: boolean) => void>()
-
-function emit(): void {
-  for (const cb of listeners) cb(seen)
+interface HintState {
+  seen: boolean
+  taps: number
 }
 
-async function hydrate(): Promise<void> {
-  if (hydrated) return
-  hydrated = true
-  try {
-    const raw = await getPersistentValue(STORAGE_KEY)
-    if (raw === '1') {
-      seen = true
-      emit()
-    }
-  } catch {
-    // Corrupt / unavailable — keep showing the hint (harmless).
+let state: HintState = { seen: false, taps: 0 }
+let hydratePromise: Promise<void> | null = null
+
+// Shared promise so concurrent callers all await the SAME read (avoids a
+// caller acting on un-hydrated state).
+function hydrate(): Promise<void> {
+  if (!hydratePromise) {
+    hydratePromise = (async () => {
+      try {
+        const raw = await getPersistentValue(STORAGE_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<HintState>
+          state = { seen: parsed.seen === true, taps: Number(parsed.taps) || 0 }
+        }
+      } catch {
+        // Corrupt / unavailable — start clean (harmless).
+      }
+    })()
   }
+  return hydratePromise
 }
 
-export function markAddFabHintSeen(): void {
-  if (seen) return
-  seen = true
-  emit()
-  void setPersistentValue(STORAGE_KEY, '1')
+function persist(): void {
+  void setPersistentValue(STORAGE_KEY, JSON.stringify(state))
+}
+
+/** The user used the long-press (or already saw the tip) → never show it again. */
+export async function markAddFabHintSeen(): Promise<void> {
+  await hydrate()
+  if (state.seen) return
+  state = { ...state, seen: true }
+  persist()
+}
+
+/** Record a "+" tap (quick add-expense). Counts toward the tip threshold. */
+export async function noteAddFabTap(): Promise<void> {
+  await hydrate()
+  if (state.seen) return
+  state = { ...state, taps: state.taps + 1 }
+  persist()
 }
 
 /**
- * Reactive snapshot. `hydrated` flips true once the persisted flag has been
- * read — callers must wait for it before deciding to show the hint, otherwise a
- * slow SecureStore read could show the tip to a user who already dismissed it
- * (the module starts optimistically at seen=false).
+ * Whether to show the long-press tip now: true once the user has tapped "+" at
+ * least TIP_AFTER_TAPS times without discovering the gesture. Does NOT mark it
+ * seen — the caller marks it after actually showing the tip.
  */
-export function useAddFabHint(): { seen: boolean; hydrated: boolean } {
-  const [state, setState] = useState<{ seen: boolean; hydrated: boolean }>(
-    () => ({ seen, hydrated }),
-  )
-  useEffect(() => {
-    let active = true
-    const listener = (v: boolean) => {
-      if (active) setState({ seen: v, hydrated: true })
-    }
-    listeners.add(listener)
-    void hydrate().then(() => {
-      if (active) setState({ seen, hydrated: true })
-    })
-    return () => {
-      active = false
-      listeners.delete(listener)
-    }
-  }, [])
-  return state
+export async function shouldShowAddFabTip(): Promise<boolean> {
+  await hydrate()
+  return !state.seen && state.taps >= TIP_AFTER_TAPS
 }
