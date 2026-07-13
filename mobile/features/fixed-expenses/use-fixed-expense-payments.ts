@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchPaymentsInRange } from '@/features/fixed-expenses/fixed-expense-payment.repository'
+import { keepPersistedFixedExpenseIds } from '@/features/fixed-expenses/fixed-expense-id'
 import { type FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
 
 /**
@@ -42,11 +43,16 @@ export function useFixedExpensePayments(params: {
 }) {
   const startIso = params.cycleStart.toISOString()
   const endIso = params.cycleEnd.toISOString()
-  const idsSignature = fixedExpenseIdsSignature(params.fixedExpenseIds)
+  // Strip optimistic `temp-` ids: they don't exist server-side, and querying
+  // them 400s the whole batch. Filtering here (before the signature) also keeps
+  // the query key stable across the optimistic window — appending an
+  // unpersisted row no longer churns the key or triggers a throwaway fetch.
+  const persistedIds = keepPersistedFixedExpenseIds(params.fixedExpenseIds)
+  const idsSignature = fixedExpenseIdsSignature(persistedIds)
   return useQuery<FixedExpensePayment[]>({
     queryKey: fixedExpensePaymentsKey(params.familyId, startIso, endIso, idsSignature),
-    enabled: Boolean(params.familyId) && params.fixedExpenseIds.length > 0,
+    enabled: Boolean(params.familyId) && persistedIds.length > 0,
     staleTime: 60_000,
-    queryFn: () => fetchPaymentsInRange(params.fixedExpenseIds, startIso, endIso),
+    queryFn: () => fetchPaymentsInRange(persistedIds, startIso, endIso),
   })
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { keepPersistedFixedExpenseIds } from '@/features/fixed-expenses/fixed-expense-id'
 import {
   mapFixedExpensePaymentRow,
   type FixedExpensePayment,
@@ -15,11 +16,15 @@ export async function fetchPaymentsInRange(
   startIso: string,
   endIso: string,
 ): Promise<FixedExpensePayment[]> {
-  if (fixedExpenseIds.length === 0) return []
+  // Defense-in-depth at the Postgres boundary: `fixed_expense_id` is a uuid
+  // column, so a stray optimistic `temp-` id would 22P02 the whole request.
+  // Callers already filter, but this guarantees no non-uuid ever reaches `.in`.
+  const ids = keepPersistedFixedExpenseIds(fixedExpenseIds)
+  if (ids.length === 0) return []
   const { data, error } = await supabase
     .from('fixed_expense_payments')
     .select('*')
-    .in('fixed_expense_id', fixedExpenseIds)
+    .in('fixed_expense_id', ids)
     .gte('paid_at', startIso)
     .lt('paid_at', endIso)
   if (error) throw error
