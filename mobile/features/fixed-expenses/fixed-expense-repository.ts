@@ -4,6 +4,7 @@ import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expen
 import {
   asFixedExpense,
   buildFixedExpensePayload,
+  FixedExpenseNotPersistedError,
   isMissingCommitmentColumnsError,
   isMissingFixedExpensesTableError,
   throwMigrationError,
@@ -20,7 +21,7 @@ import {
  */
 function assertPersistedFixedExpenseId(fixedExpenseId: string): void {
   if (!isPersistedFixedExpenseId(fixedExpenseId)) {
-    throw new Error(i18n.t('fijos:errors.stillSaving'))
+    throw new FixedExpenseNotPersistedError(i18n.t('fijos:errors.stillSaving'))
   }
 }
 import {

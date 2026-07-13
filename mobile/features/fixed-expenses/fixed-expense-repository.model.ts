@@ -162,8 +162,40 @@ export class FixedExpenseNameTakenError extends Error {
   }
 }
 
+/**
+ * Thrown by the write repository when an action targets a fijo that is still
+ * optimistic (a `temp-` id, not yet persisted). Retrying with the same id is
+ * futile until the create round-trip lands, so the UI shows the message without
+ * a retry affordance.
+ */
+export class FixedExpenseNotPersistedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FixedExpenseNotPersistedError'
+  }
+}
+
+/**
+ * Errors for which re-sending the identical payload can only fail the same way
+ * — a duplicate name 409s again; a not-yet-persisted id trips the guard again.
+ * The UI surfaces their (already-translated) message but omits the retry action.
+ */
+export function isRetryFutileError(
+  err: unknown,
+): err is FixedExpenseNameTakenError | FixedExpenseNotPersistedError {
+  return (
+    err instanceof FixedExpenseNameTakenError ||
+    err instanceof FixedExpenseNotPersistedError
+  )
+}
+
 export function isDuplicateNameError(error: PostgrestError): boolean {
-  return (error.code ?? '') === '23505'
+  if ((error.code ?? '') !== '23505') return false
+  // Scope to the UNIQUE(family_id, name) constraint. Other 23505s flow through
+  // this same shared handler — notably record_fixed_expense_payment, whose RPC
+  // raises 23505 for an already-recorded payment (NOT a name collision).
+  const text = `${error.message ?? ''} ${error.details ?? ''}`.toLowerCase()
+  return text.includes('fixed_expenses_family_id_name_key')
 }
 
 export function throwMigrationError(error: PostgrestError): never {
@@ -171,8 +203,6 @@ export function throwMigrationError(error: PostgrestError): never {
     throw new Error(i18n.t('fijos:errors.missingMigration'))
   }
 
-  // The only user-facing unique constraint is (family_id, name); a 23505 here
-  // always means a duplicate fixed-expense name.
   if (isDuplicateNameError(error)) {
     throw new FixedExpenseNameTakenError(i18n.t('fijos:errors.nameAlreadyExists'))
   }

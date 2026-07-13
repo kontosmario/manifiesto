@@ -369,17 +369,6 @@ export function isMissingTableError(error: PostgrestError): boolean {
   )
 }
 
-/**
- * Postgres `42501 insufficient_privilege` — a row-level-security denial
- * (e.g. a non-owner member trying to write shared `family_finance`, which is
- * owner-only). Unlike a missing-table/offline error, this must never be
- * swallowed as a fallback "success": caching an optimistic value the DB
- * rejected can defeat a caller's write-once guard and spin a retry storm.
- */
-export function isRlsViolationError(error: PostgrestError): boolean {
-  return (error.code ?? '') === '42501'
-}
-
 export function isMissingFinanceColumnError(
   error: PostgrestError,
   columnName:

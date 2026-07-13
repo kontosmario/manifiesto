@@ -12,7 +12,7 @@ import {
   type UpdateFixedExpenseInput,
   type UpsertFixedExpenseInput,
 } from '@/features/fixed-expenses/fixed-expense-repository'
-import { FixedExpenseNameTakenError } from '@/features/fixed-expenses/fixed-expense-repository.model'
+import { isRetryFutileError } from '@/features/fixed-expenses/fixed-expense-repository.model'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
@@ -49,6 +49,23 @@ export function useFixedExpenses(familyId?: string) {
 
 function makeTentativeId(): string {
   return `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+/**
+ * Error toast for a write mutation. For retry-futile errors (duplicate name,
+ * not-yet-persisted optimistic id) it surfaces the specific translated message
+ * WITHOUT a retry action — re-sending the same payload can only fail the same
+ * way. Otherwise it shows the generic message with a retry.
+ */
+function toastWriteError(err: unknown, genericKey: string, retry: () => void): void {
+  if (isRetryFutileError(err)) {
+    toast.error(err.message)
+    return
+  }
+  toast.error(i18n.t(genericKey), {
+    actionLabel: i18n.t('common:actions.retry'),
+    onAction: retry,
+  })
 }
 
 /** Construye un FixedExpense optimista a partir del input de upsert.
@@ -165,16 +182,9 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
           ctx.previous,
         )
       }
-      // Duplicate name: retrying the same payload can only 409 again, so show
-      // the reason without a (futile) retry affordance.
-      if (err instanceof FixedExpenseNameTakenError) {
-        toast.error(err.message)
-        return
-      }
-      toast.error(i18n.t('fijos:errors.createFailed'), {
-        actionLabel: i18n.t('common:actions.retry'),
-        onAction: () => ref.current?.mutate(input),
-      })
+      toastWriteError(err, 'fijos:errors.createFailed', () =>
+        ref.current?.mutate(input),
+      )
     },
     onSettled: () => {
       void syncAllAfterMutation(queryClient, {
@@ -250,17 +260,16 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
         }).catch(() => {})
       }
     },
-    onError: (_err, input, ctx) => {
+    onError: (err, input, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
           ctx.previous,
         )
       }
-      toast.error(i18n.t('fijos:errors.updateFailed'), {
-        actionLabel: i18n.t('common:actions.retry'),
-        onAction: () => ref.current?.mutate(input),
-      })
+      toastWriteError(err, 'fijos:errors.updateFailed', () =>
+        ref.current?.mutate(input),
+      )
     },
     onSettled: () => {
       void syncAllAfterMutation(queryClient, {
@@ -313,17 +322,16 @@ export function useUpdateFixedExpenseStatus(familyId?: string, userId?: string) 
       )
       return { previous }
     },
-    onError: (_err, input, ctx) => {
+    onError: (err, input, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
           ctx.previous,
         )
       }
-      toast.error(i18n.t('fijos:errors.statusUpdateFailed'), {
-        actionLabel: i18n.t('common:actions.retry'),
-        onAction: () => ref.current?.mutate(input),
-      })
+      toastWriteError(err, 'fijos:errors.statusUpdateFailed', () =>
+        ref.current?.mutate(input),
+      )
     },
     onSettled: () => {
       void syncAllAfterMutation(queryClient, {
@@ -471,7 +479,7 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
 
       return { previous, optimisticPaymentId: userId ? optimisticPaymentId : null }
     },
-    onError: (_err, vars, ctx) => {
+    onError: (err, vars, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
@@ -486,10 +494,9 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
           (old) => (old ? old.filter((p) => p.id !== optimisticId) : old),
         )
       }
-      toast.error(i18n.t('fijos:errors.recordPaymentFailed'), {
-        actionLabel: i18n.t('common:actions.retry'),
-        onAction: () => ref.current?.mutate(vars),
-      })
+      toastWriteError(err, 'fijos:errors.recordPaymentFailed', () =>
+        ref.current?.mutate(vars),
+      )
     },
     onSettled: () => {
       // fixedPayment dispara un expense vía trigger DB → invalidamos
@@ -630,17 +637,16 @@ export function useDeleteFixedExpense(familyId?: string, userId?: string) {
         }).catch(() => {})
       }
     },
-    onError: (_err, fixedExpenseId, ctx) => {
+    onError: (err, fixedExpenseId, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
           ctx.previous,
         )
       }
-      toast.error(i18n.t('fijos:errors.deleteFailed'), {
-        actionLabel: i18n.t('common:actions.retry'),
-        onAction: () => ref.current?.mutate(fixedExpenseId),
-      })
+      toastWriteError(err, 'fijos:errors.deleteFailed', () =>
+        ref.current?.mutate(fixedExpenseId),
+      )
     },
     onSettled: () => {
       void syncAllAfterMutation(queryClient, {

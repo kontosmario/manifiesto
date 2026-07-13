@@ -389,9 +389,12 @@ export function HomeDashboard({
       return
     }
     if (silentAnchorWroteRef.current) return
-    // Only the owner may persist shared family_finance (RLS owner-only). A
-    // non-owner member's write 42501s and — because the upsert used to report
-    // that as success — spun a retry storm. Members simply skip it.
+    // Only the owner may persist shared family_finance (RLS owner-only). For a
+    // non-owner the write 42501s but the upsert reports it as a fallback
+    // "success", which reset this guard and spun a ~1-req/sec retry storm.
+    // Gating on ownership stops non-owners from ever firing it. (Owners wait for
+    // the role query; a transient role-query failure defers the silent write to
+    // the next mount — acceptable vs. the storm.)
     if (!isFamilyOwner) return
     if (dashboard.familyFinanceQuery.isLoading) return
     if (dashboard.expensesQuery.isLoading) return
