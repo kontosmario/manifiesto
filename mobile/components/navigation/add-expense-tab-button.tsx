@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { NoSpendConfirmSheet } from '@/components/gastos/no-spend-confirm-sheet'
 import { useCategories, type Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -49,11 +49,6 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { confetti } from '@/lib/confetti-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
-import {
-  markAddFabHintSeen,
-  noteAddFabTap,
-  shouldShowAddFabTip,
-} from '@/components/navigation/addfab-hint-store'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -61,13 +56,13 @@ import { useAppTheme } from '@/theme/theme-provider'
 export { decideNoSpendPetal, type NoSpendPetalDecision }
 
 /**
- * Center-stage FAB for "Agregar gasto".
+ * Center-stage FAB for "Agregar".
  *
- * Two interactions:
- *   · Tap (haptic light) → opens the add-expense form (most common
- *     action, kept frictionless)
- *   · Long-press (haptic medium) → opens a Speed Dial with 3 quick
- *     actions: Gasto / Fijo / Meta
+ * Tap (haptic light) → opens the quick-actions menu (Gasto as the primary
+ * tile, then Importar / Día sin gasto / Ingreso / Fijo). Everything is
+ * discoverable on the first tap — no hidden gesture. (Previously tap went
+ * straight to add-expense and the menu was long-press-only, which left the
+ * extra actions invisible.)
  *
  * Motion:
  *   · scale 0.93 on press, immediate visual feedback
@@ -187,58 +182,24 @@ export function AddExpenseTabButton({
     },
   })
   // expo-router passes its own onPress + onLongPress through tabBarButton
-  // props. We discard them — our handlers below define the actual
-  // behavior (tap → add-expense, long-press → speed dial). If we
-  // didn't extract them, the trailing `{...pressableProps}` spread
-  // would silently override our handlers, which is exactly what was
-  // happening before this fix (long-press never triggered the menu).
+  // props. We discard them — our handler below defines the actual behavior
+  // (tap → quick-actions menu). If we didn't extract them, the trailing
+  // `{...pressableProps}` spread would silently override our handler.
   void forwardedOnPress
   void forwardedOnLongPress
 
   const resolveForwardedStyle = (state: PressableStateCallbackType) =>
     typeof style === 'function' ? style(state) : style
 
+  // Un toque ABRE el menú de acciones (gasto/importar/día sin gasto/ingreso/
+  // fijo), con "Gasto" como tile principal. Descubrible al primer toque, sin
+  // gesto oculto (reemplaza el modelo tap=gasto + long-press=menú, que dejaba
+  // el menú invisible). Cargar gasto = 2 toques (el 2º sobre el tile "Gasto").
   const handlePress = useCallback(() => {
     void triggerHaptic('light')
     triggerBurst()
-    // Cuenta hacia el tip de descubribilidad del long-press (ver más abajo).
-    void noteAddFabTap()
-    router.push('/(app)/add-expense')
-  }, [router, triggerBurst])
-
-  const handleLongPress = useCallback(() => {
-    void triggerHaptic('medium')
-    // El usuario descubrió el gesto → no volver a mostrar el tip.
-    void markAddFabHintSeen()
     setQuickActionsVisible(true)
-  }, [])
-
-  // Descubribilidad del long-press: el menú de atajos (ingreso/fijo/importar/
-  // día sin gasto) es invisible sin señal. Al montar la tab-bar mostramos un tip
-  // UNA vez si el usuario ya usó el "+" varias veces sin descubrir el gesto. El
-  // check espera la hidratación (sin race) y es behavior-based (nunca dispara en
-  // onboarding). El FAB está a la vista en todos los tabs, así que el tip es
-  // relevante donde caiga.
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-    void shouldShowAddFabTip().then((show) => {
-      if (cancelled || !show) return
-      timer = setTimeout(() => {
-        // Re-chequeo: si el usuario descubrió el long-press durante el delay,
-        // shouldShowAddFabTip ya devuelve false → no mostramos un tip redundante.
-        void shouldShowAddFabTip().then((stillShow) => {
-          if (cancelled || !stillShow) return
-          toast.info(t('states:addFab.tip'))
-          void markAddFabHintSeen()
-        })
-      }, 1500)
-    })
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [t])
+  }, [triggerBurst])
 
   // Semantic accent tints per action role. Each ring telegraphs the
   // action's category at-a-glance (positive cashflow vs scheduled
@@ -395,10 +356,8 @@ export function AddExpenseTabButton({
           color: withAlpha('#FFFFFF', 0.2),
           radius: 40,
         }}
-        delayLongPress={350}
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={handlePress}
-        onLongPress={handleLongPress}
         onPressIn={(event) => {
           pressScale.onPressIn()
           onPressIn?.(event)

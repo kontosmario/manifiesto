@@ -170,8 +170,7 @@
   },
   "addFab": {
     "label": "Add expense",
-    "hint": "Press and hold for more actions",
-    "tip": "💡 Press and hold the ➕ to add income, a fixed expense, import and more",
+    "hint": "Opens the menu to log an expense, income, fixed expense, import and more",
     "registered": "No-spend day logged",
     "markFailed": "Couldn't mark it. Try again in a moment.",
     "needSession": "You need to be signed in to import.",
@@ -227,7 +226,7 @@
       "meta": "Your savings goal as a digital piggy bank: see how much you've saved and add a quick contribution right here. You adjust the target in Settings.",
       "streak": "Your garden week: one dot per day based on whether you logged an expense (or marked a no-spend day). Logging daily grows your garden. Tap to open My garden.",
       "activity": "Your recent movements this cycle, sorted by date. Swipe a row left to edit or delete it, or tap \"See all\" to open the full screen.",
-      "fab": "The quick actions button. One tap opens the form to log an expense. Press and hold to open a menu with more shortcuts: expense, import a receipt, mark a no-spend day, income or fixed expense. It's the fastest way to add movements.",
+      "fab": "The quick actions button. Tap it to open a menu with everything you can add: expense, import a receipt, mark a no-spend day, income or fixed expense. It's the fastest way to add movements.",
       "familyStripDynamic": "Your household and the cycle in progress. Your household uses variable income: log income as it comes in and the cycle budget builds itself.",
       "heroDynamic": "Your main card: what you have left available in the cycle, how much you can spend per day to finish the cycle on track and what you'll close with. If you haven't logged any income yet, here's the shortcut to do it.",
       "familyStripSolo": "Your current cycle and the days left until your next payday. When you get paid, tap the capsule to confirm it and start a new cycle."
