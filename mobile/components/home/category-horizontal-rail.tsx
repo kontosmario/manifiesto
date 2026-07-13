@@ -31,8 +31,9 @@ import { resolveCategoryHueByName } from '@/theme/category-hues'
 // Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
 // consistentes con el kind-picker de add-ingreso (badge 42 en ambos).
 const DEFAULT_TILE_WIDTH = 68
-// Bumped 76 → 86pt para alojar el badge más grande (42) + label sin apretar.
-const DEFAULT_TILE_HEIGHT = 86
+// Bumped 76 → 86 → 92pt: 92 aloja el badge (42) + label a DOS líneas sin
+// truncar nombres de 2 palabras (Salud y bienestar, Servicios del hogar…).
+const DEFAULT_TILE_HEIGHT = 92
 const TILE_GAP = 8
 // Wider gap for the static grid — without horizontal overflow to use
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
@@ -48,8 +49,8 @@ export const STATIC_TILE_GAP = 12
 export function railTileWidth(windowWidth: number): number {
   return Math.max(64, Math.floor((windowWidth - 40 - 8 - 24) / 4))
 }
-/** Alto de tile unificado (igual que add-fijo). */
-export const RAIL_TILE_HEIGHT = 80
+/** Alto de tile unificado (igual que add-fijo). 80 → 92 para el label a 2 líneas. */
+export const RAIL_TILE_HEIGHT = 92
 /**
  * Item genérico del rail de selección. Desacopla la presentación (tile +
  * scroll horizontal 2-filas + animaciones) del modelo de datos: lo usan tanto
@@ -374,7 +375,7 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
           {tile.icon}
           <Text
             style={[styles.label, { color: hue.ink }]}
-            numberOfLines={1}
+            numberOfLines={2}
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
@@ -431,6 +432,9 @@ const styles = StyleSheet.create({
   label: {
     // 12pt: legible y consistente con el kindLabel de add-ingreso.
     fontSize: 12,
+    // lineHeight explícito: 2 líneas = 28pt, determinístico y con margen dentro
+    // del tile de 92pt (badge 42 + gap + label 28 + padding 16).
+    lineHeight: 14,
     fontWeight: '700',
     letterSpacing: 0,
     textAlign: 'center',

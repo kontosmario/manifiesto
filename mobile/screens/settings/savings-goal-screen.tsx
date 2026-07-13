@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
@@ -172,6 +172,38 @@ function SavingsGoalViewer({
   const remove = useDeleteSavingsGoal(familyId, userId)
   const reauth = useRequireReauth()
 
+  // Metas SECUENCIALES: al cumplir la meta vigente se habilita crear la
+  // próxima. Capturamos la meta cumplida en un ref al abrir el wizard para
+  // retirarla (isActive:false) recién cuando la nueva ya existe — inmune a que
+  // un refetch re-renderice el viewer con la meta nueva antes del onCreated.
+  const [nextWizardOpen, setNextWizardOpen] = useState(false)
+  const retireGoalRef = useRef<SavingsGoal | null>(null)
+
+  const handleCreateNext = () => {
+    retireGoalRef.current = goal
+    setNextWizardOpen(true)
+  }
+
+  const handleNextGoalCreated = () => {
+    setNextWizardOpen(false)
+    const retiring = retireGoalRef.current
+    retireGoalRef.current = null
+    if (!retiring) return
+    // Retirá la meta cumplida a historial (isActive:false). Sin esto el
+    // read-path activo (meta activa más vieja) seguiría devolviendo la cumplida.
+    upsert.mutate({
+      input: {
+        title: retiring.title,
+        emoji: retiring.emoji,
+        goalAmount: retiring.goalAmount,
+        currentAmount: retiring.currentAmount,
+        targetMonths: retiring.targetMonths,
+        isActive: false,
+      },
+      existingId: retiring.id,
+    })
+  }
+
   // ── Derived insight ──────────────────────────────────────────────
   const goalAmount = goal.goalAmount
   const currentAmount = goal.currentAmount
@@ -271,9 +303,19 @@ function SavingsGoalViewer({
               {t('settings:savingsGoalScreen.noTarget')}
             </Text>
           ) : currentAmount >= goalAmount ? (
-            <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
-              {t('settings:savingsGoalScreen.reached')}
-            </Text>
+            <View style={styles.reachedStack}>
+              <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
+                {t('settings:savingsGoalScreen.reached')}
+              </Text>
+              <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+                {t('settings:savingsGoalScreen.sequentialDisclaimer')}
+              </Text>
+              <AppButton
+                variant="primary"
+                label={t('settings:savingsGoalScreen.createNext')}
+                onPress={handleCreateNext}
+              />
+            </View>
           ) : (
             <>
               {/* Progress bar */}
@@ -367,6 +409,17 @@ function SavingsGoalViewer({
         onConfirmed={reauth.onConfirmed}
         onCancel={reauth.onCancel}
       />
+
+      {/* Wizard de la PRÓXIMA meta (metas secuenciales). Al crear, retira la
+          meta cumplida a historial (handleNextGoalCreated). Cancelar no cambia
+          nada: la meta cumplida sigue activa. */}
+      <CreateSavingsGoalWizardSheet
+        visible={nextWizardOpen}
+        familyId={familyId}
+        userId={userId}
+        onCreated={handleNextGoalCreated}
+        onClose={() => setNextWizardOpen(false)}
+      />
     </View>
   )
 }
@@ -419,6 +472,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
+  },
+  reachedStack: {
+    gap: 12,
   },
   emptyCard: {
     borderWidth: 1,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { NoSpendConfirmSheet } from '@/components/gastos/no-spend-confirm-sheet'
 import { useCategories, type Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -49,6 +49,10 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { confetti } from '@/lib/confetti-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
+import {
+  markAddFabHintSeen,
+  useAddFabHintSeen,
+} from '@/components/navigation/addfab-hint-store'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -201,8 +205,24 @@ export function AddExpenseTabButton({
 
   const handleLongPress = useCallback(() => {
     void triggerHaptic('medium')
+    // El usuario descubrió el gesto → no volver a mostrar el tip.
+    markAddFabHintSeen()
     setQuickActionsVisible(true)
   }, [])
+
+  // Descubribilidad del long-press: el menú de atajos (ingreso/fijo/importar/
+  // día sin gasto) es invisible sin señal. La primera vez, con el FAB a la
+  // vista, mostramos un tip una sola vez (persistente vía addfab-hint-store) y
+  // lo marcamos visto. markAddFabHintSeen es idempotente.
+  const addFabHintSeen = useAddFabHintSeen()
+  useEffect(() => {
+    if (addFabHintSeen) return
+    const timer = setTimeout(() => {
+      toast.info(t('states:addFab.tip'))
+      markAddFabHintSeen()
+    }, 2500)
+    return () => clearTimeout(timer)
+  }, [addFabHintSeen, t])
 
   // Semantic accent tints per action role. Each ring telegraphs the
   // action's category at-a-glance (positive cashflow vs scheduled

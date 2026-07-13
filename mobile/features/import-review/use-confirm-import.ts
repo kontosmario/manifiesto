@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import i18n from '@/lib/i18n'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
+import { supabase } from '@/lib/supabase'
 import { createExpense } from '@/features/expenses/expense-repository'
 import { useCreateIncomeEvent } from '@/features/income/use-income-events'
 import { sendFamilyPush } from '@/lib/send-family-push'
@@ -70,6 +71,29 @@ export function useConfirmImport(ctx: ConfirmContext) {
       // (invalidation is idempotent).
       const insertedAny = insertedExpenses > 0 || insertedIncomes > 0
       if (insertedAny) {
+        // Los expenses importados suelen ser back-dated (fecha de transacción).
+        // El trigger de racha es backdate-proof (descarta fechas < hoy), así que
+        // esos días encienden el jardín pero NO avanzan el NÚMERO de racha.
+        // Forzamos un recompute (monotónico server-side: nunca baja la racha)
+        // ANTES de invalidar, para que el refetch traiga el número corregido.
+        const importedBackdatedExpense = submittable.some(
+          (r, i) =>
+            r.kind === 'expense' &&
+            settled[i]?.status === 'fulfilled' &&
+            r.date < localTodayIso(),
+        )
+        if (importedBackdatedExpense) {
+          const { error } = await supabase.rpc('resync_family_streak', {
+            p_family_id: ctx.familyId,
+          })
+          // No romper el import por esto: el jardín ya refleja los días y la
+          // racha se re-sincroniza en el próximo recompute. Si el RPC aún no
+          // está deployado, el catch mantiene el import exitoso.
+          if (error && __DEV__) {
+            console.warn('resync_family_streak failed', error)
+          }
+        }
+
         const scopes: Array<'expenses' | 'income'> = []
         if (insertedExpenses > 0) scopes.push('expenses')
         if (insertedIncomes > 0) scopes.push('income')
@@ -101,6 +125,16 @@ export function useConfirmImport(ctx: ConfirmContext) {
     },
     [ctx, createIncomeMut.mutateAsync, queryClient],
   )
+}
+
+/** Fecha local de hoy como `YYYY-MM-DD` (mismo formato que `ReviewRow.date`),
+ *  para comparar por string si una fila importada es de un día pasado. */
+function localTodayIso(): string {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 async function insertOne(

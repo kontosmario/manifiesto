@@ -171,6 +171,7 @@
   "addFab": {
     "label": "Agregar gasto",
     "hint": "Mantén presionado para más acciones",
+    "tip": "💡 Mantén presionado el ➕ para sumar ingreso, fijo, importar y más",
     "registered": "Día sin gastos registrado",
     "markFailed": "No se pudo marcar. Reintenta en un momento.",
     "needSession": "Necesitas estar en sesión para importar.",

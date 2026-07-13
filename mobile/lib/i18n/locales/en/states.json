@@ -171,6 +171,7 @@
   "addFab": {
     "label": "Add expense",
     "hint": "Press and hold for more actions",
+    "tip": "💡 Press and hold the ➕ to add income, a fixed expense, import and more",
     "registered": "No-spend day logged",
     "markFailed": "Couldn't mark it. Try again in a moment.",
     "needSession": "You need to be signed in to import.",
