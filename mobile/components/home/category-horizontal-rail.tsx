@@ -31,9 +31,10 @@ import { resolveCategoryHueByName } from '@/theme/category-hues'
 // Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
 // consistentes con el kind-picker de add-ingreso (badge 42 en ambos).
 const DEFAULT_TILE_WIDTH = 68
-// Bumped 76 → 86 → 92pt: 92 aloja el badge (42) + label a DOS líneas sin
-// truncar nombres de 2 palabras (Salud y bienestar, Servicios del hogar…).
-const DEFAULT_TILE_HEIGHT = 92
+// Bumped 76 → 86 → 94pt: aloja el badge (42) + label a DOS líneas sin truncar
+// nombres de 2 palabras (Salud y bienestar…); las palabras largas de una pieza
+// se achican con adjustsFontSizeToFit (ver el <Text> del Tile).
+const DEFAULT_TILE_HEIGHT = 94
 const TILE_GAP = 8
 // Wider gap for the static grid — without horizontal overflow to use
 // as breathing room, tiles end up visually adjacent at 8pt. 12pt
@@ -49,8 +50,8 @@ export const STATIC_TILE_GAP = 12
 export function railTileWidth(windowWidth: number): number {
   return Math.max(64, Math.floor((windowWidth - 40 - 8 - 24) / 4))
 }
-/** Alto de tile unificado (igual que add-fijo). 80 → 92 para el label a 2 líneas. */
-export const RAIL_TILE_HEIGHT = 92
+/** Alto de tile unificado (igual que add-fijo). 80 → 94 para el label a 2 líneas. */
+export const RAIL_TILE_HEIGHT = 94
 /**
  * Item genérico del rail de selección. Desacopla la presentación (tile +
  * scroll horizontal 2-filas + animaciones) del modelo de datos: lo usan tanto
@@ -376,6 +377,12 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
           <Text
             style={[styles.label, { color: hue.ink }]}
             numberOfLines={2}
+            // Palabras largas de una sola pieza (Transferencias, Entretenimiento…)
+            // no entran en una línea y con numberOfLines=2 se partían a mitad de
+            // palabra. adjustsFontSizeToFit las achica hasta entrar (en vez del
+            // corte feo); ellipsizeMode="tail" solo actúa si ni al mínimo entra.
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
@@ -432,9 +439,10 @@ const styles = StyleSheet.create({
   label: {
     // 12pt: legible y consistente con el kindLabel de add-ingreso.
     fontSize: 12,
-    // lineHeight explícito: 2 líneas = 28pt, determinístico y con margen dentro
-    // del tile de 92pt (badge 42 + gap + label 28 + padding 16).
-    lineHeight: 14,
+    // Sin lineHeight explícito: en iOS un lineHeight fijo suprime
+    // adjustsFontSizeToFit (la palabra larga no se achicaría). El lineHeight por
+    // defecto (~14.3 a 12pt → 2 líneas ~28.6pt) entra en el tile de 92pt
+    // (badge 42 + gap 4 + label + padding 16) y escala con la fuente al achicar.
     fontWeight: '700',
     letterSpacing: 0,
     textAlign: 'center',
