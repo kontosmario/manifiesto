@@ -331,16 +331,17 @@ export function buildCoalescedMessages(
   return { messages, rowIdsByIndex }
 }
 
-// Envía los mensajes (send-family-push batchea a Expo 100/req). Cada mensaje
-// mapea a VARIAS filas (el combinado): una fila se considera entregada si ≥1
-// mensaje que la contiene salió 'ok'/'removed' ('removed' = device muerto,
-// reintentar no ayuda). Solo queda para reintento si TODOS sus mensajes fueron
-// 'error' transitorio. Devuelve null si la invocación falló entera.
+// Envía un chunk de mensajes (send-family-push batchea a Expo 100/req). Cada
+// mensaje mapea a VARIAS filas (el combinado). Devuelve las filas que quedaron
+// en 'error' TRANSITORIO — esas se dejan sin marcar → se reintentan. Una fila
+// family-wide que falla el push a UN miembro NO se pierde: se reintenta el
+// mensaje entero (mejor un dup a un miembro que perderlo para otro). 'removed'
+// (device muerto) NO es error. Devuelve null si la invocación falló entera.
 async function sendCoalesced(
   admin: ReturnType<typeof adminClient>,
   messages: ExpoPushMessage[],
   rowIdsByIndex: string[][],
-): Promise<{ deliveredIds: Set<string>; sent: number } | null> {
+): Promise<{ erroredIds: Set<string>; sent: number } | null> {
   const sendResponse = await admin.functions.invoke('send-family-push', {
     body: { messages },
   })
@@ -350,17 +351,21 @@ async function sendCoalesced(
   }
   const statuses = ((sendResponse.data as { statuses?: unknown } | null)?.statuses ??
     []) as Array<'ok' | 'error' | 'removed'>
-  const deliveredIds = new Set<string>()
+  const erroredIds = new Set<string>()
   let sent = 0
   for (let i = 0; i < rowIdsByIndex.length; i++) {
     const st = statuses[i]
-    if (st === 'ok' || st === 'removed') {
-      if (st === 'ok') sent++
-      for (const id of rowIdsByIndex[i]) deliveredIds.add(id)
+    if (st === 'ok') sent++
+    else if (st === 'error') {
+      for (const id of rowIdsByIndex[i]) erroredIds.add(id)
     }
   }
-  return { deliveredIds, sent }
+  return { erroredIds, sent }
 }
+
+// Mensajes por invoke a send-family-push (acota el payload; send-family-push
+// batchea a Expo 100/req internamente).
+const SEND_CHUNK_SIZE = 500
 
 async function processCoalescedRelay() {
   const admin = adminClient()
@@ -382,27 +387,28 @@ async function processCoalescedRelay() {
 
   const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
 
+  // Enviar en chunks. Acumular las filas en error transitorio (incluyendo un
+  // chunk que falle entero) para NO marcarlas → se reintentan la próxima corrida.
+  const erroredIds = new Set<string>()
   let sent = 0
-  let deliveredIds = new Set<string>()
-  if (messages.length > 0) {
-    const outcome = await sendCoalesced(admin, messages, rowIdsByIndex)
+  for (let i = 0; i < messages.length; i += SEND_CHUNK_SIZE) {
+    const mChunk = messages.slice(i, i + SEND_CHUNK_SIZE)
+    const rChunk = rowIdsByIndex.slice(i, i + SEND_CHUNK_SIZE)
+    const outcome = await sendCoalesced(admin, mChunk, rChunk)
     if (outcome === null) {
-      // Falla total de envío → no marcar nada; la próxima corrida reintenta
-      // (las filas siguen dentro de la ventana de 24h).
-      return { kind: 'push_backlog', processed: 0, sent: 0, failed: true }
+      for (const ids of rChunk) for (const id of ids) erroredIds.add(id)
+      continue
     }
-    sent = outcome.sent
-    deliveredIds = outcome.deliveredIds
+    sent += outcome.sent
+    for (const id of outcome.erroredIds) erroredIds.add(id)
   }
 
-  // Marcar pushed las filas entregadas (≥1 mensaje ok/removed) O sin dispositivo
-  // (in-app-only — reintentar no inventa un token). Las que quedaron solo en
-  // mensajes 'error' se dejan sin marcar para la próxima corrida.
-  const idsInMessages = new Set(rowIdsByIndex.flat())
-  const toMark: string[] = []
-  for (const r of rows) {
-    if (deliveredIds.has(r.id) || !idsInMessages.has(r.id)) toMark.push(r.id)
-  }
+  // Marcar pushed toda fila que NO quedó en error transitorio. Cubre:
+  //   · entregadas
+  //   · in-app-only (sin dispositivo → nunca estuvo en un mensaje → no errored)
+  //   · 'removed' (device muerto — no reintentar)
+  // Una fila con CUALQUIER error transitorio queda sin marcar → reintento.
+  const toMark = rows.filter((r) => !erroredIds.has(r.id)).map((r) => r.id)
   let marked = 0
   if (toMark.length > 0) {
     const markResponse = await admin.rpc('mark_notifications_pushed', {

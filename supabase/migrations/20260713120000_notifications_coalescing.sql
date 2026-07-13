@@ -9,9 +9,16 @@
 -- el push. Los sociales/de evento (send-family-push directo) NO tocan esta tabla
 -- → siguen instantáneos.
 --
--- ⚠️ Este cambio depende del edge fn notifications-orchestrator (mismo PR).
--- Validar en staging que (a) 2 push juntas → 1, y (b) los check-ins siguen
--- llegando (ahora vía el relay), ANTES de aplicar a prod.
+-- ⚠️⚠️ ORDEN DE DEPLOY OBLIGATORIO ⚠️⚠️
+-- 1º APLICAR ESTA MIGRACIÓN, 2º recién después DEPLOYAR el edge fn.
+-- Motivo: el edge fn nuevo hace los check-ins insert-only (no pushea inline) y
+-- confía en que el relay los tenga en el allow-list. Si el edge fn se deploya
+-- ANTES que esta migración, los check-ins se insertan pero el relay viejo NO los
+-- selecciona → se PIERDEN en silencio hasta que aterrice la migración.
+-- El orden inverso (migración primero) es seguro: el edge fn viejo sigue
+-- pusheando inline y el allow-list ampliado nunca re-selecciona filas ya
+-- pusheadas (filtro pushed_at is null).
+-- Validar en staging: (a) 2 push juntas → 1, (b) los check-ins siguen llegando.
 
 -- (1) El allow-list del relay ahora incluye los check-ins + fixed_upcoming, con:
 --   · settle window (created_at <= now()-2min): no cortar una ráfaga a mitad.
@@ -44,16 +51,22 @@ as $$
     and n.created_at >= now() - interval '24 hours'
     and n.created_at <= now() - interval '2 minutes'
     and n.kind in (
-      -- Pipeline A (antes inline, ahora insert-only → coalescible):
-      'checkin_morning', 'checkin_midday', 'checkin_evening',
-      'fixed_upcoming', 'fixed_upcoming_digest',
+      -- Pipeline A (antes inline, ahora insert-only → coalescible). El digest de
+      -- fijos se emite con kind='fixed_upcoming' (el prefijo _digest es solo del
+      -- dedup_key), así que alcanza con 'fixed_upcoming'.
+      'checkin_morning', 'checkin_midday', 'checkin_evening', 'fixed_upcoming',
       -- Pipeline B (ya eran relay):
       'streak_at_risk', 'streak_broken', 'shield_used', 'shield_auto_hint',
       'streak_recovery_nudge', 'zombie_alert', 'zombie_detected',
       'price_hike', 'goal_behind', 'assistant_dormant'
     )
   order by n.created_at asc
-  limit 500;
+  -- Techo alto: ahora el relay es el ÚNICO emisor y absorbe la ráfaga de
+  -- check-ins (antes se pusheaban inline sin tope). 5000 cubre el pico de una
+  -- cohorte horaria a la escala actual con margen; el edge fn chunkea el envío.
+  -- Si una ráfaga excede 5000, la cola se drena en las corridas siguientes
+  -- (:20/:50 → ~10k/h); solo la cola se difiere, no se pierde (dentro de 24h).
+  limit 5000;
 $$;
 
 -- Lockdown: solo service_role (el orchestrator la llama con esa key). Mantiene
