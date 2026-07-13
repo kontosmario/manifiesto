@@ -14,6 +14,7 @@ import {
 } from '@/features/finance/family-finance.model'
 import { expenseQueryKeys } from '@/features/expenses/expense-query-keys'
 import { fixedExpenseQueryKeys } from '@/features/fixed-expenses/fixed-expense-query-keys'
+import { keepPersistedFixedExpenseIds } from '@/features/fixed-expenses/fixed-expense-id'
 import {
   mapFixedExpensePaymentRow,
   type FixedExpensePaymentRow,
@@ -488,9 +489,11 @@ function seedCaches(
     // `fixedExpenses.map(f => f.id)`; replicamos lo mismo aquí usando
     // los rows crudos del payload para que la key sea idéntica.
     const idsSignature = fixedExpenseIdsSignature(
-      payload.fixed_expenses
-        .map((row) => (row as { id?: string }).id)
-        .filter((id): id is string => typeof id === 'string'),
+      keepPersistedFixedExpenseIds(
+        payload.fixed_expenses
+          .map((row) => (row as { id?: string }).id)
+          .filter((id): id is string => typeof id === 'string'),
+      ),
     )
     client.setQueryData(
       fixedExpensePaymentsKey(

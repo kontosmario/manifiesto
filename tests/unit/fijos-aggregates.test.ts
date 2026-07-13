@@ -144,6 +144,30 @@ describe('summarizeFijos — status classification', () => {
     expect(s.paidItems).toHaveLength(1)
     expect(s.paidItems[0]!.paidPaymentId).toBe('pay-1')
   })
+
+  it('payment optimista → paid pero paidPaymentId null (no revertible aún)', () => {
+    // Durante la ventana optimista el payment.id es `optimistic-<iso>-<fx>`,
+    // que NO debe ofrecerse como revertible (22P02 contra la RPC uuid).
+    const item = makeFixed({ id: 'fx-opt', next_due_on: '2026-06-03' })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [
+        {
+          id: 'optimistic-2026-06-04T10:00:00Z-fx-opt',
+          fixedExpenseId: 'fx-opt',
+          paidAt: '2026-06-04T10:00:00Z',
+          periodMonth: '2026-06-01',
+        } as any,
+      ],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.paidItems).toHaveLength(1)
+    expect(s.paidItems[0]!.computedStatus).toBe('paid')
+    expect(s.paidItems[0]!.paidPaymentId).toBeNull()
+  })
 })
 
 describe('summarizeFijos — totals & percentages', () => {

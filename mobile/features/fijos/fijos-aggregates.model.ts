@@ -1,7 +1,10 @@
 import i18n from '@/lib/i18n'
 import type { Expense } from '@/features/expenses/expense-repository.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
-import type { FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
+import {
+  isOptimisticPaymentId,
+  type FixedExpensePayment,
+} from '@/features/fixed-expenses/fixed-expense-payment.model'
 
 /**
  * Estado de un fijo en el ciclo de pago activo:
@@ -391,7 +394,13 @@ export function summarizeFijos(input: {
         trendDeltaPct,
         trendPrevAmount,
         arrearsOnLastPayment: arrearsByCommitment.get(i.id) === true,
-        paidPaymentId: status === 'paid' && payment ? payment.id : null,
+        // Only expose a *revertable* payment id: during the optimistic window
+        // `payment.id` is the synthetic `optimistic-…` string, which would 22P02
+        // the revert RPC (uuid param). Null until the real server row lands.
+        paidPaymentId:
+          status === 'paid' && payment && !isOptimisticPaymentId(payment.id)
+            ? payment.id
+            : null,
         cuotaMonth,
         annualCost,
         pctOfIncome,

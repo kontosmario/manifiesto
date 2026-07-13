@@ -33,6 +33,7 @@ import {
   useRecordFixedExpensePayment,
   useRevertFixedExpensePayment,
 } from '@/features/fixed-expenses/use-fixed-expenses'
+import { isOptimisticPaymentId } from '@/features/fixed-expenses/fixed-expense-payment.model'
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
@@ -160,7 +161,7 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
         for (const p of list) {
           if (p.fixedExpenseId !== fixedExpenseId) continue
           // Skip optimistic rows — solo ids reales sirven para la RPC.
-          if (p.id.startsWith('optimistic-')) continue
+          if (isOptimisticPaymentId(p.id)) continue
           if (!latest || new Date(p.paidAt).getTime() > new Date(latest.paidAt).getTime()) {
             latest = { id: p.id, paidAt: p.paidAt }
           }

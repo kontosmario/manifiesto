@@ -24,6 +24,17 @@ export interface FixedExpensePayment {
   expenseId: string | null
 }
 
+/**
+ * The record-payment mutation seeds the cache with a synthetic optimistic
+ * payment row keyed `optimistic-<iso>-<fixedExpenseId>` (see use-fixed-expenses.ts)
+ * until the real server row lands. That id is NOT a uuid, so it must never be
+ * passed to `revert_fixed_expense_payment(p_payment_id uuid)` (→ 22P02) nor
+ * surfaced as a revertable payment id. Single source of truth for the check.
+ */
+export function isOptimisticPaymentId(id: string): boolean {
+  return id.startsWith('optimistic-')
+}
+
 export function mapFixedExpensePaymentRow(row: FixedExpensePaymentRow): FixedExpensePayment {
   return {
     id: row.id,
