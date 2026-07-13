@@ -376,13 +376,15 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
           {tile.icon}
           <Text
             style={[styles.label, { color: hue.ink }]}
-            numberOfLines={2}
-            // Palabras largas de una sola pieza (Transferencias, Entretenimiento…)
-            // no entran en una línea y con numberOfLines=2 se partían a mitad de
-            // palabra. adjustsFontSizeToFit las achica hasta entrar (en vez del
-            // corte feo); ellipsizeMode="tail" solo actúa si ni al mínimo entra.
+            // Clave del fix: una palabra ÚNICA larga (Transferencia, Suscripciones,
+            // Entretenimiento) con numberOfLines=2 se char-breakea ("Transferen"/
+            // "cia") y eso YA satisface las 2 líneas → adjustsFontSizeToFit nunca
+            // dispara. Solución: las de una sola palabra van a 1 línea (sin
+            // segunda línea donde partir → la fuente se achica hasta entrar); las
+            // multi-palabra siguen a 2 líneas (wrappean por el espacio).
+            numberOfLines={tile.label.trim().includes(' ') ? 2 : 1}
             adjustsFontSizeToFit
-            minimumFontScale={0.7}
+            minimumFontScale={0.6}
             ellipsizeMode="tail"
             allowFontScaling={false}
           >
