@@ -2,15 +2,16 @@
 // --------------------------
 // Single Edge Function called by pg_cron to fan-out scheduled
 // notifications. Replaces the per-row trigger fan-out, which at
-// 5k MAU was driving ~5k Edge invocations/day. The orchestrator:
+// 5k MAU was driving ~5k Edge invocations/day.
 //
-//   1. Calls list_pending_notifications(p_kind) to get candidates.
-//   2. Chunks results into groups of 200.
-//   3. For each chunk: emit_notifications_bulk_returning to insert with
-//      dedup (returns the inserted rows' ids + content), resolve push
-//      tokens, build one ExpoPushMessage per (row × token), hand them to
-//      send-family-push v2 (which batches to Expo at 100/req and returns
-//      per-message statuses), and mark pushed_at on exactly what shipped.
+// Two roles (2026-07 coalescing):
+//   · processKind(kind) — for cron-emitted kinds (check-ins, fixed_upcoming):
+//     list_pending_notifications → emit_notifications_bulk (INSERT-ONLY, dedup,
+//     pushed_at NULL). Does NOT push.
+//   · processCoalescedRelay() — kind 'push_backlog', the SOLE pusher: reads all
+//     unpushed rows (list_unpushed_notifications), groups by recipient, and
+//     sends ONE combined push per user when 2+ are pending (else the single
+//     row's push). Marks pushed_at. The in-app feed stays granular.
 //
 // POST /functions/v1/notifications-orchestrator
 // Body { kind: Kind }
@@ -232,60 +233,114 @@ async function fetchBlockedMembershipKeys(
   return out
 }
 
-// A notification row ready to fan out to devices. `id` is the row's
-// notifications.id (so we can mark exactly the rows that shipped).
-interface OutRow {
+// ─── Coalescing relay ───────────────────────────────────────────────
+// Coalescing (owner 2026-07): el relay `push_backlog` es el ÚNICO emisor de
+// push. Agrupa TODAS las filas sin pushear por DESTINATARIO y, cuando hay 2+
+// para el mismo usuario, manda UN push combinado en vez de N. Los kinds que
+// antes pusheaban inline (check-ins, fixed_upcoming) ahora se insertan
+// insert-only (ver processKind) y caen acá. El feed in-app queda granular
+// (cada fila persiste); solo colapsa el push. Los sociales/de evento no tocan
+// esta tabla → siguen instantáneos.
+
+// Una fila candidata a coalescer. Espejo del retorno de
+// list_unpushed_notifications (incluye severity + created_at, agregados en la
+// migración 20260713120000).
+interface CoalescibleRow {
   id: string
   family_id: string
   user_id: string | null
   title: string
   body: string
+  kind: string
+  severity: string
   metadata: Record<string, unknown>
+  created_at: string
 }
 
-// Build one Expo message per (row × matching token). A family-broadcast
-// row (user_id null) fans out to every member's token; a user-scoped row
-// only to that user's tokens. `rowIdByIndex[i]` is the source row id for
-// `messages[i]`, kept aligned so we can map Expo's positional tickets
-// back to rows.
-//
-// Push audit (2026-06-15): the previous code used a Map keyed by token
-// endpoint and `rows.find(...)`, so each device received only the FIRST
-// matching row and any co-occurring notifications were silently dropped
-// (and then marked pushed). Iterating rows×tokens fixes that.
-function buildMessages(
-  rows: OutRow[],
+// Título del push combinado. Gentil / "sin culpa", neutro de horario. Pushes
+// server-side son ES-only por ahora (la localización por receptor es un
+// follow-up conocido); el body reusa los headlines ya emitidos.
+export const COMBINED_PUSH_TITLE = 'Tu resumen de hoy 🌱'
+const COMBINED_MAX_ITEMS = 3
+// Menor rank = mayor prioridad (para elegir la ruta/data del combinado).
+const SEVERITY_RANK: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  warning: 2,
+  info: 3,
+  low: 4,
+}
+
+// Body combinado: junta los headlines (title de cada fila) por " · ", ordenados
+// por hora, cap 3 + "y N más".
+export function combineBody(rows: CoalescibleRow[]): string {
+  const headlines = [...rows]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .map((r) => r.title.trim())
+    .filter((h) => h.length > 0)
+  if (headlines.length <= COMBINED_MAX_ITEMS) return headlines.join(' · ')
+  const shown = headlines.slice(0, COMBINED_MAX_ITEMS).join(' · ')
+  return `${shown} y ${headlines.length - COMBINED_MAX_ITEMS} más`
+}
+
+function highestSeverityRow(rows: CoalescibleRow[]): CoalescibleRow {
+  return [...rows].sort(
+    (a, b) =>
+      (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9) ||
+      a.created_at.localeCompare(b.created_at),
+  )[0]
+}
+
+// Agrupa por DESTINATARIO (usuario) y arma UN mensaje por usuario, fan-out a sus
+// tokens. Las filas family-wide (user_id null) van a TODOS los miembros con
+// token. `rowIdsByIndex[i]` = ids de las filas que componen `messages[i]` (una
+// fila family-wide aparece en varios destinatarios → se dedup-marca al final).
+export function buildCoalescedMessages(
+  rows: CoalescibleRow[],
   tokens: PushSubscriptionRow[],
-): { messages: ExpoPushMessage[]; rowIdByIndex: string[] } {
+): { messages: ExpoPushMessage[]; rowIdsByIndex: string[][] } {
+  const byUser = new Map<string, { familyId: string; endpoints: string[] }>()
+  for (const t of tokens) {
+    let entry = byUser.get(t.user_id)
+    if (!entry) {
+      entry = { familyId: t.family_id, endpoints: [] }
+      byUser.set(t.user_id, entry)
+    }
+    entry.endpoints.push(t.endpoint)
+  }
+
   const messages: ExpoPushMessage[] = []
-  const rowIdByIndex: string[] = []
-  for (const row of rows) {
-    for (const sub of tokens) {
-      if (sub.family_id !== row.family_id) continue
-      if (row.user_id !== null && row.user_id !== sub.user_id) continue
-      messages.push({
-        to: sub.endpoint,
-        sound: 'default',
-        title: row.title,
-        body: row.body,
-        data: row.metadata,
-      })
-      rowIdByIndex.push(row.id)
+  const rowIdsByIndex: string[][] = []
+  for (const [userId, { familyId, endpoints }] of byUser) {
+    const mine = rows.filter(
+      (r) =>
+        r.user_id === userId || (r.user_id === null && r.family_id === familyId),
+    )
+    if (mine.length === 0) continue
+    const single = mine.length === 1
+    const title = single ? mine[0].title : COMBINED_PUSH_TITLE
+    const body = single ? mine[0].body : combineBody(mine)
+    const data = single ? mine[0].metadata : highestSeverityRow(mine).metadata
+    const ids = mine.map((r) => r.id)
+    for (const endpoint of endpoints) {
+      messages.push({ to: endpoint, sound: 'default', title, body, data })
+      rowIdsByIndex.push(ids)
     }
   }
-  return { messages, rowIdByIndex }
+  return { messages, rowIdsByIndex }
 }
 
-// Invoke send-family-push (batch path) and reduce its positional
-// `statuses` into the set of row ids that hit a transient 'error' (worth
-// retrying). Returns null on a total invocation failure so the caller
-// marks nothing and the next run retries. 'removed' (DeviceNotRegistered)
-// is NOT an error — the device is gone, retrying won't help.
-async function sendMessages(
+// Envía los mensajes (send-family-push batchea a Expo 100/req). Cada mensaje
+// mapea a VARIAS filas (el combinado): una fila se considera entregada si ≥1
+// mensaje que la contiene salió 'ok'/'removed' ('removed' = device muerto,
+// reintentar no ayuda). Solo queda para reintento si TODOS sus mensajes fueron
+// 'error' transitorio. Devuelve null si la invocación falló entera.
+async function sendCoalesced(
   admin: ReturnType<typeof adminClient>,
   messages: ExpoPushMessage[],
-  rowIdByIndex: string[],
-): Promise<{ erroredRowIds: Set<string>; sent: number } | null> {
+  rowIdsByIndex: string[][],
+): Promise<{ deliveredIds: Set<string>; sent: number } | null> {
   const sendResponse = await admin.functions.invoke('send-family-push', {
     body: { messages },
   })
@@ -295,93 +350,81 @@ async function sendMessages(
   }
   const statuses = ((sendResponse.data as { statuses?: unknown } | null)?.statuses ??
     []) as Array<'ok' | 'error' | 'removed'>
-  const erroredRowIds = new Set<string>()
+  const deliveredIds = new Set<string>()
   let sent = 0
-  for (let i = 0; i < rowIdByIndex.length; i++) {
+  for (let i = 0; i < rowIdsByIndex.length; i++) {
     const st = statuses[i]
-    if (st === 'ok') sent++
-    else if (st === 'error') erroredRowIds.add(rowIdByIndex[i])
+    if (st === 'ok' || st === 'removed') {
+      if (st === 'ok') sent++
+      for (const id of rowIdsByIndex[i]) deliveredIds.add(id)
+    }
   }
-  return { erroredRowIds, sent }
+  return { deliveredIds, sent }
 }
 
-// Auditoría 2026-06-11 (H1): los crons SQL legacy (rachas, zombies,
-// price hikes, weekly insights) insertan filas en `notifications` pero
-// no pushean — quedaban in-app-only para siempre. Este kind relayea
-// las filas recientes sin push (allow-list en list_unpushed_notifications,
-// kinds cron-only para no duplicar ni checkins ni pushes sociales) y
-// las marca con pushed_at. Cron: cada 30 minutos.
-async function processPushBacklog() {
+async function processCoalescedRelay() {
   const admin = adminClient()
 
   const pendingResponse = await admin
     .rpc('list_unpushed_notifications')
-    .returns<Array<PendingRow & { id: string }>>()
+    .returns<CoalescibleRow[]>()
   if (pendingResponse.error) throw pendingResponse.error
   const rows = pendingResponse.data ?? []
   if (rows.length === 0) {
-    return { kind: 'push_backlog', processed: 0, sent: 0, chunks: 0 }
+    return { kind: 'push_backlog', processed: 0, sent: 0 }
   }
 
-  const chunks = chunk(rows, CHUNK_SIZE)
+  // Todos los tokens de familia válidos (family-wide necesita todos los
+  // miembros; el agrupado por usuario re-aplica el user-scoping). userIds=[]
+  // → fetchPushTokens devuelve todos los family-scoped + filtra blocked/muted.
+  const familyIds = [...new Set(rows.map((r) => r.family_id))]
+  const tokens = await fetchPushTokens(admin, familyIds, [])
+
+  const { messages, rowIdsByIndex } = buildCoalescedMessages(rows, tokens)
+
   let sent = 0
-  let marked = 0
-
-  for (const c of chunks) {
-    const familyIds = [...new Set(c.map((r) => r.family_id))]
-    const userIds = c
-      .map((r) => r.user_id)
-      .filter((id): id is string => typeof id === 'string')
-    const tokens = await fetchPushTokens(admin, familyIds, userIds)
-
-    const outRows: OutRow[] = c.map((r) => ({
-      id: r.id,
-      family_id: r.family_id,
-      user_id: r.user_id,
-      title: r.title,
-      body: r.body,
-      metadata: r.metadata,
-    }))
-    const { messages, rowIdByIndex } = buildMessages(outRows, tokens)
-
-    let erroredRowIds = new Set<string>()
-    if (messages.length > 0) {
-      const outcome = await sendMessages(admin, messages, rowIdByIndex)
-      if (outcome === null) {
-        // Total send failure → mark nothing; the next 30-min run retries
-        // (rows stay inside the 24h window).
-        continue
-      }
-      erroredRowIds = outcome.erroredRowIds
-      sent += outcome.sent
+  let deliveredIds = new Set<string>()
+  if (messages.length > 0) {
+    const outcome = await sendCoalesced(admin, messages, rowIdsByIndex)
+    if (outcome === null) {
+      // Falla total de envío → no marcar nada; la próxima corrida reintenta
+      // (las filas siguen dentro de la ventana de 24h).
+      return { kind: 'push_backlog', processed: 0, sent: 0, failed: true }
     }
+    sent = outcome.sent
+    deliveredIds = outcome.deliveredIds
+  }
 
-    // Mark every row that did NOT hit a transient error. Covers:
-    //   · no-token rows (in-app-only — retrying won't invent a device)
-    //   · delivered rows (≥1 'ok' ticket)
-    //   · rows whose only tokens were dead (pruned; no point retrying)
-    // Rows with a transient 'error' stay unpushed and are retried.
-    const idsToMark = c
-      .filter((r) => !erroredRowIds.has(r.id))
-      .map((r) => r.id)
-    if (idsToMark.length > 0) {
-      const markResponse = await admin.rpc('mark_notifications_pushed', {
-        p_ids: idsToMark,
-      })
-      if (markResponse.error) {
-        console.error('mark_notifications_pushed failed', markResponse.error)
-      } else {
-        marked += typeof markResponse.data === 'number' ? markResponse.data : 0
-      }
+  // Marcar pushed las filas entregadas (≥1 mensaje ok/removed) O sin dispositivo
+  // (in-app-only — reintentar no inventa un token). Las que quedaron solo en
+  // mensajes 'error' se dejan sin marcar para la próxima corrida.
+  const idsInMessages = new Set(rowIdsByIndex.flat())
+  const toMark: string[] = []
+  for (const r of rows) {
+    if (deliveredIds.has(r.id) || !idsInMessages.has(r.id)) toMark.push(r.id)
+  }
+  let marked = 0
+  if (toMark.length > 0) {
+    const markResponse = await admin.rpc('mark_notifications_pushed', {
+      p_ids: toMark,
+    })
+    if (markResponse.error) {
+      console.error('mark_notifications_pushed failed', markResponse.error)
+    } else {
+      marked = typeof markResponse.data === 'number' ? markResponse.data : 0
     }
   }
 
-  return { kind: 'push_backlog', processed: marked, sent, chunks: chunks.length }
+  return { kind: 'push_backlog', processed: marked, sent }
 }
 
+// Los kinds cron-emitidos (check-ins, fixed_upcoming) ya NO pushean inline: se
+// insertan insert-only (pushed_at NULL) con dedup, y processCoalescedRelay los
+// pushea combinados. Así 2+ notifs que caen juntas para un mismo usuario
+// colapsan en 1 push. (Antes: emit_returning + push inline por fila.)
 async function processKind(kind: Kind) {
   if (kind === 'push_backlog') {
-    return processPushBacklog()
+    return processCoalescedRelay()
   }
   const admin = adminClient()
 
@@ -391,74 +434,23 @@ async function processKind(kind: Kind) {
   if (pendingResponse.error) throw pendingResponse.error
   const pending = pendingResponse.data ?? []
   if (pending.length === 0) {
-    return { kind, processed: 0, sent: 0, chunks: 0 }
+    return { kind, processed: 0 }
   }
 
   const chunks = chunk(pending, CHUNK_SIZE)
   let processed = 0
-  let sent = 0
-  let marked = 0
-
   for (const c of chunks) {
-    // 1. Persist with dedup. The *returning* variant hands back the rows
-    //    actually inserted (post-dedup) with their new ids + content, so
-    //    we (a) push only fresh rows — no duplicate push for a row that
-    //    already existed today — and (b) can mark pushed_at on exactly
-    //    what shipped (previously processKind never marked at all,
-    //    leaving thousands of rows pushed_at=NULL forever).
-    const insertResponse = await admin.rpc('emit_notifications_bulk_returning', {
-      p_rows: c,
-    })
+    // Insert-only con dedup (on conflict dedup_key do nothing). Deja pushed_at
+    // NULL → el relay coalescente se encarga del push.
+    const insertResponse = await admin.rpc('emit_notifications_bulk', { p_rows: c })
     if (insertResponse.error) {
-      console.error('emit_notifications_bulk_returning failed', insertResponse.error)
+      console.error('emit_notifications_bulk failed', insertResponse.error)
       continue
     }
-    const inserted = (insertResponse.data ?? []) as OutRow[]
-    processed += inserted.length
-    if (inserted.length === 0) continue
-
-    // 2. Resolve push tokens for the inserted rows' recipients.
-    const familyIds = [...new Set(inserted.map((r) => r.family_id))]
-    const userIds = inserted
-      .map((r) => r.user_id)
-      .filter((id): id is string => typeof id === 'string')
-    const tokens = await fetchPushTokens(admin, familyIds, userIds)
-
-    // 3. One message per (row × matching token). A family-broadcast row
-    //    (user_id null) fans out to every member's token; a user-scoped
-    //    row only to that user's tokens.
-    const { messages, rowIdByIndex } = buildMessages(inserted, tokens)
-
-    let erroredRowIds = new Set<string>()
-    if (messages.length > 0) {
-      const outcome = await sendMessages(admin, messages, rowIdByIndex)
-      if (outcome === null) {
-        // Total send failure: leave inserted rows unpushed. Allow-listed
-        // kinds get retried by the backlog; the rest stay in-app-only.
-        continue
-      }
-      erroredRowIds = outcome.erroredRowIds
-      sent += outcome.sent
-    }
-
-    // 4. Mark pushed_at on inserted rows that didn't hit a transient
-    //    error (delivered, no-token, or only-dead-token rows).
-    const idsToMark = inserted
-      .filter((r) => !erroredRowIds.has(r.id))
-      .map((r) => r.id)
-    if (idsToMark.length > 0) {
-      const markResponse = await admin.rpc('mark_notifications_pushed', {
-        p_ids: idsToMark,
-      })
-      if (markResponse.error) {
-        console.error('mark_notifications_pushed failed', markResponse.error)
-      } else {
-        marked += typeof markResponse.data === 'number' ? markResponse.data : 0
-      }
-    }
+    processed += typeof insertResponse.data === 'number' ? insertResponse.data : 0
   }
 
-  return { kind, processed, sent, marked, chunks: chunks.length }
+  return { kind, processed, inserted: true, chunks: chunks.length }
 }
 
 // Constant-time string equality. The naive `a === b` short-circuits
