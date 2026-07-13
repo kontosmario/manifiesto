@@ -149,9 +149,32 @@ export function asFixedExpense(row: RawFixedExpense): FixedExpense {
   }
 }
 
+/**
+ * Thrown when a create/rename collides with the `UNIQUE(family_id, name)`
+ * constraint on `fixed_expenses` (Postgres 23505). Typed so the UI can show a
+ * clear "name taken" message and, crucially, NOT offer a blind retry — resending
+ * the same name can only 409 again.
+ */
+export class FixedExpenseNameTakenError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FixedExpenseNameTakenError'
+  }
+}
+
+export function isDuplicateNameError(error: PostgrestError): boolean {
+  return (error.code ?? '') === '23505'
+}
+
 export function throwMigrationError(error: PostgrestError): never {
   if (isMissingFixedExpensesTableError(error) || isMissingCommitmentColumnsError(error)) {
     throw new Error(i18n.t('fijos:errors.missingMigration'))
+  }
+
+  // The only user-facing unique constraint is (family_id, name); a 23505 here
+  // always means a duplicate fixed-expense name.
+  if (isDuplicateNameError(error)) {
+    throw new FixedExpenseNameTakenError(i18n.t('fijos:errors.nameAlreadyExists'))
   }
 
   const parts = [error.message, error.details, error.hint].filter(

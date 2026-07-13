@@ -61,6 +61,7 @@ import {
 } from '@/features/home/log-home-event'
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useFamilyMembers } from '@/features/family/use-family-members'
+import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
@@ -202,6 +203,9 @@ export function HomeDashboard({
   // decisión (Code review H1, sprint A 2026-06-08).
   const sessionUserId = useAuthSession().data?.user?.id
   const applyDecision = useApplyMonthCloseDecision(familyId, sessionUserId)
+  // Ownership gate: shared `family_finance` is owner-only at the RLS layer.
+  // Only the owner may run the silent cycle-anchor write below.
+  const isFamilyOwner = useMyFamilyRole(sessionUserId, familyId).data === 'owner'
 
   // Splash visibility — gate compartido entre el cycle balance prompt
   // y la decisión standalone para que NINGÚN sheet/modal aparezca
@@ -385,12 +389,17 @@ export function HomeDashboard({
       return
     }
     if (silentAnchorWroteRef.current) return
+    // Only the owner may persist shared family_finance (RLS owner-only). A
+    // non-owner member's write 42501s and — because the upsert used to report
+    // that as success — spun a retry storm. Members simply skip it.
+    if (!isFamilyOwner) return
     if (dashboard.familyFinanceQuery.isLoading) return
     if (dashboard.expensesQuery.isLoading) return
     silentAnchorWroteRef.current = true
     onConfirmCycleStartingBalance(null)
   }, [
     onboardingSkippedViaExpense,
+    isFamilyOwner,
     dashboard.familyFinanceQuery.isLoading,
     dashboard.expensesQuery.isLoading,
     onConfirmCycleStartingBalance,

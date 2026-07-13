@@ -12,6 +12,7 @@ import {
   type UpdateFixedExpenseInput,
   type UpsertFixedExpenseInput,
 } from '@/features/fixed-expenses/fixed-expense-repository'
+import { FixedExpenseNameTakenError } from '@/features/fixed-expenses/fixed-expense-repository.model'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import { sendFamilyPush } from '@/lib/send-family-push'
 import { toast } from '@/lib/toast-bus'
@@ -157,12 +158,18 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
         }).catch(() => {})
       }
     },
-    onError: (_err, input, ctx) => {
+    onError: (err, input, ctx) => {
       if (familyId && ctx?.previous !== undefined) {
         queryClient.setQueryData(
           fixedExpenseQueryKeys.family(familyId),
           ctx.previous,
         )
+      }
+      // Duplicate name: retrying the same payload can only 409 again, so show
+      // the reason without a (futile) retry affordance.
+      if (err instanceof FixedExpenseNameTakenError) {
+        toast.error(err.message)
+        return
       }
       toast.error(i18n.t('fijos:errors.createFailed'), {
         actionLabel: i18n.t('common:actions.retry'),

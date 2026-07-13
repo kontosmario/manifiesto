@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import i18n from '@/lib/i18n'
+import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
 import {
   asFixedExpense,
   buildFixedExpensePayload,
@@ -9,6 +10,19 @@ import {
   type UpdateFixedExpenseInput,
   type UpsertFixedExpenseInput,
 } from '@/features/fixed-expenses/fixed-expense-repository.model'
+
+/**
+ * Write paths filter on `fixed_expenses.id` / `fixed_expense_id` — uuid columns.
+ * A just-created fijo lives in the cache under a synthetic `temp-` id until the
+ * create round-trip resolves; acting on it (mark paid, edit, delete) before then
+ * would send `temp-…` to a uuid column → Postgres 22P02. Reject early with a
+ * clear message instead of a raw DB error.
+ */
+function assertPersistedFixedExpenseId(fixedExpenseId: string): void {
+  if (!isPersistedFixedExpenseId(fixedExpenseId)) {
+    throw new Error(i18n.t('fijos:errors.stillSaving'))
+  }
+}
 import {
   type FixedExpense,
   type FixedExpenseStatus,
@@ -74,6 +88,7 @@ export async function updateFixedExpense(
   familyId: string,
   { fixedExpenseId, ...input }: UpdateFixedExpenseInput,
 ) {
+  assertPersistedFixedExpenseId(fixedExpenseId)
   const payload = buildFixedExpensePayload({
     ...input,
     allowZeroDebtBalance: true,
@@ -95,6 +110,7 @@ export async function updateFixedExpenseStatus(
   fixedExpenseId: string,
   status: FixedExpenseStatus,
 ) {
+  assertPersistedFixedExpenseId(fixedExpenseId)
   const { error } = await supabase
     .from('fixed_expenses')
     .update({ status })
@@ -125,6 +141,7 @@ export interface RecordFixedExpensePaymentInput {
 export async function recordFixedExpensePayment(
   input: RecordFixedExpensePaymentInput,
 ) {
+  assertPersistedFixedExpenseId(input.fixedExpenseId)
   const sessionResponse = await supabase.auth.getSession()
   if (sessionResponse.error) {
     throw sessionResponse.error
@@ -186,6 +203,7 @@ export async function revertFixedExpensePayment(paymentId: string) {
 }
 
 export async function deleteFixedExpense(familyId: string, fixedExpenseId: string) {
+  assertPersistedFixedExpenseId(fixedExpenseId)
   const { error } = await supabase
     .from('fixed_expenses')
     .delete()

@@ -5,6 +5,7 @@ import {
   financeInputToStoragePayload,
   isMissingFinanceColumnError,
   isMissingTableError,
+  isRlsViolationError,
   mapFamilyFinanceRecord,
   normalizeFinancePayload,
   validateFamilyFinanceInput,
@@ -139,8 +140,18 @@ export async function upsertFamilyFinance(
   }
 
   if (upsertError) {
+    // Offline / pre-migration schema → keep the local fallback so the app
+    // stays usable without a round-trip.
     if (isMissingTableError(upsertError)) {
       return mapFamilyFinanceRecord(payload, 'fallback')
+    }
+
+    // RLS denial (42501, e.g. a non-owner member writing shared finance) must
+    // propagate. Reporting it as a fallback "success" caches an optimistic
+    // value the DB rejected, which defeats the caller's write-once guard and
+    // spins a ~1-req/sec retry storm (home-dashboard silent-anchor effect).
+    if (isRlsViolationError(upsertError)) {
+      throw upsertError
     }
 
     return mapFamilyFinanceRecord(payload, 'fallback')

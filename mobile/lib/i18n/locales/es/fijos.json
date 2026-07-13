@@ -287,6 +287,8 @@
     "paymentAmountPositive": "El monto del pago debe ser mayor a 0.",
     "missingMigration": "Falta correr la migracion SQL para habilitar Gastos Fijos.",
     "unexpectedSupabase": "Ocurrio un error inesperado en Supabase.",
+    "nameAlreadyExists": "Ya tienes un gasto fijo con ese nombre.",
+    "stillSaving": "El gasto fijo se esta guardando. Vuelve a intentar en un momento.",
     "nameEmpty": "El nombre del gasto fijo no puede estar vacio.",
     "amountInvalid": "El monto del gasto fijo debe ser valido (> 0).",
     "categoryRequired": "Elige una categoria para poder integrar el pago al historial.",

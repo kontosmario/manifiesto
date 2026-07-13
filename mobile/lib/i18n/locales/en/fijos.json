@@ -287,6 +287,8 @@
     "paymentAmountPositive": "The payment amount must be greater than 0.",
     "missingMigration": "The SQL migration to enable Fixed expenses still needs to run.",
     "unexpectedSupabase": "An unexpected error occurred in Supabase.",
+    "nameAlreadyExists": "You already have a fixed expense with that name.",
+    "stillSaving": "The fixed expense is still saving. Try again in a moment.",
     "nameEmpty": "The fixed expense name can't be empty.",
     "amountInvalid": "The fixed expense amount must be valid (> 0).",
     "categoryRequired": "Choose a category so the payment can be added to your history.",
