@@ -173,35 +173,52 @@ function SavingsGoalViewer({
   const reauth = useRequireReauth()
 
   // Metas SECUENCIALES: al cumplir la meta vigente se habilita crear la
-  // próxima. Capturamos la meta cumplida en un ref al abrir el wizard para
-  // retirarla (isActive:false) recién cuando la nueva ya existe — inmune a que
-  // un refetch re-renderice el viewer con la meta nueva antes del onCreated.
+  // próxima. Retiramos la cumplida (isActive:false) ANTES de abrir el wizard,
+  // así NUNCA hay dos metas activas a la vez (el read-path activo toma la más
+  // vieja → dos activas mostraría la cumplida en Home/Control). El ref guarda
+  // la meta retirada para reactivarla si el usuario cancela sin crear la nueva.
   const [nextWizardOpen, setNextWizardOpen] = useState(false)
-  const retireGoalRef = useRef<SavingsGoal | null>(null)
+  const reactivateGoalRef = useRef<SavingsGoal | null>(null)
 
-  const handleCreateNext = () => {
-    retireGoalRef.current = goal
+  const buildGoalInput = (g: SavingsGoal, isActive: boolean) => ({
+    input: {
+      title: g.title,
+      emoji: g.emoji,
+      goalAmount: g.goalAmount,
+      currentAmount: g.currentAmount,
+      targetMonths: g.targetMonths,
+      isActive,
+    },
+    existingId: g.id,
+  })
+
+  const handleCreateNext = async () => {
+    try {
+      // Retiro atómico-por-mutación de la meta cumplida antes de abrir el wizard.
+      await upsert.mutateAsync(buildGoalInput(goal, false))
+    } catch {
+      // La onError del hook ya muestra el toast; no abrimos el wizard.
+      return
+    }
+    reactivateGoalRef.current = goal
     setNextWizardOpen(true)
   }
 
   const handleNextGoalCreated = () => {
+    // Se creó la próxima meta → la cumplida queda retirada (no reactivar).
+    reactivateGoalRef.current = null
     setNextWizardOpen(false)
-    const retiring = retireGoalRef.current
-    retireGoalRef.current = null
-    if (!retiring) return
-    // Retirá la meta cumplida a historial (isActive:false). Sin esto el
-    // read-path activo (meta activa más vieja) seguiría devolviendo la cumplida.
-    upsert.mutate({
-      input: {
-        title: retiring.title,
-        emoji: retiring.emoji,
-        goalAmount: retiring.goalAmount,
-        currentAmount: retiring.currentAmount,
-        targetMonths: retiring.targetMonths,
-        isActive: false,
-      },
-      existingId: retiring.id,
-    })
+  }
+
+  const handleNextWizardClose = () => {
+    setNextWizardOpen(false)
+    // Canceló sin crear → reactivá la meta cumplida para no dejar al usuario
+    // sin meta activa.
+    const toReactivate = reactivateGoalRef.current
+    reactivateGoalRef.current = null
+    if (toReactivate) {
+      upsert.mutate(buildGoalInput(toReactivate, true))
+    }
   }
 
   // ── Derived insight ──────────────────────────────────────────────
@@ -313,7 +330,7 @@ function SavingsGoalViewer({
               <AppButton
                 variant="primary"
                 label={t('settings:savingsGoalScreen.createNext')}
-                onPress={handleCreateNext}
+                onPress={() => void handleCreateNext()}
               />
             </View>
           ) : (
@@ -418,7 +435,7 @@ function SavingsGoalViewer({
         familyId={familyId}
         userId={userId}
         onCreated={handleNextGoalCreated}
-        onClose={() => setNextWizardOpen(false)}
+        onClose={handleNextWizardClose}
       />
     </View>
   )

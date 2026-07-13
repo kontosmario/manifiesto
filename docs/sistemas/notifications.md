@@ -32,7 +32,7 @@
 |---|---|---|---|
 | **checkin_morning** | 9h AR | cupo/saldo CANÓNICOS vía `cycle_disponible` (== disponible del Home); respeta prefs/mute; dedup diario | alto ✅ |
 | **checkin_evening** | 20:30h AR | contextual (cargaste hoy o no) | alto ✅ |
-| ~~checkin_midday~~ | — | **CORTADO 2026-06-15** (nudge genérico sin contexto) | — |
+| ~~checkin_midday~~ | — | **CORTADO** (nudge genérico sin contexto). Ojo: se reactivó por error en `20260625070000` y se re-desprogramó en `20260713100000` (`cron.unschedule('notifications-midday')`) | — |
 | **fixed_upcoming** | 9h AR | fijo que vence hoy/mañana (o notify_days_before); **>2 fijos/día → 1 digest family-wide** (`fixed_upcoming_digest`, migración `20260621010000`) | medio ✅ |
 | **streak_at_risk / broken / recovery** | TZ-aware (ventanas locales) | racha activa; recovery solo hitos 1/3/7/14; dedup | alto ✅ |
 | **weekly_insights (goal_behind)** | lun 9h | solo si <30% del pace | medio ✅ |

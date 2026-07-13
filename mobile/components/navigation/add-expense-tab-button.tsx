@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NoSpendConfirmSheet } from '@/components/gastos/no-spend-confirm-sheet'
 import { useCategories, type Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
@@ -51,8 +51,9 @@ import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import {
   markAddFabHintSeen,
-  useAddFabHintSeen,
+  useAddFabHint,
 } from '@/components/navigation/addfab-hint-store'
+import { useToursSeen } from '@/features/tours/use-tours-seen'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -211,18 +212,27 @@ export function AddExpenseTabButton({
   }, [])
 
   // Descubribilidad del long-press: el menú de atajos (ingreso/fijo/importar/
-  // día sin gasto) es invisible sin señal. La primera vez, con el FAB a la
-  // vista, mostramos un tip una sola vez (persistente vía addfab-hint-store) y
-  // lo marcamos visto. markAddFabHintSeen es idempotente.
-  const addFabHintSeen = useAddFabHintSeen()
+  // día sin gasto) es invisible sin señal. Mostramos un tip una sola vez
+  // (persistente vía addfab-hint-store), pero SOLO a quien ya vio el tour del
+  // Home en una sesión previa — el tour ya explica el gesto a los usuarios
+  // nuevos, así que no lo duplicamos ni lo pisamos durante el onboarding.
+  const addFabHint = useAddFabHint()
+  const homeTourSeen = useToursSeen().isSeen(HOME_TOUR)
+  const tipEligibleRef = useRef<boolean | null>(null)
   useEffect(() => {
-    if (addFabHintSeen) return
+    if (!addFabHint.hydrated) return
+    // Elegibilidad capturada UNA vez ya hidratada (evita mostrarlo a un usuario
+    // en pleno onboarding cuyo tour aún no corrió este arranque).
+    if (tipEligibleRef.current === null) {
+      tipEligibleRef.current = homeTourSeen && !addFabHint.seen
+    }
+    if (!tipEligibleRef.current || addFabHint.seen) return
     const timer = setTimeout(() => {
       toast.info(t('states:addFab.tip'))
       markAddFabHintSeen()
     }, 2500)
     return () => clearTimeout(timer)
-  }, [addFabHintSeen, t])
+  }, [addFabHint.hydrated, addFabHint.seen, homeTourSeen, t])
 
   // Semantic accent tints per action role. Each ring telegraphs the
   // action's category at-a-glance (positive cashflow vs scheduled

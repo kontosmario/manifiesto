@@ -40,18 +40,28 @@ export function markAddFabHintSeen(): void {
   void setPersistentValue(STORAGE_KEY, '1')
 }
 
-/** Reactive snapshot — re-renders when `markAddFabHintSeen` runs. */
-export function useAddFabHintSeen(): boolean {
-  const [state, setState] = useState<boolean>(() => seen)
+/**
+ * Reactive snapshot. `hydrated` flips true once the persisted flag has been
+ * read — callers must wait for it before deciding to show the hint, otherwise a
+ * slow SecureStore read could show the tip to a user who already dismissed it
+ * (the module starts optimistically at seen=false).
+ */
+export function useAddFabHint(): { seen: boolean; hydrated: boolean } {
+  const [state, setState] = useState<{ seen: boolean; hydrated: boolean }>(
+    () => ({ seen, hydrated }),
+  )
   useEffect(() => {
     let active = true
-    listeners.add(setState)
+    const listener = (v: boolean) => {
+      if (active) setState({ seen: v, hydrated: true })
+    }
+    listeners.add(listener)
     void hydrate().then(() => {
-      if (active) setState(seen)
+      if (active) setState({ seen, hydrated: true })
     })
     return () => {
       active = false
-      listeners.delete(setState)
+      listeners.delete(listener)
     }
   }, [])
   return state
