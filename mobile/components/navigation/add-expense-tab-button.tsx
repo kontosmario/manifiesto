@@ -214,18 +214,24 @@ export function AddExpenseTabButton({
   }, [])
 
   // Descubribilidad del long-press: el menú de atajos (ingreso/fijo/importar/
-  // día sin gasto) es invisible sin señal. Al arrancar (Home a la vista),
-  // mostramos un tip UNA vez si el usuario ya usó el "+" varias veces sin
-  // descubrir el gesto. El check espera la hidratación (sin race) y es
-  // behavior-based (nunca dispara en onboarding).
+  // día sin gasto) es invisible sin señal. Al montar la tab-bar mostramos un tip
+  // UNA vez si el usuario ya usó el "+" varias veces sin descubrir el gesto. El
+  // check espera la hidratación (sin race) y es behavior-based (nunca dispara en
+  // onboarding). El FAB está a la vista en todos los tabs, así que el tip es
+  // relevante donde caiga.
   useEffect(() => {
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
     void shouldShowAddFabTip().then((show) => {
       if (cancelled || !show) return
       timer = setTimeout(() => {
-        toast.info(t('states:addFab.tip'))
-        void markAddFabHintSeen()
+        // Re-chequeo: si el usuario descubrió el long-press durante el delay,
+        // shouldShowAddFabTip ya devuelve false → no mostramos un tip redundante.
+        void shouldShowAddFabTip().then((stillShow) => {
+          if (cancelled || !stillShow) return
+          toast.info(t('states:addFab.tip'))
+          void markAddFabHintSeen()
+        })
       }, 1500)
     })
     return () => {
