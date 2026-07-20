@@ -58,6 +58,10 @@ language plpgsql
 security definer
 set search_path to 'public'
 as $$
+-- El OUT `user_id` colisiona con la columna user_id en `on conflict (user_id,...)`
+-- → resolver identificadores ambiguos a la COLUMNA (si no, "column reference
+-- user_id is ambiguous" EN RUNTIME al llamar la fn; el CREATE no falla).
+#variable_conflict use_column
 begin
   return query
   insert into public.advisor_push_ledger as l (user_id, kind, pushed_at)
