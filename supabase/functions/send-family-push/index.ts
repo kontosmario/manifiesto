@@ -227,6 +227,12 @@ const ALLOWED_PUSH_KINDS = new Set([
   'assistant_dormant',
 ])
 
+// Server-side idempotency window for advisor pushes (kind `advisor_*`). Those
+// carry no notification row and used to rely only on a client-local cooldown
+// that fails under the useAdvisorNotificationSync race + dev reinstalls →
+// push storms. The ledger RPC caps them at one per (family, kind) per window.
+const ADVISOR_PUSH_COOLDOWN_SECONDS = 4 * 60 * 60
+
 function isExpoPushToken(value: string): boolean {
   return /^ExponentPushToken\[[^\]]+\]$/.test(value) || /^ExpoPushToken\[[^\]]+\]$/.test(value)
 }
@@ -757,6 +763,41 @@ export async function handler(request: Request): Promise<Response> {
     return jsonResponse({ sent: 0, failed: 0, removed: 0 }, 200, cors)
   }
 
+  // Advisor pushes (kind `advisor_*`) are the ONLY push path with no
+  // notification row and no server dedup — they relied on a client-local
+  // cooldown that fails under the useAdvisorNotificationSync race + dev
+  // reinstalls, producing storms (e.g. "Cobro esperado no confirmado" ×5).
+  // Backstop: now that the REAL recipients are resolved (post block/mute
+  // filters), dedup PER RECIPIENT (not per family, so A→B doesn't silence the
+  // alert B needs to send to A). The ledger is consumed only for recipients we
+  // are about to actually send to — a 429/500/0-recipient abort earlier never
+  // burns the window. Non-advisor kinds skip this. Fail-open on RPC error.
+  // NOTE: kind 'advisor_digest' (client sends it when >2 signals fire at once)
+  // shares one content-blind key (recipient, 'advisor_digest'), so at most one
+  // "you have N alerts" push per recipient per window even across different
+  // clusters. That's intentional: the digest IS the anti-spam consolidation and
+  // the underlying signals stay visible in-app; we cap the push, not the data.
+  let deliverySubscriptions = subscriptions
+  if (rawKind.startsWith('advisor_')) {
+    const recipientIds = [...new Set(subscriptions.map((s) => s.user_id))]
+    const allowed = await adminClient.rpc('advisor_push_allowed_recipients', {
+      p_user_ids: recipientIds,
+      p_kind: rawKind,
+      p_cooldown_seconds: ADVISOR_PUSH_COOLDOWN_SECONDS,
+    })
+    if (allowed.error) {
+      console.error('[send-family-push] advisor_push_allowed_recipients failed', allowed.error)
+    } else {
+      const allow = new Set(
+        ((allowed.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id),
+      )
+      deliverySubscriptions = subscriptions.filter((s) => allow.has(s.user_id))
+      if (deliverySubscriptions.length === 0) {
+        return jsonResponse({ sent: 0, failed: 0, removed: 0, deduped: true }, 200, cors)
+      }
+    }
+  }
+
   const webPushPayload = JSON.stringify({
     title,
     body,
@@ -765,7 +806,7 @@ export async function handler(request: Request): Promise<Response> {
   })
 
   const results = await Promise.all(
-    subscriptions.map((subscription) => {
+    deliverySubscriptions.map((subscription) => {
       if (isExpoSubscription(subscription)) {
         return sendExpoPush(adminClient, subscription, { title, body, kind, url })
       }
