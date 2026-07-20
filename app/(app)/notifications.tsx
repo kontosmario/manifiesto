@@ -1,11 +1,11 @@
 import { RequireAuth } from '@/components/guards'
-import { NotificationsScreen } from '@/screens/home/notifications-screen'
+import { NeoNotificationsScreen } from '@/screens/home/neo/neo-notifications-screen'
 
 export default function NotificationsRoute() {
   return (
     <RequireAuth>
       {({ userId, familyId }) => (
-        <NotificationsScreen userId={userId} familyId={familyId} />
+        <NeoNotificationsScreen userId={userId} familyId={familyId} />
       )}
     </RequireAuth>
   )

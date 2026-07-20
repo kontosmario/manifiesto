@@ -248,7 +248,10 @@
     "pendingCount_other": "{{count}} pending",
     "markAllAccessibility": "Mark all as read",
     "markAll": "Mark all",
-    "loadError": "We couldn't load notifications."
+    "loadError": "We couldn't load notifications.",
+    "calmTitle": "All calm",
+    "calmBody": "No pending alerts.\nBrot lets you know when there's something for your home.",
+    "calmChip": "Up to date · 0 pending"
   },
   "notificationsHook": {
     "deleteError": "The notification couldn't be deleted.",

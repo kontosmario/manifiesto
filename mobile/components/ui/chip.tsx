@@ -5,7 +5,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
 import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { useAppTheme, useCategoryHue } from '@/theme/theme-provider'
 
 interface ChipProps {
@@ -110,6 +110,9 @@ const styles = StyleSheet.create({
   },
   baseLabel: {
     fontWeight: '700',
+    // La cara ahora viaja en fontFamily (Nunito) — sin esto el variant
+    // compact quedaba en fuente de sistema junto a chips default en Nunito.
+    fontFamily: nunitoFamily('700'),
   },
   defaultLabel: {
     ...typography.buttonCompact, // fontSize:13, fontWeight:'700'

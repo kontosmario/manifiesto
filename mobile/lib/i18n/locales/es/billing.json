@@ -46,10 +46,13 @@
     "privacy": "Privacidad",
     "privacyA11y": "Política de privacidad",
     "logout": "Cerrar sesión",
-    "deleteAccount": "Eliminar cuenta"
+    "deleteAccount": "Eliminar cuenta",
+    "savingsBubble": "Con el anual ahorras ${{amount}} · −{{percent}}%"
   },
   "freePeriodBanner": {
-    "title": "Acceso completo"
+    "title": "Acceso completo",
+    "daysRemaining_one": "{{count}} día restante",
+    "daysRemaining_other": "{{count}} días restantes"
   },
   "freeAccessBadge_one": "Acceso completo: {{count}} día restante",
   "freeAccessBadge_other": "Acceso completo: {{count}} días restantes",

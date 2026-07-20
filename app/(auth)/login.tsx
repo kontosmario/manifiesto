@@ -1,5 +1,5 @@
-import { LoginScreen } from '@/screens/auth/login-screen'
+import { NeoLoginScreen } from '@/screens/auth/neo/neo-login-screen'
 
 export default function LoginRoute() {
-  return <LoginScreen />
+  return <NeoLoginScreen />
 }

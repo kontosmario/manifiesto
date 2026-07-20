@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { Alert } from 'react-native'
 import { useRouter, type Href } from 'expo-router'
-import { WelcomeScreen } from '@/screens/auth/welcome-screen'
+import { NeoWelcomeScreen } from '@/screens/auth/neo/neo-welcome-screen'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { logoutSession } from '@/features/auth/logout'
 
@@ -62,7 +62,7 @@ export default function WelcomeRoute() {
   }, [router])
 
   return (
-    <WelcomeScreen
+    <NeoWelcomeScreen
       isBusy={isBusy}
       onCreate={handleEmpezar}
       onLogin={handleLogin}

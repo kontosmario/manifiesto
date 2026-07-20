@@ -38,7 +38,8 @@
       "household": "Your household",
       "income": "Your income",
       "almostDone": "Almost done",
-      "savings": "Your savings"
+      "savings": "Your savings",
+      "contribution": "Your contribution"
     },
     "back": "Back to the previous step"
   },
@@ -116,7 +117,8 @@
     "errorCreateAccount": "We couldn't create your account",
     "errorInvalidCodeTitle": "Invalid code",
     "errorInvalidCodeMessage": "Enter the code that was shared with you.",
-    "errorValidateCode": "We couldn't validate the code"
+    "errorValidateCode": "We couldn't validate the code",
+    "alreadyCreatedCantJoin": "You already created your household in this step. Restart the app to join a different one."
   },
   "familySummary": {
     "title": "The household",
@@ -161,7 +163,9 @@
     "incomeEyebrow": "YOUR MONTHLY INCOME",
     "amountLabel": "Your monthly salary",
     "hintContributes": "It's added to the household's total income. You can edit it from Settings anytime.",
-    "infoNoContribute": "Done — nothing is added to the household income. If you start contributing at some point, you can turn it on from Settings."
+    "infoNoContribute": "Done — nothing is added to the household income. If you start contributing at some point, you can turn it on from Settings.",
+    "errorChoose": "Choose whether you contribute or not.",
+    "errorAmount": "Your monthly income is missing."
   },
   "savings": {
     "title": "Want to start with a goal?",
@@ -196,6 +200,232 @@
     "titleNamed": "All set, {{name}}!",
     "subtitleSolo": "Your personal space is ready. Let's go to Home.",
     "subtitleShared": "Your household is ready. Let's go to Home.",
-    "cta": "Start"
+    "cta": "Start",
+    "cycleBiweekly": "biweekly · from day {{day}}",
+    "cycleWeekly": "weekly",
+    "cycleCustom": "every {{days}} days",
+    "cycleMonthly": "monthly · day {{day}}",
+    "incomeDynamic": "Variable · {{cycle}}",
+    "savingsRow": "{{pct}}% · {{amount}} per month",
+    "joinerContributes": "You contribute {{amount}} /mo",
+    "joinerNoContribution": "You don't contribute to the household",
+    "householdSolo": "Just me",
+    "householdShared": "With my family",
+    "joinerHousehold": "You joined · {{members}} members",
+    "cycleMonthlyPlain": "monthly"
+  },
+  "redesign": {
+    "nombre": {
+      "heroTitle": "What should we call you?",
+      "heroSubtitle": "Just your first name — no surnames or formalities.",
+      "infoChip": "Autofilled from your Apple ID — tap it if that's not you",
+      "helperLeft": "Emojis and special characters filter themselves out.",
+      "ctaCaption": "You can change it anytime from Settings",
+      "disabledHint": "We still need your name to continue."
+    },
+    "avatar": {
+      "heroSubtitle": "You'll see it on your profile and in your household activity.",
+      "chosenHelper": "We already picked one for you — change it if you like",
+      "surprise": "Surprise me",
+      "mostChosen": "MOST CHOSEN",
+      "seeMore": "See all 42 ›",
+      "seeLess": "See less ‹",
+      "cta": "I'll keep this one"
+    },
+    "hogar": {
+      "heroTitle": "How will you use it?",
+      "heroSubtitle": "One tap and we're moving. You can invite people later.",
+      "ctaSolo": "Continue on my own",
+      "ctaFamilia": "Continue with my family or partner",
+      "createTitle": "Create a new household",
+      "createSub": "Start your own and invite people later.",
+      "joinTitle": "Join with a code",
+      "joinSub": "You already have a code from your family.",
+      "codeA11y": "Invitation code",
+      "codeHelper": "6 to 8 characters · letters and numbers",
+      "modeHint": "If you choose family, I'll give you an invitation code afterward.",
+      "soloReadyTitle": "Done! Your space is ready",
+      "soloReadyHint": "It's all yours. If someone joins one day, you invite them from Settings.",
+      "createdTitle": "Done! Your household is ready",
+      "createdHint": "Invite your family or partner whenever you want from Settings.",
+      "joinedTitle": "You joined the household",
+      "joinedHint": "You now share the household expenses.",
+      "continue": "Continue"
+    },
+    "ingresos": {
+      "heroDefaultTitle": "Your income, in 4 taps",
+      "heroDefaultSub": "Type, cycle, amount and day. All with defaults ready.",
+      "heroVariableTitle": "Variable income",
+      "heroVariableSub": "No fixed amount — we just set how often we check in.",
+      "heroQuincenalTitle": "Fortnightly pay",
+      "heroQuincenalSub": "The cycle closes itself every 14 days.",
+      "heroSemanalTitle": "Weekly pay",
+      "heroSemanalSub": "Pick the day of the week and you're set.",
+      "heroCustomTitle": "A cycle your way",
+      "heroCustomSub": "Set how many days between paydays, from 1 to 90.",
+      "section1": "1 · HOW DO YOU GET PAID?",
+      "section2": "2 · HOW OFTEN?",
+      "section2Variable": "2 · HOW OFTEN DO WE CLOSE THE CYCLE?",
+      "stepperLabel": "HOW MANY DAYS BETWEEN PAYDAYS",
+      "montoSectionMensual": "3 · ROUGHLY HOW MUCH COMES IN?",
+      "montoKickerMensual": "MONTHLY PAY",
+      "montoSectionQuincenal": "3 · HOW MUCH PER FORTNIGHT?",
+      "montoKickerQuincenal": "FORTNIGHTLY PAY",
+      "montoSectionSemanal": "3 · HOW MUCH PER WEEK?",
+      "montoKickerSemanal": "WEEKLY PAY",
+      "montoSectionCustom": "3 · HOW MUCH PER CYCLE?",
+      "montoKickerCustom": "PER PAYDAY",
+      "diaSemanal": "{{num}} · WHICH DAY OF THE WEEK?",
+      "diaQuincenal": "{{num}} · WHICH DAY DOES YOUR FORTNIGHT START?",
+      "diaCustom": "{{num}} · WHICH DAY DOES IT START?",
+      "diaVariableMensual": "{{num}} · WHICH DAY DOES YOUR CYCLE START?",
+      "diaMensual": "{{num}} · WHICH DAY DO YOU GET PAID?",
+      "weekday": {
+        "0": "Monday",
+        "1": "Tuesday",
+        "2": "Wednesday",
+        "3": "Thursday",
+        "4": "Friday",
+        "5": "Saturday",
+        "6": "Sunday"
+      },
+      "month": {
+        "0": "Jan",
+        "1": "Feb",
+        "2": "Mar",
+        "3": "Apr",
+        "4": "May",
+        "5": "Jun",
+        "6": "Jul",
+        "7": "Aug",
+        "8": "Sep",
+        "9": "Oct",
+        "10": "Nov",
+        "11": "Dec"
+      },
+      "capSemanaPrefix": "You get paid every ",
+      "capSemanaSuffix": " · 4 paydays a month",
+      "capVarPrefix": "Your review cycle runs from the ",
+      "capVarSuffix": " to the last day of the month",
+      "capMensualPrefix": "You get paid on the ",
+      "capMensualAccent": "day {{dia}}",
+      "capMensualSuffix": " · your cycle runs from the {{dia}} to the last day of the month",
+      "capCadaPrefix": "You get paid every ",
+      "capCadaAccent": "{{cadaN}} days",
+      "capCadaSuffix": " from the {{dia}} · next payday: {{proximo}}",
+      "faltanteTipo": "Choose how you get paid to continue.",
+      "faltanteCiclo": "Choose how often you get paid to continue.",
+      "faltanteMonto": "The amount is missing.",
+      "faltanteDia": "The payday is missing.",
+      "tipo": {
+        "fijo": {
+          "title": "Fixed salary",
+          "sub": "I get paid the same each period."
+        },
+        "variable": {
+          "title": "Variable or freelance",
+          "sub": "It changes — it builds up from what comes in."
+        }
+      },
+      "variableInfo": "No fixed amount: every income you log adds to your budget instantly.",
+      "ciclo": {
+        "mensual": {
+          "title": "Monthly",
+          "sub": "Once a month"
+        },
+        "quincenal": {
+          "title": "Fortnightly",
+          "sub": "Every 14 days"
+        },
+        "semanal": {
+          "title": "Weekly",
+          "sub": "Every 7 days"
+        },
+        "custom": {
+          "title": "Custom",
+          "sub": "Every N days"
+        }
+      },
+      "tapToEdit": "Tap to edit",
+      "stepperUnit": "DAYS",
+      "stepperHelper": "From 1 to 90 days — for odd jobs, side gigs or irregular pay.",
+      "weekdayInitial": {
+        "0": "M",
+        "1": "T",
+        "2": "W",
+        "3": "T",
+        "4": "F",
+        "5": "S",
+        "6": "S"
+      }
+    }
+  },
+  "savingsStep": {
+    "heroTitle": "Should we save a little each month?",
+    "heroSubtitle": "We suggest 10% — you can set 0% with no guilt.",
+    "percentEyebrow": "% OF SALARY",
+    "computedPrefix": "You save ",
+    "computedSuffix": " a month without thinking about it",
+    "badgeSuggested": "SUGGESTED",
+    "addGoal": "Add a goal",
+    "optional": "OPTIONAL",
+    "bubble": "Every month you save, your garden grows an extra seed. 🌱",
+    "ctaCaption": "You can adjust everything later in Settings"
+  },
+  "goalStep": {
+    "heroTitle": "Your first goal",
+    "heroSubtitle": "Pick a suggested one or build your own — 30 seconds.",
+    "suggestedEyebrow": "SUGGESTED · ONE TAP",
+    "titleEyebrow": "TITLE",
+    "autofilled": "AUTOFILLED",
+    "iconEyebrow": "ICON",
+    "editAmountA11y": "Edit target amount",
+    "amountEyebrow": "TARGET AMOUNT",
+    "timeEyebrow": "IN HOW LONG?",
+    "cuotaPrefix": "That's ",
+    "perMonth": "/mo",
+    "cuotaSuffix": " — fits right into your 10% savings.",
+    "ctaCreate": "Create goal and start",
+    "hintNoGoal": "You still need to pick a goal — or start without one.",
+    "skip": "Start without a goal",
+    "skipCaption": "No guilt — create it whenever you want from Control.",
+    "plazo3": "3 months",
+    "suggested": {
+      "vacaciones": {
+        "title": "Vacation",
+        "bubble": "In {{months}} months you're on vacation. I'll water your progress. 🌱"
+      },
+      "mudanza": {
+        "title": "Move",
+        "bubble": "In {{months}} months you're in your new home. I'll water your progress. 🌱"
+      },
+      "colchon": {
+        "title": "Cushion",
+        "bubble": "In {{months}} months you'll sleep better. I'll water your progress. 🌱"
+      },
+      "auto": {
+        "title": "Car",
+        "bubble": "In {{months}} months you'll be driving it. I'll water your progress. 🌱"
+      },
+      "otra": {
+        "title": "Other",
+        "bubble": "In {{months}} months you'll reach it. I'll water your progress. 🌱"
+      }
+    }
+  },
+  "summary": {
+    "rowProfile": "PROFILE",
+    "rowHousehold": "HOUSEHOLD",
+    "rowIncome": "INCOME",
+    "rowSavings": "SAVINGS",
+    "rowContribution": "CONTRIBUTION",
+    "chipJoined": "You've joined the family",
+    "captionCreator": "Here's how your space turned out. You can adjust everything later in Settings.",
+    "captionJoiner": "You've joined the household. You can adjust everything later in Settings.",
+    "goHome": "Go to my Home"
+  },
+  "numpad": {
+    "backspace": "Delete",
+    "close": "Close keypad"
   }
 }

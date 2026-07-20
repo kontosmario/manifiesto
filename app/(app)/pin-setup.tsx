@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { PinSetupScreen } from '@/screens/auth/pin-setup-screen'
+import { NeoPinSetupScreen } from '@/screens/auth/neo/neo-pin-setup-screen'
 
 export default function PinSetupRoute() {
   const router = useRouter()
@@ -12,5 +12,5 @@ export default function PinSetupRoute() {
     if (router.canGoBack()) router.back()
     else router.replace('/(app)/(tabs)/home')
   }
-  return <PinSetupScreen onDone={done} onCancel={done} />
+  return <NeoPinSetupScreen onDone={done} onCancel={done} />
 }

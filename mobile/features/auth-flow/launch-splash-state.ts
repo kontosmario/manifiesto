@@ -5,8 +5,13 @@
 // (soar-away) jamás corte el growth, sin meter conocimiento de UI en
 // la máquina pura. RootLayoutShell marca shown/gone.
 
-/** Duración del entrance del launch splash (fern growth + wordmark rise). */
-export const LAUNCH_ENTRANCE_MS = 2000
+/**
+ * Duración del entrance del launch splash. Rediseño arranque
+ * (auth-cold-start.tsx): logo pop 0.08–0.98s + wordmark rise 0.75–1.35s
+ * → el entrance asienta a los 1350ms. (El visual fern anterior usaba
+ * 2000.) Si los timings del cold start cambian, actualizar acá.
+ */
+export const LAUNCH_ENTRANCE_MS = 1350
 
 let shownAt: number | null = null
 

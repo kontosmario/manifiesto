@@ -176,6 +176,14 @@ const config: ExpoConfig = {
       'expo-build-properties',
       {
         ios: { deploymentTarget: '15.5' },
+        // minSdk 29 (Android 10) — decisión owner 2026-07-17: el
+        // vocabulario neumórfico del rediseño usa boxShadow inset, que
+        // RN 0.81 sólo dibuja desde API 29 (outset desde 28), sin
+        // fallback (se descarta en silencio en Android viejo). Fijar el
+        // piso en 29 hace que TODAS las sombras rindan sin código
+        // condicional. Costo: se dejan fuera Android 7–9 (cola
+        // decreciente; app pre-launch, sin base instalada afectada).
+        android: { minSdkVersion: 29 },
       },
     ],
     // Sprint E · C3 (red team finding 2026-06-10): the Expo default

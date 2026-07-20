@@ -1,5 +1,5 @@
-import { ForgotPasswordScreen } from '@/screens/auth/forgot-password-screen'
+import { NeoForgotPasswordScreen } from '@/screens/auth/neo/neo-forgot-password-screen'
 
 export default function ForgotPasswordRoute() {
-  return <ForgotPasswordScreen />
+  return <NeoForgotPasswordScreen />
 }

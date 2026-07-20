@@ -46,6 +46,7 @@
     "supabase:functions:deploy": "node scripts/check-edge-functions-deployed.mjs && supabase functions deploy"
   },
   "dependencies": {
+    "@expo-google-fonts/nunito": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
     "@gorhom/bottom-sheet": "^5.2.10",
     "@hcaptcha/react-native-hcaptcha": "^4.0.0",

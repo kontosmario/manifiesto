@@ -248,7 +248,10 @@
     "pendingCount_other": "{{count}} pendientes",
     "markAllAccessibility": "Marcar todas como leídas",
     "markAll": "Marcar todas",
-    "loadError": "No pudimos cargar las notificaciones."
+    "loadError": "No pudimos cargar las notificaciones.",
+    "calmTitle": "Todo en calma",
+    "calmBody": "No tienes avisos pendientes.\nBrot te avisa cuando haya algo del hogar.",
+    "calmChip": "Al día · 0 pendientes"
   },
   "notificationsHook": {
     "deleteError": "No se pudo eliminar la notificación.",

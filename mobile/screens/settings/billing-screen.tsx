@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Alert, AppState, Modal, RefreshControl, StyleSheet, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -18,7 +19,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { logoutSession } from '@/features/auth/logout'
 import { getErrorMessage } from '@/utils/error-message'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
-import { PaywallView } from '@/components/billing/paywall-view'
+import { NeoPaywallView } from '@/components/billing/neo-paywall-view'
 import { ManageView } from '@/components/billing/manage-view'
 import { DeleteAccountScreen } from '@/screens/settings/delete-account-screen'
 import {
@@ -37,8 +38,11 @@ import { BLOCKED_ENTITLEMENT } from '@/features/billing/entitlement-snapshot'
  * Pantalla "Plan del hogar" — contenedor adaptativo. Según el entitlement
  * resuelto server-side, muestra:
  *   - ManageView (Estado B): suscriptos / cobertura de hogar / cortesía.
- *   - PaywallView (Estado A): trial o sin acceso. `lockMode` = gate duro.
- * El back-button (chevron en el header de `Screen`) se oculta en lockMode.
+ *   - NeoPaywallView (Estado A, rediseño 4m/4mo): trial o sin acceso.
+ *     `lockMode` = gate duro. Es un takeover full-bleed FUERA del
+ *     `Screen` (ver la nota de layout en el return).
+ * El back se oculta en lockMode/welcomeMode (en el paywall lo dibuja el
+ * propio takeover; en manage, el header de `Screen` como siempre).
  */
 interface SheetState {
   variant: PurchaseResultVariant
@@ -90,6 +94,7 @@ export function BillingScreen({
 } = {}) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
+  const router = useRouter()
   const billing = useBilling()
   const userId = useAuthSession().data?.user.id
   const { familyId } = useImportWizardContext()
@@ -295,52 +300,82 @@ export function BillingScreen({
   const isErrorSheet =
     sheet?.variant === 'error' || sheet?.variant === 'restoreError'
 
+  // ─── Layout (decisión del swap al rediseño, 2026-07-17) ────────────
+  // ManageView conserva el `Screen` de siempre (header + back, título,
+  // pull-to-refresh, blobs ambientales) — INTACTO. El paywall
+  // rediseñado, en cambio, es un TAKEOVER full-bleed FUERA del Screen:
+  // AuthPlanHogar dibuja su propio canvas/scroll/título y reserva los
+  // insets reales vía AuthLiveChrome, así que meterlo dentro de Screen
+  // duplicaría el inset superior (SafeAreaView + insets.top del chrome),
+  // anidaría su ScrollView dentro del de Screen (patrón prohibido) y el
+  // fondo/padding de Ajustes pisaría el canvas aprobado del rediseño.
+  // Fidelidad de comportamiento: el back de Ajustes que aportaba el
+  // header de Screen ahora lo dibuja el takeover (AuthBackHeader del
+  // kit) con la MISMA condición (!lockMode && !welcomeMode), y el
+  // pull-to-refresh del entitlement se conserva pasando el
+  // RefreshControl al scroll del takeover. Los sheets (resultado de
+  // compra / cambio de plan / eliminar cuenta) son Modals nativos: van
+  // como hermanos, fuera de ambas ramas — mismo comportamiento, cero
+  // impacto de layout.
   return (
-    <Screen
-      // Mismo fondo que Ajustes: canvas casi-negro DARK_TAB_CANVAS + halos
-      // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      canGoBack={!lockMode && !welcomeMode}
-      title={t('billing:screen.title')}
-      scrollable
-      refreshControl={
-        <RefreshControl
-          refreshing={entQuery.isFetching}
-          onRefresh={() => {
-            void entQuery.refetch()
-          }}
+    <>
+      {isManage ? (
+        <Screen
+          // Mismo fondo que Ajustes: canvas casi-negro DARK_TAB_CANVAS + halos
+          // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
+          backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+          canGoBack={!lockMode && !welcomeMode}
+          title={t('billing:screen.title')}
+          scrollable
+          refreshControl={
+            <RefreshControl
+              refreshing={entQuery.isFetching}
+              onRefresh={() => {
+                void entQuery.refetch()
+              }}
+            />
+          }
+        >
+          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
+          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
+          <View style={styles.body}>
+            <ManageView
+              snap={snap}
+              familyId={familyId}
+              optimisticPendingPlanId={optimisticPending}
+              onChangePlan={onChangePlan}
+              onRestore={doRestore}
+            />
+          </View>
+        </Screen>
+      ) : (
+        <NeoPaywallView
+          snap={snap}
+          lockMode={lockMode}
+          isPurchasing={billing.isPurchasing}
+          productPrices={billing.productPrices}
+          pricesLoading={billing.pricesLoading}
+          onPurchase={doPurchase}
+          onRestore={doRestore}
+          onLogout={handleLogout}
+          onDeleteAccount={
+            userId && familyId ? () => setShowDelete(true) : undefined
+          }
+          onContinueFree={welcomeMode ? onContinue : undefined}
+          continueLabel={welcomeMode ? welcomeContinueLabel : undefined}
+          // El back del kit ya pone su háptico ('light'); acá solo se
+          // navega — no duplicar el feedback.
+          onBack={!lockMode && !welcomeMode ? () => router.back() : undefined}
+          refreshControl={
+            <RefreshControl
+              refreshing={entQuery.isFetching}
+              onRefresh={() => {
+                void entQuery.refetch()
+              }}
+            />
+          }
         />
-      }
-    >
-      {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-      <View style={styles.body}>
-        {isManage ? (
-          <ManageView
-            snap={snap}
-            familyId={familyId}
-            optimisticPendingPlanId={optimisticPending}
-            onChangePlan={onChangePlan}
-            onRestore={doRestore}
-          />
-        ) : (
-          <PaywallView
-            snap={snap}
-            lockMode={lockMode}
-            isPurchasing={billing.isPurchasing}
-            productPrices={billing.productPrices}
-            pricesLoading={billing.pricesLoading}
-            onPurchase={doPurchase}
-            onRestore={doRestore}
-            onLogout={handleLogout}
-            onDeleteAccount={
-              userId && familyId ? () => setShowDelete(true) : undefined
-            }
-            onContinueFree={welcomeMode ? onContinue : undefined}
-            continueLabel={welcomeMode ? welcomeContinueLabel : undefined}
-          />
-        )}
-      </View>
+      )}
 
       <PurchaseResultSheet
         visible={sheet != null}
@@ -381,7 +416,7 @@ export function BillingScreen({
           />
         </Modal>
       ) : null}
-    </Screen>
+    </>
   )
 }
 

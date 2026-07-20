@@ -1,2 +1,2 @@
-import { OnboardingSuccessScreen } from '@/screens/home/onboarding-success-screen'
-export default OnboardingSuccessScreen
+import { NeoOnboardingSuccessScreen } from '@/screens/home/neo/neo-onboarding-success-screen'
+export default NeoOnboardingSuccessScreen

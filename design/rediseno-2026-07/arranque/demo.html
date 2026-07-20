@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Animaciones de arranque — Manifiesto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#22261E; font-family:'Nunito',sans-serif; display:flex; gap:44px; justify-content:center; align-items:flex-start; padding:56px 24px; flex-wrap:wrap; }
+  .phone { width:393px; height:830px; border-radius:46px; position:relative; overflow:hidden; flex:none; display:flex; flex-direction:column; }
+  .cap { text-align:center; font-size:11.5px; font-weight:800; letter-spacing:0.08em; color:#8FA089; margin-top:12px; }
+  .sb { display:flex; align-items:center; justify-content:space-between; padding:18px 28px 4px; position:relative; z-index:6; font-size:15px; font-weight:800; }
+  .hi { width:132px; height:5px; border-radius:3px; margin:6px auto 10px; position:relative; z-index:6; }
+</style>
+</head>
+<body>
+<template id="__bundler_thumbnail">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#16271C"/><text x="50" y="62" font-size="34" text-anchor="middle">🌱</text></svg>
+</template>
+
+<!-- 1 · COLD START (claro) -->
+<div>
+  <div class="phone" style="background:#E9EBE0; box-shadow:0 34px 80px rgba(8,14,8,0.55)">
+    <brot-particles colors="#7FB069,#E8A87C,#9BB894" count="18" style="position:absolute; inset:0"></brot-particles>
+    <div class="sb" style="color:#24382A"><div>9:41</div><div style="font-size:12px">●●●</div></div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 28px; position:relative">
+      <img src="logo-light.png" alt="Manifiesto" style="width:160px; height:128px; object-fit:contain">
+      <div style="font-size:42px; font-weight:900; color:#24382A; margin-top:22px; letter-spacing:-0.01em">Manifiesto<span style="color:#D97E4F">.</span></div>
+      <div style="font-size:15px; font-weight:700; color:#6C7B67; margin-top:6px">Finanzas para tu hogar</div>
+    </div>
+    <div style="padding:0 24px 14px; position:relative">
+      <div style="border-radius:24px; padding:17px; text-align:center; font-size:16.5px; font-weight:900; color:#F5F2E1; background:radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%); box-shadow:0 14px 28px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)">Empezar&nbsp;&nbsp;›</div>
+      <div style="border-radius:24px; padding:15px; text-align:center; font-size:15px; font-weight:800; color:#3E5A44; margin-top:14px; box-shadow:inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)">Ya tengo cuenta</div>
+      <div style="font-size:11.5px; font-weight:700; color:#9AA694; text-align:center; line-height:1.55; margin-top:16px">Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.<br>Al continuar aceptas los <u>Términos</u> y la <u>Privacidad</u>.</div>
+    </div>
+    <div class="hi" style="background:#24382A; opacity:0.75"></div>
+    <cold-start logo="logo-light.png" bg="#E9EBE0" text="#24382A" dot="#D97E4F" particles="#7FB069,#E8A87C,#9BB894"></cold-start>
+  </div>
+  <div class="cap">1 · COLD START → BIENVENIDA · CLARO (loop ~6s)</div>
+</div>
+
+<!-- 1 · COLD START (oscuro) -->
+<div>
+  <div class="phone" style="background:#0F1E14; box-shadow:0 34px 80px rgba(0,0,0,0.6)">
+    <brot-particles colors="#A4E3A6,#F2A87E,#F1EEDD" count="18" style="position:absolute; inset:0"></brot-particles>
+    <div class="sb" style="color:#F1EEDD"><div>9:41</div><div style="font-size:12px">●●●</div></div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 28px; position:relative">
+      <img src="logo-dark.png" alt="Manifiesto" style="width:160px; height:128px; object-fit:contain">
+      <div style="font-size:42px; font-weight:900; color:#F1EEDD; margin-top:22px; letter-spacing:-0.01em">Manifiesto<span style="color:#F2A87E">.</span></div>
+      <div style="font-size:15px; font-weight:700; color:#93A78F; margin-top:6px">Finanzas para tu hogar</div>
+    </div>
+    <div style="padding:0 24px 14px; position:relative">
+      <div style="border-radius:24px; padding:17px; text-align:center; font-size:16.5px; font-weight:900; color:#1F3A26; background:linear-gradient(145deg, #F7F4E6, #E2DEC8); box-shadow:0 14px 28px rgba(0,0,0,0.45), inset 0 2px 3px rgba(255,255,255,0.6)">Empezar&nbsp;&nbsp;›</div>
+      <div style="border-radius:24px; padding:15px; text-align:center; font-size:15px; font-weight:800; color:#B9CCB2; margin-top:14px; background:#142519; box-shadow:inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.1)">Ya tengo cuenta</div>
+      <div style="font-size:11.5px; font-weight:700; color:#7C917A; text-align:center; line-height:1.55; margin-top:16px">Solo guardamos tu email y lo que cargues aquí (gastos, fijos, miembros del hogar). Nada se vende.<br>Al continuar aceptas los <u>Términos</u> y la <u>Privacidad</u>.</div>
+    </div>
+    <div class="hi" style="background:#F1EEDD; opacity:0.7"></div>
+    <cold-start logo="logo-dark.png" bg="#0F1E14" text="#F1EEDD" dot="#F2A87E" particles="#A4E3A6,#F2A87E,#F1EEDD"></cold-start>
+  </div>
+  <div class="cap">1 · COLD START → BIENVENIDA · OSCURO (loop ~6s)</div>
+</div>
+
+<!-- 2 · BRIDGE AUTH SUCCESS (claro) -->
+<div>
+  <div class="phone" style="background:#E9EBE0; box-shadow:0 34px 80px rgba(8,14,8,0.55)">
+    <div class="sb" style="color:#24382A"><div>9:41</div><div style="font-size:12px">●●●</div></div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 28px">
+      <div style="font-size:26px; font-weight:900; color:#24382A">Inicio</div>
+      <div style="font-size:13px; font-weight:700; color:#6C7B67; margin-top:6px">(pantalla real de la app debajo del bridge)</div>
+    </div>
+    <div class="hi" style="background:#24382A; opacity:0.75"></div>
+    <auth-bridge-logo theme="light" state="success" name="Mario"></auth-bridge-logo>
+  </div>
+  <div class="cap">2 · BRIDGE AUTH · SUCCESS · CLARO (loop ~7s)</div>
+</div>
+
+<!-- 2 · BRIDGE AUTH FAIL (oscuro) -->
+<div>
+  <div class="phone" style="background:#16271C; box-shadow:0 34px 80px rgba(0,0,0,0.6)">
+    <div class="sb" style="color:#F1EEDD"><div>9:41</div><div style="font-size:12px">●●●</div></div>
+    <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 28px">
+      <div style="font-size:26px; font-weight:900; color:#F1EEDD">Inicio</div>
+      <div style="font-size:13px; font-weight:700; color:#93A78F; margin-top:6px">(pantalla real de la app debajo del bridge)</div>
+    </div>
+    <div class="hi" style="background:#F1EEDD; opacity:0.7"></div>
+    <auth-bridge-logo theme="dark" state="fail" name="Mario"></auth-bridge-logo>
+  </div>
+  <div class="cap">2 · BRIDGE AUTH · FAIL · OSCURO (loop ~7s)</div>
+</div>
+
+<script src="particles.js"></script>
+<script src="coldstart.js"></script>
+<script src="authbridge2.js"></script>
+</body>
+</html>

@@ -33,7 +33,7 @@ import { GastoRow } from '@/components/gastos/gasto-row'
 import { IncomeRow } from '@/components/gastos/income-row'
 import { HomeHeroCard } from '@/components/home/home-hero-card'
 import { computeSavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
-import { WelcomeScreen } from '@/screens/auth/welcome-screen'
+import { NeoWelcomeScreen } from '@/screens/auth/neo/neo-welcome-screen'
 import { RiseView } from '@/components/home/animated/rise-view'
 import {
   INTRO_FIJOS_PROPS,
@@ -451,13 +451,21 @@ export function SlideCta({ width, active, scrollX, index, onCreate, onLogin }: S
   const tStyle = useSlideTransition(scrollX, index, width)
   return (
     <View style={[styles.featureSlide, { width }]}>
-      {/* Slide 5 = la WelcomeScreen REAL → correlatividad total con la pantalla
-          que ve el usuario al crear cuenta (mismos CTA "Empezar"/"Ya tengo
-          cuenta", fineprint de Términos/Privacidad, fondo, aurora). El key={n}
-          la monta/anima la PRIMERA vez que se llega (latch, no se reinicia al
-          volver); tStyle le da el crossfade+zoom ligado al scroll en la entrada. */}
+      {/* Slide 5 = la Bienvenida REAL del rediseño (NeoWelcomeScreen →
+          réplica 3a neumórfica) → correlatividad total con la pantalla
+          que ve el usuario al llegar a la bienvenida live (review r2:
+          antes montaba la WelcomeScreen VIEJA, un diseño distinto al que
+          sigue en el flujo). Mismos CTA "Empezar"/"Ya tengo cuenta" y
+          fineprint de Términos/Privacidad. El key={n} la monta/anima la
+          PRIMERA vez que se llega (latch, no se reinicia al volver);
+          tStyle le da el crossfade+zoom ligado al scroll en la entrada. */}
       <Animated.View key={n} style={[styles.welcomeHost, tStyle]}>
-        <WelcomeScreen onCreate={onCreate} onLogin={onLogin} />
+        {/* forceMode="dark": el intro es un pager SIEMPRE verde oscuro
+            con StatusBar global 'light'; sin forzar el tema, la
+            bienvenida theme-aware mostraría bg crema + su propia
+            StatusBar 'dark' en light mode, ilegible sobre este pager y
+            en conflicto con la barra global (review r3). */}
+        <NeoWelcomeScreen forceMode="dark" onCreate={onCreate} onLogin={onLogin} />
       </Animated.View>
     </View>
   )

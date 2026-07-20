@@ -9,13 +9,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { Stack, usePathname } from 'expo-router'
-import { AuthLaunchSplash } from '@/components/auth/auth-launch-splash'
+import { NeoLaunchSplash } from '@/components/redesign/auth/neo-launch-splash'
 import { authFlowLog } from '@/lib/auth-flow-logger'
 import {
-  AuthTransitionSplash,
-  type AuthTransitionErrorKind,
-  type AuthTransitionPhase,
-} from '@/components/auth/auth-transition-splash'
+  NeoTransitionContent,
+  type NeoTransitionPhase,
+} from '@/components/redesign/auth/neo-transition-content'
 import { BackgroundRelockWatcher } from '@/components/root/background-relock-watcher'
 import { BackgroundSnapshotOverlay } from '@/components/root/background-snapshot-overlay'
 import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity-watcher'
@@ -30,7 +29,7 @@ import { AppProviders } from '@/providers/app-providers'
 import { recordInteraction } from '@/features/auth/inactivity-tracker'
 import { configureAuthFlow, dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { realAuthFlowAdapters } from '@/features/auth-flow/auth-flow-adapters'
-import { getOverlayMode } from '@/features/auth-flow/auth-flow-machine'
+import { getOverlayMode, type BridgeErrorKind } from '@/features/auth-flow/auth-flow-machine'
 import {
   BRIDGE_FADE_IN_MS,
   BRIDGE_SCALE_FROM,
@@ -64,8 +63,9 @@ const EASE_OUT_SOFT = Easing.bezier(0.4, 0, 0.2, 1)
 
 export function RootLayoutShell() {
   // Cold-start splash:
-  //   - native (iOS/Android): muestra el AuthLaunchSplash al abrir la
-  //     app por primera vez, fade-out a los 2.22s. Brand polish para
+  //   - native (iOS/Android): muestra el launch splash del rediseño
+  //     (NeoLaunchSplash → AuthColdStart) al abrir la app por primera
+  //     vez; auto-fade a los ~2.4s (+0.65s de fade). Brand polish para
   //     dar sensación premium al cold-start.
   //   - web (browser): NO mostramos el splash. El welcome se renderiza
   //     directo. Razón: el splash y el welcome son DOS hero stacks
@@ -115,15 +115,25 @@ export function RootLayoutShell() {
   //   guest (sin sesión) → timer clásico intacto (handoff a welcome)
   const machineForLaunch = useAuthFlowState()
   const launchPhase = machineForLaunch.phase
+  // locked:pin es DISTINTO de locked:biometric para el splash. El prompt
+  // biométrico es UI del SISTEMA y flota sobre el splash → el splash
+  // sigue siendo la superficie de marca (persistente). El pad de PIN es
+  // UI de la APP (BootScreen lo monta inline DEBAJO del splash): si el
+  // splash quedara persistente y opaco, taparía y bloquearía el pad para
+  // siempre — no hay salida que no sea tocarlo (deadlock, review r2).
+  // Por eso locked:pin trata al splash como salida (fade) para revelar el
+  // pad neo que ya está montado debajo.
+  const isPinLock =
+    machineForLaunch.phase === 'locked' && machineForLaunch.method === 'pin'
   const launchPersistent =
-    launchPhase === 'locked' ||
+    (launchPhase === 'locked' && !isPinLock) ||
     launchPhase === 'bridging' ||
     launchPhase === 'revealing'
   const launchExitMode: 'fade' | 'soar' | undefined = !isLaunchSplashVisible
     ? undefined
     : launchPhase === 'revealing' || launchPhase === 'fallback-login'
       ? 'soar'
-      : launchPhase === 'bridge-error' || launchPhase === 'ready'
+      : launchPhase === 'bridge-error' || launchPhase === 'ready' || isPinLock
         ? 'fade'
         : undefined
 
@@ -186,11 +196,13 @@ export function RootLayoutShell() {
 
           {/*
             Cold-start splash: shown ONCE per app launch, fades itself
-            out via the internal HIDE_DELAY_MS timer and calls
-            `onComplete` so we can dismount it.
+            out via its internal auto-hide timer and calls `onComplete`
+            so we can dismount it. Visual del rediseño (NeoLaunchSplash →
+            AuthColdStart) con la MISMA coordinación/props que el
+            AuthLaunchSplash anterior.
           */}
           {isLaunchSplashVisible ? (
-            <AuthLaunchSplash
+            <NeoLaunchSplash
               onComplete={handleLaunchSplashComplete}
               persistent={launchPersistent || launchExitMode !== undefined}
               exitMode={launchExitMode}
@@ -311,16 +323,20 @@ function ThemedRootStack() {
 }
 
 function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
-  // ⚠ ALWAYS-MOUNTED en native, CONDICIONAL en web.
+  // ⚠ WRAPPER ALWAYS-MOUNTED en native, CONDICIONAL en web.
   //
-  // Native (iOS/Android): los children (AuthTransitionSplash →
-  // WarmFernLogo + AuroraLayer + ParticleLayer) se mantienen
-  // montados desde el app launch. Razón: si los montamos on-demand
-  // (cuando login fires), el native view tree se crea en el peor
-  // momento — simultáneamente con el auth request, el router.replace
-  // y el cascade de refetches. La UI thread se satura ~1s y la
-  // entrance animation del WarmFernLogo se traba visiblemente.
-  // Mantenerlos always-mounted evita ese mount-race.
+  // Native (iOS/Android): este wrapper (shared values + Animated.View)
+  // vive montado desde el app launch — la mecánica de fade/soar nunca
+  // paga un mount-race. El CONTENIDO del rediseño
+  // (NeoTransitionContent) dibuja null mientras está 'hidden' y monta
+  // su branch al volverse visible: su stack (canvas Skia de
+  // BrotParticles + ~15 views) es mucho más liviano que el viejo
+  // WarmFernLogo + 36 fireflies CSS que exigía el always-mount, y
+  // dejarlo tibio costaría un frame-callback 60fps permanente detrás
+  // de la app (jank en Android de gama baja). El mount del branch
+  // ocurre al despachar LOGIN_PENDING/unlock — antes del
+  // router.replace y del cascade de refetches, que recién corren con
+  // el overlay ya opaco.
   //
   // Web (browser): NO podemos always-mount. En web Reanimated v4
   // no aplica `useAnimatedStyle({opacity: 0})` al DOM con la misma
@@ -347,7 +363,7 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
   const machineError = typeof machineMode === 'object' ? machineMode.error : undefined
 
   // SOBERANÍA DEL COLD-START SPLASH (invariante 2, corregida 2026-06-11):
-  // mientras el AuthLaunchSplash está en pantalla, el overlay queda
+  // mientras el launch splash (NeoLaunchSplash) está en pantalla, el overlay queda
   // SUPRIMIDO. Con Face ID real (~1s) el FACE_ID_OK llega a mitad del
   // crecimiento del fern; sin esto el bridge (z50 > z20) tapaba el
   // launch splash y cortaba la animación — "fondo verde sin animación".
@@ -358,15 +374,37 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
   // El takeover offline NO se suprime (es un error que debe verse).
   const suppressed = launchActive && !offlineTakeover
 
-  const isRevealing = machineMode === 'revealing' && !suppressed
+  // El takeover offline tiene precedencia sobre el soar de la máquina
+  // (review r2): si un viaje llega a 'revealing' mientras el takeover
+  // sigue visible (reconexión: el auto-poll despacha RETRY y el prefetch
+  // completa antes de que el watcher baje el takeover), sin este guard el
+  // wrapper animaría 'soar' — la pantalla "Sin conexión" entera se
+  // elevaría y luego re-entraría con 'in'. Con el takeover activo el
+  // overlay se queda en 'in' hasta que el takeover se cierra.
+  const isRevealing = machineMode === 'revealing' && !suppressed && !offlineTakeover
 
   // `revealing` mantiene el overlay montado/interactivo mientras el
   // soar-away corre; recién `hidden` lo libera.
   const effectiveVisible = (machineVisible && !suppressed) || offlineTakeover
   const isError = Boolean(machineError) || offlineTakeover
-  const effectivePhase: AuthTransitionPhase = isError ? 'error' : 'showing'
-  const effectiveErrorKind: AuthTransitionErrorKind | undefined = machineError
+  // Fase para el contenido del rediseño (neo-transition-content):
+  // 'hidden' cuando el overlay no se ve (el contenido drena su salida y
+  // dibuja null); si se ve: error > revealing > bridge.
+  const contentPhase: NeoTransitionPhase = !effectiveVisible
+    ? 'hidden'
+    : isError
+      ? 'error'
+      : isRevealing
+        ? 'revealing'
+        : 'bridge'
+  const effectiveErrorKind: BridgeErrorKind | undefined = machineError
     ?? (offlineTakeover ? 'network' : undefined)
+  // Journey para el mapeo del contenido (signup = cover simple, decisión
+  // owner); 'revealing' ya no lo trae — el contenido latchea el último.
+  const contentJourney =
+    machine.phase === 'bridging' || machine.phase === 'bridge-error'
+      ? machine.journey
+      : undefined
 
   const opacity = useSharedValue(effectiveVisible ? 1 : 0)
   const scale = useSharedValue(effectiveVisible ? 1 : BRIDGE_SCALE_FROM)
@@ -433,8 +471,12 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
     ],
   }))
 
-  // En web, si está hidden, no rendereamos children — evita el
-  // wordmark fantasma del WarmFernLogo. En native always-mounted.
+  // En web, si está hidden, no rendereamos children — evita contenido
+  // fantasma en el DOM (Reanimated v4 no garantiza opacity 0 ahí). En
+  // native el WRAPPER queda always-mounted (invariante intacta); el
+  // contenido del rediseño decide por sí mismo dibujar null en 'hidden'
+  // (ver neo-transition-content.tsx — su stack Skia no debe quedar
+  // tibio detrás de la app) y drena su salida antes de soltarlo.
   if (Platform.OS === 'web' && !effectiveVisible) {
     return null
   }
@@ -444,7 +486,11 @@ function TransitionOverlay({ launchActive }: { launchActive: boolean }) {
       style={[StyleSheet.absoluteFillObject, styles.overlayShell, overlayStyle]}
       pointerEvents={effectiveVisible ? 'auto' : 'none'}
     >
-      <AuthTransitionSplash phase={effectivePhase} errorKind={effectiveErrorKind} />
+      <NeoTransitionContent
+        phase={contentPhase}
+        errorKind={effectiveErrorKind}
+        journey={contentJourney}
+      />
     </Animated.View>
   )
 }

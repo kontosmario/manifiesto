@@ -35,8 +35,19 @@ function purgeOldSendTimestamps(): void {
   }
 }
 
+/**
+ * Resultado de un intento de reenvío. Aditivo (2026-07-17, review r1 del
+ * rediseño): los callers que ignoran el retorno siguen funcionando; los
+ * nuevos deciden el feedback con el valor devuelto en vez de leer
+ * `error` tras el await (closure stale — el estado del render viejo
+ * nunca ve el fallo nuevo).
+ */
+export type ResendOutcome =
+  | { ok: true }
+  | { ok: false; reason: 'cooldown' | 'rate-limited' | 'error'; error: string | null }
+
 export interface UseResendConfirmEmailResult {
-  resend: (email: string) => Promise<void>
+  resend: (email: string) => Promise<ResendOutcome>
   isPending: boolean
   error: string | null
   /** Segundos hasta que el botón de reenvío se vuelva a habilitar. 0 = listo. */
@@ -90,26 +101,28 @@ export function useResendConfirmEmail(
   })
 
   const resend = useCallback(
-    async (email: string) => {
+    async (email: string): Promise<ResendOutcome> => {
       setError(null)
       const nowMs = Date.now()
       if (cooldownUntil > nowMs) {
-        return
+        return { ok: false, reason: 'cooldown', error: null }
       }
       purgeOldSendTimestamps()
       if (sendTimestamps.length >= MAX_SENDS_PER_WINDOW) {
-        setError(t('auth:errors.resendRateLimited'))
-        return
+        const message = t('auth:errors.resendRateLimited')
+        setError(message)
+        return { ok: false, reason: 'rate-limited', error: message }
       }
       try {
         await mutation.mutateAsync({ email })
         sendTimestamps.push(Date.now())
         setCooldownUntil(Date.now() + cooldownMs)
         setNow(Date.now())
+        return { ok: true }
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : t('auth:errors.resendFailed'),
-        )
+        const message = err instanceof Error ? err.message : t('auth:errors.resendFailed')
+        setError(message)
+        return { ok: false, reason: 'error', error: message }
       }
     },
     [cooldownMs, cooldownUntil, mutation, t],

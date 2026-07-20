@@ -1,6 +1,11 @@
+import { useCallback, useContext, useSyncExternalStore } from 'react'
 import { Platform } from 'react-native'
+import { NavigationContext } from '@react-navigation/native'
 
-type SkiaModule = typeof import('@shopify/react-native-skia')
+/** Tipo del módulo Skia cuando está disponible (lo que devuelve
+ *  getOptionalSkiaModule cuando no es null). Compartido por los
+ *  componentes que consumen el módulo opcional. */
+export type SkiaModule = typeof import('@shopify/react-native-skia')
 
 let cachedSkiaModule: SkiaModule | null | undefined
 let hasLoggedSkiaFallback = false
@@ -15,6 +20,42 @@ function formatSkiaError(error: unknown) {
   }
 
   return 'Unknown error'
+}
+
+/**
+ * Foco de navegación "opcional" para gatear loops decorativos de Skia
+ * (brot-mascot / brot-particles): las pantallas de un stack de expo-router
+ * quedan MONTADAS al ser tapadas, así que sin este gate los frame callbacks
+ * seguirían grabando SkPictures a 60fps en pantallas invisibles.
+ *
+ * Equivale a `useIsFocused()` de @react-navigation, pero NO explota si el
+ * componente se renderiza fuera de un navigator (previews, tests): lee el
+ * NavigationContext de forma opcional y sin contexto asume "enfocado".
+ */
+export function useOptionalIsFocused(): boolean {
+  const navigation = useContext(NavigationContext)
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (navigation === undefined) {
+        return () => {}
+      }
+      const unsubscribeFocus = navigation.addListener('focus', onStoreChange)
+      const unsubscribeBlur = navigation.addListener('blur', onStoreChange)
+      return () => {
+        unsubscribeFocus()
+        unsubscribeBlur()
+      }
+    },
+    [navigation],
+  )
+
+  const getIsFocused = useCallback(
+    () => (navigation === undefined ? true : navigation.isFocused()),
+    [navigation],
+  )
+
+  return useSyncExternalStore(subscribe, getIsFocused, getIsFocused)
 }
 
 export function getOptionalSkiaModule() {

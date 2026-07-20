@@ -38,7 +38,8 @@
       "household": "Tu hogar",
       "income": "Tus ingresos",
       "almostDone": "Casi listo",
-      "savings": "Tu ahorro"
+      "savings": "Tu ahorro",
+      "contribution": "Tu aporte"
     },
     "back": "Volver al paso anterior"
   },
@@ -116,7 +117,8 @@
     "errorCreateAccount": "No pudimos crear tu cuenta",
     "errorInvalidCodeTitle": "Código inválido",
     "errorInvalidCodeMessage": "Ingresa el código que te compartieron.",
-    "errorValidateCode": "No pudimos validar el código"
+    "errorValidateCode": "No pudimos validar el código",
+    "alreadyCreatedCantJoin": "Ya creaste tu hogar en este paso. Reinicia la app para unirte a otro."
   },
   "familySummary": {
     "title": "La familia",
@@ -161,7 +163,9 @@
     "incomeEyebrow": "TU INGRESO MENSUAL",
     "amountLabel": "Tu sueldo mensual",
     "hintContributes": "Se suma al ingreso total de la familia. Puedes editarlo desde Ajustes cuando quieras.",
-    "infoNoContribute": "Listo — no se suma nada al ingreso del hogar. Si en algún momento empiezas a aportar, puedes activarlo desde Ajustes."
+    "infoNoContribute": "Listo — no se suma nada al ingreso del hogar. Si en algún momento empiezas a aportar, puedes activarlo desde Ajustes.",
+    "errorChoose": "Elige si aportas o no.",
+    "errorAmount": "Falta tu ingreso mensual."
   },
   "savings": {
     "title": "¿Quieres arrancar con una meta?",
@@ -196,6 +200,232 @@
     "titleNamed": "¡Listo, {{name}}!",
     "subtitleSolo": "Tu espacio personal ya está armado. Vamos a Home.",
     "subtitleShared": "Tu familia ya está armada. Vamos a Home.",
-    "cta": "Empezar"
+    "cta": "Empezar",
+    "cycleBiweekly": "quincenal · desde el {{day}}",
+    "cycleWeekly": "semanal",
+    "cycleCustom": "cada {{days}} días",
+    "cycleMonthly": "mensual · día {{day}}",
+    "incomeDynamic": "Variable · {{cycle}}",
+    "savingsRow": "{{pct}}% · {{amount}} por mes",
+    "joinerContributes": "Aportas {{amount}} /mes",
+    "joinerNoContribution": "No aportas al hogar",
+    "householdSolo": "Yo solo",
+    "householdShared": "Con mi familia",
+    "joinerHousehold": "Te uniste · {{members}} miembros",
+    "cycleMonthlyPlain": "mensual"
+  },
+  "redesign": {
+    "nombre": {
+      "heroTitle": "¿Cómo te llamamos?",
+      "heroSubtitle": "Solo tu nombre — sin apellidos ni formalidades.",
+      "infoChip": "Autocompletado desde tu Apple ID — tócalo si no eres tú",
+      "helperLeft": "Emojis y caracteres especiales se filtran solos.",
+      "ctaCaption": "Se cambia cuando quieras desde Ajustes",
+      "disabledHint": "Falta tu nombre para continuar."
+    },
+    "avatar": {
+      "heroSubtitle": "Lo verás en tu perfil y en la actividad del hogar.",
+      "chosenHelper": "Ya te elegimos uno — cámbialo si quieres",
+      "surprise": "Sorpréndeme",
+      "mostChosen": "MÁS ELEGIDOS",
+      "seeMore": "Ver los 42 ›",
+      "seeLess": "Ver menos ‹",
+      "cta": "Me quedo con este"
+    },
+    "hogar": {
+      "heroTitle": "¿Cómo lo vas a usar?",
+      "heroSubtitle": "Un toque y seguimos. Puedes invitar gente después.",
+      "ctaSolo": "Seguir yo solo",
+      "ctaFamilia": "Seguir con mi familia o pareja",
+      "createTitle": "Crear un hogar nuevo",
+      "createSub": "Empieza el tuyo e invita después.",
+      "joinTitle": "Unirme con un código",
+      "joinSub": "Ya tienes un código de tu familia.",
+      "codeA11y": "Código de invitación",
+      "codeHelper": "6 a 8 caracteres · letras y números",
+      "modeHint": "Si eliges familia, después te doy un código de invitación.",
+      "soloReadyTitle": "¡Listo! Tu espacio está creado",
+      "soloReadyHint": "Es solo tuyo. Si algún día se suma alguien, lo invitas desde Ajustes.",
+      "createdTitle": "¡Listo! Tu hogar está creado",
+      "createdHint": "Invita a tu familia o pareja cuando quieras desde Ajustes.",
+      "joinedTitle": "Te uniste al hogar",
+      "joinedHint": "Ya comparten los gastos de la casa.",
+      "continue": "Seguir"
+    },
+    "ingresos": {
+      "heroDefaultTitle": "Tus ingresos, en 4 toques",
+      "heroDefaultSub": "Tipo, ciclo, monto y día. Todo con defaults listos.",
+      "heroVariableTitle": "Ingreso variable",
+      "heroVariableSub": "Sin monto fijo — solo definimos cada cuánto revisamos.",
+      "heroQuincenalTitle": "Cobro quincenal",
+      "heroQuincenalSub": "El ciclo se corta solo cada 14 días.",
+      "heroSemanalTitle": "Cobro semanal",
+      "heroSemanalSub": "Elige el día de la semana y listo.",
+      "heroCustomTitle": "Ciclo a tu medida",
+      "heroCustomSub": "Define cada cuántos días cobras, de 1 a 90.",
+      "section1": "1 · ¿CÓMO COBRAS?",
+      "section2": "2 · ¿CADA CUÁNTO?",
+      "section2Variable": "2 · ¿CADA CUÁNTO CORTAMOS EL CICLO?",
+      "stepperLabel": "CADA CUÁNTOS DÍAS COBRAS",
+      "montoSectionMensual": "3 · ¿CUÁNTO ENTRA APROX.?",
+      "montoKickerMensual": "SUELDO MENSUAL",
+      "montoSectionQuincenal": "3 · ¿CUÁNTO ENTRA POR QUINCENA?",
+      "montoKickerQuincenal": "SUELDO QUINCENAL",
+      "montoSectionSemanal": "3 · ¿CUÁNTO ENTRA POR SEMANA?",
+      "montoKickerSemanal": "SUELDO SEMANAL",
+      "montoSectionCustom": "3 · ¿CUÁNTO ENTRA POR CICLO?",
+      "montoKickerCustom": "POR CADA COBRO",
+      "diaSemanal": "{{num}} · ¿QUÉ DÍA DE LA SEMANA?",
+      "diaQuincenal": "{{num}} · ¿QUÉ DÍA EMPIEZA TU QUINCENA?",
+      "diaCustom": "{{num}} · ¿QUÉ DÍA EMPIEZA?",
+      "diaVariableMensual": "{{num}} · ¿QUÉ DÍA EMPIEZA TU CICLO?",
+      "diaMensual": "{{num}} · ¿QUÉ DÍA COBRAS?",
+      "weekday": {
+        "0": "lunes",
+        "1": "martes",
+        "2": "miércoles",
+        "3": "jueves",
+        "4": "viernes",
+        "5": "sábado",
+        "6": "domingo"
+      },
+      "month": {
+        "0": "ene",
+        "1": "feb",
+        "2": "mar",
+        "3": "abr",
+        "4": "may",
+        "5": "jun",
+        "6": "jul",
+        "7": "ago",
+        "8": "sep",
+        "9": "oct",
+        "10": "nov",
+        "11": "dic"
+      },
+      "capSemanaPrefix": "Cobras todos los ",
+      "capSemanaSuffix": " · 4 cobros por mes",
+      "capVarPrefix": "Tu ciclo de revisión va del ",
+      "capVarSuffix": " al último día del mes",
+      "capMensualPrefix": "Cobras el ",
+      "capMensualAccent": "día {{dia}}",
+      "capMensualSuffix": " · tu ciclo va del {{dia}} al último día del mes",
+      "capCadaPrefix": "Cobras cada ",
+      "capCadaAccent": "{{cadaN}} días",
+      "capCadaSuffix": " desde el {{dia}} · próximo cobro: {{proximo}}",
+      "faltanteTipo": "Falta elegir cómo cobras.",
+      "faltanteCiclo": "Falta elegir cada cuánto cobras.",
+      "faltanteMonto": "Falta el monto.",
+      "faltanteDia": "Falta el día de cobro.",
+      "tipo": {
+        "fijo": {
+          "title": "Sueldo fijo",
+          "sub": "Cobro lo mismo cada período."
+        },
+        "variable": {
+          "title": "Variable o freelance",
+          "sub": "Va cambiando — se arma con lo que entra."
+        }
+      },
+      "variableInfo": "Sin monto fijo: cada ingreso que cargues suma a tu presupuesto al instante.",
+      "ciclo": {
+        "mensual": {
+          "title": "Mensual",
+          "sub": "Una vez al mes"
+        },
+        "quincenal": {
+          "title": "Quincenal",
+          "sub": "Cada 14 días"
+        },
+        "semanal": {
+          "title": "Semanal",
+          "sub": "Cada 7 días"
+        },
+        "custom": {
+          "title": "Custom",
+          "sub": "Cada N días"
+        }
+      },
+      "tapToEdit": "Tap para editar",
+      "stepperUnit": "DÍAS",
+      "stepperHelper": "De 1 a 90 días — para changas, quinielas o cobros irregulares.",
+      "weekdayInitial": {
+        "0": "L",
+        "1": "M",
+        "2": "M",
+        "3": "J",
+        "4": "V",
+        "5": "S",
+        "6": "D"
+      }
+    }
+  },
+  "savingsStep": {
+    "heroTitle": "¿Guardamos algo cada mes?",
+    "heroSubtitle": "Te sugerimos 10% — puedes poner 0% sin culpa.",
+    "percentEyebrow": "% DEL SUELDO",
+    "computedPrefix": "Guardas ",
+    "computedSuffix": " por mes sin pensarlo",
+    "badgeSuggested": "SUGERIDO",
+    "addGoal": "Agregar una meta",
+    "optional": "OPCIONAL",
+    "bubble": "Cada mes que guardes, tu jardín crece una semilla extra. 🌱",
+    "ctaCaption": "Todo se ajusta después desde Ajustes"
+  },
+  "goalStep": {
+    "heroTitle": "Tu primera meta",
+    "heroSubtitle": "Elige una sugerida o arma la tuya — 30 segundos.",
+    "suggestedEyebrow": "SUGERIDAS · UN TOQUE",
+    "titleEyebrow": "TÍTULO",
+    "autofilled": "AUTOCOMPLETADO",
+    "iconEyebrow": "ÍCONO",
+    "editAmountA11y": "Editar monto objetivo",
+    "amountEyebrow": "MONTO OBJETIVO",
+    "timeEyebrow": "¿EN CUÁNTO TIEMPO?",
+    "cuotaPrefix": "Son ",
+    "perMonth": "/mes",
+    "cuotaSuffix": " — entra justo en tu 10% de ahorro.",
+    "ctaCreate": "Crear meta y empezar",
+    "hintNoGoal": "Falta elegir una meta — o empieza sin meta.",
+    "skip": "Empezar sin meta",
+    "skipCaption": "Sin culpa — la creas cuando quieras desde Control.",
+    "plazo3": "3 meses",
+    "suggested": {
+      "vacaciones": {
+        "title": "Vacaciones",
+        "bubble": "En {{months}} meses estás de vacaciones. Yo te riego el progreso. 🌱"
+      },
+      "mudanza": {
+        "title": "Mudanza",
+        "bubble": "En {{months}} meses estás en tu nuevo hogar. Yo te riego el progreso. 🌱"
+      },
+      "colchon": {
+        "title": "Colchón",
+        "bubble": "En {{months}} meses duermes mejor. Yo te riego el progreso. 🌱"
+      },
+      "auto": {
+        "title": "Auto",
+        "bubble": "En {{months}} meses lo estás manejando. Yo te riego el progreso. 🌱"
+      },
+      "otra": {
+        "title": "Otra",
+        "bubble": "En {{months}} meses la cumples. Yo te riego el progreso. 🌱"
+      }
+    }
+  },
+  "summary": {
+    "rowProfile": "PERFIL",
+    "rowHousehold": "HOGAR",
+    "rowIncome": "INGRESOS",
+    "rowSavings": "AHORRO",
+    "rowContribution": "APORTE",
+    "chipJoined": "Te uniste a la familia",
+    "captionCreator": "Así quedó tu espacio. Todo se ajusta después desde Ajustes.",
+    "captionJoiner": "Te uniste al hogar. Todo se ajusta después desde Ajustes.",
+    "goHome": "Ir a mi Inicio"
+  },
+  "numpad": {
+    "backspace": "Borrar",
+    "close": "Cerrar teclado"
   }
 }

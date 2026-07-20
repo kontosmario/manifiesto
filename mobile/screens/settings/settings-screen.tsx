@@ -1727,6 +1727,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={() => router.push('/(app)/settings/dev-health' as never)}
                   />
                   <SettingsRow
+                    helper="Réplicas pixel-perfect del rediseño neumórfico (design/rediseno-2026-07). Nada se cablea a la app real hasta aprobar cada vista acá."
+                    icon="palette"
+                    // @i18n-ignore: fila dev-only (gateada por __DEV__), copy interno de tooling
+                    label="Preview · Rediseño 2026-07"
+                    onPress={() => router.push('/(app)/settings/dev/redesign' as never)}
+                  />
+                  <SettingsRow
                     helper="Dispara el modal de unlock de cualquier logro y previsualiza la racha en cada estado (activa por nivel, en riesgo, rota)."
                     icon="emoji-events"
                     label="Preview · Logros & Racha"

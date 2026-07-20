@@ -168,6 +168,10 @@ export function AppButton({
                 color: activeColors.textColor,
                 fontSize: sizeTokens.typography.fontSize,
                 fontWeight: sizeTokens.typography.fontWeight,
+                // El preset ahora porta la cara (Nunito) vía fontFamily —
+                // sin esto el label queda en fuente de sistema mientras
+                // el resto del texto migró.
+                fontFamily: sizeTokens.typography.fontFamily,
               },
             ]}
           >
