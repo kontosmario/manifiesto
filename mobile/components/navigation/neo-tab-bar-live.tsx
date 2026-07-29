@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
+import Animated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { NeoTabIcon } from '@/components/navigation/neo-tab-icons'
 import {
@@ -15,7 +22,7 @@ import {
 import { HOME_SPEC, type HomeMode, type HomeSpec } from '@/components/redesign/home/home-spec'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { motionSprings } from '@/lib/motion'
+import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import { cssGradient } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import type { NeoTabKey } from '@/components/navigation/neo-tab-bar-route-map'
@@ -120,36 +127,74 @@ function NeoNavItem({
     [onMeasure, item.key],
   )
 
-  // El ítem ya NO dibuja el estado activo (el surco es el indicador
-  // absoluto, animado aparte): siempre la misma caja, solo cambia la tinta
-  // (ícono/label) según `active`. La Task 4 vuelve sobre este bloque para
-  // cruzar las tintas con un cross-fade.
-  //
-  // `onLayout` va en la raíz REAL del ítem, no siempre en `navIdle`: RN
-  // reporta `x`/`y` relativos al padre INMEDIATO nada más (no se acumulan
-  // atravesando wrappers), y `SlotRect.x` está documentado + testeado
+  // Cross-fade de la tinta (Task 4). El color del ícono es el `stroke` de un
+  // SVG: animarlo exigiría `Animated.createAnimatedComponent` sobre los
+  // `Path` de react-native-svg (más nodos animados + la gotcha del cast de
+  // children). En cambio dos copias apiladas — la idle siempre montada, la
+  // activa superpuesta con `absoluteFill` — y una sola opacidad animada:
+  // transform/opacity puro, un solo shared value por ítem.
+  const activeProgress = useSharedValue(active ? 1 : 0)
+  useEffect(() => {
+    if (reduceMotion) {
+      activeProgress.value = active ? 1 : 0
+      return
+    }
+    activeProgress.value = withTiming(active ? 1 : 0, {
+      duration: motionDurations.quick,
+      easing: motionEasings.standard,
+    })
+  }, [active, reduceMotion, activeProgress])
+  useEffect(() => () => cancelAnimation(activeProgress), [activeProgress])
+
+  const activeInkStyle = useAnimatedStyle(() => ({ opacity: activeProgress.value }))
+
+  // Pop del ícono que entra (Task 4): rebote corto SOLO en el flanco de
+  // subida. Si `!active` el efecto no dispara nada — ni siquiera cancela un
+  // pop en vuelo: la secuencia ya vuelve sola a 0, así que dejarla terminar
+  // es inofensivo (y no hay riesgo de quedar con el ícono agrandado).
+  const pop = useSharedValue(0)
+  useEffect(() => {
+    if (!active || reduceMotion) return
+    pop.value = withSequence(withSpring(1, motionSprings.press), withSpring(0, motionSprings.press))
+  }, [active, reduceMotion, pop])
+  useEffect(() => () => cancelAnimation(pop), [pop])
+
+  const popStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + pop.value * 0.14 }],
+  }))
+
+  // `onLayout` va en la raíz REAL del ítem — nunca en el `Animated.View` de
+  // `navIdle`, que es el nodo que escala con el pop. RN reporta `x`/`y`
+  // relativos al padre INMEDIATO nada más (no se acumulan atravesando
+  // wrappers), y `SlotRect.x` está documentado + testeado
   // (nav-indicator-geometry.test.ts) como relativo a `navGroup`. Con
-  // `onPress` la raíz es `AnimatedPressable` — `navIdle` queda anidado un
-  // nivel adentro, y como el Pressable no tiene ancho/padding propio abraza
-  // a `navIdle` exacto, así que el `x` de `navIdle` (relativo al Pressable)
-  // da SIEMPRE 0, sin importar dónde caiga el Pressable dentro del grupo. En
-  // los `space-between` de dos ítems eso es coincidentemente correcto para
-  // el primero de cada grupo (inicio/fijos, que arrancan al ras) pero rompe
-  // el segundo (gastos/control, empujados al borde opuesto): el surco
-  // aterrizaría en el lugar del primer ítem. Por eso el layout se mide en
-  // `AnimatedPressable` (la raíz real) cuando hay `onPress`, y en `navIdle`
-  // (que ahí sí es la raíz) cuando no lo hay.
+  // `onPress` la raíz es `AnimatedPressable` — el `View` de abajo queda
+  // anidado un nivel adentro, y como el Pressable no tiene ancho/padding
+  // propio abraza a ese `View` exacto, así que su `x` (relativo al
+  // Pressable) da SIEMPRE 0, sin importar dónde caiga el Pressable dentro
+  // del grupo. En los `space-between` de dos ítems eso es coincidentemente
+  // correcto para el primero de cada grupo (inicio/fijos, que arrancan al
+  // ras) pero rompe el segundo (gastos/control, empujados al borde
+  // opuesto): el surco aterrizaría en el lugar del primer ítem. Por eso el
+  // layout se mide en `AnimatedPressable` (la raíz real) cuando hay
+  // `onPress`, y en este `View` (que ahí sí es la raíz) cuando no lo hay.
   const inner = (
-    <View style={styles.navIdle} onLayout={onPress ? undefined : handleLayout}>
-      <NeoTabIcon name={item.icon} color={active ? s.navActiveInk : s.navIdleInk} size={20} strokeWidth={active ? 2.3 : 2.2} />
-      <Text style={[styles.navIdleLabel, { color: active ? s.navActiveInk : s.navIdleInk }]}>{label}</Text>
-      {dot ? <View style={[styles.navItemDot, { backgroundColor: s.navItemDot }]} /> : null}
+    <View onLayout={onPress ? undefined : handleLayout}>
+      <Animated.View style={[styles.navIdle, popStyle]}>
+        <NeoTabIcon name={item.icon} color={s.navIdleInk} size={20} strokeWidth={2.2} />
+        <Text style={[styles.navIdleLabel, { color: s.navIdleInk }]}>{label}</Text>
+        <Animated.View pointerEvents="none" style={[styles.navActiveInk, activeInkStyle]}>
+          <NeoTabIcon name={item.icon} color={s.navActiveInk} size={20} strokeWidth={2.3} />
+          <Text style={[styles.navIdleLabel, { color: s.navActiveInk }]}>{label}</Text>
+        </Animated.View>
+        {dot ? <View style={[styles.navItemDot, { backgroundColor: s.navItemDot }]} /> : null}
+      </Animated.View>
     </View>
   )
 
   if (!onPress) {
     // Preview estático sin handler: sin press-scale (nada que presionar).
-    // Acá `navIdle` (arriba) YA es la raíz del ítem.
+    // Acá el `View` de arriba YA es la raíz del ítem.
     return inner
   }
 
@@ -434,6 +479,16 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   navIdle: { alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6 },
+  // Capa activa del cross-fade (Task 4): se superpone exacto sobre `navIdle`
+  // vía `absoluteFill` + el mismo `alignItems`/`gap` — ambas capas centran su
+  // contenido en la misma caja, y el padding de `navIdle` es simétrico, así
+  // que no hace falta compensar ningún offset.
+  navActiveInk: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
   navIdleLabel: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   navItemDot: { position: 'absolute', top: 3, right: 6, width: 8, height: 8, borderRadius: 4 },
   fab: {
