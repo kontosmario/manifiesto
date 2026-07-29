@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
 import Animated, {
   cancelAnimation,
@@ -148,13 +148,27 @@ function NeoNavItem({
 
   const activeInkStyle = useAnimatedStyle(() => ({ opacity: activeProgress.value }))
 
-  // Pop del ícono que entra (Task 4): rebote corto SOLO en el flanco de
-  // subida. Si `!active` el efecto no dispara nada — ni siquiera cancela un
-  // pop en vuelo: la secuencia ya vuelve sola a 0, así que dejarla terminar
-  // es inofensivo (y no hay riesgo de quedar con el ícono agrandado).
+  // Pop del ícono que entra (Task 4, fix ronda 1): rebote corto SOLO en el
+  // flanco de subida REAL, no en "está activo". Un `if (!active) return`
+  // pelado no alcanza: el efecto también corre en el MONTAJE, y ahí la tab
+  // inicial ya llega con `active === true` — el ícono de Inicio rebotaría en
+  // cada arranque de la app sin que nadie lo haya tocado. El pop es
+  // confirmación de un tap; sin tap no hay nada que confirmar.
+  // (`activeProgress` no sufre esto: se siembra en `active ? 1 : 0`, así que
+  // su `withTiming` de montaje anima hacia el valor que ya tiene y es
+  // visualmente inerte. `pop` siempre arranca en 0, así que su corrida de
+  // montaje SÍ se ve.)
+  //
+  // Comparar contra el valor anterior (`wasActiveRef`) también deja el
+  // efecto inmune a re-runs que no son cambios de tab: si cambiara
+  // `reduceMotion` estando la tab ya activa, `wasActive === active` y no
+  // rebota.
   const pop = useSharedValue(0)
+  const wasActiveRef = useRef(active)
   useEffect(() => {
-    if (!active || reduceMotion) return
+    const wasActive = wasActiveRef.current
+    wasActiveRef.current = active
+    if (!active || wasActive || reduceMotion) return
     pop.value = withSequence(withSpring(1, motionSprings.press), withSpring(0, motionSprings.press))
   }, [active, reduceMotion, pop])
   useEffect(() => () => cancelAnimation(pop), [pop])
