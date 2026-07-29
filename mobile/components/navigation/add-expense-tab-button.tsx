@@ -13,7 +13,10 @@ import {
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import { AddExpenseTabButtonFace } from '@/components/navigation/add-expense-tab-button-face'
+import {
+  AddExpenseTabButtonFace,
+  type AddExpenseFaceVariant,
+} from '@/components/navigation/add-expense-tab-button-face'
 import {
   AddQuickActionsOverlay,
   type QuickAction,
@@ -77,10 +80,19 @@ export function AddExpenseTabButton({
   onPressIn,
   onPressOut,
   style,
+  variant = 'legacy',
   ...pressableProps
 }: PressableProps & {
   accessibilityState?: { selected?: boolean }
+  /**
+   * Cara del FAB. `legacy` (default) = cara V1 (tab bar viejo, live hasta F5).
+   * `neo` = cara del `HomeNavBar` aprobado (surco + gradiente invertido dark).
+   * SOLO cambia la CARA — toda la lógica (overlay/burst/no-spend/import/tour) es
+   * compartida por ambas variantes.
+   */
+  variant?: AddExpenseFaceVariant
 }) {
+  const isNeo = variant === 'neo'
   const router = useRouter()
   const { t } = useTranslation()
 
@@ -162,16 +174,27 @@ export function AddExpenseTabButton({
   const pressScale = usePressScale({ pressedScale: 0.93 })
   const { burstRingStyle, triggerBurst } = useAddExpenseButtonBurst(isReducedMotionEnabled)
   const [quickActionsVisible, setQuickActionsVisible] = useState(false)
+  // Neo only: press-inset swap de la cara (surco + disco → sombra inset del
+  // mockup). Solo se setea en variant neo (`isNeo && …`) → el render path de la
+  // cara legacy queda INTACTO (sin setState extra en press). En neo el press =
+  // inset + burst (decisión owner): el press-scale 0.93 y la opacity 0.96 quedan
+  // gateados a LEGACY (no matchean el mockup, que comunica el press solo con el
+  // inset). El burst-ring corre en ambas (redimensionado a 62 en neo).
+  const [facePressed, setFacePressed] = useState(false)
   // Register the FAB as the closing step of the Home guided tour.
   // The button lives in the tab bar (shared chrome) but it's only
   // taught from Home — when the Gastos / Fijos / Control tours run,
   // this step doesn't participate (different tour key). The ref is
-  // attached to a 66×66 inner wrapper (not the outer Pressable,
-  // which is `flex: 1` and fills the whole tab cell — that's why
-  // the cutout previously rendered as a wide oval instead of
-  // matching the round face). Border radius is set generously: the
-  // SVG cutout path clamps `r` to `min(r, w/2, h/2) = 33`, which
-  // produces a perfect circle.
+  // attached to an inner wrapper sized to the visible disc (not the
+  // outer Pressable, which is `flex: 1` and fills the whole tab cell —
+  // that's why the cutout previously rendered as a wide oval instead of
+  // matching the round face). The SVG cutout path clamps `r` to
+  // `min(r, w/2, h/2)`, so a generous `borderRadius` always resolves to
+  // a perfect circle:
+  //   · legacy face 66×66 → host 66 → r clamps to 33.
+  //   · neo face    62×62 → host 62 → r clamps to 31, snug on the disc.
+  // Sizing the host per-variant (styles.tourTargetHost{,Neo}) is the
+  // single geometry lever — `borderRadius` stays 40 and self-clamps.
   const fabTourRef = useTourTargetRef(HOME_TOUR, HOME_TOUR_STEPS.fab.order, {
     text: HOME_TOUR_STEPS.fab.text,
     highlight: {
@@ -359,11 +382,15 @@ export function AddExpenseTabButton({
         hitSlop={DEFAULT_HIT_SLOP}
         onPress={handlePress}
         onPressIn={(event) => {
-          pressScale.onPressIn()
+          // Neo comunica el press con el swap-a-inset de la cara (+ burst en
+          // onPress); NADA de press-scale/opacity legacy. Legacy conserva 0.93.
+          if (isNeo) setFacePressed(true)
+          else pressScale.onPressIn()
           onPressIn?.(event)
         }}
         onPressOut={(event) => {
-          pressScale.onPressOut()
+          if (isNeo) setFacePressed(false)
+          else pressScale.onPressOut()
           onPressOut?.(event)
         }}
         pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
@@ -371,7 +398,8 @@ export function AddExpenseTabButton({
           resolveForwardedStyle(state),
           styles.addButtonWrap,
           {
-            opacity: state.pressed ? 0.96 : 1,
+            // Solo legacy atenúa en press; neo lo comunica con el inset.
+            opacity: !isNeo && state.pressed ? 0.96 : 1,
           },
         ]}
         {...pressableProps}
@@ -380,27 +408,43 @@ export function AddExpenseTabButton({
           pointerEvents="none"
           style={[
             styles.burstRing,
+            isNeo ? styles.burstRingNeo : null,
             { borderColor: withAlpha(theme.brand.bright, 0.9) },
             burstRingStyle,
           ]}
         />
-        {/* Tour ref host. Sized to the face exactly so the guided
-            tour's cutout measures 66×66 (matches the visible disc)
-            instead of the parent Pressable's full-cell box. */}
-        <View ref={fabTourRef} collapsable={false} style={styles.tourTargetHost}>
+        {/* Tour ref host. Sized to the visible disc per-variant (66 legacy /
+            62 neo) so the guided tour's cutout matches the round face instead
+            of the parent Pressable's full-cell box. */}
+        <View
+          ref={fabTourRef}
+          collapsable={false}
+          style={isNeo ? styles.tourTargetHostNeo : styles.tourTargetHost}
+        >
           <Animated.View
             style={[
               pressScale.animatedStyle,
-              {
-                shadowColor: theme.isDark ? '#A6EF8F' : '#297811',
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: theme.isDark ? 0.34 : 0.30,
-                shadowRadius: 12,
-                elevation: 12,
-              },
+              // La profundidad del FAB neo la aporta el `boxShadow`
+              // (fabShadow/fabWellShadow) de la CARA; el drop-shadow mint nativo
+              // es solo de la cara legacy (evita doble sombra y no encaja con el
+              // disco crema del neo oscuro). `transform` siempre sale del hook
+              // como array — nunca undefined (feedback_transform_undefined_crash).
+              isNeo
+                ? null
+                : {
+                    shadowColor: theme.isDark ? '#A6EF8F' : '#297811',
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: theme.isDark ? 0.34 : 0.3,
+                    shadowRadius: 12,
+                    elevation: 12,
+                  },
             ]}
           >
-            <AddExpenseTabButtonFace theme={theme} />
+            <AddExpenseTabButtonFace
+              theme={theme}
+              variant={variant}
+              pressed={isNeo ? facePressed : false}
+            />
           </Animated.View>
         </View>
       </Pressable>
@@ -447,8 +491,23 @@ const styles = StyleSheet.create({
     borderRadius: 33,
     borderWidth: 2,
   },
+  // Neo: el disco mide 62×62 (mockup) → el ring concéntrico también, si no
+  // sobresalía ~2px del borde durante el ping.
+  burstRingNeo: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+  },
   tourTargetHost: {
     width: 66,
     height: 66,
+  },
+  // Neo: la cara mide 62×62 (disco del mockup). El host la envuelve exacto para
+  // que el spotlight del tour clampe a un círculo de r31 que calza el disco.
+  tourTargetHostNeo: {
+    width: 62,
+    height: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })

@@ -1,19 +1,94 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { radii, type AppTheme } from '@/theme/palette'
 import { AppSymbol } from '@/components/ui/app-symbol'
+import { NeoTabIcon } from '@/components/navigation/neo-tab-icons'
+import { HOME_SPEC, type HomeMode } from '@/components/redesign/home/home-spec'
+import { cssGradient } from '@/theme/neo-tokens'
+
+export type AddExpenseFaceVariant = 'legacy' | 'neo'
 
 interface AddExpenseTabButtonFaceProps {
   theme: AppTheme
+  /**
+   * `legacy` (default) — cara V1: gradiente mint saturado + "+" + borde
+   * "cutout" contra la barra. La usa el tab bar viejo (aún live hasta F5).
+   *
+   * `neo` — cara del `HomeNavBar` aprobado (spec `home-final`): disco con surco
+   * `fabWell`, gradiente invertido a crema en oscuro, "+" glyph neo y sombras
+   * `fab`/`fabWell` (→ `fabPressed*` en press). SOLO cambia la CARA — el wrapper
+   * (handlePress/overlay/burst/no-spend/import/tour) es COMPARTIDO por ambas.
+   */
+  variant?: AddExpenseFaceVariant
+  /**
+   * Neo only: cuando está presionado, ambas capas (disco + surco) hacen el
+   * swap-a-inset del mockup (`fabShadow→fabPressedShadow`,
+   * `fabWellShadow→fabPressedWellShadow`, home-spec.ts:365-370,519-524).
+   */
+  pressed?: boolean
+  /**
+   * Neo only: fuerza el modo. El FAB live lo deriva de `theme.isDark`; el preview
+   * dev lo pasa explícito para mostrar claro/oscuro sin tocar el tema real (los
+   * `PreviewPhoneSection` solo pintan un fondo, no proveen contexto de tema).
+   */
+  mode?: HomeMode
 }
 
 /**
- * The visible face of the FAB — a 66pt circle with a subtle V1 mint
- * gradient and a centered "+" glyph. No more decorative motion layers
- * (color boost, shine boost, icon rotation). The press feedback now
- * comes from the parent's scale + burst ring only.
+ * Fallback sólido del gradiente del FAB neo cuando `experimental_backgroundImage`
+ * no esté soportado (2º stop del gradiente: verde profundo claro / crema oscuro).
+ * En RN 0.81 el gradiente SÍ rinde con minSdk 29 — el seam solo lo deja listo.
  */
-export function AddExpenseTabButtonFace({ theme }: AddExpenseTabButtonFaceProps) {
+const NEO_FAB_FALLBACK: Record<HomeMode, string> = {
+  light: '#327E39',
+  dark: '#DCE0D0',
+}
+
+/**
+ * The visible face of the FAB. Two variants, same 66-ish circle:
+ *
+ *   · `legacy` — V1 mint gradient + centered "+" glyph. Press feedback comes
+ *     from the parent's scale + burst ring only.
+ *   · `neo` — the approved HomeNavBar disc (surco `fabWell` + inverted cream
+ *     gradient in dark). On press both layers swap to the mockup's inset shadow.
+ *
+ * The logic (tap → quick-actions overlay, no-spend machine, import chain, tour)
+ * lives in the parent `AddExpenseTabButton` and is shared by both variants —
+ * only the face is restyled.
+ */
+export function AddExpenseTabButtonFace({
+  theme,
+  variant = 'legacy',
+  pressed = false,
+  mode,
+}: AddExpenseTabButtonFaceProps) {
+  if (variant === 'neo') {
+    const resolvedMode: HomeMode = mode ?? (theme.isDark ? 'dark' : 'light')
+    const s = HOME_SPEC[resolvedMode]
+    return (
+      <View
+        style={[
+          styles.neoFab,
+          // Gradiente por el seam (fallback sólido). En oscuro el disco va
+          // INVERTIDO a crema con "+" verde (fabInk), del catálogo §1.
+          cssGradient(s.fabGradientCss, NEO_FAB_FALLBACK[resolvedMode]),
+          { boxShadow: pressed ? s.fabPressedShadow : s.fabShadow },
+        ]}
+      >
+        {/* Surco interior (`fabWell`): pozo hundido concéntrico que aloja el
+            "+". Sin fill propio — el gradiente del disco asoma por su inset. */}
+        <View
+          style={[
+            styles.neoFabWell,
+            { boxShadow: pressed ? s.fabPressedWellShadow : s.fabWellShadow },
+          ]}
+        >
+          <NeoTabIcon name="plus" color={s.fabInk} size={24} strokeWidth={3} />
+        </View>
+      </View>
+    )
+  }
+
   return (
     <LinearGradient
       // V1 primary scale gradient — saturated mint, on-brand.
@@ -80,5 +155,22 @@ const styles = StyleSheet.create({
   },
   addButtonGloss: {
     ...StyleSheet.absoluteFillObject,
+  },
+  // Cara neo — geometría LITERAL del mockup (DefaultNeoFab / home-screen.tsx):
+  // disco 62 r31 (sin borde cutout: el surco + boxShadow aportan la profundidad)
+  // + surco 44 r22 concéntrico.
+  neoFab: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  neoFabWell: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 })
