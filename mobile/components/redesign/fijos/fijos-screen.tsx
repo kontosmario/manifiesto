@@ -43,10 +43,19 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
  * tareas le siguen agregando claves.
  *
  * PROPS, NO ESTADO: cada componente es puro, recibe todo por props y no
- * monta hooks de datos ni de red. `FijosHero` es la excepción parcial de
- * siempre en este patrón (como `GastosHero`): el único "estado" que posee
- * es el de sus 8 variantes discriminadas por la prop `variant`, con
- * defaults por variante que reproducen los valores literales del mockup —
+ * monta hooks de datos ni de red. `FijosHero` (y `FijosAvisos`, Task 4) son
+ * la excepción parcial: además de props libres, tienen un único "estado"
+ * declarativo — la variante (`variant`) que selecciona defaults de un
+ * `Record<Variant, Content>` (`HERO_CONTENT`/`AVISOS_CONTENT`) combinado con
+ * overrides puntuales vía `with…Defaults`. ESTE MECANISMO ES NUEVO EN ESTE
+ * KIT, no una repetición de algo "ya aprobado": `GastosHeroProps`
+ * (`gastos-screen.tsx:1184`) es una interfaz PLANA con 5 props de contenido
+ * obligatorias (`tag`/`chip`/`total`/`prom`/`categories`) — no existen ahí
+ * ni `GastosHeroContent`, ni un `Record` de variantes, ni un
+ * `withHeroDefaults`. Acá se justifica porque el hero tiene 8 shapes
+ * (E1–E8) y Avisos 6 (A1–A6): sin este mecanismo cada caller tendría que
+ * reconstruir a mano el objeto de contenido completo de la variante que
+ * quiere mostrar solo para pisar un campo puntual —
  * `<FijosHero mode="light" variant="E5" />` sin ningún otro prop ya
  * reproduce la tarjeta aprobada de ese estado.
  *
@@ -237,7 +246,7 @@ export type FijosHeroVariant = 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6' | 'E7' | 
  * caller pise UN campo puntual sin tener que reconstruir todo el objeto de
  * la variante.
  */
-interface FijosHeroContent {
+export interface FijosHeroContent {
   // Compartido por las 8 variantes (fila superior del hero).
   eyebrow: string
   topChipLabel: string
@@ -1326,13 +1335,16 @@ function CheckGlyph({ color, size = 16 }: { color: string; size?: number }) {
  *  Reduced motion: `pulse` se fija en `0` (el extremo apagado/chico del
  *  rango) — mismo criterio que `UrgentHeaderDot`
  *  (fijos-proximos-parts/urgent-header-dot.tsx), que resuelve exactamente
- *  este mismo patrón de respiración. */
-function LiveDot({ s }: { s: FijosSpec }) {
+ *  este mismo patrón de respiración. `paused` (hilo de `FijosAvisos`, ver su
+ *  docblock) se trata igual que `reduced`: cancela y fija el extremo apagado
+ *  en vez de dejar el loop de 1.6s corriendo en el hilo de UI con la tab sin
+ *  foco (`freezeOnBlur:false`). */
+function LiveDot({ s, paused }: { s: FijosSpec; paused: boolean }) {
   const reduced = useReducedMotion()
   const pulse = useSharedValue(0)
 
   useEffect(() => {
-    if (reduced) {
+    if (reduced || paused) {
       cancelAnimation(pulse)
       pulse.value = 0
       return
@@ -1343,7 +1355,7 @@ function LiveDot({ s }: { s: FijosSpec }) {
       true,
     )
     return () => cancelAnimation(pulse)
-  }, [reduced, pulse])
+  }, [reduced, paused, pulse])
 
   const style = useAnimatedStyle(() => ({
     opacity: 0.4 + pulse.value * 0.6,
@@ -1440,8 +1452,15 @@ const TICKER_FADE_WIDTH = 24
  *
  * Reduced motion: sin animación, `translateX` en `0` — la lista se ve
  * arrancando desde la primera copia completa, nunca cortada a la mitad.
+ *
+ * `paused` (hilo de `FijosAvisos`) sigue el mismo criterio que `reduced`:
+ * cancela el loop de 30s y vuelve `translateX` a `0` en vez de dejarlo
+ * corriendo en el hilo de UI con la tab sin foco (`freezeOnBlur:false`). Al
+ * des-pausar, el loop arranca de nuevo desde `-shiftWidth` (no resume a
+ * mitad de camino) — mismo comportamiento que ya tiene el gate de reduced
+ * motion.
  */
-function FijosTicker({ s, items }: { s: FijosSpec; items: FijosTickerItem[] }) {
+function FijosTicker({ s, items, paused }: { s: FijosSpec; items: FijosTickerItem[]; paused: boolean }) {
   const reduced = useReducedMotion()
   const translateX = useSharedValue(0)
   const [copyWidth, setCopyWidth] = useState(0)
@@ -1454,7 +1473,7 @@ function FijosTicker({ s, items }: { s: FijosSpec; items: FijosTickerItem[] }) {
   const shiftWidth = copyWidth > 0 ? copyWidth + TICKER_GAP : 0
 
   useEffect(() => {
-    if (reduced || shiftWidth <= 0) {
+    if (reduced || paused || shiftWidth <= 0) {
       cancelAnimation(translateX)
       translateX.value = 0
       return
@@ -1462,7 +1481,7 @@ function FijosTicker({ s, items }: { s: FijosSpec; items: FijosTickerItem[] }) {
     translateX.value = -shiftWidth
     translateX.value = withRepeat(withTiming(0, { duration: decorativeDurations.tickerLoop, easing: Easing.linear }), -1, false)
     return () => cancelAnimation(translateX)
-  }, [reduced, shiftWidth, translateX])
+  }, [reduced, paused, shiftWidth, translateX])
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -1567,18 +1586,22 @@ function ReminderRow({
 }
 
 /** Cuerpo "default": ticker o pozo estático + aumentos o fila calma. Cubre
- *  A1/A2/A3/A5 (mismo layout de 2 sub-secciones, distinto contenido). */
-function AvisosDefaultBody({ s, c }: { s: FijosSpec; c: FijosAvisosContent }) {
+ *  A1/A2/A3/A5 (mismo layout de 2 sub-secciones, distinto contenido).
+ *  `paused` solo importa cuando `hasTicker` (LiveDot/FijosTicker son los
+ *  únicos 2 loops de Avisos, ver Finding 9 del fix final de whole-branch
+ *  review) — se hilvana igual sin `hasTicker` porque ninguno de los dos se
+ *  monta. */
+function AvisosDefaultBody({ s, c, paused }: { s: FijosSpec; c: FijosAvisosContent; paused: boolean }) {
   const hasTicker = c.tickerItems.length > 0
   const hasHikes = c.hikeRows.length > 0
   return (
     <>
       <View style={styles.avisosEyebrowRow}>
         <Text style={[styles.avisosEyebrowText, { color: s.sectionEyebrowInk }]}>POR PAGAR · ESTE MES</Text>
-        {hasTicker ? <LiveDot s={s} /> : null}
+        {hasTicker ? <LiveDot s={s} paused={paused} /> : null}
       </View>
       {hasTicker ? (
-        <FijosTicker s={s} items={c.tickerItems} />
+        <FijosTicker s={s} items={c.tickerItems} paused={paused} />
       ) : (
         <View style={[styles.tickerStaticWell, { backgroundColor: s.tickerWellBackground, boxShadow: s.tickerWellShadow }]}>
           <Text style={[styles.tickerStaticText, { color: s.green }]}>{c.staticMessage}</Text>
@@ -1655,6 +1678,15 @@ export interface FijosAvisosProps extends Partial<FijosAvisosContent> {
    *  propios defaults (idénticos al mockup) para los campos de
    *  `FijosAvisosContent` — pasalos solo para pisar un valor puntual. */
   variant?: FijosAvisosVariant
+  /** Pausa el ticker ("POR PAGAR · ESTE MES", `withRepeat` de 30s) y el
+   *  `LiveDot` (1.6s infinito) — los 2 únicos loops de `FijosAvisos`, a
+   *  diferencia de `BrotParticles` (que se auto-gatea por foco). Mismo
+   *  convenio que `FijosHero`/`paused`: la tab no está enfocada y
+   *  `freezeOnBlur:false` lo deja montado e invisible — sin este apagador
+   *  los dos loops seguirían corriendo en el hilo de UI. NO se cablea en el
+   *  preview (fuera de alcance del fix final de whole-branch review) —
+   *  solo se expone acá. */
+  paused?: boolean
   /** Anima el Brot del header. Default `true` → el preview aprobado late
    *  igual que siempre; el cableado real lo apaga por perf, mismo criterio
    *  que `FijosHero`/`animated`. */
@@ -1664,7 +1696,7 @@ export interface FijosAvisosProps extends Partial<FijosAvisosContent> {
 }
 
 export function FijosAvisos(props: FijosAvisosProps) {
-  const { mode, animated = true, onPressEmptyCta } = props
+  const { mode, paused = false, animated = true, onPressEmptyCta } = props
   const variant = props.variant ?? 'A1'
   const s = FIJOS_SPEC[mode]
   const c = withAvisosDefaults(AVISOS_CONTENT[variant], props)
@@ -1698,7 +1730,7 @@ export function FijosAvisos(props: FijosAvisosProps) {
       ) : variant === 'A6' ? (
         <AvisosEmptyBody s={s} c={c} onPressEmptyCta={onPressEmptyCta} />
       ) : (
-        <AvisosDefaultBody s={s} c={c} />
+        <AvisosDefaultBody s={s} c={c} paused={paused} />
       )}
     </View>
   )
@@ -1789,6 +1821,11 @@ function FijosTab({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={`${label}, ${count}`}
+      // Tab dibujado ~34px de alto (paddingVertical 8 + label 11.5px), bajo
+      // el mínimo a11y de 44pt. hitSlop lo lleva a ~46. Horizontal 4+4=8 ==
+      // gap de tabsRow (8) → sin solape entre tabs vecinos. Mismo cálculo que
+      // FilterChip de Gastos (gastos-screen.tsx:2155-2158).
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -1911,6 +1948,16 @@ function rowMetaInk(s: FijosSpec, tone: FijosRowTone): string {
   return s.rowMetaNeutralInk
 }
 
+/** Props de `FijosRow` — extraída a interfaz nombrada (mismo criterio que
+ *  `FijosHeaderProps`/`FijosHeroProps`/`FijosAvisosProps`/`FijosTabsProps`/
+ *  `FijosCategoriesProps`, sus 5 hermanas) para que un consumidor pueda
+ *  nombrar la forma sin caer a `React.ComponentProps<typeof FijosRow>`. */
+export interface FijosRowProps {
+  mode: FijosMode
+  group: FijosCategoryGroup
+  onPress?: () => void
+}
+
 /**
  * Una fila de categoría (Vivienda/Suscripciones/Servicios) — tile de ícono
  * + nombre + meta con tono + monto + chevron. `onPress` opcional (el
@@ -1918,15 +1965,7 @@ function rowMetaInk(s: FijosSpec, tone: FijosRowTone): string {
  * fuera de este plan): sin handler renderiza estático, mismo criterio que
  * `onPressCalendar` del header.
  */
-export function FijosRow({
-  mode,
-  group,
-  onPress,
-}: {
-  mode: FijosMode
-  group: FijosCategoryGroup
-  onPress?: () => void
-}) {
+export function FijosRow({ mode, group, onPress }: FijosRowProps) {
   const s = FIJOS_SPEC[mode]
   const press = usePressScale()
   const inner = (
@@ -1980,9 +2019,11 @@ export function FijosRow({
  * solo default (el que dibujan los dos teléfonos) alcanza. Igual se separa
  * el contenido de `FijosCategoriesProps` (que `extends Partial<>` de esto)
  * para poder pisar un campo puntual sin reconstruir todo el objeto, mismo
- * criterio que las otras 2 secciones — y SE EXPORTA (a diferencia de
- * `FijosHeroContent`, gap ya señalado en el reporte de la Task 3) para que
- * quien arme el preview pueda nombrar la forma que overridea.
+ * criterio que las otras 2 secciones — y SE EXPORTA, igual que
+ * `FijosHeroContent`/`FijosAvisosContent` (el gap de `FijosHeroContent` sin
+ * exportar que señaló el reporte de la Task 3 ya se cerró en el fix final de
+ * whole-branch review), para que quien arme el preview pueda nombrar la
+ * forma que overridea.
  */
 export interface FijosCategoriesContent {
   activeTab: FijosTabKey
@@ -2240,7 +2281,9 @@ const styles = StyleSheet.create({
   // CTA compartido (E6/E8, y A6 de Avisos)
   ctaSpacing: { alignSelf: 'stretch', marginTop: 15 },
   ctaSpacingSm: { marginTop: 12 },
-  ctaPill: { borderRadius: FIJOS_RADII.chipSm, paddingVertical: 13, alignItems: 'center', justifyContent: 'center' },
+  // padding:13px uniforme en el markup (líneas 505/552 — CTA "+ Agregar tu
+  // primer fijo" / "✓ Confirmar cobro"), no solo paddingVertical.
+  ctaPill: { borderRadius: FIJOS_RADII.chipSm, padding: 13, alignItems: 'center', justifyContent: 'center' },
   ctaPillText: { fontSize: 14, fontWeight: '900', fontFamily: nunitoFamily('900'), textAlign: 'center' },
 
   // ③ Avisos — card + header (título/badge/Brot)

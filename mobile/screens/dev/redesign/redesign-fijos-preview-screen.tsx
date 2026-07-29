@@ -118,13 +118,13 @@ export function RedesignFijosPreviewScreen() {
         <FijosSwatch mode="light">
           <FijosHeader mode="light" cycleLabel={CYCLE_LABEL} onToggleDropdown={() => {}} onPressCalendar={() => {}} />
           <View style={fijosHeaderHeroSpacing}>
-            <FijosHero mode="light" />
+            <FijosHero mode="light" onPressEmptyCta={() => {}} onPressConfirm={() => {}} />
           </View>
           <View style={fijosHeroAvisosSpacing}>
-            <FijosAvisos mode="light" />
+            <FijosAvisos mode="light" onPressEmptyCta={() => {}} />
           </View>
           <View style={fijosAvisosCategoriesSpacing}>
-            <FijosCategories mode="light" />
+            <FijosCategories mode="light" onSelectTab={() => {}} onPressCategory={() => {}} onPressAddFijo={() => {}} />
           </View>
         </FijosSwatch>
 
@@ -135,13 +135,13 @@ export function RedesignFijosPreviewScreen() {
         <FijosSwatch mode="dark">
           <FijosHeader mode="dark" cycleLabel={CYCLE_LABEL} onToggleDropdown={() => {}} onPressCalendar={() => {}} />
           <View style={fijosHeaderHeroSpacing}>
-            <FijosHero mode="dark" />
+            <FijosHero mode="dark" onPressEmptyCta={() => {}} onPressConfirm={() => {}} />
           </View>
           <View style={fijosHeroAvisosSpacing}>
-            <FijosAvisos mode="dark" />
+            <FijosAvisos mode="dark" onPressEmptyCta={() => {}} />
           </View>
           <View style={fijosAvisosCategoriesSpacing}>
-            <FijosCategories mode="dark" />
+            <FijosCategories mode="dark" onSelectTab={() => {}} onPressCategory={() => {}} onPressAddFijo={() => {}} />
           </View>
         </FijosSwatch>
 
@@ -165,11 +165,23 @@ export function RedesignFijosPreviewScreen() {
         ) : null}
         <View style={styles.swatchPairGap}>
           <FijosSwatch mode="light">
-            <FijosHero key={`light-${heroState.variant}`} mode="light" variant={heroState.variant} />
+            <FijosHero
+              key={`light-${heroState.variant}`}
+              mode="light"
+              variant={heroState.variant}
+              onPressEmptyCta={() => {}}
+              onPressConfirm={() => {}}
+            />
           </FijosSwatch>
         </View>
         <FijosSwatch mode="dark">
-          <FijosHero key={`dark-${heroState.variant}`} mode="dark" variant={heroState.variant} />
+          <FijosHero
+            key={`dark-${heroState.variant}`}
+            mode="dark"
+            variant={heroState.variant}
+            onPressEmptyCta={() => {}}
+            onPressConfirm={() => {}}
+          />
         </FijosSwatch>
 
         {/* Los gaps hacia Hero/Categorías (fijosHeroAvisosSpacing/
@@ -195,11 +207,21 @@ export function RedesignFijosPreviewScreen() {
         ) : null}
         <View style={styles.swatchPairGap}>
           <FijosSwatch mode="light">
-            <FijosAvisos key={`light-${avisosState.variant}`} mode="light" variant={avisosState.variant} />
+            <FijosAvisos
+              key={`light-${avisosState.variant}`}
+              mode="light"
+              variant={avisosState.variant}
+              onPressEmptyCta={() => {}}
+            />
           </FijosSwatch>
         </View>
         <FijosSwatch mode="dark">
-          <FijosAvisos key={`dark-${avisosState.variant}`} mode="dark" variant={avisosState.variant} />
+          <FijosAvisos
+            key={`dark-${avisosState.variant}`}
+            mode="dark"
+            variant={avisosState.variant}
+            onPressEmptyCta={() => {}}
+          />
         </FijosSwatch>
 
         <PreviewLabel
@@ -222,11 +244,23 @@ export function RedesignFijosPreviewScreen() {
             animación de press de cada tab sin necesidad. */}
         <View style={styles.swatchPairGap}>
           <FijosSwatch mode="light">
-            <FijosCategories mode="light" activeTab={tabState.key} onSelectTab={selectTab} />
+            <FijosCategories
+              mode="light"
+              activeTab={tabState.key}
+              onSelectTab={selectTab}
+              onPressCategory={() => {}}
+              onPressAddFijo={() => {}}
+            />
           </FijosSwatch>
         </View>
         <FijosSwatch mode="dark">
-          <FijosCategories mode="dark" activeTab={tabState.key} onSelectTab={selectTab} />
+          <FijosCategories
+            mode="dark"
+            activeTab={tabState.key}
+            onSelectTab={selectTab}
+            onPressCategory={() => {}}
+            onPressAddFijo={() => {}}
+          />
         </FijosSwatch>
 
         <PreviewLabel

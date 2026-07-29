@@ -222,7 +222,16 @@ export interface FijosSpec {
   tagOverdueShadow: string | undefined
   /** Anillo de alerta (card/fila en estado vencido-urgente). Theme-invariant. */
   urgentRing: string
-  /** "Hoy" como pill sólida (mismo par de valores que la tab activa "Vencidos"). */
+  /** SIN CALL SITE (fix final de whole-branch review, Finding 8) — ningún
+   *  consumidor de este kit lee este par. La prosa de la Task 5 ("las filas
+   *  llevan… su anillo… 'hoy' como pill sólida") es errónea: el único
+   *  `0 0 0 2px #D97355` del markup (línea 320) es el `urgentRing` de la
+   *  CARD de Avisos en A5 (`cardUrgent`), no una pill sobre una fila de
+   *  categoría — ver el docblock de `FijosRowTone`, que ya documenta por qué
+   *  se descartó a propósito. Que coincida con el par de la tab activa
+   *  "Vencidos" es casualidad de paleta, no evidencia de un call site real.
+   *  No reintroducir un consumidor "por si acaso" sin confirmar contra el
+   *  markup primero. */
   hoyPillBackground: string
   hoyPillInk: string
 
@@ -276,6 +285,16 @@ export interface FijosSpec {
   categoryTileServices: string
 
   // ─── ⑥ FAB — disco del nav (invertido en oscuro) ───
+  // MUERTOS POR DISEÑO (fix final de whole-branch review, Finding 8): los 4
+  // campos de este cluster no tienen call site en el kit hoy. El preview
+  // monta el FAB real (`NeoTabBarLive`, ya aprobada) en vez de transcribir
+  // el FAB del mockup — mismo criterio que el resto de la nav (chrome
+  // dibujado NO vive en fijos-screen.tsx, ver docblock del módulo). Riesgo
+  // si se "redescubren" sin este contexto: un pase de cableado los usa para
+  // pintar un FAB propio que termina divergiendo del nav real. Se conservan
+  // (transcritos del markup, valores correctos) por si algún día hace falta
+  // una réplica estática, pero ningún componente de este archivo debe
+  // consumirlos mientras `NeoTabBarLive` sea el FAB de verdad.
   fabGradientCss: string
   fabShadow: string
   fabInnerShadow: string
@@ -620,6 +639,9 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     tabActiveBadgeBackground: '#D97E4F',
     tabActiveBadgeInk: '#FFF7E8',
     tabInactiveInk: '#B9CCB2',
+    // [Nota] Repite el literal de `insBg` (#142519) en vez de alias — mismo
+    // hex, sin referencia compartida; si `insBg` cambia algún día hay que
+    // actualizar este campo a mano también.
     tabInactiveBackground: '#142519',
     tabInactiveShadow: INS_D,
     tabInactiveBadgeBackground: 'rgba(164,227,166,0.16)',
