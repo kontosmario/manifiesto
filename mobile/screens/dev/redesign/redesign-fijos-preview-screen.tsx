@@ -117,7 +117,7 @@ export function RedesignFijosPreviewScreen() {
         </FijosSwatch>
 
         <Text style={[styles.scopeFooter, { color: theme.colors.textMuted }]}>
-          — Fin de lo construido — Avisos (A1–A6) y &quot;Todos tus fijos&quot; llegan en tareas siguientes del mismo kit —
+          {'— Fin de lo construido — Avisos (A1–A6) y "Todos tus fijos" llegan en tareas siguientes del mismo kit —'}
         </Text>
       </View>
     </Screen>
