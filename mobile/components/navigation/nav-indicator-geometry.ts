@@ -36,9 +36,24 @@ export const NAV_FAB_SLOT_WIDTH = 66
  *  15 sale de medir el reparto original a 393pt en español. */
 export const NAV_FAB_GUTTER_X = 15
 
-/** Tabs de cada grupo, en orden visual. El surco cruza de un grupo al otro
- *  pasando por debajo del FAB. */
-const LEFT_KEYS: readonly NeoTabKey[] = ['inicio', 'gastos']
+/**
+ * Partición de tabs por grupo, en orden visual. El surco cruza de un grupo
+ * al otro pasando por debajo del FAB.
+ *
+ * ÚNICA fuente de la partición: antes esto vivía acá (privado, solo para
+ * `resolveIndicatorX`) Y por separado en `neo-tab-bar-live.tsx` como
+ * `NAV_ITEMS.slice(0, 2)` / `.slice(2)` — dos encodings del mismo hecho que
+ * coincidían por casualidad. Si alguien reordena `NAV_ITEMS` sin tocar esto
+ * (o viceversa), el surco cae ~230pt lejos del ítem que marca, y nada lo
+ * detecta: ni tsc, ni lint, ni los tests unitarios (cada mitad type-checkea
+ * sola). Exportado para que `NeoTabBarLive` arme sus dos `navGroup` filtrando
+ * por esto en vez de por posición — un reorder de `NAV_ITEMS` no puede
+ * desalinearlos porque ambos leen la misma partición por key.
+ */
+export const NAV_KEY_GROUPS: Record<'left' | 'right', readonly NeoTabKey[]> = {
+  left: ['inicio', 'gastos'],
+  right: ['fijos', 'control'],
+}
 
 export function slotCenterX(groupX: number, slot: SlotRect): number {
   return groupX + slot.x + slot.width / 2
@@ -73,6 +88,6 @@ export function resolveIndicatorX(
   if (wellWidth <= 0) return null
   const slot = slots[active]
   if (!slot) return null
-  const groupX = LEFT_KEYS.includes(active) ? groups.left : groups.right
+  const groupX = NAV_KEY_GROUPS.left.includes(active) ? groups.left : groups.right
   return slotCenterX(groupX, slot) - wellWidth / 2
 }

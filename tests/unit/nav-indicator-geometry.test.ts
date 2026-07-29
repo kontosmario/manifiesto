@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  NAV_KEY_GROUPS,
   NAV_WELL_PADDING_X,
   resolveIndicatorX,
   resolveWellWidth,
@@ -7,6 +8,7 @@ import {
   type GroupOffsets,
   type SlotRects,
 } from '@/components/navigation/nav-indicator-geometry'
+import type { NeoTabKey } from '@/components/navigation/neo-tab-bar-route-map'
 
 // Layout de referencia: dos grupos de 2 ítems. Los `x` de los slots son
 // RELATIVOS a su grupo (así los reporta onLayout), los del grupo son
@@ -18,6 +20,23 @@ const SLOTS: SlotRects = {
   fijos: { x: 0, width: 44 },
   control: { x: 54, width: 62 },
 }
+
+describe('NAV_KEY_GROUPS', () => {
+  // Catálogo completo de `NeoTabKey`. Si este literal y el tipo divergen,
+  // tsc lo marca (asignar una key inválida acá es un error de tipos).
+  const ALL_KEYS: readonly NeoTabKey[] = ['inicio', 'gastos', 'fijos', 'control']
+
+  it('particiona cada NeoTabKey exactamente una vez, sin faltantes ni sobrantes', () => {
+    const combined = [...NAV_KEY_GROUPS.left, ...NAV_KEY_GROUPS.right]
+    expect(combined).toHaveLength(ALL_KEYS.length)
+    expect([...combined].sort()).toEqual([...ALL_KEYS].sort())
+  })
+
+  it('no repite ninguna key entre los dos grupos', () => {
+    const overlap = NAV_KEY_GROUPS.left.filter((key) => NAV_KEY_GROUPS.right.includes(key))
+    expect(overlap).toHaveLength(0)
+  })
+})
 
 describe('slotCenterX', () => {
   it('suma el offset del grupo al centro del slot', () => {
