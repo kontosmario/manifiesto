@@ -42,4 +42,10 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // Notificaciones (Turno 6 · mockups 7a/7ao lista · 7b/7bo empty state):
   // APROBADO 2026-07-18. Cableado a la pantalla real en curso.
   'notif': 'aprobada',
+  // FIJOS (rediseño, handoff design/fijos-2026-07, 2026-07-29): sección
+  // completa en tres pantallas — vista principal (hero E1-E8 + componente
+  // Avisos A1-A6 + tabs/categorías), detalle expandido del ítem y alta en
+  // 2 pasos sin scroll. Se integra por fases, cada una con su gate propio:
+  // réplica en preview → aprobación del owner → cableado. PENDIENTE.
+  'fijos': 'pendiente',
 }
