@@ -1,7 +1,8 @@
 import { memo, useCallback, useMemo, useRef } from 'react'
 import { Tabs } from 'expo-router'
 import { useTranslation } from 'react-i18next'
-import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs'
+import type { BottomTabBarButtonProps, BottomTabBarProps } from '@react-navigation/bottom-tabs'
+import { CommonActions } from '@react-navigation/native'
 import {
   AddExpenseTabButton,
   TabBarBackground,
@@ -9,6 +10,13 @@ import {
   TabLabel,
   tabBarUiStyles,
 } from '@/components/navigation/app-tabs-ui'
+import { NeoTabBarLive } from '@/components/navigation/neo-tab-bar-live'
+import {
+  NEO_TAB_KEY_TO_ROUTE,
+  routeNameToTabKey,
+  type NeoTabKey,
+} from '@/components/navigation/neo-tab-bar-route-map'
+import type { HomeMode } from '@/components/redesign/home/home-spec'
 import { TabBarPressable } from '@/components/navigation/tab-bar-pressable'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
 import { useTour } from '@/features/tours/tour-context'
@@ -94,6 +102,115 @@ const renderInsightsIcon = ({ color, focused, size }: TabIconRenderProps) => (
 )
 const renderAddIcon = () => null
 
+// ─── Nav nueva (F4): adapter renderNeoTabBar(props: BottomTabBarProps) ────────
+//
+// Traduce el estado de expo-router al contrato presentational de NeoTabBarLive.
+// CONECTADO al <Tabs> vía `tabBar={renderNeoTabBar}` (F5 swap live, 2026-07-22).
+// Ver design/home-final-2026-07/PLAN-NAV-CABLEADO.md (Fases 4 + 5).
+
+// FAB central: el AddExpenseTabButton EXISTENTE montado tal cual — MISMA lógica
+// (handlePress/overlay/burst/no-spend/import/tour), solo cambia la CARA vía
+// `variant="neo"` (F3): disco con surco + gradiente invertido en dark + press
+// inset. El host de ancho fijo (fabSlot en NeoTabBarLive) lo confina al centro.
+// Referencia module-level → estable entre renders.
+const renderNeoFab = () => (
+  <AddExpenseTabButton variant="neo" accessibilityState={{ selected: false }} />
+)
+
+/**
+ * Hoja memoizada que lee `useAdvisorBadge` AISLADO — igual patrón que
+ * InsightsTabIcon: el hook (RQ cache + filtro de Map) solo re-evalúa cuando
+ * cambian `mode` / `activeTab` / `bottomInset` / `onPressTab`, no en cada render
+ * de la barra por publishes de pulse o lectores de tema. `onPressTab` llega
+ * estable (useCallback sin deps sobre refs) así el memo no se invalida por
+ * churn de identidad. El kit suprime el dot en la tab activa internamente.
+ */
+const NeoTabBarView = memo(function NeoTabBarView({
+  mode,
+  activeTab,
+  bottomInset,
+  onPressTab,
+}: {
+  mode: HomeMode
+  activeTab: NeoTabKey | undefined
+  bottomInset: number
+  onPressTab: (key: NeoTabKey) => void
+}) {
+  const { show } = useAdvisorBadge()
+  const itemDots = useMemo(() => ({ control: show }), [show])
+  return (
+    <NeoTabBarLive
+      mode={mode}
+      activeTab={activeTab}
+      itemDots={itemDots}
+      // Sin fuente de datos hoy → paridad con el FAB live actual (no pinta
+      // badge). Requiere decisión owner para activarlo (PLAN Fase 2, decisión c).
+      fabBadge={null}
+      onPressTab={onPressTab}
+      bottomInset={bottomInset}
+      renderFab={renderNeoFab}
+    />
+  )
+})
+
+function NeoTabBarConnected({ state, navigation, insets }: BottomTabBarProps) {
+  const { theme } = useAppTheme()
+  const mode: HomeMode = theme.isDark ? 'dark' : 'light'
+
+  const activeRouteName = state.routes[state.index]?.name
+  const activeTab = activeRouteName ? routeNameToTabKey(activeRouteName) : undefined
+
+  // Refs para leer el state/navigation vigente sin recrear `onPressTab` en cada
+  // nav render (patrón tourActiveRef de abajo). Mantiene estable la prop del
+  // memo → el hook del badge no re-corre por churn de identidad.
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const navRef = useRef(navigation)
+  navRef.current = navigation
+
+  const onPressTab = useCallback((key: NeoTabKey) => {
+    const s = stateRef.current
+    const nav = navRef.current
+    const route = s.routes.find((r) => r.name === NEO_TAB_KEY_TO_ROUTE[key])
+    if (!route) return
+    const isFocused = s.routes[s.index]?.key === route.key
+    // EMITIR tabPress (canPreventDefault) es obligatorio: así corren
+    // `useTabHaptics` (haptic + focus-pulse, G4) y el `preventDefault()` del
+    // tour-lock (G5) vía screenListeners, sin duplicar nada. Y hay que RESPETAR
+    // `defaultPrevented`: si el tour lo cancela, NO navegar (sino se saltea el
+    // tutorial). Mismo dispatch que el BottomTabBar default (navigate por route
+    // + target del state).
+    const event = nav.emit({
+      type: 'tabPress',
+      target: route.key,
+      canPreventDefault: true,
+    })
+    if (!event.defaultPrevented && !isFocused) {
+      nav.dispatch({
+        ...CommonActions.navigate(route),
+        target: s.key,
+      })
+    }
+  }, [])
+
+  return (
+    <NeoTabBarView
+      mode={mode}
+      activeTab={activeTab}
+      bottomInset={insets.bottom}
+      onPressTab={onPressTab}
+    />
+  )
+}
+
+/**
+ * Glue de routing pasada como `tabBar` al <Tabs>. CONECTADA (F5 swap live,
+ * 2026-07-22): la barra neo canónica reemplaza al tab bar default.
+ */
+export function renderNeoTabBar(props: BottomTabBarProps) {
+  return <NeoTabBarConnected {...props} />
+}
+
 export function AppTabs() {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
@@ -174,19 +291,28 @@ export function AppTabs() {
       //   mountear los 4 tabs inactivos · trade-off net positivo.
       lazy: false,
       //
-      //   `animation: 'none'` · UITabBarController nativo NO anima
-      //   transición de tab. Salida instantánea. Antes teníamos `shift`
-      //   (220ms JS slide direccional Apple-HIG) que con screens cold
-      //   se sentía OK, pero ahora que están pre-mounted la animación
-      //   ES la fuente de "delay percibido". Quitándola: tap = active
-      //   tab visible en 1 frame. Match el feel native.
-      animation: 'none' as const,
+      // `animation: 'fade'` · el `shift` original (220ms de desplazamiento
+      // direccional) se sentía lento y por eso se había apagado del todo. Lo
+      // que costaba era el RECORRIDO, no el fundido: con `lazy: false` las
+      // cinco pantallas ya están montadas, así que un crossfade es compositing
+      // puro y no re-monta nada. Si vuelve a leerse como demora, esta línea
+      // sola vuelve a `'none'`.
+      animation: 'fade' as const,
     }),
     [theme, renderTabBarLabel],
   )
 
   return (
-    <Tabs screenListeners={screenListeners} screenOptions={screenOptions}>
+    // F5 SWAP LIVE (2026-07-22): `tabBar={renderNeoTabBar}` reemplaza el tab bar
+    // default por la barra neo canónica (home-final). Es la ÚNICA línea del swap
+    // — revertible borrándola (vuelve el bar default sin tocar routing ni
+    // screenOptions). Lo que sigue INTACTO (son opciones de Screen/navigator,
+    // sobreviven al tabBar custom): freezeOnBlur:false (gestos RNGH), lazy:false
+    // (pre-montaje 5 screens), animation:'none' (switch instantáneo), sceneStyle,
+    // headerShown:false, detachInactiveScreens default. Las opciones per-Screen
+    // (tabBarIcon/tabBarButton/tabBarBackground) quedan INERTES con el bar custom
+    // pero se dejan para que borrar la línea restaure el bar default 1:1.
+    <Tabs screenListeners={screenListeners} screenOptions={screenOptions} tabBar={renderNeoTabBar}>
       <Tabs.Screen
         name="home"
         options={{ title: t('states:tabs.home'), tabBarIcon: renderHomeIcon, tabBarButton: renderTabBarButton }}
