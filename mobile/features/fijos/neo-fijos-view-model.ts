@@ -15,6 +15,7 @@
  */
 import { formatMoney } from '@/utils/money'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import { DAY_MS } from '@/utils/time'
 import type {
   FijoItem,
   FijoHikeAlert,
@@ -77,8 +78,17 @@ export function formatSignedMoneyFijos(n: number): string {
 // 6.14 — monthUpperEs / monthLowerEs
 // ---------------------------------------------------------------------------
 
-/** `new Date(2026,6,19) → 'JULIO'`. Mismo patrón que `monthLongCapitalized`
- *  de `control-v2-adapter.ts:133-137` pero en mayúsculas (eyebrow del hero). */
+/**
+ * `new Date(2026,6,19) → 'JULIO'`. Mismo patrón que `monthLongCapitalized`
+ * de `control-v2-adapter.ts:133-137` pero en mayúsculas (eyebrow del hero).
+ *
+ * PRECONDICIÓN del caller: `d` tiene que ser una fecha anclada a MEDIANOCHE
+ * LOCAL (lo que devuelven `normalizeToStartOfDay`/`buildPayDate`/
+ * `parseLocalDateKey`, `utils/pay-cycle.ts`). Un `new Date('2026-08-01')`
+ * crudo del data layer (`next_due_on`, `cuotaMonth`) es medianoche **UTC** y
+ * en AR (UTC−3) formatea el mes ANTERIOR ("JULIO") — el off-by-one de
+ * `feedback_timestamptz_off_by_one`. Usar `parseLocalDateKey` para esos.
+ */
 export function monthUpperEs(d: Date): string {
   return getDateTimeFormat({ month: 'long' }).format(d).toUpperCase()
 }
@@ -86,9 +96,46 @@ export function monthUpperEs(d: Date): string {
 /** Variante en minúsculas — la usa `outOfCycleSub` de E8 ("cerrar julio y
  *  abrir el próximo ciclo"). No está en la lista de 16 funciones de la spec
  *  (§6) pero `outOfCycleSub` (§3.4 #25) la nombra explícitamente; se agrega
- *  acá por ser el mismo helper con un solo `.toLowerCase()` de diferencia. */
+ *  acá por ser el mismo helper con un solo `.toLowerCase()` de diferencia.
+ *  Misma precondición de medianoche local que `monthUpperEs`. */
 export function monthLowerEs(d: Date): string {
   return getDateTimeFormat({ month: 'long' }).format(d).toLowerCase()
+}
+
+/** Día calendario anterior a `d`, construido por componentes (no restando
+ *  `DAY_MS`) para ser inmune a saltos de DST. `19 jul → 18 jul`,
+ *  `1 ago → 31 jul`. */
+function previousCalendarDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)
+}
+
+// ---------------------------------------------------------------------------
+// computeDaysIntoCycle — día DEL CICLO, no del mes calendario
+// ---------------------------------------------------------------------------
+
+/**
+ * Día 1-indexado dentro del ciclo de pago activo: `1` el día que arranca el
+ * ciclo. MISMA fórmula que `computeMonthlyAccountingWindow`
+ * (`utils/monthly-accounting.ts:53-54`) — para `cycle_type === 'monthly'` el
+ * resultado es idéntico a `monthlyAccounting.daysIntoMonth`.
+ *
+ * Existe porque para `cycle_type ∈ {weekly, biweekly, custom}` con ingreso
+ * `fixed` NO son lo mismo: esa rama de `computeMonthlyAccountingWindow`
+ * (`:71`) devuelve `todayNorm.getDate()`, o sea el día del MES CALENDARIO.
+ * Pasarle eso al selector hacía que el 1° de cada mes una familia semanal
+ * cayera en E4 con el chip "recién cobraste" sin haber cobrado, y que el
+ * header dijera "Semana del 6 jul → 12 jul · día 22". El outer DEBE llamar
+ * a esta función con `controller.today` + `controller.cycleStart` y NO pasar
+ * `monthlyAccounting.daysIntoMonth`.
+ *
+ * Precondición: las dos fechas ancladas a medianoche local (`today` sale de
+ * `usePayCycle` → `normalizeToStartOfDay`; `cycleStart` de `cycle.start`,
+ * también normalizado). Clampeado a `≥ 1` para que la copy nunca diga
+ * "día 0" si un caller llegara con `today < cycleStart`.
+ */
+export function computeDaysIntoCycle(input: { today: Date; cycleStart: Date }): number {
+  const { today, cycleStart } = input
+  return Math.max(1, Math.floor((today.getTime() - cycleStart.getTime()) / DAY_MS) + 1)
 }
 
 // ---------------------------------------------------------------------------
@@ -97,9 +144,12 @@ export function monthLowerEs(d: Date): string {
 
 /** `('20 jun → 19 jul', 18) → '20 jun → 19 jul · día 18'`. `formatCycleLabel`
  *  no agrega el sufijo de día (`format-cycle-label.ts:18`) — este helper lo
- *  suma para el header de `FijosHeader` (§3.3). */
-export function buildCycleHeaderLabel(cycleLabel: string, daysIntoMonth: number): string {
-  return `${cycleLabel} · día ${daysIntoMonth}`
+ *  suma para el header de `FijosHeader` (§3.3). El día tiene que ser el DEL
+ *  CICLO (`computeDaysIntoCycle`): `cycleLabel` describe el pay-cycle
+ *  rolling, así que un día-del-mes-calendario acá produce "Semana del 6 jul
+ *  → 12 jul · día 22". */
+export function buildCycleHeaderLabel(cycleLabel: string, daysIntoCycle: number): string {
+  return `${cycleLabel} · día ${daysIntoCycle}`
 }
 
 // ---------------------------------------------------------------------------
@@ -144,13 +194,17 @@ export interface StatusChipInput {
   pendingCount: number
   paidCount: number
   cycleActiveCount: number
-  daysIntoMonth: number
+  /** Día DEL CICLO (`computeDaysIntoCycle`), NO `monthlyAccounting.
+   *  daysIntoMonth`: la rama "recién cobraste" afirma que hoy arrancó el
+   *  ciclo, y para weekly/biweekly/custom con ingreso fijo el día del mes
+   *  calendario no tiene ninguna relación con el cobro. */
+  daysIntoCycle: number
 }
 
 /** §3.4.1 — reproduce E2/E3/E4/E7 exactos. E5 usa el MISMO builder que E2
  *  (drift documentado del handoff, no un chip distinto — spec §3.4.1). */
 export function buildStatusChip(input: StatusChipInput): StatusChip {
-  const { overdueCount, pendingCount, paidCount, cycleActiveCount, daysIntoMonth } = input
+  const { overdueCount, pendingCount, paidCount, cycleActiveCount, daysIntoCycle } = input
   if (overdueCount > 0 && pendingCount > 0) {
     return {
       label: `⚠ ${pendingCount + overdueCount} fijos por pagar · ${plural(overdueCount, 'vencida', 'vencidas')}`,
@@ -160,7 +214,7 @@ export function buildStatusChip(input: StatusChipInput): StatusChip {
   if (overdueCount > 0 && pendingCount === 0) {
     return { label: `⚠ ${plural(overdueCount, 'vencida', 'vencidas')}`, tone: 'alert' }
   }
-  if (overdueCount === 0 && pendingCount > 0 && daysIntoMonth === 1) {
+  if (overdueCount === 0 && pendingCount > 0 && daysIntoCycle === 1) {
     return { label: `${cycleActiveCount} fijos este mes · recién cobraste`, tone: 'neutral' }
   }
   if (overdueCount === 0 && pendingCount > 0) {
@@ -186,7 +240,9 @@ export interface HeroVariantInput {
   paidCount: number
   pendingCount: number
   overdueCount: number
-  daysIntoMonth: number
+  /** Día DEL CICLO (`computeDaysIntoCycle`) — ver el docblock de esa función
+   *  por qué NO puede ser `monthlyAccounting.daysIntoMonth`. */
+  daysIntoCycle: number
   /** `incomeMode === 'fixed' && monthlyIncome > 0` — gatea E5 (C6). */
   hasIncome: boolean
   /** `monthlyIncome - total`, sin clamp (§3.2/ABIERTA-3). */
@@ -204,6 +260,21 @@ export interface HeroVariantInput {
  * pasos 1-5 son guardas independientes; llegado el paso 6, `cycleActiveCount
  * ≥ 1` (así que `paidCount+pendingCount+overdueCount ≥ 1`), y la partición
  * por `(overdueCount, pendingCount)` cubre el resto sin solapes.
+ *
+ * El ORDEN de los pasos 2-5 lo fijó el review de orden total (findings I1/I3
+ * de `review-vm-total-order.md`) y cada uno tiene su test de precedencia:
+ *   · E6 "sin fijos" (paso 2) le gana a todo lo demás — sin fijos cargados la
+ *     pantalla no tiene otra cosa que decir.
+ *   · E8 (paso 3) le gana a E6′ (paso 4) y a E5 (paso 5): con el cobro sin
+ *     confirmar el ciclo está CONGELADO, y `HeroOutOfCycleBody` es el único
+ *     cuerpo del hero que expone el CTA "✓ Confirmar cobro" — la única
+ *     escritura habilitada del hero. Un empty-state ahí esconde la acción que
+ *     destraba el ciclo.
+ *   · E5 (paso 5) exige que quede ALGO por pagar: con todo pagado y el sueldo
+ *     corto, E1 ya comunica el riesgo (`HeroZeroBody` monta
+ *     `HeroAvailableCard` con `availableWarning`, `fijos-screen.tsx:876-882`,
+ *     y ese campo no depende de la variante), mientras E5 mostraría el pozo
+ *     "Te falta pagar $0" junto a un chip verde de celebración.
  */
 export function selectHeroVariant(input: HeroVariantInput): VariantSelection<FijosHeroVariant> {
   const {
@@ -212,7 +283,7 @@ export function selectHeroVariant(input: HeroVariantInput): VariantSelection<Fij
     paidCount,
     pendingCount,
     overdueCount,
-    daysIntoMonth,
+    daysIntoCycle,
     hasIncome,
     availableRaw,
     isSalaryPendingConfirmation,
@@ -224,30 +295,41 @@ export function selectHeroVariant(input: HeroVariantInput): VariantSelection<Fij
   //    (§4.3): el día que exista el selector, solo cambia el flag.
   if (viewingClosedEdition) return { variant: 'E7', reason: 'edición cerrada (viewingClosedEdition)' }
 
-  // 2) Sin ningún fijo cargado — familia completamente nueva.
-  if (activeFixedCount === 0) return { variant: 'E6', reason: 'sin fijos' }
+  // 2) Sin ningún fijo cargado — familia completamente nueva. Conjuga los DOS
+  //    conteos: para inputs consistentes `cycleActiveCount ≤ activeFixedCount`
+  //    (los dos salen de la población `active|paused` de `summarizeFijos`),
+  //    así que exigir el segundo no cambia ninguna salida real — pero los dos
+  //    números llegan de queries DISTINTAS del outer, y si se desincronizan
+  //    (una resuelve antes que la otra) el hero mostraría "Todavía no cargaste
+  //    fijos" encima de una lista poblada.
+  if (activeFixedCount === 0 && cycleActiveCount === 0) return { variant: 'E6', reason: 'sin fijos' }
 
-  // 3) E6′ — hay fijos, pero ninguno toca este ciclo (todos `future`, ej. un
+  // 3) El sueldo del ciclo ya llegó pero no se confirmó — condición
+  //    estructural del ciclo (pay-cycle.ts), no una mezcla de pagos. Va
+  //    ANTES de E6′ y de E5: ver el docblock.
+  if (isSalaryPendingConfirmation) return { variant: 'E8', reason: 'sueldo cobrado sin confirmar' }
+
+  // 4) E6′ — hay fijos, pero ninguno toca este ciclo (todos `future`, ej. un
   //    anual ya pagado). Sin este paso caería en E1 con "0 de 0" / "0%" y la
   //    barra de segmentos vacía (R-1). Ningún informe de lectura lo vio.
   if (cycleActiveCount === 0) return { variant: 'E6', reason: 'E6′ — sin cuotas este ciclo' }
 
-  // 4) El sueldo del ciclo ya llegó pero no se confirmó — condición
-  //    estructural del ciclo (pay-cycle.ts), no una mezcla de pagos.
-  if (isSalaryPendingConfirmation) return { variant: 'E8', reason: 'sueldo cobrado sin confirmar' }
-
-  // 5) Riesgo financiero: el sueldo no cubre los fijos. Gatea en `hasIncome`
-  //    (C6) — sin el gate, toda familia de ingreso dinámico caería acá
-  //    siempre (`effectiveMonthlyIncome` es 0 por diseño).
-  if (hasIncome && availableRaw < 0) return { variant: 'E5', reason: 'sueldo no cubre los fijos' }
+  // 5) Riesgo financiero: el sueldo no cubre los fijos. Dos gates:
+  //    · `hasIncome` (C6) — sin él, toda familia de ingreso dinámico caería
+  //      acá siempre (`effectiveMonthlyIncome` es 0 por diseño).
+  //    · `overdue+pending > 0` — E5 es la shape "todavía te falta pagar y no
+  //      te alcanza"; con todo pagado la advertencia la lleva E1 adentro.
+  if (hasIncome && availableRaw < 0 && overdueCount + pendingCount > 0) {
+    return { variant: 'E5', reason: 'sueldo no cubre los fijos' }
+  }
 
   // 6) Todo pagado, nada pendiente ni vencido. `paidCount ≥ 1` está
   //    garantizado acá (cycleActiveCount ≥ 1 y overdue+pending === 0).
   if (overdueCount === 0 && pendingCount === 0) return { variant: 'E1', reason: 'todo pagado' }
 
-  // 7) Día 1 del ciclo, todavía no se pagó nada y nada vencido.
-  if (daysIntoMonth === 1 && paidCount === 0 && overdueCount === 0) {
-    return { variant: 'E4', reason: 'día 1, sin pagos todavía' }
+  // 7) Día 1 DEL CICLO, todavía no se pagó nada y nada vencido.
+  if (daysIntoCycle === 1 && paidCount === 0 && overdueCount === 0) {
+    return { variant: 'E4', reason: 'día 1 del ciclo, sin pagos todavía' }
   }
 
   // 8) Hay pendientes pero nada vencido.
@@ -255,8 +337,14 @@ export function selectHeroVariant(input: HeroVariantInput): VariantSelection<Fij
 
   // 9) Resto: hay al menos un vencido (y, por 6/7/8 ya descartados, la
   //    mezcla no calza en ningún caso anterior). Rama final explícita, no
-  //    un fallthrough implícito.
-  return { variant: 'E2', reason: 'mezcla pendientes y vencidos' }
+  //    un fallthrough implícito. El `reason` distingue "solo vencidos" de la
+  //    mezcla real — es la prosa que lee el owner en el banner de dev, y
+  //    "mezcla pendientes y vencidos" con `pendingCount === 0` lo mandaba a
+  //    buscar un pendiente que no existe.
+  return {
+    variant: 'E2',
+    reason: pendingCount === 0 ? 'solo vencidos' : 'mezcla pendientes y vencidos',
+  }
 }
 
 export interface AvisosVariantInput {
@@ -271,14 +359,23 @@ export interface AvisosVariantInput {
 
 /**
  * §4.2. Los pasos 1-2 leen las MISMAS dos variables que
- * `selectHeroVariant` (§3.2, calculadas una sola vez en el outer) — es la
- * sincronización E6/A6 que ningún componente del kit fuerza por sí solo.
+ * `selectHeroVariant` (§3.2, calculadas una sola vez en el outer), con la
+ * MISMA conjunción en el paso 1 — es la sincronización E6/A6 que ningún
+ * componente del kit fuerza por sí solo.
  * Pasos 3-7: total por partición de `(tickerCount===0, hikeCount===0)`.
+ *
+ * La bicondicional `E6 ⟺ A6` vale mientras el hero no esté en un estado
+ * ESTRUCTURAL de ciclo, que Avisos no modela: con `viewingClosedEdition`
+ * (E7) o `isSalaryPendingConfirmation` (E8) el hero se va a su propia shape
+ * y Avisos se queda en A6′ ("Nada que pagar este ciclo"), que sigue siendo
+ * cierto — el kit no tiene variante de Avisos para "fuera de ciclo" y no se
+ * toca (D3). Fuera de esos dos flags la bicondicional es exacta y está
+ * testeada.
  */
 export function selectAvisosVariant(input: AvisosVariantInput): VariantSelection<FijosAvisosVariant> {
   const { activeFixedCount, cycleActiveCount, overdueCount, tickerCount, hikeCount } = input
 
-  if (activeFixedCount === 0) return { variant: 'A6', reason: 'sin fijos' }
+  if (activeFixedCount === 0 && cycleActiveCount === 0) return { variant: 'A6', reason: 'sin fijos' }
   if (cycleActiveCount === 0) return { variant: 'A6', reason: 'A6′ — sin cuotas este ciclo' }
   if (overdueCount > 0) return { variant: 'A5', reason: 'hay vencidos' }
   if (tickerCount === 0 && hikeCount === 0) return { variant: 'A4', reason: 'nada por venir, sin aumentos' }
@@ -290,6 +387,23 @@ export function selectAvisosVariant(input: AvisosVariantInput): VariantSelection
 // ---------------------------------------------------------------------------
 // 6.7 — buildTickerItems
 // ---------------------------------------------------------------------------
+
+/**
+ * Ventana de "próximo a vencer", en días. Es la MISMA constante que decide
+ * qué entra al ticker (`filterDueSoon`) y la que se interpola en la copy de
+ * R-B ("vencen en 7 días"): antes la ventana vivía en un `filter` del outer
+ * y el `7` estaba hardcodeado en el string, así que cambiar una dejaba a la
+ * otra mintiendo sin que fallara ningún test.
+ */
+export const DUE_SOON_DAYS = 7
+
+/** Los pendientes que vencen dentro de la ventana. Vive acá (y no como un
+ *  one-liner del outer) para que el borde `<= DUE_SOON_DAYS` sea testeable:
+ *  un `<` en vez de `<=` cambia qué entra al ticker Y puede voltear A2→A4
+ *  ("Todo tranquilo por acá" con vencimientos a 7 días). */
+export function filterDueSoon(items: FijoItem[], windowDays: number = DUE_SOON_DAYS): FijoItem[] {
+  return items.filter((i) => i.daysUntilDue <= windowDays)
+}
 
 export interface BuildTickerItemsInput {
   overdue: FijoItem[]
@@ -362,13 +476,28 @@ function isPriceStillDismissed(
   return dismissedAt === Math.round(currentPrice)
 }
 
+/**
+ * Los aumentos que el usuario NO descartó. Es el único filtro de dismiss del
+ * módulo: lo aplican `buildHikeRows` (la lista) y `buildReminder` (la fila de
+ * recordatorio) por separado, así que ninguno de los dos puede quedarse con
+ * la lista cruda por descuido del caller. Sin esto, con 3 aumentos y 2
+ * descartados en Home la pantalla mostraba 1 fila y el recordatorio de al
+ * lado decía "3 aumentos este mes · Netflix, Spotify y Claude AI suman",
+ * resucitando textualmente los dos avisos descartados.
+ */
+export function filterActiveHikes(
+  hikes: FijoHikeAlert[],
+  dismissed: Record<string, number>,
+): FijoHikeAlert[] {
+  return hikes.filter((h) => !isPriceStillDismissed(h.fixedExpenseId, h.currentPrice, dismissed))
+}
+
 /** §3.8.2. Filtra por dismiss-store (paridad con Home) y formatea. El check
  *  de la fila del kit es un `View` plano sin `onPress` — desde acá solo se
  *  lee, no se puede descartar (ABIERTA-7 lo documenta). */
 export function buildHikeRows(input: BuildHikeRowsInput): FijosHikeRow[] {
   const { hikes, dismissed } = input
-  return hikes
-    .filter((h) => !isPriceStillDismissed(h.fixedExpenseId, h.currentPrice, dismissed))
+  return filterActiveHikes(hikes, dismissed)
     .map((h) => ({
       id: h.fixedExpenseId,
       name: h.name,
@@ -397,10 +526,15 @@ export interface BuildReminderInput {
    * como string — sin un número no se puede sumar para R-C). La spec
    * (§6 fila 9) nombra el parámetro "hikeRows" pero R-C necesita
    * `currentPrice` numérico; se resuelve pasando `FijoHikeAlert[]` (el
-   * mismo insumo crudo que recibe `buildHikeRows`). Documentado en el
-   * reporte de implementación como ambigüedad resuelta.
+   * mismo insumo crudo que recibe `buildHikeRows`) MÁS el mapa de dismiss,
+   * para que R-C cuente/nombre/sume exactamente los mismos aumentos que
+   * `buildHikeRows` pone en pantalla.
    */
   hikes: FijoHikeAlert[]
+  /** Mismo snapshot de `useDismissedHikes()` que recibe `buildHikeRows`.
+   *  Requerido (no opcional) a propósito: olvidarlo tiene que ser un error
+   *  de tipos, no una fila de recordatorio que cuenta de más. */
+  dismissed: Record<string, number>
 }
 
 const REMINDER_NAME_CAP = 3
@@ -413,7 +547,7 @@ const REMINDER_NAME_CAP = 3
  * el kit — nunca se renderiza con las 3 ranuras vacías en la práctica.
  */
 export function buildReminder(input: BuildReminderInput): ReminderContent {
-  const { overdue, dueSoon, hikes } = input
+  const { overdue, dueSoon, hikes, dismissed } = input
 
   if (overdue.length > 0) {
     const n = Math.min(overdue.length, REMINDER_NAME_CAP)
@@ -431,7 +565,7 @@ export function buildReminder(input: BuildReminderInput): ReminderContent {
     const n = Math.min(sorted.length, REMINDER_NAME_CAP)
     const named = sorted.slice(0, n)
     return {
-      label: `${n} pago${n > 1 ? 's' : ''} fijo${n > 1 ? 's' : ''} vence${n > 1 ? 'n' : ''} en 7 días`,
+      label: `${n} pago${n > 1 ? 's' : ''} fijo${n > 1 ? 's' : ''} vence${n > 1 ? 'n' : ''} en ${DUE_SOON_DAYS} días`,
       rest: `${joinNamesEs(named.map((i) => i.name))} suman`,
       amount: formatMoney(named.reduce((s, i) => s + Number(i.amount ?? 0), 0)),
       suffix: '',
@@ -440,12 +574,14 @@ export function buildReminder(input: BuildReminderInput): ReminderContent {
 
   // R-C: sin overdue ni dueSoon, los aumentos SON el sujeto. `s.hikes` ya
   // viene top-3 (`detectHikes`, `fijos-aggregates.model.ts:491`) — sin cap
-  // adicional acá.
-  const n = hikes.length
+  // adicional acá. Filtrado por dismiss con el MISMO helper que la lista de
+  // filas, así el conteo/los nombres/el monto describen lo que se ve.
+  const activeHikes = filterActiveHikes(hikes, dismissed)
+  const n = activeHikes.length
   return {
     label: `${n} aumento${n === 1 ? '' : 's'} este mes`,
-    rest: `${joinNamesEs(hikes.map((h) => h.name))} suman`,
-    amount: formatMoney(hikes.reduce((s, h) => s + Number(h.currentPrice ?? 0), 0)),
+    rest: `${joinNamesEs(activeHikes.map((h) => h.name))} suman`,
+    amount: formatMoney(activeHikes.reduce((s, h) => s + Number(h.currentPrice ?? 0), 0)),
     suffix: '',
   }
 }
@@ -462,9 +598,23 @@ export interface HeroContentInput {
    *  que ya decidió el paso 2 vs 3 de `selectHeroVariant`. */
   isEmptyNoFijos: boolean
   /** Último día del ciclo activo (`cycleEnd - 1d`, §3.2) — fuente del
-   *  nombre de mes en `eyebrow`/`outOfCycleSub`. */
+   *  nombre de mes del `eyebrow`. */
   cycleLastDay: Date
-  daysIntoMonth: number
+  /**
+   * Primer día del ciclo activo (`controller.cycleStart`). Fuente del mes del
+   * `outOfCycleSub` de E8, que NO es el mes de `cycleLastDay`: E8 dispara con
+   * `isSalaryPendingConfirmation`, y el controller pide el ciclo con
+   * `freeze: false` (`use-fijos-controller.ts:101`), así que en ese estado el
+   * ciclo YA avanzó al período nuevo. Con payday 19 y hoy 20-jul el ciclo
+   * vivo es `[19 jul, 19 ago)`: `cycleLastDay` es 18-ago → "agosto", pero el
+   * ciclo que TERMINÓ es julio. El mes correcto es el del día anterior a
+   * `cycleStart` (18-jul → julio), que reproduce la convención del eyebrow
+   * para el ciclo cerrado. Fallaba para todo payday > 1.
+   */
+  cycleStart: Date
+  /** Día DEL CICLO (`computeDaysIntoCycle`) — alimenta `topChipLabel`
+   *  ("HOY · DÍA N") y el chip de estado. */
+  daysIntoCycle: number
   salaryPaymentDay: number
   paidCount: number
   pendingCount: number
@@ -499,7 +649,8 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
     variant,
     isEmptyNoFijos,
     cycleLastDay,
-    daysIntoMonth,
+    cycleStart,
+    daysIntoCycle,
     salaryPaymentDay,
     paidCount,
     pendingCount,
@@ -522,7 +673,7 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
     pendingCount,
     paidCount,
     cycleActiveCount,
-    daysIntoMonth,
+    daysIntoCycle,
   })
 
   const eyebrow =
@@ -536,10 +687,10 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
     case 'E2':
     case 'E3':
     case 'E5':
-      topChipLabel = `HOY · DÍA ${daysIntoMonth}`
+      topChipLabel = `HOY · DÍA ${daysIntoCycle}`
       break
     case 'E4':
-      topChipLabel = `DÍA ${daysIntoMonth}`
+      topChipLabel = `DÍA ${daysIntoCycle}`
       break
     case 'E6':
       topChipLabel = isEmptyNoFijos ? 'NUEVO' : 'SIN CUOTAS'
@@ -591,7 +742,9 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
       : 'Tus fijos vencen en ciclos posteriores — cuando llegue el suyo aparecen acá.',
     emptyCtaLabel: isEmptyNoFijos ? '+ Agregar tu primer fijo' : '+ Agregar otro fijo',
     outOfCycleTitle: `Tu ciclo terminó el ${salaryPaymentDay}`,
-    outOfCycleSub: `Confirmá tu cobro para cerrar ${monthLowerEs(cycleLastDay)} y abrir el próximo ciclo.`,
+    // Mes del ciclo CERRADO (día anterior a `cycleStart`), no del ciclo vivo
+    // — ver el docblock de `cycleStart` en `HeroContentInput`.
+    outOfCycleSub: `Confirmá tu cobro para cerrar ${monthLowerEs(previousCalendarDay(cycleStart))} y abrir el próximo ciclo.`,
     outOfCycleSummaryLabel:
       overdueCount === 0 ? 'No quedó nada sin pagar' : `Quedaron ${overdueCount} sin pagar`,
     outOfCycleSummaryAmount: formatMoney(overdueAmount),
@@ -733,10 +886,17 @@ export function buildCategoryBuckets(input: { groups: FijoCategoryGroup[] }): Ca
     }
   })
 
-  const collapsed = order.map((bucket) => ({
-    bucket,
-    realLabels: labelsByBucket.get(bucket) ?? [],
-  }))
+  // `collapsed` reporta SOLO donde hubo pérdida de granularidad: dos o más
+  // categorías reales en el mismo bucket, o una sola cuyo nombre el kit
+  // renombra ("Salud" → "Servicios"). El caso identidad ("services ←
+  // Servicios") se omite: listarlo hacía ilegible el hallazgo de D4 en el
+  // banner de dev, que es justamente el instrumento del gate del owner.
+  const collapsed = order
+    .map((bucket) => ({ bucket, realLabels: labelsByBucket.get(bucket) ?? [] }))
+    .filter(
+      ({ bucket, realLabels }) =>
+        realLabels.length > 1 || realLabels[0] !== CATEGORY_BUCKET_META[bucket].name,
+    )
 
   return { buckets, collapsed }
 }

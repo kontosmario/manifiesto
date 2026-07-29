@@ -6,11 +6,15 @@ import {
   monthUpperEs,
   monthLowerEs,
   buildCycleHeaderLabel,
+  computeDaysIntoCycle,
   mapCategoryToBucket,
   buildStatusChip,
   selectHeroVariant,
   selectAvisosVariant,
+  DUE_SOON_DAYS,
+  filterDueSoon,
   buildTickerItems,
+  filterActiveHikes,
   buildHikeRows,
   buildReminder,
   buildHeroContent,
@@ -21,8 +25,10 @@ import {
   type AvisosVariantInput,
 } from '@/features/fijos/neo-fijos-view-model'
 import { summarizeFijos, type FijoItem, type FijoCategoryGroup } from '@/features/fijos/fijos-aggregates.model'
+import { isHikeDismissed } from '@/features/fijos/use-hike-dismiss-store'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import type { FijoHikeAlert } from '@/features/fijos/fijos-aggregates.model'
+import type { FijosHeroVariant } from '@/components/redesign/fijos/fijos-screen'
 import { getCurrentPayCycle } from '@/utils/pay-cycle'
 import { computeMonthlyAccountingWindow } from '@/utils/monthly-accounting'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
@@ -107,6 +113,37 @@ function makeCategoryGroup(over: Partial<FijoCategoryGroup> = {}): FijoCategoryG
 }
 
 const TODAY_NOON = new Date(2026, 6, 19, 12, 0, 0) // 19 jul 2026, mediodía local
+/** El anclaje que usa PRODUCCIÓN: `usePayCycle` hace
+ *  `normalizeToStartOfDay(new Date())` → medianoche LOCAL
+ *  (`hooks/use-pay-cycle.ts:54` → `use-fijos-controller.ts:101,157`). */
+const TODAY_MIDNIGHT = new Date(2026, 6, 19)
+
+/** Input completo de `buildHeroContent` con los números del fixture E2 del
+ *  kit. A nivel de módulo porque también lo usan los tests de precedencia de
+ *  `selectHeroVariant` (que verifican qué se pierde al elegir mal la
+ *  variante, no solo cuál sale). */
+const e2Input = {
+  variant: 'E2' as const,
+  isEmptyNoFijos: false,
+  cycleLastDay: new Date(2026, 6, 19),
+  cycleStart: new Date(2026, 5, 20),
+  daysIntoCycle: 18,
+  salaryPaymentDay: 19,
+  paidCount: 13,
+  pendingCount: 2,
+  overdueCount: 1,
+  cycleActiveCount: 16,
+  paidAmount: 1_227_651,
+  pendingAmount: 100_000, // pending+overdue debe sumar 122.831
+  overdueAmount: 22_831,
+  total: 1_350_482,
+  paidPct: 91,
+  hasIncome: true,
+  monthlyIncome: 6_400_000,
+  availableRaw: 5_049_518,
+  pctOfIncome: 21,
+  segmentToday: false,
+}
 
 // ---------------------------------------------------------------------------
 // plural
@@ -203,6 +240,51 @@ describe('buildCycleHeaderLabel', () => {
 })
 
 // ---------------------------------------------------------------------------
+// computeDaysIntoCycle — el día que alimenta el header, el chip y el paso 7
+// ---------------------------------------------------------------------------
+
+describe('computeDaysIntoCycle', () => {
+  it('el día que arranca el ciclo es 1 (no 0)', () => {
+    const cycleStart = new Date(2026, 6, 19)
+    expect(computeDaysIntoCycle({ today: cycleStart, cycleStart })).toBe(1)
+  })
+
+  it('cuenta 1-indexado hacia adelante', () => {
+    expect(
+      computeDaysIntoCycle({ today: new Date(2026, 7, 5), cycleStart: new Date(2026, 6, 19) }),
+    ).toBe(18)
+  })
+
+  it('clampea a 1 si today < cycleStart (nunca "día 0" ni negativo en la copy)', () => {
+    expect(
+      computeDaysIntoCycle({ today: new Date(2026, 6, 18), cycleStart: new Date(2026, 6, 19) }),
+    ).toBe(1)
+  })
+
+  it('monthly: coincide EXACTO con monthlyAccounting.daysIntoMonth (cero regresión)', () => {
+    const cfg: FinanceCycleConfig = { cycle_type: 'monthly', salary_payment_day: 19 }
+    for (const today of [new Date(2026, 6, 19), new Date(2026, 6, 31), new Date(2026, 7, 4)]) {
+      const cycle = getCurrentPayCycle(today, cfg)
+      const window = computeMonthlyAccountingWindow(cfg, today, false, false)
+      expect(computeDaysIntoCycle({ today, cycleStart: cycle.start })).toBe(window.daysIntoMonth)
+    }
+  })
+
+  it('weekly con ingreso fijo: DIVERGE de monthlyAccounting.daysIntoMonth (el bug que este helper corrige)', () => {
+    const cfg: FinanceCycleConfig = {
+      cycle_type: 'weekly',
+      cycle_anchor_date: '2026-07-06',
+      cycle_length_days: 7,
+    }
+    const today = new Date(2026, 7, 1) // 1 de agosto: día 1 del MES, no del ciclo
+    const cycle = getCurrentPayCycle(today, cfg)
+    const window = computeMonthlyAccountingWindow(cfg, today, false, false)
+    expect(window.daysIntoMonth).toBe(1)
+    expect(computeDaysIntoCycle({ today, cycleStart: cycle.start })).toBe(6)
+  })
+})
+
+// ---------------------------------------------------------------------------
 // mapCategoryToBucket
 // ---------------------------------------------------------------------------
 
@@ -238,6 +320,13 @@ describe('mapCategoryToBucket', () => {
   it("'sin-categoria' cae a services", () => {
     expect(mapCategoryToBucket('sin-categoria')).toBe('services')
   })
+
+  it("'Sin categoría' — el label REAL de un grupo sin categoría — cae a services", () => {
+    // `groupFijosByCategory` pone `rawLabel = cat?.rawName ?? label` con
+    // `label = i18n.t('fijos:groups.noCategory')` (el string traducido), no la
+    // llave `'sin-categoria'` del Map.
+    expect(mapCategoryToBucket('Sin categoría')).toBe('services')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -251,7 +340,7 @@ describe('buildStatusChip', () => {
       pendingCount: 2,
       paidCount: 13,
       cycleActiveCount: 16,
-      daysIntoMonth: 18,
+      daysIntoCycle: 18,
     })
     expect(chip).toEqual({ label: '⚠ 3 fijos por pagar · 1 vencida', tone: 'alert' })
   })
@@ -262,7 +351,7 @@ describe('buildStatusChip', () => {
       pendingCount: 0,
       paidCount: 18,
       cycleActiveCount: 18,
-      daysIntoMonth: 10,
+      daysIntoCycle: 10,
     })
     expect(chip).toEqual({ label: '✓ Cerró completo · 18 de 18', tone: 'success' })
   })
@@ -273,7 +362,7 @@ describe('buildStatusChip', () => {
       pendingCount: 2,
       paidCount: 14,
       cycleActiveCount: 16,
-      daysIntoMonth: 12,
+      daysIntoCycle: 12,
     })
     expect(chip).toEqual({ label: '2 por venir · nada vencido', tone: 'neutral' })
   })
@@ -284,7 +373,7 @@ describe('buildStatusChip', () => {
       pendingCount: 16,
       paidCount: 0,
       cycleActiveCount: 16,
-      daysIntoMonth: 1,
+      daysIntoCycle: 1,
     })
     expect(chip).toEqual({ label: '16 fijos este mes · recién cobraste', tone: 'neutral' })
   })
@@ -295,7 +384,7 @@ describe('buildStatusChip', () => {
       pendingCount: 0,
       paidCount: 14,
       cycleActiveCount: 16,
-      daysIntoMonth: 15,
+      daysIntoCycle: 15,
     })
     expect(chip).toEqual({ label: '⚠ 2 vencidas', tone: 'alert' })
   })
@@ -306,7 +395,7 @@ describe('buildStatusChip', () => {
       pendingCount: 0,
       paidCount: 15,
       cycleActiveCount: 16,
-      daysIntoMonth: 15,
+      daysIntoCycle: 15,
     })
     expect(chip.label).toBe('⚠ 1 vencida')
   })
@@ -317,7 +406,7 @@ describe('buildStatusChip', () => {
       pendingCount: 1,
       paidCount: 13,
       cycleActiveCount: 16,
-      daysIntoMonth: 15,
+      daysIntoCycle: 15,
     })
     expect(chip.label).toContain('2 vencidas')
   })
@@ -334,7 +423,7 @@ function heroInput(over: Partial<HeroVariantInput> = {}): HeroVariantInput {
     paidCount: 13,
     pendingCount: 2,
     overdueCount: 1,
-    daysIntoMonth: 18,
+    daysIntoCycle: 18,
     hasIncome: true,
     availableRaw: 5_049_518,
     isSalaryPendingConfirmation: false,
@@ -348,13 +437,35 @@ describe('selectHeroVariant', () => {
     expect(selectHeroVariant(heroInput({ viewingClosedEdition: true })).variant).toBe('E7')
   })
 
-  it('paso 2: activeFixedCount===0 → E6 ("sin fijos"), incluso con overdue>0 (precedencia)', () => {
-    const r = selectHeroVariant(heroInput({ activeFixedCount: 0, overdueCount: 3 }))
+  it('paso 2: sin fijos cargados → E6 ("sin fijos"), incluso con cobro sin confirmar (precedencia)', () => {
+    // Input CONSISTENTE: sin fijos en la DB no puede haber fijos del ciclo
+    // (`cycleActiveCount ≤ activeFixedCount`, mismo filtro `active|paused`).
+    const r = selectHeroVariant(
+      heroInput({
+        activeFixedCount: 0,
+        cycleActiveCount: 0,
+        paidCount: 0,
+        pendingCount: 0,
+        overdueCount: 0,
+        isSalaryPendingConfirmation: true,
+      }),
+    )
     expect(r.variant).toBe('E6')
     expect(r.reason).toMatch(/sin fijos/)
   })
 
-  it("paso 3 (E6′): cycleActiveCount===0 con activeFixedCount>0 → E6 con reason de E6′ (barra vacía evitada)", () => {
+  it('paso 2 (endurecido): activeFixedCount===0 con cycleActiveCount>0 (queries desincronizadas) NO da el empty-state', () => {
+    // Los dos conteos vienen de queries distintas del outer. Para inputs
+    // consistentes `cycleActiveCount ≤ activeFixedCount`, así que este input
+    // no existe — pero si una query resuelve antes que la otra, el hero NO
+    // debe decir "Todavía no cargaste fijos" arriba de una lista poblada.
+    const r = selectHeroVariant(
+      heroInput({ activeFixedCount: 0, cycleActiveCount: 5, overdueCount: 0, pendingCount: 2, paidCount: 3 }),
+    )
+    expect(r.variant).toBe('E3')
+  })
+
+  it("paso 4 (E6′): cycleActiveCount===0 con activeFixedCount>0 → E6 con reason de E6′ (barra vacía evitada)", () => {
     const r = selectHeroVariant(
       heroInput({ activeFixedCount: 3, cycleActiveCount: 0, paidCount: 0, pendingCount: 0, overdueCount: 0 }),
     )
@@ -362,16 +473,69 @@ describe('selectHeroVariant', () => {
     expect(r.reason).toMatch(/E6′/)
   })
 
-  it('paso 4: isSalaryPendingConfirmation → E8, incluso con overdue===0 y pending===0 (no E1)', () => {
+  it('paso 3: isSalaryPendingConfirmation → E8, incluso con overdue===0 y pending===0 (no E1)', () => {
     const r = selectHeroVariant(
       heroInput({ isSalaryPendingConfirmation: true, overdueCount: 0, pendingCount: 0 }),
     )
     expect(r.variant).toBe('E8')
   })
 
-  it('paso 5: hasIncome && availableRaw<0 → E5, incluso con overdue===0/pending===0 (no E1)', () => {
-    const r = selectHeroVariant(heroInput({ availableRaw: -1, overdueCount: 0, pendingCount: 0 }))
+  it('PRECEDENCIA paso 3 > paso 4: cobro sin confirmar + ningún fijo de este ciclo → E8, no el empty-state de E6′', () => {
+    // El único cuerpo del hero con el CTA "✓ Confirmar cobro" es
+    // HeroOutOfCycleBody (E8). Con el ciclo congelado, un empty-state
+    // esconde la única escritura que lo destraba.
+    const r = selectHeroVariant(
+      heroInput({
+        activeFixedCount: 1,
+        cycleActiveCount: 0,
+        paidCount: 0,
+        pendingCount: 0,
+        overdueCount: 0,
+        isSalaryPendingConfirmation: true,
+      }),
+    )
+    expect(r.variant).toBe('E8')
+  })
+
+  it('PRECEDENCIA paso 3 > paso 5: cobro sin confirmar Y sueldo que no cubre los fijos → E8, no E5', () => {
+    // El fixture default tiene availableRaw POSITIVO, así que sin forzarlo en
+    // negativo este empate queda inalcanzable y los pasos 3 y 5 se pueden
+    // intercambiar sin que falle nada.
+    const r = selectHeroVariant(
+      heroInput({ isSalaryPendingConfirmation: true, hasIncome: true, availableRaw: -1 }),
+    )
+    expect(r.variant).toBe('E8')
+  })
+
+  it('paso 5: hasIncome && availableRaw<0 con algo por pagar → E5', () => {
+    const r = selectHeroVariant(heroInput({ availableRaw: -1, overdueCount: 0, pendingCount: 2 }))
     expect(r.variant).toBe('E5')
+  })
+
+  it('paso 5 NO dispara con TODO pagado: E1 lleva la advertencia adentro (availableWarning), E5 diría "Te falta pagar $0"', () => {
+    const r = selectHeroVariant(
+      heroInput({
+        cycleActiveCount: 5,
+        paidCount: 5,
+        pendingCount: 0,
+        overdueCount: 0,
+        hasIncome: true,
+        availableRaw: -50_000,
+      }),
+    )
+    expect(r.variant).toBe('E1')
+    // Y el riesgo NO se pierde: buildHeroContent lo comunica igual en E1.
+    const c = buildHeroContent({
+      ...e2Input,
+      variant: r.variant,
+      cycleActiveCount: 5,
+      paidCount: 5,
+      pendingCount: 0,
+      overdueCount: 0,
+      availableRaw: -50_000,
+    })
+    expect(c.availableWarning).toBe(true)
+    expect(c.availableNote).toBe('⚠ te pasás este mes')
   })
 
   it('C6 — REGRESIÓN: hasIncome:false + availableRaw muy negativo → NO cae en E5 (modo dinámico)', () => {
@@ -391,47 +555,53 @@ describe('selectHeroVariant', () => {
     expect(selectHeroVariant(heroInput({ overdueCount: 0, pendingCount: 0 })).variant).toBe('E1')
   })
 
-  it('paso 7: daysIntoMonth===1 + overdueCount:1 → E2, no E4 (overdue gana)', () => {
+  it('paso 7: daysIntoCycle===1 + overdueCount:1 → E2, no E4 (overdue gana)', () => {
     const r = selectHeroVariant(
-      heroInput({ daysIntoMonth: 1, paidCount: 0, pendingCount: 16, overdueCount: 1 }),
+      heroInput({ daysIntoCycle: 1, paidCount: 0, pendingCount: 16, overdueCount: 1 }),
     )
     expect(r.variant).toBe('E2')
   })
 
   it('paso 7: día 1, sin pagos, sin vencidos → E4', () => {
     const r = selectHeroVariant(
-      heroInput({ daysIntoMonth: 1, paidCount: 0, pendingCount: 16, overdueCount: 0 }),
+      heroInput({ daysIntoCycle: 1, paidCount: 0, pendingCount: 16, overdueCount: 0 }),
     )
     expect(r.variant).toBe('E4')
   })
 
   it('día 1 pero ya con algo pagado → no es E4 (cae a E3)', () => {
     const r = selectHeroVariant(
-      heroInput({ daysIntoMonth: 1, paidCount: 1, pendingCount: 15, overdueCount: 0 }),
+      heroInput({ daysIntoCycle: 1, paidCount: 1, pendingCount: 15, overdueCount: 0 }),
     )
     expect(r.variant).toBe('E3')
   })
 
   it('paso 8: overdue===0, pending>0, no día 1 → E3', () => {
     expect(
-      selectHeroVariant(heroInput({ overdueCount: 0, pendingCount: 2, daysIntoMonth: 12 })).variant,
+      selectHeroVariant(heroInput({ overdueCount: 0, pendingCount: 2, daysIntoCycle: 12 })).variant,
     ).toBe('E3')
   })
 
   it('paso 9 (else): mezcla pendientes y vencidos → E2', () => {
     expect(
-      selectHeroVariant(heroInput({ overdueCount: 1, pendingCount: 2, daysIntoMonth: 18 })).variant,
+      selectHeroVariant(heroInput({ overdueCount: 1, pendingCount: 2, daysIntoCycle: 18 })).variant,
     ).toBe('E2')
   })
 
-  it('totalidad: exactamente 8 variantes distintas son alcanzables sobre una grilla de combinaciones', () => {
-    const seen = new Set<string>()
+  it('totalidad + orden total: histograma EXACTO de las 512 combinaciones de la grilla', () => {
+    // El test viejo solo afirmaba `seen.size > 0`, así que una implementación
+    // que devolviera siempre la misma variante pasaba. Este afirma cuántas
+    // combinaciones caen en CADA variante: intercambiar dos pasos cualesquiera
+    // de la cadena mueve al menos un contador y pone el test en rojo.
+    const counts = new Map<FijosHeroVariant, number>()
+    const reasons = new Set<string>()
+    let total = 0
     for (const activeFixedCount of [0, 3]) {
       for (const cycleActiveCount of [0, 5]) {
         for (const paidCount of [0, 2]) {
           for (const pendingCount of [0, 2]) {
             for (const overdueCount of [0, 2]) {
-              for (const daysIntoMonth of [1, 15]) {
+              for (const daysIntoCycle of [1, 15]) {
                 for (const hasIncome of [true, false]) {
                   for (const availableRaw of [-1, 1]) {
                     for (const isSalaryPendingConfirmation of [true, false]) {
@@ -441,13 +611,15 @@ describe('selectHeroVariant', () => {
                         paidCount,
                         pendingCount,
                         overdueCount,
-                        daysIntoMonth,
+                        daysIntoCycle,
                         hasIncome,
                         availableRaw,
                         isSalaryPendingConfirmation,
                         viewingClosedEdition: false,
                       })
-                      seen.add(r.variant)
+                      total += 1
+                      counts.set(r.variant, (counts.get(r.variant) ?? 0) + 1)
+                      reasons.add(r.reason)
                       // Total: siempre resuelve a un string no vacío, nunca undefined.
                       expect(typeof r.variant).toBe('string')
                       expect(r.reason.length).toBeGreaterThan(0)
@@ -460,9 +632,70 @@ describe('selectHeroVariant', () => {
         }
       }
     }
-    // E7 queda afuera de esta grilla (viewingClosedEdition fijo en false).
-    expect(seen.has('E7')).toBe(false)
-    expect(seen.size).toBeGreaterThan(0)
+
+    expect(total).toBe(512)
+    // Las 7 variantes alcanzables con `viewingClosedEdition: false` — E7 NO
+    // está (es su único disparador) y las 7 restantes sí, con estos conteos.
+    expect(Object.fromEntries([...counts].sort())).toEqual({
+      E1: 32,
+      E2: 48,
+      E3: 18,
+      E4: 6,
+      E5: 24,
+      E6: 192,
+      E8: 192,
+    })
+    // La suma de los conteos cubre la grilla entera: ninguna combinación cae
+    // fuera de toda rama, ninguna se cuenta dos veces.
+    expect([...counts.values()].reduce((a, b) => a + b, 0)).toBe(512)
+    expect(counts.has('E7')).toBe(false)
+    // 9 razones distintas para 7 variantes: E6 tiene dos ("sin fijos" y E6′) y
+    // E2 tiene dos ("solo vencidos" y la mezcla real) — es lo que hace que el
+    // banner de dev identifique el predicado y no solo la shape.
+    expect([...reasons].sort()).toEqual([
+      'E6′ — sin cuotas este ciclo',
+      'día 1 del ciclo, sin pagos todavía',
+      'mezcla pendientes y vencidos',
+      'pendientes, sin vencidos',
+      'sin fijos',
+      'solo vencidos',
+      'sueldo cobrado sin confirmar',
+      'sueldo no cubre los fijos',
+      'todo pagado',
+    ])
+  })
+
+  it('reason del paso 9: distingue "solo vencidos" de la mezcla real (prosa del banner de dev)', () => {
+    expect(selectHeroVariant(heroInput({ overdueCount: 2, pendingCount: 0 })).reason).toBe(
+      'solo vencidos',
+    )
+    expect(selectHeroVariant(heroInput({ overdueCount: 2, pendingCount: 2 })).reason).toBe(
+      'mezcla pendientes y vencidos',
+    )
+  })
+
+  it('el drift de ventanas importa para la variante: día 1 del MES en un ciclo semanal no es E4', () => {
+    // Familia weekly con ingreso fijo, 1 de agosto. `monthlyAccounting.
+    // daysIntoMonth` es 1 (día del mes calendario) y el ciclo semanal va por
+    // su día 6. Pasar el número equivocado dispara E4 + "recién cobraste" a
+    // una familia que no cobró hoy.
+    const cfg: FinanceCycleConfig = {
+      cycle_type: 'weekly',
+      cycle_anchor_date: '2026-07-06',
+      cycle_length_days: 7,
+    }
+    const today = new Date(2026, 7, 1)
+    const wrongDay = computeMonthlyAccountingWindow(cfg, today, false, false).daysIntoMonth
+    const rightDay = computeDaysIntoCycle({
+      today,
+      cycleStart: getCurrentPayCycle(today, cfg).start,
+    })
+    const base = { paidCount: 0, pendingCount: 2, overdueCount: 0 }
+    expect(selectHeroVariant(heroInput({ ...base, daysIntoCycle: wrongDay })).variant).toBe('E4')
+    expect(selectHeroVariant(heroInput({ ...base, daysIntoCycle: rightDay })).variant).toBe('E3')
+    expect(buildStatusChip({ ...base, cycleActiveCount: 4, daysIntoCycle: rightDay }).label).toBe(
+      '2 por venir · nada vencido',
+    )
   })
 })
 
@@ -482,8 +715,10 @@ function avisosInput(over: Partial<AvisosVariantInput> = {}): AvisosVariantInput
 }
 
 describe('selectAvisosVariant', () => {
-  it('activeFixedCount===0 → A6', () => {
-    expect(selectAvisosVariant(avisosInput({ activeFixedCount: 0 })).variant).toBe('A6')
+  it('sin fijos cargados → A6', () => {
+    const r = selectAvisosVariant(avisosInput({ activeFixedCount: 0, cycleActiveCount: 0 }))
+    expect(r.variant).toBe('A6')
+    expect(r.reason).toBe('sin fijos')
   })
 
   it("cycleActiveCount===0 con fijos activos → A6 (reason A6′)", () => {
@@ -524,11 +759,59 @@ describe('selectAvisosVariant', () => {
       }
     }
   })
+
+  it('divergencia DOCUMENTADA: con cobro sin confirmar el hero va a E8 y Avisos se queda en A6′ (el kit no tiene "fuera de ciclo" para Avisos)', () => {
+    const shared = { activeFixedCount: 1, cycleActiveCount: 0 }
+    const hero = selectHeroVariant(
+      heroInput({
+        ...shared,
+        paidCount: 0,
+        pendingCount: 0,
+        overdueCount: 0,
+        isSalaryPendingConfirmation: true,
+      }),
+    )
+    const avisos = selectAvisosVariant(avisosInput({ ...shared, tickerCount: 0, hikeCount: 0 }))
+    expect(hero.variant).toBe('E8')
+    expect(avisos.variant).toBe('A6')
+    expect(avisos.reason).toMatch(/A6′/)
+  })
+
+  it('paso 1 endurecido igual que el hero: activeFixedCount===0 con cycleActiveCount>0 no da A6', () => {
+    const r = selectAvisosVariant(avisosInput({ activeFixedCount: 0, cycleActiveCount: 5 }))
+    expect(r.variant).not.toBe('A6')
+  })
 })
 
 // ---------------------------------------------------------------------------
 // buildTickerItems
 // ---------------------------------------------------------------------------
+
+describe('filterDueSoon', () => {
+  it('la ventana es <= DUE_SOON_DAYS: 7 entra, 8 no', () => {
+    const items = [
+      makeFijoItem({ id: 'd7', daysUntilDue: DUE_SOON_DAYS }),
+      makeFijoItem({ id: 'd8', daysUntilDue: DUE_SOON_DAYS + 1 }),
+      makeFijoItem({ id: 'd0', daysUntilDue: 0 }),
+    ]
+    expect(filterDueSoon(items).map((i) => i.id)).toEqual(['d7', 'd0'])
+  })
+
+  it('la copy de R-B interpola la MISMA constante que el filtro', () => {
+    const r = buildReminder({
+      overdue: [],
+      dueSoon: [makeFijoItem({ id: 'd1', name: 'Spotify' })],
+      hikes: [],
+      dismissed: {},
+    })
+    expect(r.label).toContain(`en ${DUE_SOON_DAYS} días`)
+  })
+
+  it('ventana explícita distinta del default', () => {
+    const items = [makeFijoItem({ id: 'd3', daysUntilDue: 3 }), makeFijoItem({ id: 'd6', daysUntilDue: 6 })]
+    expect(filterDueSoon(items, 5).map((i) => i.id)).toEqual(['d3'])
+  })
+})
 
 describe('buildTickerItems', () => {
   it('overdue primero, luego dueSoon ascendente por daysUntilDue', () => {
@@ -626,7 +909,7 @@ describe('buildTickerItems', () => {
     expect(s.pendingItems.map((i) => i.id).sort()).toEqual(['soon-1', 'today-1'])
     expect(s.overdueItems.map((i) => i.id)).toEqual(['overdue-1'])
 
-    const dueSoon = s.pendingItems.filter((i) => i.daysUntilDue <= 7)
+    const dueSoon = filterDueSoon(s.pendingItems)
     const { items } = buildTickerItems({ overdue: s.overdueItems, dueSoon, cap: 8 })
 
     const overdueRow = items.find((i) => i.id === 'overdue-1')
@@ -635,6 +918,49 @@ describe('buildTickerItems', () => {
     expect(overdueRow).toMatchObject({ tagLabel: 'VENCIDO', tone: 'overdue' })
     expect(todayRow).toMatchObject({ tagLabel: 'HOY', tone: 'today' })
     expect(soonRow).toMatchObject({ tagLabel: 'EN 3D', tone: 'upcoming' })
+  })
+
+  it('integración con el anclaje de PRODUCCIÓN (medianoche local) — pin del off-by-one por TZ de computeItemStatus', () => {
+    // El test de arriba ancla `today` a MEDIODÍA, que es robusto para todo
+    // |offset| < 12 y por eso no puede fallar en ninguna TZ realista. Pero
+    // producción usa MEDIANOCHE local (`usePayCycle` →
+    // `normalizeToStartOfDay`), y `computeItemStatus`
+    // (`fijos-aggregates.model.ts:184-216`) lee ese `today` con `getUTC*`:
+    // al este de UTC la medianoche local cae el día ANTERIOR en UTC, así que
+    // el modelo "ve" ayer y un vencido de ayer sale `pending`.
+    // Este test pinea las dos ramas — no arregla el modelo compartido (lo
+    // usa también la pantalla viva), lo documenta ejecutándolo.
+    const overdueYesterday = makeFixed({
+      id: 'overdue-1',
+      name: 'Luz',
+      next_due_on: '2026-07-18',
+      day_of_month: 18,
+    })
+    const s = summarizeFijos({
+      items: [overdueYesterday],
+      paymentsThisCycle: [],
+      today: TODAY_MIDNIGHT,
+      monthlyStart: new Date(2026, 6, 1),
+      monthlyEnd: new Date(2026, 7, 1),
+      monthlyDays: 31,
+    })
+    // `getTimezoneOffset()` es POSITIVO al oeste de UTC (AR = 180).
+    const westOfUtcOrUtc = TODAY_MIDNIGHT.getTimezoneOffset() >= 0
+    if (westOfUtcOrUtc) {
+      expect(s.overdueItems.map((i) => i.id)).toEqual(['overdue-1'])
+      expect(s.pendingItems).toHaveLength(0)
+      // El ticker etiqueta VENCIDO por el BUCKET, no por daysUntilDue.
+      const { items } = buildTickerItems({
+        overdue: s.overdueItems,
+        dueSoon: filterDueSoon(s.pendingItems),
+        cap: 8,
+      })
+      expect(items[0]!.tagLabel).toBe('VENCIDO')
+    } else {
+      // Al este de UTC el vencido se clasifica pending: el off-by-one real.
+      expect(s.pendingItems.map((i) => i.id)).toEqual(['overdue-1'])
+      expect(s.overdueItems).toHaveLength(0)
+    }
   })
 })
 
@@ -667,6 +993,29 @@ describe('buildHikeRows', () => {
     const rows = buildHikeRows({ hikes: [hike], dismissed: { 'fx-9': 5000 } })
     expect(rows).toHaveLength(1)
   })
+
+  it('PARIDAD con isHikeDismissed del store (Home): mismas decisiones para los mismos inputs', () => {
+    // `filterActiveHikes` reimplementa la normalización del store en vez de
+    // importarla (el store trae React/SecureStore). Este test es el guardián
+    // de que las dos no se separen en silencio: si Home filtrara distinto que
+    // Fijos, un aumento descartado reaparecería en una de las dos pantallas.
+    const cases: Array<[number, Record<string, number>]> = [
+      [5000, {}],
+      [5000, { 'fx-9': 5000 }],
+      [5000, { 'fx-9': 4999 }],
+      [5000.4, { 'fx-9': 5000 }],
+      [5000.6, { 'fx-9': 5000 }],
+      [5000, { otro: 5000 }],
+    ]
+    for (const [currentPrice, dismissed] of cases) {
+      const hike = makeHike({ fixedExpenseId: 'fx-9', currentPrice })
+      const keptByVm = filterActiveHikes([hike], dismissed).length === 1
+      const keptByStore = !isHikeDismissed('fx-9', currentPrice, dismissed)
+      expect(keptByVm, `currentPrice=${currentPrice} dismissed=${JSON.stringify(dismissed)}`).toBe(
+        keptByStore,
+      )
+    }
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -680,7 +1029,7 @@ describe('buildReminder', () => {
       makeFijoItem({ id: 'o2', name: 'Ecogas', amount: 12300 }),
       makeFijoItem({ id: 'o3', name: 'Expensas', amount: 6500 }),
     ]
-    const r = buildReminder({ overdue, dueSoon: [], hikes: [] })
+    const r = buildReminder({ overdue, dueSoon: [], hikes: [], dismissed: {} })
     expect(r.label).toBe('3 fijos ya vencieron')
     expect(r.rest).toBe('Luz, Ecogas y Expensas suman')
     expect(r.amount).toBe('$27.700')
@@ -690,7 +1039,12 @@ describe('buildReminder', () => {
   })
 
   it('R-A singular: 1 overdue → "1 fijo ya venció"', () => {
-    const r = buildReminder({ overdue: [makeFijoItem({ id: 'o1', name: 'Luz' })], dueSoon: [], hikes: [] })
+    const r = buildReminder({
+      overdue: [makeFijoItem({ id: 'o1', name: 'Luz' })],
+      dueSoon: [],
+      hikes: [],
+      dismissed: {},
+    })
     expect(r.label).toBe('1 fijo ya venció')
   })
 
@@ -700,7 +1054,7 @@ describe('buildReminder', () => {
       makeFijoItem({ id: 'd2', name: 'Ecogas', amount: 12300, daysUntilDue: 2 }),
       makeFijoItem({ id: 'd3', name: 'Fútbol Otti', amount: 6500, daysUntilDue: 6 }),
     ]
-    const r = buildReminder({ overdue: [], dueSoon, hikes: [] })
+    const r = buildReminder({ overdue: [], dueSoon, hikes: [], dismissed: {} })
     expect(r.label).toBe('3 pagos fijos vencen en 7 días')
     expect(r.rest).toBe('Ecogas, Disney + y Fútbol Otti suman')
     expect(r.amount).toBe('$27.700')
@@ -712,6 +1066,7 @@ describe('buildReminder', () => {
       overdue: [],
       dueSoon: [makeFijoItem({ id: 'd1', name: 'Spotify' })],
       hikes: [],
+      dismissed: {},
     })
     expect(r.label).toBe('1 pago fijo vence en 7 días')
   })
@@ -721,13 +1076,14 @@ describe('buildReminder', () => {
       overdue: [makeFijoItem({ id: 'o1', name: 'Luz' })],
       dueSoon: [makeFijoItem({ id: 'd1', name: 'Spotify' })],
       hikes: [],
+      dismissed: {},
     })
     expect(r.label).toContain('venci')
   })
 
   it('R-C: sin overdue ni dueSoon, con hikes → los aumentos son el sujeto, rest y amount no vacíos', () => {
     const hikes = [makeHike({ name: 'Netflix', currentPrice: 5000 }), makeHike({ name: 'Spotify', currentPrice: 3000 })]
-    const r = buildReminder({ overdue: [], dueSoon: [], hikes })
+    const r = buildReminder({ overdue: [], dueSoon: [], hikes, dismissed: {} })
     expect(r.rest).not.toBe('')
     expect(r.amount).not.toBe('')
     expect(r.label).toBe('2 aumentos este mes')
@@ -743,7 +1099,7 @@ describe('buildReminder', () => {
       makeFijoItem({ id: 'o3', name: 'C', amount: 6500 }),
       makeFijoItem({ id: 'o4', name: 'D', amount: 1_000_000 }), // NO debe entrar en la suma
     ]
-    const r = buildReminder({ overdue, dueSoon: [], hikes: [] })
+    const r = buildReminder({ overdue, dueSoon: [], hikes: [], dismissed: {} })
     expect(r.label).toBe('3 fijos ya vencieron') // n capeado a 3, no "4"
     expect(r.rest).toBe('A, B y C suman')
     expect(r.amount).toBe('$27.700')
@@ -754,8 +1110,26 @@ describe('buildReminder', () => {
       makeFijoItem({ id: 'd1', name: 'Lejos', daysUntilDue: 6 }),
       makeFijoItem({ id: 'd2', name: 'Cerca', daysUntilDue: 1 }),
     ]
-    const r = buildReminder({ overdue: [], dueSoon, hikes: [] })
+    const r = buildReminder({ overdue: [], dueSoon, hikes: [], dismissed: {} })
     expect(r.rest).toBe('Cerca y Lejos suman')
+  })
+
+  it('R-C cuenta/nombra/suma SOLO los aumentos no descartados (paridad con las filas que se dibujan)', () => {
+    const hikes = [
+      makeHike({ fixedExpenseId: 'fx-1', name: 'Netflix', currentPrice: 5000 }),
+      makeHike({ fixedExpenseId: 'fx-2', name: 'Spotify', currentPrice: 3000 }),
+      makeHike({ fixedExpenseId: 'fx-3', name: 'Claude AI', currentPrice: 20_000 }),
+    ]
+    const dismissed = { 'fx-2': 3000, 'fx-3': 20_000 } // 2 descartados desde Home
+    const rows = buildHikeRows({ hikes, dismissed })
+    const r = buildReminder({ overdue: [], dueSoon: [], hikes, dismissed })
+    expect(rows).toHaveLength(1)
+    // El recordatorio describe exactamente esa única fila, no las 3.
+    expect(r.label).toBe('1 aumento este mes')
+    expect(r.rest).toBe('Netflix suman')
+    expect(r.amount).toBe('$5.000')
+    expect(r.rest).not.toContain('Spotify')
+    expect(r.rest).not.toContain('Claude AI')
   })
 })
 
@@ -764,28 +1138,6 @@ describe('buildReminder', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildHeroContent', () => {
-  const e2Input = {
-    variant: 'E2' as const,
-    isEmptyNoFijos: false,
-    cycleLastDay: new Date(2026, 6, 19),
-    daysIntoMonth: 18,
-    salaryPaymentDay: 19,
-    paidCount: 13,
-    pendingCount: 2,
-    overdueCount: 1,
-    cycleActiveCount: 16,
-    paidAmount: 1_227_651,
-    pendingAmount: 100_000, // pending+overdue debe sumar 122.831
-    overdueAmount: 22_831,
-    total: 1_350_482,
-    paidPct: 91,
-    hasIncome: true,
-    monthlyIncome: 6_400_000,
-    availableRaw: 5_049_518,
-    pctOfIncome: 21,
-    segmentToday: false,
-  }
-
   it('reproduce E2 exacto con los números del fixture', () => {
     const c = buildHeroContent(e2Input)
     expect(c.amount).toBe('$122.831')
@@ -838,6 +1190,12 @@ describe('buildHeroContent', () => {
     expect(e6prime.topChipLabel).toBe('SIN CUOTAS')
     expect(e6prime.emptyTitle).toBe('Nada que pagar este ciclo')
     expect(e6.emptyTitle).not.toBe(e6prime.emptyTitle)
+    // El CTA es el botón que el usuario toca — la distinción no puede
+    // quedar verificada solo por el título.
+    expect(e6.emptyCtaLabel).toBe('+ Agregar tu primer fijo')
+    expect(e6prime.emptyCtaLabel).toBe('+ Agregar otro fijo')
+    expect(e6.emptySub).toContain('Sumá alquiler')
+    expect(e6prime.emptySub).toContain('ciclos posteriores')
   })
 
   it('E8: topChipLabel usa salaryPaymentDay, eyebrow especial', () => {
@@ -846,6 +1204,36 @@ describe('buildHeroContent', () => {
     expect(c.eyebrow).toBe('FIJOS · CICLO TERMINADO')
     expect(c.outOfCycleTitle).toBe('Tu ciclo terminó el 19')
     expect(c.outOfCycleCtaLabel).toBe('✓ Confirmar cobro')
+  })
+
+  it('E8: outOfCycleSub nombra el mes del ciclo CERRADO, no el del ciclo vivo (payday 19)', () => {
+    // Estado real de E8: payday 19, hoy 20-jul, cobro sin confirmar. El
+    // controller pide el ciclo con freeze:false, así que el ciclo vivo ya es
+    // [19 jul, 19 ago) → cycleLastDay = 18 ago. El ciclo que TERMINÓ es
+    // julio: sale del día anterior a cycleStart (18 jul).
+    const c = buildHeroContent({
+      ...e2Input,
+      variant: 'E8',
+      cycleStart: new Date(2026, 6, 19),
+      cycleLastDay: new Date(2026, 7, 18),
+    })
+    expect(c.outOfCycleSub).toBe('Confirmá tu cobro para cerrar julio y abrir el próximo ciclo.')
+    expect(c.outOfCycleSub).not.toContain('agosto')
+  })
+
+  it('E8: payday 1 → el mes cerrado es el anterior (cycleStart 1-jul → junio)', () => {
+    const c = buildHeroContent({
+      ...e2Input,
+      variant: 'E8',
+      cycleStart: new Date(2026, 6, 1),
+      cycleLastDay: new Date(2026, 6, 31),
+    })
+    expect(c.outOfCycleSub).toBe('Confirmá tu cobro para cerrar junio y abrir el próximo ciclo.')
+  })
+
+  it('E8: outOfCycleSummaryAmount formatea el monto vencido', () => {
+    const c = buildHeroContent({ ...e2Input, variant: 'E8', overdueCount: 2, overdueAmount: 22_831 })
+    expect(c.outOfCycleSummaryAmount).toBe('$22.831')
   })
 
   it('E8 con overdueCount:0 → "No quedó nada sin pagar"', () => {
@@ -945,6 +1333,44 @@ describe('buildAvisosContent', () => {
     expect(c.reminderSuffix.charAt(0)).not.toBe(' ')
   })
 
+  it('las 4 ranuras del recordatorio y los 2 arrays son passthrough EXACTO (sin transponer, sin vaciar)', () => {
+    // Sin estas aserciones, devolver `tickerItems: []` dejaba la suite verde y
+    // el kit mostraba "✓ Nada vence en los próximos días" (`hasTicker` se
+    // deriva de `.length > 0`) a una familia con vencidos — R-3, la falla
+    // peligrosa porque es tranquilizadora. Y transponer rest/amount pasaba
+    // igual con solo el test de `charAt(0)`.
+    const tickerItems = [
+      { id: 't1', name: 'Luz', amount: '$8.900', tagLabel: 'VENCIDO', tone: 'overdue' as const },
+    ]
+    const hikeRows = [
+      { id: 'h1', name: 'Netflix', pctLabel: '+25%', fromAmount: '$4.000', toAmount: '$5.000' },
+    ]
+    const r = {
+      label: '1 fijo ya venció',
+      rest: 'Luz suman',
+      amount: '$8.900',
+      suffix: '— pagalos para no acumular',
+    }
+    const c = buildAvisosContent({
+      variant: 'A5',
+      isEmptyNoFijos: false,
+      overdueCount: 1,
+      tickerItems,
+      hikeRows,
+      reminder: r,
+    })
+    expect(c.tickerItems).toEqual(tickerItems)
+    expect(c.hikeRows).toEqual(hikeRows)
+    expect(c.reminderLabel).toBe(r.label)
+    expect(c.reminderRest).toBe(r.rest)
+    expect(c.reminderAmount).toBe(r.amount)
+    expect(c.reminderSuffix).toBe(r.suffix)
+    // El pozo estático solo se dibuja cuando NO hay ticker; con ticker no
+    // debe poder ganarle a la lista.
+    expect(c.tickerItems).toHaveLength(1)
+    expect(c.staticMessage).toBe('✓ Nada vence en los próximos días')
+  })
+
   it('badgeTone urgent cuando overdueCount>0', () => {
     const c = buildAvisosContent({
       variant: 'A5',
@@ -978,6 +1404,9 @@ describe('buildAvisosContent', () => {
     expect(a6.emptyTitle).toBe('Todavía no cargaste fijos')
     expect(a6prime.emptyTitle).toBe('Nada que pagar este ciclo')
     expect(a6.emptyTitle).not.toBe(a6prime.emptyTitle)
+    expect(a6.emptyCtaLabel).toBe('+ Agregar tu primer fijo')
+    expect(a6prime.emptyCtaLabel).toBe('+ Agregar otro fijo')
+    expect(a6.emptySub).not.toBe(a6prime.emptySub)
   })
 
   it('A4: calmTitle/calmSub presentes, ausentes en el resto', () => {
@@ -990,6 +1419,9 @@ describe('buildAvisosContent', () => {
       reminder,
     })
     expect(a4.calmTitle).toBe('Todo tranquilo por acá')
+    expect(a4.calmSub).toBe(
+      'No hay vencimientos próximos ni cambios de precio esta semana. Te avisamos si algo cambia.',
+    )
     const a2 = buildAvisosContent({
       variant: 'A2',
       isEmptyNoFijos: false,
@@ -999,6 +1431,7 @@ describe('buildAvisosContent', () => {
       reminder,
     })
     expect(a2.calmTitle).toBe('')
+    expect(a2.calmSub).toBe('')
   })
 
   it('brotPose mapea 1:1 por variante', () => {
@@ -1025,14 +1458,25 @@ describe('buildAvisosContent', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildCategoriesContent', () => {
-  it('5 claves, los 3 counts son string', () => {
+  it('5 claves, los 3 counts son string, groups es passthrough', () => {
+    const groups = [
+      {
+        category: 'housing' as const,
+        icon: '🏠',
+        name: 'Vivienda',
+        meta: '2 ítems · al día ✓',
+        metaTone: 'ok' as const,
+        amount: '$1.500',
+      },
+    ]
     const c = buildCategoriesContent({
       activeTab: 'vencidos',
       vencidosCount: 1,
       pendientesCount: 3,
       pagadosCount: 12,
-      groups: [],
+      groups,
     })
+    expect(c.groups).toEqual(groups)
     expect(Object.keys(c)).toHaveLength(5)
     expect(c.vencidosCount).toBe('1')
     expect(typeof c.vencidosCount).toBe('string')
@@ -1088,6 +1532,34 @@ describe('buildCategoryBuckets', () => {
 
   it('bucket sin ítems se omite (input vacío → salida vacía)', () => {
     expect(buildCategoryBuckets({ groups: [] })).toEqual({ buckets: [], collapsed: [] })
+  })
+
+  it('collapsed reporta el label DISPLAY (no el rawLabel), que es lo que lee un humano en el banner', () => {
+    // Fixture con los dos campos DISTINTOS: con `label === rawLabel` la
+    // aserción pasaba igual usando el crudo, así que la decisión quedaba sin
+    // pinear (Underspec #2 del reporte de implementación).
+    const { collapsed } = buildCategoryBuckets({
+      groups: [
+        makeCategoryGroup({ rawLabel: 'Vivienda', label: 'Alquiler y casa' }),
+        makeCategoryGroup({ rawLabel: 'Impuestos', label: 'Tasas municipales' }),
+      ],
+    })
+    expect(collapsed).toEqual([
+      { bucket: 'housing', realLabels: ['Alquiler y casa', 'Tasas municipales'] },
+    ])
+  })
+
+  it('collapsed OMITE el caso identidad y REPORTA el rename de un solo label', () => {
+    // "services ← Servicios" no es pérdida de granularidad; "services ← Salud"
+    // sí (el kit lo renombra a "Servicios").
+    const identity = buildCategoryBuckets({
+      groups: [makeCategoryGroup({ rawLabel: 'Servicios', label: 'Servicios' })],
+    })
+    expect(identity.collapsed).toEqual([])
+    const renamed = buildCategoryBuckets({
+      groups: [makeCategoryGroup({ rawLabel: 'Salud', label: 'Salud' })],
+    })
+    expect(renamed.collapsed).toEqual([{ bucket: 'services', realLabels: ['Salud'] }])
   })
 
   it('meta: overdue>0 → tone overdue', () => {
@@ -1199,7 +1671,7 @@ describe('drift cycle.days (usePayCycle) vs monthlyAccounting.days (§6.1)', () 
     expect(cycleDays).not.toBe(monthlyDays)
   })
 
-  it('monthly: coinciden (justifica por qué esta spec usa monthlyAccounting.daysIntoMonth directo, C4)', () => {
+  it('monthly: coinciden (por eso derivar el día del ciclo no es regresión para monthly)', () => {
     const cfg: FinanceCycleConfig = { cycle_type: 'monthly', salary_payment_day: 5 }
     const today = new Date(2026, 6, 22)
     const cycleDays = getCurrentPayCycle(today, cfg).days
