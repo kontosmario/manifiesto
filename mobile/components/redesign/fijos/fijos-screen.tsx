@@ -268,17 +268,20 @@ interface FijosHeroContent {
 //  · E2 → el teléfono claro/oscuro (fuente de la Step 1, "el default").
 //  · E1,E3–E8 → el canvas "ESTADOS DE LA TARJETA · HERO FIJOS" (solo claro).
 //
-// Normalización aplicada a las 5 variantes de shape "default"
-// (E2/E3/E4/E5/E7): el canvas dibuja esas tarjetas con una escala
-// TIPOGRÁFICA sistemáticamente ~5-8% más chica que el teléfono real para
-// el MISMO estado E2 (monto 40 vs 42, "Pagaste…" 13 vs 13.5, "91%" 13.5 vs
-// 14, línea de pagado 11 vs 11.5, disponible 25 vs 27 — los 5 campos
-// drifteados a la vez, y el padding del contenedor 18px parejo vs 18/18/16
-// del teléfono) — es un artefacto de layout de la grilla comparativa de 8
-// tarjetas, no una instrucción de diseño por estado (confirmado: el drift
-// es UNIFORME entre las 5, no específico de una). Se usó la escala del
-// teléfono (la referencia 1:1 declarada en el brief) para las 5, aplicada
-// a los VALORES propios de cada estado del canvas.
+// ESCALA — FALLO DEL OWNER (2026-07-29): para las 5 variantes de shape
+// "default" (E2/E3/E4/E5/E7) se usa la escala del TELÉFONO, no la del
+// canvas de estados. El canvas dibuja esas tarjetas en 7 medidas
+// sistemáticamente más chicas que el MISMO estado E2 en el teléfono —
+// verificado medida por medida contra el markup: monto 40 vs 42px,
+// "Pagaste…" 13 vs 13.5px, "91%" 13.5 vs 14px, "$… pagado" 11 vs 11.5px,
+// "de $… total" 11 vs 11.5px, disponible 25 vs 27px, y el padding inferior
+// del contenedor 16 vs 18px. Es un artefacto de layout de la grilla
+// comparativa de 8 tarjetas (el canvas encoge el set entero para que
+// entre lado a lado) y no una instrucción de diseño por estado — el owner
+// ratificó la escala del teléfono para los 8 estados por ser la que se ve
+// de verdad en la app. Consecuencia visible e INTENCIONAL: E1/E3/E4/E5/E7
+// se ven un toque más grandes que su propia tarjeta del canvas. No
+// "corregir" achicándolos de vuelta a la escala del canvas.
 const HERO_CONTENT: Record<FijosHeroVariant, FijosHeroContent> = {
   E1: {
     eyebrow: 'FIJOS DE JULIO',
