@@ -229,7 +229,13 @@ export function NeoTabBarLive({
   // reporta su slot (x relativo a SU grupo, width) relativo a sí. Juntos
   // resuelven `targetX` (Task 1, módulo puro, testeado ahí — no se
   // reimplementa la aritmética acá).
-  const [groupOffsets, setGroupOffsets] = useState<GroupOffsets>({ left: 0, right: 0 })
+  // Parcial a propósito: `0` es un offset MEDIBLE, así que no sirve como valor
+  // inicial — con `{left: 0, right: 0}` el surco se daría por posicionable
+  // apenas llega un slot, aunque los offsets de grupo todavía no hubieran
+  // reportado, y el primer posicionamiento aterrizaría en groupX = 0 para
+  // saltar después ~20pt (grupo izquierdo) o ~230pt (derecho): justo el
+  // "entra deslizándose desde la izquierda" que queremos evitar.
+  const [groupOffsets, setGroupOffsets] = useState<Partial<GroupOffsets>>({})
   const onLayoutLeftGroup = useCallback((e: LayoutChangeEvent) => {
     const x = e.nativeEvent.layout.x
     setGroupOffsets((prev) => (prev.left === x ? prev : { ...prev, left: x }))
@@ -238,6 +244,18 @@ export function NeoTabBarLive({
     const x = e.nativeEvent.layout.x
     setGroupOffsets((prev) => (prev.right === x ? prev : { ...prev, right: x }))
   }, [])
+  // Solo con AMBOS medidos hay marco de coordenadas completo. En su propio
+  // `useMemo` para no fabricar un objeto (referencia nueva) en cada render:
+  // sin esto el `useMemo` de `targetX` de abajo, que depende de `groups`,
+  // nunca memoiza de verdad (recalcula siempre, aunque los offsets no
+  // cambiaron) — eslint lo marca como `exhaustive-deps`.
+  const groups = useMemo<GroupOffsets | null>(
+    () =>
+      groupOffsets.left != null && groupOffsets.right != null
+        ? { left: groupOffsets.left, right: groupOffsets.right }
+        : null,
+    [groupOffsets.left, groupOffsets.right],
+  )
 
   const [slots, setSlots] = useState<SlotRects>({})
   const onMeasureSlot = useCallback((key: NeoTabKey, rect: SlotRect) => {
@@ -253,27 +271,41 @@ export function NeoTabBarLive({
   const reduceMotion = useReducedMotion()
   const wellWidth = useMemo(() => resolveWellWidth(slots), [slots])
   const targetX = useMemo(
-    () => resolveIndicatorX(slots, groupOffsets, activeTab, wellWidth),
-    [slots, groupOffsets, activeTab, wellWidth],
+    () => (groups ? resolveIndicatorX(slots, groups, activeTab, wellWidth) : null),
+    [slots, groups, activeTab, wellWidth],
   )
 
-  // `-1` = todavía sin medir. El surco no se dibuja hasta tener una posición
-  // real: plantarlo en 0 lo mostraría pegado al borde izquierdo por un frame.
-  const indicatorX = useSharedValue(-1)
+  // "Tengo posición" va en un FLAG PROPIO, no codificado en el signo de la x.
+  //
+  // Un centinela negativo parece natural pero es un bug: `targetX` puede ser
+  // legítimamente negativo. Para `inicio` (primer hijo del grupo, `slot.x = 0`,
+  // `groupX` = el paddingLeft de la barra = 20):
+  //   targetX = 20 + w/2 − (masAncho + 14)/2 = 13 − (masAncho − w)/2
+  // o sea negativo apenas el label más ancho supera al de Inicio por más de
+  // 26pt. En inglés ("Expenses" vs "Home") eso queda a un pelo, y como
+  // `navIdleLabel` no capea `maxFontSizeMultiplier`, la diferencia escala con
+  // Dynamic Type y cruza el cero cerca de fontScale 1.6 — el PRIMER tamaño de
+  // accesibilidad de iOS. Con el signo como centinela eso falla doble y en
+  // silencio: el surco se dibuja con opacidad 0 (invisible mientras Inicio esté
+  // activa) y además vuelve para siempre a la rama de "primer posicionamiento",
+  // así que ningún cambio de tab vuelve a animar.
+  const indicatorX = useSharedValue(0)
+  const hasPosition = useSharedValue(false)
   useEffect(() => {
     if (targetX == null) return
-    if (indicatorX.value < 0 || reduceMotion) {
+    if (!hasPosition.value || reduceMotion) {
       // Primer posicionamiento (o reduced motion): sin viaje.
       indicatorX.value = targetX
+      hasPosition.value = true
       return
     }
     indicatorX.value = withSpring(targetX, motionSprings.tabShift)
-  }, [targetX, reduceMotion, indicatorX])
+  }, [targetX, reduceMotion, indicatorX, hasPosition])
   useEffect(() => () => cancelAnimation(indicatorX), [indicatorX])
 
   const wellStyle = useAnimatedStyle(() => ({
-    opacity: indicatorX.value < 0 ? 0 : 1,
-    transform: [{ translateX: indicatorX.value < 0 ? 0 : indicatorX.value }],
+    opacity: hasPosition.value ? 1 : 0,
+    transform: [{ translateX: indicatorX.value }],
   }))
 
   const renderItem = (item: (typeof NAV_ITEMS)[number]) => (
@@ -389,10 +421,11 @@ const styles = StyleSheet.create({
   },
   // El surco (indicador activo) — mismo material de la barra, hundido. Ancho
   // dinámico (`resolveWellWidth`, seteado inline junto al style), posición
-  // animada vía `wellStyle` (translateX puro). top/bottom fijos reproducen el
-  // footprint vertical de la vieja píldora `navActive` (paddingVertical 8 con
-  // labels 10.5 + ícono 20 + gap 4 ⇒ alto ~46 dentro de nav con paddingTop 12 /
-  // paddingBottom 13).
+  // animada vía `wellStyle` (translateX puro). `top: 12` / `bottom: 13` calzan
+  // con el paddingTop/paddingBottom de `nav`: el surco (absolute dentro de
+  // `nav`) termina cubriendo exactamente la altura de contenido de un ítem —
+  // paddingVertical 8 (×2) + ícono 20 + gap 4 + label 10.5 ⇒ ~54 — el
+  // footprint vertical de la vieja píldora `navActive`.
   well: {
     position: 'absolute',
     left: 0,
