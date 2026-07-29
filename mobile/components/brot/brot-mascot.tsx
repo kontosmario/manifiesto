@@ -86,6 +86,7 @@ export const BROT_POSES = [
   'magic',
   'seed',
   'wilted',
+  'cool',
 ] as const
 
 export type BrotPose = (typeof BROT_POSES)[number]
@@ -125,6 +126,11 @@ export interface BrotMascotProps {
 //   der     sleep 0.33 (analítico 0.60: el port dibuja la `z` con paths
 //           y el original con fillText, así que acá manda el analítico)
 //   abajo   nada llega a 108 (la sombra del piso muere en ~106)
+// `cool` (mismo método, chequeo analítico vía barrido numérico de la pila
+// de transforms): combina leaves='perk' —ya el peor caso de arriba,
+// cheer 9.67— con un tilt+sway de cuerpo entero que cheer no tiene; aun
+// así da MENOS excursión que cheer, así que no cambia el peor caso ni el
+// presupuesto de PAD_TOP/PAD_X.
 const PAD_TOP = 12
 const PAD_X = 6
 /**
@@ -187,6 +193,7 @@ type MouthType =
   | 'wavy'
   | 'frown'
   | 'small'
+  | 'smirk'
   | 'hmm'
   | 'hmm2'
   | 'oo'
@@ -200,7 +207,7 @@ interface PoseSpec {
   mouth?: MouthType
   leaves?: LeavesState
   extras?: readonly ExtraKind[]
-  custom?: 'shy' | 'think' | 'zen'
+  custom?: 'shy' | 'think' | 'zen' | 'cool'
   legs?: 'pigeon' | 'cross'
   tilt?: number
   bounce?: number
@@ -266,6 +273,7 @@ const POSES: Record<BrotPose, PoseSpec> = {
   magic: { extras: ['sparkles'] }, // aR animado en armAngles
   seed: { seed: true },
   wilted: { eyes: 'sad', mouth: 'frown', leaves: 'wilt', tilt: 0.055, dull: true },
+  cool: { eyes: 'closed', mouth: 'smirk', custom: 'cool', tilt: -0.05, leaves: 'perk', sway: true }, // aL/aR animados en armAngles
 }
 
 // ─── Infraestructura de dibujo ───────────────────────────────────────
@@ -292,6 +300,11 @@ interface SkiaObjectCache {
   bodyPaint: SkPaint
   /** Variante dull (pose wilted) del paint del cuerpo. */
   bodyPaintDull: SkPaint
+  /** Paints del gradiente de los lentes de la pose 'cool' (izq/der):
+   *  pose-específicos pero invariantes en el tiempo (cx/gy/sep/w/h son
+   *  constantes), se arman una vez acá. */
+  coolLensPaintLeft: SkPaint
+  coolLensPaintRight: SkPaint
   /** Path scratch: cada figura lo resetea, lo construye y lo dibuja.
    *  El uso es estrictamente secuencial (construir → dibujar → siguiente)
    *  y el canvas de grabación copia el path al grabar, así que un único
@@ -311,6 +324,9 @@ interface Tools {
   /** Paints del cuerpo pre-armados con su gradiente (ver SkiaObjectCache). */
   bodyPaint: SkPaint
   bodyPaintDull: SkPaint
+  /** Paints del gradiente de los lentes de 'cool' (ver SkiaObjectCache). */
+  coolLensPaintLeft: SkPaint
+  coolLensPaintRight: SkPaint
   /** Path scratch compartido (ver SkiaObjectCache.path). */
   path: SkPath
   shadowOn: boolean
@@ -320,6 +336,17 @@ const R2D = 180 / Math.PI
 const ARM_L = 15
 const ARM_W = 8.5
 const STATIC_T = 0.4
+
+// Gafas wayfarer de la pose 'cool' (design/fijos-2026-07/brot.js, bloque
+// `if (P.custom === 'cool')`) — geometría copiada tal cual del original.
+const COOL_GLASSES_CX = 42
+const COOL_GLASSES_GY = 55.4
+const COOL_GLASSES_SEP = 9.7
+const COOL_GLASSES_W = 12.2
+const COOL_GLASSES_H = 8.8
+const COOL_GLASSES_RAD = 2.8
+const COOL_GLASSES_CL = COOL_GLASSES_CX - COOL_GLASSES_SEP
+const COOL_GLASSES_CR = COOL_GLASSES_CX + COOL_GLASSES_SEP
 
 function rot(canvas: SkCanvas, rad: number, px: number, py: number) {
   'worklet'
@@ -709,6 +736,12 @@ function drawMouth(tools: Tools, type: MouthType, br: number) {
     p.quadTo(42, 65.4, 44.4, 63.4)
     setStroke(tools, C.face, 2.1)
     canvas.drawPath(p, tools.stroke)
+  } else if (type === 'smirk') {
+    const p = freshPath(tools)
+    p.moveTo(37.6, 64.4)
+    p.quadTo(42.5, 67.6, 47.4, 61.8)
+    setStroke(tools, C.face, 2.3)
+    canvas.drawPath(p, tools.stroke)
   } else if (type === 'hmm') {
     setStroke(tools, C.face, 2.1)
     canvas.drawLine(38.6, 64, 45, 63.2, tools.stroke)
@@ -872,6 +905,104 @@ function drawExtras(tools: Tools, list: readonly ExtraKind[] | undefined, t: num
   }
 }
 
+// rr() del original: rounded-rect simétrico vía moveTo/lineTo/quadTo (path
+// manual, no un RRect nativo) para calcar el contorno exacto del original.
+function coolLensPath(tools: Tools, x0: number) {
+  'worklet'
+  const l = x0 - COOL_GLASSES_W / 2
+  const r = x0 + COOL_GLASSES_W / 2
+  const tp = COOL_GLASSES_GY - COOL_GLASSES_H / 2
+  const bt = COOL_GLASSES_GY + COOL_GLASSES_H / 2
+  const rad = COOL_GLASSES_RAD
+  const p = freshPath(tools)
+  p.moveTo(l + rad, tp)
+  p.lineTo(r - rad, tp)
+  p.quadTo(r, tp, r, tp + rad)
+  p.lineTo(r, bt - rad)
+  p.quadTo(r, bt, r - rad, bt)
+  p.lineTo(l + rad, bt)
+  p.quadTo(l, bt, l, bt - rad)
+  p.lineTo(l, tp + rad)
+  p.quadTo(l, tp, l + rad, tp)
+  p.close()
+  return p
+}
+
+// lens() del original: relleno con gradiente (paint pre-armado del cache,
+// ver createSkiaObjectCache) + dos trazos de reflejo + borde, para un
+// lente centrado en x0.
+//
+// El original hace `rr(x0,w,h); ctx.clip()` antes de los reflejos; se
+// omite acá porque con estas coordenadas exactas es un no-op geométrico
+// (verificado analítica y numéricamente: los dos trazos de reflejo quedan
+// siempre a >1.4u del arco de la esquina más cercana, radio 2.8) — no
+// recortarían nada aunque se portara, así que portarlo no cambiaría un
+// solo píxel.
+function drawCoolLens(tools: Tools, x0: number, lensPaint: SkPaint) {
+  'worklet'
+  const { canvas } = tools
+  const gy = COOL_GLASSES_GY
+  canvas.drawPath(coolLensPath(tools, x0), lensPaint)
+  const glintA = freshPath(tools)
+  glintA.moveTo(x0 - 3.6, gy - 2.9)
+  glintA.lineTo(x0 + 1.2, gy + 3.4)
+  setStroke(tools, 'rgba(255,255,255,0.7)', 2.1)
+  canvas.drawPath(glintA, tools.stroke)
+  const glintB = freshPath(tools)
+  glintB.moveTo(x0 - 0.6, gy - 3.2)
+  glintB.lineTo(x0 + 2.6, gy + 0.8)
+  setStroke(tools, 'rgba(255,255,255,0.3)', 1.1)
+  canvas.drawPath(glintB, tools.stroke)
+  setStroke(tools, '#040704', 1.8)
+  canvas.drawPath(coolLensPath(tools, x0), tools.stroke)
+}
+
+// Bloque `if (P.custom === 'cool')` del original: gafas de sol wayfarer
+// (patillas + lentes con gradiente + barra superior + puente arqueado).
+// `ctx.lineJoin='round'; ctx.lineCap='round'` del original no se porta:
+// tools.stroke ya queda cap/join round desde createSkiaObjectCache y
+// nada en el archivo lo cambia, así que es el estado ambiente de siempre.
+function drawCoolShades(tools: Tools) {
+  'worklet'
+  const { canvas } = tools
+  const gy = COOL_GLASSES_GY
+  const w = COOL_GLASSES_W
+  const h = COOL_GLASSES_H
+  const cL = COOL_GLASSES_CL
+  const cR = COOL_GLASSES_CR
+
+  // patillas simétricas hacia las hojas
+  setStroke(tools, '#0B0F09', 3.1)
+  const templeL = freshPath(tools)
+  templeL.moveTo(cL - w / 2 + 0.4, gy - h / 2 + 2.2)
+  templeL.lineTo(cL - w / 2 - 9, gy - 6.2)
+  canvas.drawPath(templeL, tools.stroke)
+  const templeR = freshPath(tools)
+  templeR.moveTo(cR + w / 2 - 0.4, gy - h / 2 + 2.2)
+  templeR.lineTo(cR + w / 2 + 9, gy - 6.2)
+  canvas.drawPath(templeR, tools.stroke)
+
+  // lentes oscuros con reflejo limpio
+  drawCoolLens(tools, cL, tools.coolLensPaintLeft)
+  drawCoolLens(tools, cR, tools.coolLensPaintRight)
+
+  // barra superior gruesa continua (la seña "chad")
+  setStroke(tools, '#0B0F09', 3.8)
+  const topBar = freshPath(tools)
+  topBar.moveTo(cL - w / 2 + 0.4, gy - h / 2 - 0.3)
+  topBar.lineTo(cR + w / 2 - 0.4, gy - h / 2 - 0.3)
+  canvas.drawPath(topBar, tools.stroke)
+
+  // puente arqueado centrado — mismo strokeStyle '#0B0F09' que la barra de
+  // arriba (el original no resetea strokeStyle entre las dos, solo el
+  // lineWidth; acá se deja explícito en vez de heredado)
+  setStroke(tools, '#0B0F09', 3.1)
+  const bridge = freshPath(tools)
+  bridge.moveTo(cL + w / 2 - 0.4, gy - h / 2 + 2.2)
+  bridge.quadTo(COOL_GLASSES_CX, gy - h / 2 - 0.4, cR - w / 2 + 0.4, gy - h / 2 + 2.2)
+  canvas.drawPath(bridge, tools.stroke)
+}
+
 // Brazos con ángulo dependiente del tiempo (las funciones de la tabla
 // POSES original, expresadas como switch worklet-safe).
 function armAngles(pose: BrotPose, spec: PoseSpec, t: number): { aL: number; aR: number } {
@@ -886,6 +1017,8 @@ function armAngles(pose: BrotPose, spec: PoseSpec, t: number): { aL: number; aR:
       return { aL: 2.15 + Math.sin(t * 2.2) * 0.06, aR: hang }
     case 'magic':
       return { aL: hang, aR: 2.3 + Math.sin(t * 2.6) * 0.1 }
+    case 'cool':
+      return { aL: 0.16 + Math.sin(t * 1.5) * 0.04, aR: 0.9 + Math.sin(t * 1.5 + 0.5) * 0.05 }
     default:
       return { aL: spec.aL ?? hang, aR: spec.aR ?? hang }
   }
@@ -1067,6 +1200,11 @@ function drawBrot(tools: Tools, pose: BrotPose, t: number) {
     }
   }
 
+  // gafas de sol de la pose 'cool'
+  if (spec.custom === 'cool') {
+    drawCoolShades(tools)
+  }
+
   // accesorios
   drawExtras(tools, spec.extras, t)
 
@@ -1103,11 +1241,31 @@ function createSkiaObjectCache(env: SkiaEnv): SkiaObjectCache {
     )
     return p
   }
+  // lens() del original: gradiente diagonal de 3 stops por lente de la
+  // pose 'cool' (x0 = centro del lente — COOL_GLASSES_CL/CR — es la única
+  // diferencia entre el izquierdo y el derecho).
+  const makeLensPaint = (x0: number) => {
+    const p = Skia.Paint()
+    p.setAntiAlias(true)
+    p.setStyle(env.psFill)
+    p.setShader(
+      Skia.Shader.MakeLinearGradient(
+        { x: x0 - COOL_GLASSES_W / 2, y: COOL_GLASSES_GY - COOL_GLASSES_H / 2 },
+        { x: x0 + COOL_GLASSES_W / 2, y: COOL_GLASSES_GY + COOL_GLASSES_H / 2 },
+        [Skia.Color('#33472A'), Skia.Color('#111C0D'), Skia.Color('#070C06')],
+        [0, 0.5, 1],
+        env.tileClamp,
+      ),
+    )
+    return p
+  }
   return {
     fill,
     stroke,
     bodyPaint: makeBodyPaint(C.body, C.body2),
     bodyPaintDull: makeBodyPaint(C.dull, C.dull2),
+    coolLensPaintLeft: makeLensPaint(COOL_GLASSES_CL),
+    coolLensPaintRight: makeLensPaint(COOL_GLASSES_CR),
     path: Skia.Path.Make(),
   }
 }
@@ -1235,6 +1393,8 @@ export const BrotMascot = memo(function BrotMascot({
       stroke: cache.stroke,
       bodyPaint: cache.bodyPaint,
       bodyPaintDull: cache.bodyPaintDull,
+      coolLensPaintLeft: cache.coolLensPaintLeft,
+      coolLensPaintRight: cache.coolLensPaintRight,
       path: cache.path,
       shadowOn: shadow,
     }
