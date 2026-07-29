@@ -1129,12 +1129,16 @@ const AVISOS_CONTENT: Record<FijosAvisosVariant, FijosAvisosContent> = {
     badgeTone: 'default',
     brotPose: 'think',
     cardUrgent: false,
+    // A2 no aparece en ningún teléfono — la gallery card (líneas 282-292) es
+    // su ÚNICA fuente, y ahí el ticker dibuja 5 chips (sin Luz Edenor/
+    // VENCIDO), consistente con su propio badge "5". No normalizar al
+    // teléfono acá: eso es correcto solo para A1 ("ACTUAL", el estado que SÍ
+    // dibujan los teléfonos) — ver el reporte de esta ronda de fix.
     tickerItems: [
       { id: 'apple', name: 'Apple', amount: '$22.600', tagLabel: 'HOY', tone: 'today' },
       { id: 'disney', name: 'Disney +', amount: '$8.900', tagLabel: 'EN 3D', tone: 'upcoming' },
       { id: 'ecogas', name: 'Ecogas', amount: '$12.300', tagLabel: 'EN 5D', tone: 'upcoming' },
       { id: 'futbol-otti', name: 'Fútbol Otti', amount: '$6.500', tagLabel: 'EN 7D', tone: 'upcoming' },
-      { id: 'luz-edenor', name: 'Luz Edenor', amount: '$6.831', tagLabel: 'VENCIDO', tone: 'overdue' },
       { id: 'spotify', name: 'Spotify', amount: '$6.000', tagLabel: 'HOY', tone: 'today' },
     ],
     staticMessage: '',
@@ -1422,6 +1426,14 @@ const TICKER_FADE_WIDTH = 24
  * `GastosFilter` (`gastos-screen.tsx`, `styles.filterFade`) para el fade de
  * su fila de chips — acá se necesitan las DOS mitades (izquierda Y derecha)
  * en vez de una sola porque el mockup fadea ambos bordes.
+ * DIFERENCIA REAL contra el original (no es solo una curva más abrupta): en
+ * el markup el `mask-image` va sobre el POZO mismo (líneas 90/203/289/327),
+ * así que el fondo `#E1E3D6`/`#0F1C13` del pozo, su sombra neumórfica
+ * `inset 5px 5px 12px` y sus esquinas redondeadas se disuelven junto con los
+ * chips en los bordes. Este port deja el pozo siempre opaco y solo fadea los
+ * CHIPS hacia el color del pozo — el pozo en sí se lee como una píldora de
+ * borde nítido en vez de una que se destiñe. A validar contra el mockup en
+ * el gate visual.
  *
  * Reduced motion: sin animación, `translateX` en `0` — la lista se ve
  * arrancando desde la primera copia completa, nunca cortada a la mitad.
@@ -1477,10 +1489,16 @@ function FijosTicker({ s, items }: { s: FijosSpec; items: FijosTickerItem[] }) {
 }
 
 /** Fila de aumento — ícono de tendencia + párrafo con spans anidados (mismo
- *  patrón que `PaidProgress` del hero: `<Text>` anidado para pisar color/peso
- *  de un tramo puntual) + círculo de check. `$fromAmount` NO lleva su propio
- *  peso/color (hereda el 700/`aumentoRowInk` del párrafo) — confirmado en el
- *  markup, a diferencia del resto de los tramos que sí van en 900. */
+ *  mecanismo de `<Text>` anidado que usa `PaidProgress` del hero, pero NO el
+ *  mismo caso: `PaidProgress` solo pisa color, nunca peso, así que hereda el
+ *  `fontFamily` del padre sin problema. Acá los spans SÍ piden 900 sobre un
+ *  padre en 700 (`hikeText`) — este repo carga Nunito como faces estáticas
+ *  por peso (`mobile/theme/typography.ts:4-11`), así que pedir peso sin pedir
+ *  el `fontFamily` que va con ese peso no cambia de face: cada span en 900
+ *  lleva su propio `fontFamily: nunitoFamily('900')` explícito.) +
+ *  círculo de check. `$fromAmount` NO lleva su propio peso/color (hereda el
+ *  700/`aumentoRowInk` del párrafo) — confirmado en el markup, a diferencia
+ *  del resto de los tramos que sí van en 900. */
 function HikeRow({ s, row }: { s: FijosSpec; row: FijosHikeRow }) {
   return (
     <View style={[styles.hikeRow, { borderBottomColor: s.aumentoDivider }]}>
@@ -1494,8 +1512,11 @@ function HikeRow({ s, row }: { s: FijosSpec; row: FijosHikeRow }) {
         <TrendUpGlyph color={s.aumentoIconInk} />
       </View>
       <Text style={[styles.hikeText, { color: s.aumentoRowInk }]}>
-        <Text style={{ fontWeight: '900', color: s.aumentoNameInk }}>{row.name}</Text> <Text style={{ fontWeight: '900' }}>{row.pctLabel}</Text> ·{' '}
-        {row.fromAmount} <Text style={{ fontWeight: '900', color: s.aumentoArrowInk }}>→</Text> <Text style={{ fontWeight: '900' }}>{row.toAmount}</Text>
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900'), color: s.aumentoNameInk }}>{row.name}</Text>{' '}
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900') }}>{row.pctLabel}</Text> ·{' '}
+        {row.fromAmount}{' '}
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900'), color: s.aumentoArrowInk }}>→</Text>{' '}
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900') }}>{row.toAmount}</Text>
       </Text>
       <View style={[styles.checkCircleHike, { boxShadow: s.checkCircleShadow }]}>
         <CheckGlyph color={s.checkGlyphInk} />
@@ -1534,7 +1555,8 @@ function ReminderRow({
         <ReminderGlyph color={s.aumentoIconInk} />
       </View>
       <Text style={[styles.reminderText, { color: s.aumentoRowInk }]}>
-        <Text style={{ fontWeight: '900', color: s.aumentoNameInk }}>{label}</Text> · {rest} <Text style={{ fontWeight: '900' }}>{amount}</Text>
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900'), color: s.aumentoNameInk }}>{label}</Text> · {rest}{' '}
+        <Text style={{ fontWeight: '900', fontFamily: nunitoFamily('900') }}>{amount}</Text>
         {suffix ? ` ${suffix}` : ''}
       </Text>
     </View>
@@ -1881,8 +1903,10 @@ const styles = StyleSheet.create({
   checkCircleHike: { width: 25, height: 25, borderRadius: 12.5, alignItems: 'center', justifyContent: 'center' },
   reminderRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 11, paddingTop: 12, paddingBottom: 2 },
   reminderText: { flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 17.5 },
+  // padding:16px 2px 4px literal (línea 291 del markup) — SIN margin-top: el
+  // `margin-top:2px` es de `aumentosList` (el wrapper de las filas de
+  // aumento), no de esta fila calma que lo reemplaza.
   calmRow: {
-    marginTop: 2,
     paddingTop: 16,
     paddingHorizontal: 2,
     paddingBottom: 4,
