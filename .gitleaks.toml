@@ -72,10 +72,12 @@ tags = ["key", "supabase"]
 # ─────────────────────────────────────────────────────────────────────────────
 # Anthropic API keys (used by Claude Code + any in-house tooling).
 # Format: sk-ant-{api,admin}-... — keep loose enough to catch any subtype.
+# Upstream `anthropic-api-key` rule is stricter (93 chars + `AA` suffix);
+# this looser sibling catches sk-ant-admin01 + legacy + future prefixes.
 # ─────────────────────────────────────────────────────────────────────────────
 [[rules]]
 id = "manifiesto-anthropic-api-key"
-description = "Anthropic API key (sk-ant-*). Looser than upstream `anthropic-api-key` so we catch legacy + sk-ant-admin01 + future subtype prefixes; upstream rule (already enabled via [extend]) handles the strict 93-char + 'AA' suffix form."
+description = "Anthropic API key (sk-ant-*)"
 regex = '''sk-ant-[A-Za-z0-9_-]{30,}'''
 keywords = ["sk-ant-"]
 tags = ["key", "anthropic"]
