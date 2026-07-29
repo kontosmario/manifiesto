@@ -2,6 +2,7 @@
 import { useState, type PropsWithChildren } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
+import { NeoTabBarLive } from '@/components/navigation/neo-tab-bar-live'
 import {
   FijosHeader,
   FijosHero,
@@ -9,7 +10,7 @@ import {
   type FijosHeroVariant,
 } from '@/components/redesign/fijos/fijos-screen'
 import type { FijosMode } from '@/components/redesign/fijos/fijos-spec'
-import { PreviewPhoneSection } from '@/screens/dev/redesign/redesign-preview-shared'
+import { PreviewHomeIndicator, PreviewPhoneSection } from '@/screens/dev/redesign/redesign-preview-shared'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'
 
@@ -109,12 +110,27 @@ export function RedesignFijosPreviewScreen() {
         {heroState.variant === 'E1' ? (
           <Callout text="E1: el Brot se ve más chato que en el mockup. El diseño lo envuelve en un filter: drop-shadow() de CSS que React Native no soporta (mismo criterio que onb-5c-hogar.tsx) — la ausencia solo quita brillo, no cambia el dibujo." />
         ) : null}
-        <FijosSwatch mode="light">
-          <FijosHero key={`light-${heroState.variant}`} mode="light" variant={heroState.variant} />
-        </FijosSwatch>
+        <View style={styles.heroSwatchGap}>
+          <FijosSwatch mode="light">
+            <FijosHero key={`light-${heroState.variant}`} mode="light" variant={heroState.variant} />
+          </FijosSwatch>
+        </View>
         <FijosSwatch mode="dark">
           <FijosHero key={`dark-${heroState.variant}`} mode="dark" variant={heroState.variant} />
         </FijosSwatch>
+
+        <PreviewLabel
+          title="Nav — activeTab “fijos”"
+          note="NeoTabBarLive real (aprobada), no se replica el markup — verificación gratis de que la barra se lee bien bajo este fondo"
+        />
+        <PreviewPhoneSection mode="light" minHeight={230}>
+          <NeoTabBarLive mode="light" activeTab="fijos" onPressTab={() => {}} />
+          <PreviewHomeIndicator mode="light" />
+        </PreviewPhoneSection>
+        <PreviewPhoneSection mode="dark" minHeight={230}>
+          <NeoTabBarLive mode="dark" activeTab="fijos" onPressTab={() => {}} />
+          <PreviewHomeIndicator mode="dark" />
+        </PreviewPhoneSection>
 
         <Text style={[styles.scopeFooter, { color: theme.colors.textMuted }]}>
           {'— Fin de lo construido — Avisos (A1–A6) y "Todos tus fijos" llegan en tareas siguientes del mismo kit —'}
@@ -145,7 +161,10 @@ function HeroStateCycler({
 }: {
   index: number
   total: number
-  variant: FijosHeroVariant
+  // string (no FijosHeroVariant): este ciclador es genérico — lo reusará el
+  // ciclador de Avisos (A1–A6, próxima tarea del mismo kit) sin ensanchar el
+  // tipo ni copiar el componente.
+  variant: string
   name: string
   onPrev: () => void
   onNext: () => void
@@ -213,6 +232,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 24,
+  },
+  // Separación entre las dos tarjetas claro/oscuro del ciclador E1–E8: sin
+  // esto quedan al ras (`PreviewPhoneSection` no trae margin propio y acá no
+  // hay un `PreviewLabel` entre medio, a diferencia de los otros pares de
+  // este archivo). Envuelve solo la tarjeta clara del par para no tocar
+  // `FijosSwatch` (compartido por los otros 3 usos) ni `styles.stack`.
+  heroSwatchGap: {
+    marginBottom: 12,
   },
   labelBlock: {
     gap: 2,
