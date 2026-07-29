@@ -10,6 +10,22 @@ import { motionSprings } from '@/lib/motion'
 
 interface PressScaleOptions {
   pressedScale?: number
+  /**
+   * Externally-supplied reduced-motion flag. When a parent renders many
+   * pressables (e.g. the 30+ calendar cells in the Gastos kit) it can read
+   * `useReducedMotion()` ONCE and pass the value down so every child animates
+   * off the SAME source of truth. When provided it takes precedence; when
+   * omitted the hook falls back to its own `useReducedMotion()` read
+   * (backward-compatible — existing call sites are unaffected).
+   *
+   * Nota de costo: el `useReducedMotion()` interno de abajo ya es una lectura
+   * pura de contexto (la suscripción única de AccessibilityInfo vive en
+   * `ReducedMotionProvider`, app-wide), así que pasar `reduceMotion` ya NO
+   * ahorra listeners nativos — cada celda solo paga un `useContext`. El prop
+   * queda como conveniencia: garantiza un valor consistente / una sola fuente
+   * de verdad para toda la grilla (y es inofensivo mantenerlo).
+   */
+  reduceMotion?: boolean
 }
 
 /**
@@ -20,9 +36,12 @@ interface PressScaleOptions {
  * the `onPressIn` / `onPressOut` handlers on their Pressable.
  */
 export function usePressScale(options: PressScaleOptions = {}) {
-  const { pressedScale = 0.97 } = options
+  const { pressedScale = 0.97, reduceMotion } = options
   const scale = useSharedValue(1)
-  const isReducedMotionEnabled = useReducedMotion()
+  // Unconditional read (rules-of-hooks); the hoisted `reduceMotion` prop wins
+  // when supplied, else this internal value is the fallback.
+  const internalReducedMotion = useReducedMotion()
+  const isReducedMotionEnabled = reduceMotion ?? internalReducedMotion
 
   const animateTo = (nextValue: number) => {
     if (isReducedMotionEnabled) {
