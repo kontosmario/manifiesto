@@ -27,7 +27,7 @@ interface PreviewEntry {
 const ENTRIES: PreviewEntry[] = [
   {
     label: 'FIJOS (rediseño)',
-    detail: 'Header + hero con sus 8 estados (E1–E8) · claro/oscuro — Avisos y "Todos tus fijos" llegan en tareas siguientes',
+    detail: 'Pantalla completa + hero (8 estados E1–E8) + Avisos (6 estados A1–A6) + tabs/categorías · claro/oscuro',
     route: '/(app)/settings/dev/redesign-fijos',
     statusKey: 'fijos',
   },
