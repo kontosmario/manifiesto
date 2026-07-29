@@ -74,15 +74,25 @@ export const FIJOS_RADII = {
   card: 28,
   row: 22,
   tile: 16,
-  /** Tabs (Vencidos/Pendientes/Pagados) y pill "Fijos" del nav. */
+  /** Tabs (Vencidos/Pendientes/Pagados). */
   chip: 18,
   /** Chip individual del ticker "POR PAGAR · ESTE MES". */
   chipSm: 15,
-  /** Pozo "TE QUEDA DISPONIBLE" dentro del hero. */
-  heroWell: 24,
+  /** Pozo "Te falta pagar" dentro del hero (línea 60/173 del markup) — el
+   *  pozo PRINCIPAL. NO es el bloque "TE QUEDA DISPONIBLE" (ver
+   *  `availableCard`); nombra los campos `wellBackground`/`wellShadow`. */
+  well: 24,
+  /** Bloque "TE QUEDA DISPONIBLE" dentro del hero (línea 76/189 del
+   *  markup, 20px — distinto del pozo `well` de arriba pese a vivir los
+   *  dos dentro del hero). Nombra los campos `availableCardBackground`/
+   *  `availableCardShadow`. */
+  availableCard: 20,
   /** Pozo hundido que envuelve el ticker (distinto del `chipSm` que viaja adentro). */
   tickerWell: 20,
-  /** Chip "HOY · DÍA 18" / "✓ AL DÍA" arriba a la derecha del hero. */
+  /** Chip "HOY · DÍA 18" / "✓ AL DÍA" arriba a la derecha del hero. Mismo
+   *  radio que la pill "Fijos" del nav (14px, confirmado en sus 6
+   *  apariciones del markup) — pero esa pill no se reconstruye acá, Task 6
+   *  monta la nav real (`NeoTabBarLive`) en vez de leer este spec. */
   heroTag: 14,
   /** Chip "⚠ 3 fijos por pagar · 1 vencida" dentro del pozo del hero. */
   alertChip: 12,
