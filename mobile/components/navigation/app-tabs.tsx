@@ -18,6 +18,7 @@ import {
 } from '@/components/navigation/neo-tab-bar-route-map'
 import type { HomeMode } from '@/components/redesign/home/home-spec'
 import { TabBarPressable } from '@/components/navigation/tab-bar-pressable'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useTabHaptics } from '@/hooks/use-tab-haptics'
 import { useTour } from '@/features/tours/tour-context'
 import { withNavDevLog } from '@/lib/dev/anim-log'
@@ -215,6 +216,12 @@ export function AppTabs() {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const tabHaptics = useTabHaptics()
+  // `ReducedMotionProvider` is mounted at the app root (above `AppTabs`), so
+  // this context read is safe here. Gates the screen crossfade below — with
+  // reduced motion (OS toggle OR the `deviceYearClass < 2020` hardware
+  // heuristic folded into the hook) the switch must be instant, not the
+  // most expensive animation this feature ships.
+  const reduceMotion = useReducedMotion()
   // DEV-only: agrega logging de focus/blur/tabPress + sampler de frames por
   // transición. En release devuelve `tabHaptics` sin tocar (no-op).
   const baseListeners = useMemo(() => withNavDevLog(tabHaptics), [tabHaptics])
@@ -280,7 +287,10 @@ export function AppTabs() {
       // hace por default:
       //   1. Pre-mount de los view controllers de cada tab (no lazy).
       //   2. Switch instantáneo (zero animation JS).
-      // Replicamos ambos aquí:
+      // Replicamos el primero tal cual acá abajo. El segundo YA NO es
+      // "zero animation JS": la Task 5 del plan de nav motion lo reemplazó
+      // por el crossfade `animation: 'fade'` de más abajo (gateado por
+      // `reduceMotion` — ver ese comentario).
       //
       //   `lazy: false` · pre-monta los 5 tab screens al app start.
       //   Cuando el user tap Gastos/Fijos/Control por primera vez, el
@@ -296,10 +306,14 @@ export function AppTabs() {
       // que costaba era el RECORRIDO, no el fundido: con `lazy: false` las
       // cinco pantallas ya están montadas, así que un crossfade es compositing
       // puro y no re-monta nada. Si vuelve a leerse como demora, esta línea
-      // sola vuelve a `'none'`.
-      animation: 'fade' as const,
+      // sola vuelve a `'none'`. Gateado por `reduceMotion` (restricción
+      // global del plan de nav motion: reduced motion colapsa TODO a
+      // instantáneo) — con el toggle de accesibilidad o en hardware
+      // `deviceYearClass < 2020` cae a `'none'`, la animación más cara de
+      // la feature justo en los devices que el proyecto protege.
+      animation: reduceMotion ? ('none' as const) : ('fade' as const),
     }),
-    [theme, renderTabBarLabel],
+    [theme, renderTabBarLabel, reduceMotion],
   )
 
   return (
