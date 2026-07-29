@@ -270,18 +270,21 @@ interface FijosHeroContent {
 //
 // ESCALA — FALLO DEL OWNER (2026-07-29): para las 5 variantes de shape
 // "default" (E2/E3/E4/E5/E7) se usa la escala del TELÉFONO, no la del
-// canvas de estados. El canvas dibuja esas tarjetas en 7 medidas
-// sistemáticamente más chicas que el MISMO estado E2 en el teléfono —
-// verificado medida por medida contra el markup: monto 40 vs 42px,
-// "Pagaste…" 13 vs 13.5px, "91%" 13.5 vs 14px, "$… pagado" 11 vs 11.5px,
-// "de $… total" 11 vs 11.5px, disponible 25 vs 27px, y el padding inferior
-// del contenedor 16 vs 18px. Es un artefacto de layout de la grilla
-// comparativa de 8 tarjetas (el canvas encoge el set entero para que
-// entre lado a lado) y no una instrucción de diseño por estado — el owner
-// ratificó la escala del teléfono para los 8 estados por ser la que se ve
-// de verdad en la app. Consecuencia visible e INTENCIONAL: E1/E3/E4/E5/E7
-// se ven un toque más grandes que su propia tarjeta del canvas. No
-// "corregir" achicándolos de vuelta a la escala del canvas.
+// canvas de estados. Verificado medida por medida contra el markup, en
+// las 7 (canvas primero, teléfono después): monto 40 vs 42px, "Pagaste…"
+// 13 vs 13.5px, "91%" 13.5 vs 14px, "$… pagado" 11 vs 11.5px, "de $… total"
+// 11 vs 11.5px y disponible 25 vs 27px van en el MISMO sentido — el canvas
+// las dibuja más chicas. El padding inferior del contenedor es la
+// EXCEPCIÓN, va AL REVÉS de las otras seis: canvas 18 vs teléfono 16 (el
+// canvas lo dibuja parejo en los 4 lados — `padding:18px` — mientras el
+// teléfono lo recorta abajo a 16, `padding:18px 18px 16px`). Ninguna de
+// las 7 es un dato de diseño por estado — es un artefacto de layout de la
+// grilla comparativa de 8 tarjetas (el canvas encoge/pareja el set entero
+// para que entre lado a lado) — y el owner ratificó la escala del teléfono
+// para los 8 estados por ser la que se ve de verdad en la app.
+// Consecuencia visible e INTENCIONAL: E1/E3/E4/E5/E7 se ven un toque más
+// grandes que su propia tarjeta del canvas. No "corregir" achicándolos de
+// vuelta a la escala del canvas.
 const HERO_CONTENT: Record<FijosHeroVariant, FijosHeroContent> = {
   E1: {
     eyebrow: 'FIJOS DE JULIO',
