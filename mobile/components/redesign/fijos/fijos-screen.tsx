@@ -195,6 +195,20 @@ export function FijosHeader({ mode, cycleLabel, onToggleDropdown, onPressCalenda
   )
 }
 
+/**
+ * Espacio entre `FijosHeader` y `FijosHero` — `margin-top:14px` en el
+ * markup (líneas 52/165, entre el botón de calendario y el hero, ambos
+ * teléfonos). Gastos resuelve el mismo salto con su propio
+ * `styles.heroSpacing` (`gastos-screen.tsx:2571`, usado en
+ * `gastos-screen.tsx:2501`), pero ese vive DENTRO de gastos-screen.tsx
+ * porque ese mismo archivo arma su propia pantalla compuesta. Acá la
+ * pantalla compuesta la arma un archivo aparte (Task 6), así que el valor
+ * sale EXPORTADO en vez de quedar enterrado en el `styles` privado de este
+ * módulo, que ese archivo no puede ver — sin esto, Task 6 tendría que
+ * volver a levantar el valor del .dc.html a mano.
+ */
+export const fijosHeaderHeroSpacing: ViewStyle = { marginTop: 14 }
+
 // ─── ② Hero — contenido por defecto (E2) + sus 8 estados ──────────────
 
 export type FijosHeroVariant = 'E1' | 'E2' | 'E3' | 'E4' | 'E5' | 'E6' | 'E7' | 'E8'
@@ -796,7 +810,12 @@ function PaidProgress({ s, c }: { s: FijosSpec; c: FijosHeroContent }) {
 
 /** E1 — celebración: Brot `cool` centrado + badge + titular + bajada,
  *  seguido del MISMO bloque "Pagaste…/barra/disponible" que el resto (con
- *  los valores de un ciclo 100% pagado). */
+ *  los valores de un ciclo 100% pagado). El markup (línea 361) envuelve
+ *  este Brot en `filter:drop-shadow(0 4px 10px rgba(6,20,10,0.4))` — NO se
+ *  porta, mismo criterio que `onb-5c-hogar.tsx` (RN no soporta ese filtro
+ *  en ambas plataformas; la ausencia solo quita brillo, no cambia el
+ *  dibujo). El resto de la pose (`shadow={false}`) es el mismo patrón que
+ *  usan todos los demás Brot del kit. */
 function HeroZeroBody({ s, c, animated }: { s: FijosSpec; c: FijosHeroContent; animated: boolean }) {
   return (
     <>
@@ -1035,7 +1054,9 @@ const styles = StyleSheet.create({
   availableValue: { fontSize: 27, fontWeight: '900', fontFamily: nunitoFamily('900'), marginTop: 3, lineHeight: 31 },
   availableRight: { alignItems: 'flex-end' },
   availableOf: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700') },
-  availableNote: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 2 },
+  // Sin marginTop: el markup (líneas 78/377) apila los dos divs de la
+  // derecha sin gap — el spacing lo da solo el line-height de cada uno.
+  availableNote: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   // E5: la nota de alerta engorda a 900 (el markup la dibuja más pesada que
   // la nota calma "21% va a fijos", que es 800).
   availableNoteWarning: { fontWeight: '900', fontFamily: nunitoFamily('900') },
@@ -1055,8 +1076,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // E6 — vacío de usuario nuevo
-  emptyBlock: { alignItems: 'center', marginTop: 12, paddingHorizontal: 4, paddingBottom: 4 },
+  // E6 — vacío de usuario nuevo. padding:6px 4px 4px literal (línea 501) —
+  // el paddingTop se había perdido en la primera pasada (fix round 1).
+  emptyBlock: { alignItems: 'center', marginTop: 12, paddingTop: 6, paddingHorizontal: 4, paddingBottom: 4 },
   emptyTitle: { fontSize: 19, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 22, marginTop: 8, textAlign: 'center' },
   emptySub: {
     fontSize: 12.5,
