@@ -308,7 +308,7 @@ export function AppTabs() {
     // — revertible borrándola (vuelve el bar default sin tocar routing ni
     // screenOptions). Lo que sigue INTACTO (son opciones de Screen/navigator,
     // sobreviven al tabBar custom): freezeOnBlur:false (gestos RNGH), lazy:false
-    // (pre-montaje 5 screens), animation:'none' (switch instantáneo), sceneStyle,
+    // (pre-montaje 5 screens), animation:'fade' (crossfade compositing), sceneStyle,
     // headerShown:false, detachInactiveScreens default. Las opciones per-Screen
     // (tabBarIcon/tabBarButton/tabBarBackground) quedan INERTES con el bar custom
     // pero se dejan para que borrar la línea restaure el bar default 1:1.
