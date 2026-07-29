@@ -8,7 +8,9 @@ import {
   FijosCategories,
   FijosHeader,
   FijosHero,
+  fijosAvisosCategoriesSpacing,
   fijosHeaderHeroSpacing,
+  fijosHeroAvisosSpacing,
   type FijosAvisosVariant,
   type FijosHeroVariant,
   type FijosTabKey,
@@ -22,7 +24,7 @@ import { nunitoFamily } from '@/theme/typography'
  * Preview dev-only de la vista FIJOS del rediseño (design/fijos-2026-07/
  * Fijos Manifiesto.dc.html): réplica pixel-perfect de las 4 áreas del kit
  * — header, hero (8 estados E1–E8), Avisos (6 estados A1–A6) y "Todos tus
- * fijos" (tabs + categorías) —, cada una en claro y oscuro, más la nav real
+ * fijos" (tabs + categorías) —, claro y oscuro, más la nav real
  * (`NeoTabBarLive`, ya aprobada) con `activeTab="fijos"`.
  *
  * HISTORIA — Task 6 del plan docs/superpowers/plans/2026-07-29-fijos-f0-f1.md
@@ -30,15 +32,23 @@ import { nunitoFamily } from '@/theme/typography'
  * puede aprobar lo que no puede abrir, y la aprobación es lo que destraba
  * el resto: por eso esa entrega cubrió SOLO `FijosHeader` + `FijosHero`.
  * Avisos y "Todos tus fijos" quedaron pendientes de Tasks 4/5 — Task 7
- * (esta) los suma ahora que ambas aterrizaron, sin tocar lo que ya había.
+ * (esta) los suma ahora que ambas aterrizaron.
  *
- * El archivo sigue armado como UNA SECCIÓN POR ÁREA DEL KIT: cada área es
- * su propio bloque (PreviewLabel + PreviewPhoneSection claro/oscuro, con su
- * propio ciclador cuando el área tiene estados) en vez de una sola pantalla
- * continua — mismo criterio que el preview de la nav bar
- * (redesign-nav-bar-preview-screen.tsx). La única sección con chrome de
- * pantalla completa es la de nav (`PreviewHomeIndicator`); las demás son
- * swatches del área que representan, sin status bar ni home indicator.
+ * Cada área se ve de DOS formas. Primero, "Pantalla completa" (claro y
+ * oscuro): header + hero + Avisos + "Todos tus fijos" apilados con sus
+ * gaps reales (`fijosHeaderHeroSpacing`/`fijosHeroAvisosSpacing`/
+ * `fijosAvisosCategoriesSpacing`), en el estado que dibujan los dos
+ * teléfonos de la canvas "FIJOS · LAYOUT NUEVO" del mockup — hero E2,
+ * Avisos A1, tab Vencidos activa — para que el ritmo ENTRE áreas también
+ * se apruebe, no solo cada área aislada. Después, un ciclador por área con
+ * estados (hero 8, Avisos 6, tabs 3): cada uno en su propio swatch
+ * claro/oscuro sin el resto de la pantalla alrededor, para cubrir los
+ * estados que esos teléfonos no dibujan.
+ *
+ * La nav es aparte de las 4 áreas del kit (no cicla estados propios):
+ * monta la barra real con el home indicator del mockup debajo
+ * (`PreviewHomeIndicator`) — ninguna sección de este archivo, ni siquiera
+ * esa, dibuja status bar.
  */
 
 const CYCLE_LABEL = 'Ciclo 20 jun → 19 jul · día 18'
@@ -65,8 +75,8 @@ const AVISOS_STATES: Array<{ variant: FijosAvisosVariant; name: string }> = [
 
 const TAB_STATES: Array<{ key: FijosTabKey; name: string }> = [
   { key: 'vencidos', name: 'activa por defecto en los 2 teléfonos' },
-  { key: 'pendientes', name: 'mismo layout y montos, otro tab activo' },
-  { key: 'pagados', name: 'mismo layout y montos, otro tab activo' },
+  { key: 'pendientes', name: 'mismo layout y montos, activa Pendientes' },
+  { key: 'pagados', name: 'mismo layout y montos, activa Pagados' },
 ]
 
 export function RedesignFijosPreviewScreen() {
@@ -102,24 +112,36 @@ export function RedesignFijosPreviewScreen() {
     >
       <View style={styles.stack}>
         <PreviewLabel
-          title="Header + Hero — tema claro"
-          note="estado default (E2 · en curso) · fixtures literales del teléfono claro"
+          title="Pantalla completa — tema claro"
+          note="header + hero (E2) + Avisos (A1) + Todos tus fijos (tab Vencidos) — el estado que dibuja el teléfono claro de “FIJOS · LAYOUT NUEVO”, fixtures literales"
         />
         <FijosSwatch mode="light">
           <FijosHeader mode="light" cycleLabel={CYCLE_LABEL} onToggleDropdown={() => {}} onPressCalendar={() => {}} />
           <View style={fijosHeaderHeroSpacing}>
             <FijosHero mode="light" />
           </View>
+          <View style={fijosHeroAvisosSpacing}>
+            <FijosAvisos mode="light" />
+          </View>
+          <View style={fijosAvisosCategoriesSpacing}>
+            <FijosCategories mode="light" />
+          </View>
         </FijosSwatch>
 
         <PreviewLabel
-          title="Header + Hero — tema oscuro"
-          note="mismo estado (E2) · fixtures literales del teléfono oscuro"
+          title="Pantalla completa — tema oscuro"
+          note="mismo estado (E2 · A1 · Vencidos) · fixtures literales del teléfono oscuro de “FIJOS · LAYOUT NUEVO”"
         />
         <FijosSwatch mode="dark">
           <FijosHeader mode="dark" cycleLabel={CYCLE_LABEL} onToggleDropdown={() => {}} onPressCalendar={() => {}} />
           <View style={fijosHeaderHeroSpacing}>
             <FijosHero mode="dark" />
+          </View>
+          <View style={fijosHeroAvisosSpacing}>
+            <FijosAvisos mode="dark" />
+          </View>
+          <View style={fijosAvisosCategoriesSpacing}>
+            <FijosCategories mode="dark" />
           </View>
         </FijosSwatch>
 
@@ -150,11 +172,12 @@ export function RedesignFijosPreviewScreen() {
           <FijosHero key={`dark-${heroState.variant}`} mode="dark" variant={heroState.variant} />
         </FijosSwatch>
 
-        {/* fijosHeroAvisosSpacing/fijosAvisosCategoriesSpacing (el gap hacia
-            Hero/Avisos de la pantalla continua real) no se usan acá: cada
-            área se monta sola, mismo criterio que el par E1–E8 de arriba
-            (que tampoco usa fijosHeaderHeroSpacing). Esos tokens quedan para
-            cuando el plan de cableado arme la pantalla continua real. */}
+        {/* Los gaps hacia Hero/Categorías (fijosHeroAvisosSpacing/
+            fijosAvisosCategoriesSpacing) ya se ejercitan arriba, en
+            "Pantalla completa". Acá Avisos vuelve a montarse solo, sin nada
+            adyacente que tender — mismo criterio que el ciclador E1–E8, que
+            tampoco repite fijosHeaderHeroSpacing dentro de su propio
+            swatch. */}
         <PreviewLabel
           title="Avisos — 6 estados (A1–A6)"
           note="claro y oscuro juntos, un solo ciclador mueve los dos · A1 es el estado (ACTUAL) que dibujan los 2 teléfonos"
@@ -191,6 +214,12 @@ export function RedesignFijosPreviewScreen() {
           onPrev={goPrevTab}
           onNext={goNextTab}
         />
+        {/* Sin `key` por tab (a diferencia de FijosHero/FijosAvisos arriba):
+            `activeTab` solo resalta un tab distinto sobre el MISMO árbol de
+            componentes (las 3 filas y los 3 tabs siempre están montados),
+            nada estructural que cambie ni un shared value que se pueda
+            quedar en un valor viejo — forzar remount acá solo tiraría la
+            animación de press de cada tab sin necesidad. */}
         <View style={styles.swatchPairGap}>
           <FijosSwatch mode="light">
             <FijosCategories mode="light" activeTab={tabState.key} onSelectTab={selectTab} />
