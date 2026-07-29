@@ -30,6 +30,12 @@ export const NAV_WELL_PADDING_X = 7
 /** Ancho del hueco central reservado al FAB. */
 export const NAV_FAB_SLOT_WIDTH = 66
 
+/** Calle a cada lado del FAB. Reproduce el aire que el layout viejo repartía
+ *  entre el último ítem de un grupo y el disco: con `space-between` dentro de
+ *  los grupos ese sobrante ya no se reparte, así que la calle es explícita.
+ *  15 sale de medir el reparto original a 393pt en español. */
+export const NAV_FAB_GUTTER_X = 15
+
 /** Tabs de cada grupo, en orden visual. El surco cruza de un grupo al otro
  *  pasando por debajo del FAB. */
 const LEFT_KEYS: readonly NeoTabKey[] = ['inicio', 'gastos']

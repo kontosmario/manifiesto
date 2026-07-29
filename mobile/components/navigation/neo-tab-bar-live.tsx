@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { NeoTabIcon } from '@/components/navigation/neo-tab-icons'
-import { NAV_FAB_SLOT_WIDTH } from '@/components/navigation/nav-indicator-geometry'
+import { NAV_FAB_GUTTER_X, NAV_FAB_SLOT_WIDTH } from '@/components/navigation/nav-indicator-geometry'
 import { HOME_SPEC, type HomeMode, type HomeSpec } from '@/components/redesign/home/home-spec'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { cssGradient } from '@/theme/neo-tokens'
@@ -265,7 +265,14 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    // `space-between`, NO `space-around` (fallo del owner 2026-07-28): con
+    // `space-around` el grupo agrega un hueco de `sobrante/4` ANTES del primer
+    // ítem y DESPUÉS del último, y el mockup aprobado los tiene AL RAS del
+    // borde interno de la barra (design/home-final-2026-07/home.dc.html:80-86,
+    // cinco hijos planos bajo un solo `space-between`). Con `space-between`
+    // dentro del grupo, "Inicio" y "Control" vuelven al ras y todo el sobrante
+    // del grupo queda ENTRE sus dos ítems, que es donde estaba antes.
+    justifyContent: 'space-between',
   },
   navActive: { alignItems: 'center', gap: 4, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 13 },
   navActiveLabel: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
@@ -282,9 +289,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Ancho FIJO: es la mitad de la ecuación del ancla (la otra mitad son los
-  // dos `flex: 1` idénticos de los grupos).
-  fabSlot: { width: NAV_FAB_SLOT_WIDTH, alignItems: 'center', justifyContent: 'center' },
+  // Ancho FIJO: es la mitad de la ecuación del ancla (la otra mitad son los dos
+  // `flex: 1` idénticos de los grupos). Lleva el disco MÁS la calle a cada lado:
+  // con `space-between` en los grupos, el aire que antes ponía el reparto entre
+  // el último ítem y el FAB ahora tiene que vivir en el propio hueco, o los
+  // ítems interiores quedarían pegados al disco.
+  fabSlot: {
+    width: NAV_FAB_SLOT_WIDTH + NAV_FAB_GUTTER_X * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   fabWell: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   fabBadge: {
     position: 'absolute',
