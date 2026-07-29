@@ -56,6 +56,10 @@ export const decorativeDurations = {
   paintSettle: 1100,
   /** Tail / exit fade for cinematic intros (logo pill, hero finish). */
   paintExit: 600,
+  /** Fijos Avisos ticker sweep — one full pass of the duplicated chip row (source markup: `@keyframes fijosTicker`, 30s linear infinite). */
+  tickerLoop: 30000,
+  /** Fijos Avisos "live" dot breath, full cycle (source markup: `@keyframes fijosLive` — opacity 0.4→1→0.4, scale 0.85→1.15→0.85, 1.6s ease-in-out infinite). Half this per withTiming leg. */
+  liveDotPulse: 1600,
 } as const
 
 export type DecorativeDurationKey = keyof typeof decorativeDurations
