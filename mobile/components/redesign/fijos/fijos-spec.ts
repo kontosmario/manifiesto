@@ -6,15 +6,16 @@
  * home-spec): no "mejorar" valores, transcripción literal del markup.
  *
  * ALCANCE (F0+F1, plan docs/superpowers/plans/2026-07-29-fijos-f0-f1.md):
- * SOLO la vista principal (header, hero por defecto, Avisos con ticker,
- * Todos tus fijos, FAB). Los 8 estados del hero (E1–E8) y los 6 de Avisos
- * (A1–A6) del canvas de estados del mismo .dc.html son contenido de la
- * Task 3/4 (props/fixtures de pantalla, no tokens de este módulo) — ese
- * canvas está solo en tema claro y varios de sus estados introducen
- * gradientes/CTAs propios (cerrado, fuera de ciclo, vacíos) sin versión
- * oscura confirmada en el handoff; instanciarlos acá habría sido inventar
- * valores. El detalle del ítem y el alta en 2 pasos (otras secciones del
- * mismo archivo) son fases 2/3, fuera de este módulo.
+ * la vista principal (header, hero por defecto, Avisos con ticker, Todos tus
+ * fijos, FAB) MÁS los tokens propios de los 8 estados del hero (E1–E8) que
+ * Task 3 sí necesitó instanciar (sección "⑦ Hero — estados especiales" más
+ * abajo) — ver su docblock para la nota de derivación oscura. Los 6 estados
+ * de Avisos (A1–A6) del mismo canvas siguen siendo contenido de la Task 4
+ * (props/fixtures de pantalla, la mayoría reutiliza tokens que ya existen
+ * acá — ticker/tags/urgentRing — sin introducir gradientes propios como sí
+ * hicieron cerrado/fuera-de-ciclo/vacío del hero). El detalle del ítem y el
+ * alta en 2 pasos (otras secciones del mismo archivo) son fases 2/3, fuera
+ * de este módulo.
  *
  * DISCREPANCIAS markup vs README/sistema (el markup ganó en las 4):
  *  [A] `raise` (light): el markup usa opacidad 0.40 en la primera sombra
@@ -280,6 +281,56 @@ export interface FijosSpec {
   fabInnerShadow: string
   fabGlyphInk: string
 
+  // ─── ⑦ Hero — estados especiales del canvas E1–E8 (Task 3) ───
+  // Task 1 dejó estos 4 estados deliberadamente fuera del módulo (ver
+  // docblock de arriba): el canvas E1–E8 está solo en tema claro y varios
+  // introducen gradientes/colores PROPIOS sin versión oscura confirmada.
+  // Acá se agregan porque Task 3 SÍ necesita modelar los 8 estados. Deriva
+  // oscuro = MISMO valor que claro para los 20 campos de abajo — no es una
+  // suposición aislada, es el patrón que YA sigue cada campo del interior
+  // del hero por encima de esta línea (`heroGradientCss`, `heroChipInk`,
+  // `wellBackground`, `amountInk`, `available*`: los veinte son literalmente
+  // idénticos entre light/dark). El hero es un "cartel" saturado que no se
+  // adapta al tema del shell — solo su `heroShadow` exterior lo hace. Sin
+  // confirmar contra un handoff oscuro (el canvas no lo tiene); a validar
+  // en el gate de aprobación visual.
+  /** Badge "✓ 16 DE 16 · SIN VENCIDOS" (E1) y "✓ Cerró completo · 18 de 18"
+   *  (E7, que en el markup dibuja 0.85 de opacidad en vez de 0.9 — drift de
+   *  handoff de la misma familia que los 4 que documentó Task 1; se
+   *  transcribió acá el valor de E1, ver reporte de Task 3). */
+  celebrationChipBackground: string
+  celebrationChipInk: string
+  /** Subtítulo "A disfrutar lo que queda del mes" (E1). */
+  zeroStateSubInk: string
+  /** Título "Todavía no cargaste fijos" (E6) — sin text-shadow (a
+   *  diferencia del título de E1, que sí lleva `amountShadow*`). */
+  emptyHeroTitleInk: string
+  emptyHeroSubInk: string
+  emptyHeroCtaGradientCss: string
+  emptyHeroCtaInk: string
+  emptyHeroCtaShadow: string
+  /** Forest PROPIO del estado cerrado/solo-lectura (E7) — más oscuro y
+   *  apagado que `heroGradientCss`. Confirmado en el canvas, solo claro. */
+  heroGradientCssClosed: string
+  /** Forest PROPIO del estado fuera-de-ciclo (E8) — paleta cálida/naranja
+   *  (alerta). Confirmado en el canvas, solo claro. */
+  heroGradientCssOutOfCycle: string
+  /** Título "Tu ciclo terminó el 19" + texto del pozo de resumen (E8): el
+   *  markup usa el mismo ink `#FDEBDC` para ambos, así que un solo campo
+   *  cubre título y pozo. */
+  outOfCycleTitleInk: string
+  outOfCycleSubInk: string
+  outOfCycleWellBackground: string
+  outOfCycleWellShadow: string
+  outOfCycleCtaGradientCss: string
+  outOfCycleCtaInk: string
+  outOfCycleCtaShadow: string
+  /** Chip de estado "neutral" del hero (E3/E4: sin ícono de alerta, tono
+   *  translúcido blanco) — tercer tono junto a `alertChip*` y
+   *  `celebrationChip*`. */
+  neutralChipBackground: string
+  neutralChipInk: string
+
   // ─── Home indicator ───
   homeIndicator: string
   homeIndicatorOpacity: number
@@ -433,6 +484,26 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     fabInnerShadow: 'inset 4px 4px 8px rgba(18,52,24,0.55), inset -4px -4px 8px rgba(170,225,170,0.4)',
     fabGlyphInk: '#F5F2E1',
 
+    celebrationChipBackground: 'rgba(201,243,198,0.9)',
+    celebrationChipInk: '#1F4A26',
+    zeroStateSubInk: 'rgba(240,248,230,0.82)',
+    emptyHeroTitleInk: '#F7F4E4',
+    emptyHeroSubInk: 'rgba(240,248,230,0.78)',
+    emptyHeroCtaGradientCss: 'linear-gradient(180deg, #D9F5D4, #B9E8B6)',
+    emptyHeroCtaInk: '#1F4A26',
+    emptyHeroCtaShadow: '0 6px 12px rgba(10,30,15,0.3)',
+    heroGradientCssClosed: 'linear-gradient(155deg, #2C5931 0%, #35703C 55%, #3F8746 100%)',
+    heroGradientCssOutOfCycle: 'linear-gradient(155deg, #6A4A2A 0%, #8A5A32 55%, #A56A38 100%)',
+    outOfCycleTitleInk: '#FDEBDC',
+    outOfCycleSubInk: 'rgba(253,235,220,0.82)',
+    outOfCycleWellBackground: 'rgba(60,30,12,0.35)',
+    outOfCycleWellShadow: 'inset 4px 4px 10px rgba(30,12,4,0.5)',
+    outOfCycleCtaGradientCss: 'linear-gradient(180deg, #FBE6D2, #F1C29E)',
+    outOfCycleCtaInk: '#5A2E12',
+    outOfCycleCtaShadow: '0 6px 12px rgba(30,12,4,0.3)',
+    neutralChipBackground: 'rgba(255,255,255,0.14)',
+    neutralChipInk: 'rgba(240,248,230,0.9)',
+
     homeIndicator: '#24382A',
     homeIndicatorOpacity: 0.75,
   },
@@ -572,6 +643,27 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     fabShadow: '0 0 16px rgba(140,225,150,0.22), 7px 7px 15px rgba(0,0,0,0.55)',
     fabInnerShadow: 'inset 4px 4px 8px rgba(151,160,136,0.4), inset -4px -4px 8px rgba(255,255,255,0.85)',
     fabGlyphInk: '#2E7C39',
+
+    // [Nota] Igual que en claro (theme-invariant, ver docblock del campo).
+    celebrationChipBackground: 'rgba(201,243,198,0.9)',
+    celebrationChipInk: '#1F4A26',
+    zeroStateSubInk: 'rgba(240,248,230,0.82)',
+    emptyHeroTitleInk: '#F7F4E4',
+    emptyHeroSubInk: 'rgba(240,248,230,0.78)',
+    emptyHeroCtaGradientCss: 'linear-gradient(180deg, #D9F5D4, #B9E8B6)',
+    emptyHeroCtaInk: '#1F4A26',
+    emptyHeroCtaShadow: '0 6px 12px rgba(10,30,15,0.3)',
+    heroGradientCssClosed: 'linear-gradient(155deg, #2C5931 0%, #35703C 55%, #3F8746 100%)',
+    heroGradientCssOutOfCycle: 'linear-gradient(155deg, #6A4A2A 0%, #8A5A32 55%, #A56A38 100%)',
+    outOfCycleTitleInk: '#FDEBDC',
+    outOfCycleSubInk: 'rgba(253,235,220,0.82)',
+    outOfCycleWellBackground: 'rgba(60,30,12,0.35)',
+    outOfCycleWellShadow: 'inset 4px 4px 10px rgba(30,12,4,0.5)',
+    outOfCycleCtaGradientCss: 'linear-gradient(180deg, #FBE6D2, #F1C29E)',
+    outOfCycleCtaInk: '#5A2E12',
+    outOfCycleCtaShadow: '0 6px 12px rgba(30,12,4,0.3)',
+    neutralChipBackground: 'rgba(255,255,255,0.14)',
+    neutralChipInk: 'rgba(240,248,230,0.9)',
 
     homeIndicator: '#F1EEDD',
     homeIndicatorOpacity: 0.75,
