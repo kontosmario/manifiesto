@@ -26,6 +26,12 @@ interface PreviewEntry {
 
 const ENTRIES: PreviewEntry[] = [
   {
+    label: 'FIJOS (rediseño)',
+    detail: 'Header + hero con sus 8 estados (E1–E8) · claro/oscuro — Avisos y "Todos tus fijos" llegan en tareas siguientes',
+    route: '/(app)/settings/dev/redesign-fijos',
+    statusKey: 'fijos',
+  },
+  {
     label: 'Onboarding fácil (Turno 5)',
     detail: 'Flujo interactivo 5a→5f · aprobación por pantalla',
     route: '/(app)/settings/dev/redesign-onboarding-index',
