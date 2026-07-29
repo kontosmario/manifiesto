@@ -33,11 +33,14 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
  *
  * Esta primera tanda (Task 3) exporta `FijosHeader` y `FijosHero`. Tareas
  * posteriores del mismo plan AGREGAN a este archivo sin tocar lo de acá:
- * Task 4 suma `FijosAvisos` (ticker + 6 estados), Task 5 suma
- * `FijosTabs`/`FijosCategoryGroup`/`FijosRow` ("Todos tus fijos"). Por eso
- * los bloques de esta tanda están agrupados bajo comentarios numerados (①
- * Header, ② Hero) y el `styles` final queda en UN solo StyleSheet.create al
- * que las próximas tareas le siguen agregando claves.
+ * Task 4 sumó `FijosAvisos` (ticker + 6 estados) y Task 5 suma
+ * `FijosTabs`/`FijosRow`/`FijosCategoryGroup` (su VM) más `FijosCategories`
+ * ("Todos tus fijos" completo: label + "+ Agregar fijo" + tabs + filas —
+ * ver su propio docblock para por qué hizo falta un 4to nombre que el plan
+ * no listó). Por eso los bloques de esta tanda están agrupados bajo
+ * comentarios numerados (① Header, ② Hero, ③ Avisos, ④ Todos tus fijos) y
+ * el `styles` final queda en UN solo StyleSheet.create al que las próximas
+ * tareas le siguen agregando claves.
  *
  * PROPS, NO ESTADO: cada componente es puro, recibe todo por props y no
  * monta hooks de datos ni de red. `FijosHero` es la excepción parcial de
@@ -1701,6 +1704,399 @@ export function FijosAvisos(props: FijosAvisosProps) {
   )
 }
 
+/** Espacio entre `FijosAvisos` y `FijosCategories` — `margin-top:20px` en el
+ *  markup (líneas 102/215), mismo valor que `fijosHeroAvisosSpacing` de
+ *  arriba (dos gaps distintos que coinciden en magnitud, no el mismo dato
+ *  reusado). */
+export const fijosAvisosCategoriesSpacing: ViewStyle = { marginTop: 20 }
+
+// ─── ④ Todos tus fijos — tabs, categorías y filas ──────────────────────
+
+export type FijosTabKey = 'vencidos' | 'pendientes' | 'pagados'
+
+export interface FijosTabsProps {
+  mode: FijosMode
+  activeTab: FijosTabKey
+  vencidosCount: string
+  pendientesCount: string
+  pagadosCount: string
+  onSelectTab?: (tab: FijosTabKey) => void
+}
+
+/**
+ * Un tab individual (Vencidos/Pendientes/Pagados). El ACTIVO cambia 3 cosas
+ * a la vez respecto del inactivo — fondo (sólido vs inset), color de label
+ * Y PESO de label (900 vs 800: confirmado en el markup, líneas 107 vs 108,
+ * no es solo un cambio de color). Los dos pesos llevan su propio
+ * `fontFamily`: este repo carga Nunito como faces ESTÁTICOS por peso
+ * (`typography.ts:4-11`), así que un `fontWeight` sin el `fontFamily` que
+ * le corresponde no cambia de face (mismo gotcha que le costó una ronda a
+ * la Task 4). El badge de conteo NO cambia de peso (900 en los dos
+ * estados), solo de color/fondo.
+ *
+ * `tabInactiveBackground` es `undefined` en claro (el inset "flota" sin
+ * fill propio) pero SÍ está definido en oscuro (`#142519`) — asimetría real
+ * del markup (líneas 108 vs 221, sin `background:` en claro), no un typo:
+ * `fijos-spec.ts` ya la tokeniza así.
+ */
+function FijosTab({
+  s,
+  label,
+  count,
+  active,
+  onPress,
+}: {
+  s: FijosSpec
+  label: string
+  count: string
+  active: boolean
+  onPress?: () => void
+}) {
+  const press = usePressScale()
+  const inner = (
+    <View
+      style={[
+        styles.tab,
+        active
+          ? { backgroundColor: s.tabActiveBackground, boxShadow: s.tabActiveShadow }
+          : { boxShadow: s.tabInactiveShadow },
+        !active && s.tabInactiveBackground ? { backgroundColor: s.tabInactiveBackground } : null,
+      ]}
+    >
+      <Text
+        style={[
+          active ? styles.tabLabelActive : styles.tabLabelInactive,
+          { color: active ? s.tabActiveInk : s.tabInactiveInk },
+        ]}
+      >
+        {label}
+      </Text>
+      <View
+        style={[
+          styles.tabBadge,
+          { backgroundColor: active ? s.tabActiveBadgeBackground : s.tabInactiveBadgeBackground },
+        ]}
+      >
+        <Text style={[styles.tabBadgeText, { color: active ? s.tabActiveBadgeInk : s.tabInactiveBadgeInk }]}>
+          {count}
+        </Text>
+      </View>
+    </View>
+  )
+  if (!onPress) return inner
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`${label}, ${count}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={press.animatedStyle}
+    >
+      {inner}
+    </AnimatedPressable>
+  )
+}
+
+/**
+ * Tabs de estado de "Todos tus fijos" — Vencidos/Pendientes/Pagados con su
+ * pill de conteo. Fijo a 3 (no es una lista arbitraria como el filtro de
+ * categorías de Gastos, `GastosFilter`): se escriben a mano en vez de
+ * mapear un array, mismo criterio que `withHeroDefaults`/`withAvisosDefaults`
+ * (cada línea es su propio chequeo de tipos, sin loop genérico). Los dos
+ * teléfonos dibujan "Vencidos" ACTIVO — no hay galería con otro tab activo,
+ * así que ese es el único estado literal a transcribir; Pendientes/Pagados
+ * son la MISMA forma con `active=false`.
+ */
+export function FijosTabs({
+  mode,
+  activeTab,
+  vencidosCount,
+  pendientesCount,
+  pagadosCount,
+  onSelectTab,
+}: FijosTabsProps) {
+  const s = FIJOS_SPEC[mode]
+  return (
+    <View style={styles.tabsRow}>
+      <FijosTab
+        s={s}
+        label="Vencidos"
+        count={vencidosCount}
+        active={activeTab === 'vencidos'}
+        onPress={onSelectTab ? () => onSelectTab('vencidos') : undefined}
+      />
+      <FijosTab
+        s={s}
+        label="Pendientes"
+        count={pendientesCount}
+        active={activeTab === 'pendientes'}
+        onPress={onSelectTab ? () => onSelectTab('pendientes') : undefined}
+      />
+      <FijosTab
+        s={s}
+        label="Pagados"
+        count={pagadosCount}
+        active={activeTab === 'pagados'}
+        onPress={onSelectTab ? () => onSelectTab('pagados') : undefined}
+      />
+    </View>
+  )
+}
+
+/** Chevron de la fila de categoría — flecha simple a la derecha, 15×15,
+ *  stroke 2.6 (líneas 116/229). Geometría propia (un solo path en V), NO es
+ *  `CalendarGlyph`/`TrendUpGlyph`/`ReminderGlyph` reescalados. */
+function ChevronRightGlyph({ color }: { color: string }) {
+  return (
+    <Svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M9 6l6 6-6 6" />
+    </Svg>
+  )
+}
+
+/** Las 3 categorías que dibuja el markup — `fijos-spec.ts` solo tokeniza
+ *  tile-background para estas 3 (`categoryTileHousing`/`Subs`/`Services`),
+ *  así que el tipo queda cerrado a lo que existe hoy en vez de inventar una
+ *  llave genérica sin token detrás. Categorías arbitrarias/reales son
+ *  cableado (fuera de este plan). */
+export type FijosCategoryKey = 'housing' | 'subscriptions' | 'services'
+
+/**
+ * Tono del texto "meta" de la fila (2da línea, ej. "4 ítems · 1 vencido") —
+ * los 3 únicos que dibujan los dos teléfonos para las filas de categoría.
+ *
+ * A propósito NO incluye `today`/`upcoming` con anillo (`urgentRing`), tag
+ * (`tagOverdue*`) o pill sólida (`hoyPillBackground`/`Ink`): esa semántica
+ * más rica ya la consume `FijosAvisos` (Task 4) sobre la card entera (A5,
+ * `cardUrgent`) y los chips del ticker — ningún teléfono ni galería dibuja
+ * un anillo o una pill "HOY" sobre una fila de categoría de "Todos tus
+ * fijos" acá (las 3 filas de los dos teléfonos, líneas 112-129/225-242,
+ * solo varían el color del texto meta). Evaluado y descartado a propósito
+ * en vez de reintroducirlo "por si acaso" — ver reporte de esta task. */
+export type FijosRowTone = 'overdue' | 'ok' | 'neutral'
+
+export interface FijosCategoryGroup {
+  category: FijosCategoryKey
+  /** Emoji del tile — contenido, no token: independiente de `category`
+   *  (el cableado real podría asignar otro ícono a la misma categoría),
+   *  mismo criterio que `MovRowVM.emoji`/`catName` en gastos-screen.tsx. */
+  icon: string
+  name: string
+  /** "4 ítems · 1 vencido" / "5 ítems · al día ✓" / "4 ítems · 3 pagados". */
+  meta: string
+  metaTone: FijosRowTone
+  amount: string
+}
+
+function categoryTileBackground(s: FijosSpec, category: FijosCategoryKey): string {
+  if (category === 'housing') return s.categoryTileHousing
+  if (category === 'subscriptions') return s.categoryTileSubs
+  return s.categoryTileServices
+}
+
+function rowMetaInk(s: FijosSpec, tone: FijosRowTone): string {
+  if (tone === 'overdue') return s.rowMetaOverdueInk
+  if (tone === 'ok') return s.rowMetaOkInk
+  return s.rowMetaNeutralInk
+}
+
+/**
+ * Una fila de categoría (Vivienda/Suscripciones/Servicios) — tile de ícono
+ * + nombre + meta con tono + monto + chevron. `onPress` opcional (el
+ * destino — abrir el detalle de la categoría — no está definido todavía,
+ * fuera de este plan): sin handler renderiza estático, mismo criterio que
+ * `onPressCalendar` del header.
+ */
+export function FijosRow({
+  mode,
+  group,
+  onPress,
+}: {
+  mode: FijosMode
+  group: FijosCategoryGroup
+  onPress?: () => void
+}) {
+  const s = FIJOS_SPEC[mode]
+  const press = usePressScale()
+  const inner = (
+    <View
+      style={[
+        styles.categoryRow,
+        s.rowGradientCss ? null : { backgroundColor: s.rowBackground },
+        { boxShadow: s.rowShadow },
+        s.rowGradientCss ? { experimental_backgroundImage: s.rowGradientCss } : null,
+      ]}
+    >
+      <View style={[styles.categoryTile, { backgroundColor: categoryTileBackground(s, group.category) }]}>
+        <Text style={styles.categoryEmoji}>{group.icon}</Text>
+      </View>
+      <View style={styles.categoryTexts}>
+        <Text style={[styles.categoryName, { color: s.rowTitleInk }]} numberOfLines={1}>
+          {group.name}
+        </Text>
+        {/* Sin marginTop: el markup apila nombre/meta sin gap (mismo
+            criterio que `availableNote`/`availableOf` del hero) — el
+            spacing lo da el line-height de cada uno. */}
+        <Text style={[styles.categoryMeta, { color: rowMetaInk(s, group.metaTone) }]} numberOfLines={1}>
+          {group.meta}
+        </Text>
+      </View>
+      <Text style={[styles.categoryAmount, { color: s.rowAmountInk }]} numberOfLines={1}>
+        {group.amount}
+      </Text>
+      <ChevronRightGlyph color={s.rowChevronInk} />
+    </View>
+  )
+  if (!onPress) return inner
+  return (
+    <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={`${group.name}, ${group.meta}, ${group.amount}`}
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      style={press.animatedStyle}
+    >
+      {inner}
+    </AnimatedPressable>
+  )
+}
+
+/**
+ * Campos de contenido de "Todos tus fijos". A diferencia de
+ * `FijosHeroContent`/`FijosAvisosContent` NO hay variantes tipo E1–E8/A1–A6:
+ * ningún teléfono ni galería dibuja un segundo estado de esta sección — un
+ * solo default (el que dibujan los dos teléfonos) alcanza. Igual se separa
+ * el contenido de `FijosCategoriesProps` (que `extends Partial<>` de esto)
+ * para poder pisar un campo puntual sin reconstruir todo el objeto, mismo
+ * criterio que las otras 2 secciones — y SE EXPORTA (a diferencia de
+ * `FijosHeroContent`, gap ya señalado en el reporte de la Task 3) para que
+ * quien arme el preview pueda nombrar la forma que overridea.
+ */
+export interface FijosCategoriesContent {
+  activeTab: FijosTabKey
+  vencidosCount: string
+  pendientesCount: string
+  pagadosCount: string
+  groups: FijosCategoryGroup[]
+}
+
+// Default LITERAL — transcrito de los dos teléfonos (líneas 102-129 claro /
+// 215-242 oscuro): mismos textos y montos en los dos temas, solo cambia el
+// color vía los tokens de fijos-spec.ts (que ya resuelve `FijosRow`).
+const CATEGORIES_CONTENT: FijosCategoriesContent = {
+  activeTab: 'vencidos',
+  vencidosCount: '1',
+  pendientesCount: '2',
+  pagadosCount: '13',
+  groups: [
+    { category: 'housing', icon: '🏠', name: 'Vivienda', meta: '4 ítems · 1 vencido', metaTone: 'overdue', amount: '$499.580' },
+    { category: 'subscriptions', icon: '📺', name: 'Suscripciones', meta: '5 ítems · al día ✓', metaTone: 'ok', amount: '$18.400' },
+    { category: 'services', icon: '💡', name: 'Servicios', meta: '4 ítems · 3 pagados', metaTone: 'neutral', amount: '$122.400' },
+  ],
+}
+
+/** Mismo criterio que `withHeroDefaults`/`withAvisosDefaults`: `??`
+ *  explícito campo por campo (no `||`), sin loop genérico. */
+function withCategoriesDefaults(p: Partial<FijosCategoriesContent>): FijosCategoriesContent {
+  return {
+    activeTab: p.activeTab ?? CATEGORIES_CONTENT.activeTab,
+    vencidosCount: p.vencidosCount ?? CATEGORIES_CONTENT.vencidosCount,
+    pendientesCount: p.pendientesCount ?? CATEGORIES_CONTENT.pendientesCount,
+    pagadosCount: p.pagadosCount ?? CATEGORIES_CONTENT.pagadosCount,
+    groups: p.groups ?? CATEGORIES_CONTENT.groups,
+  }
+}
+
+export interface FijosCategoriesProps extends Partial<FijosCategoriesContent> {
+  mode: FijosMode
+  onSelectTab?: (tab: FijosTabKey) => void
+  /** Destino (abrir el detalle de la categoría) sin definir todavía — fuera
+   *  de este plan, mismo criterio que `onPressCalendar` del header. */
+  onPressCategory?: (category: FijosCategoryKey) => void
+  /** "+ Agregar fijo" — destino (Fase 3, alta en 2 pasos) sin definir
+   *  todavía; ver nota del módulo sobre por qué NO es `CtaPill`. */
+  onPressAddFijo?: () => void
+}
+
+/**
+ * "Todos tus fijos" completo — label de sección + "+ Agregar fijo",
+ * `FijosTabs` y la lista de `FijosRow` (una por categoría). El trío que pide
+ * el plan (`FijosTabs`/`FijosCategoryGroup`/`FijosRow`) no tiene dónde vivir
+ * el label "TODOS TUS FIJOS" ni el "+ Agregar fijo" — ninguno de los dos es
+ * parte de un tab ni de una fila puntual, son chrome de sección (una sola
+ * vez, no por-tab ni por-categoría) — así que hizo falta este 4to export,
+ * mismo criterio de "componente compuesto + sus tipos" que `FijosHero`/
+ * `FijosAvisos`.
+ *
+ * "+ Agregar fijo" (líneas 104/217) es texto suelto en negrita — SIN fondo,
+ * SIN sombra, SIN padding de pill (a diferencia de `CtaPill`, que siempre
+ * pinta un fondo con gradiente + sombra): se evaluó reusar `CtaPill` acá
+ * (el brief lo sugiere como posible 4to call site) y NO calza — se
+ * transcribe como `Text` suelto, envuelto en `Pressable` con el mismo dim
+ * de opacidad que usa el trigger de ciclo del header (`FijosHeader`,
+ * también texto suelto) cuando hay handler; sin él, estático.
+ */
+export function FijosCategories(props: FijosCategoriesProps) {
+  const { mode, onSelectTab, onPressCategory, onPressAddFijo } = props
+  const s = FIJOS_SPEC[mode]
+  const c = withCategoriesDefaults(props)
+
+  const addFijoText = (
+    <Text style={[styles.addFijoText, { color: s.addFijoInk }]}>+ Agregar fijo</Text>
+  )
+
+  return (
+    <>
+      <View style={styles.categoriesHeaderRow}>
+        <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>TODOS TUS FIJOS</Text>
+        {onPressAddFijo ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Agregar fijo"
+            hitSlop={8}
+            onPress={onPressAddFijo}
+            style={({ pressed }) => (pressed ? styles.pressedDim : null)}
+          >
+            {addFijoText}
+          </Pressable>
+        ) : (
+          addFijoText
+        )}
+      </View>
+      <FijosTabs
+        mode={mode}
+        activeTab={c.activeTab}
+        vencidosCount={c.vencidosCount}
+        pendientesCount={c.pendientesCount}
+        pagadosCount={c.pagadosCount}
+        onSelectTab={onSelectTab}
+      />
+      <View style={styles.categoryList}>
+        {c.groups.map((group) => (
+          <FijosRow
+            key={group.category}
+            mode={mode}
+            group={group}
+            onPress={onPressCategory ? () => onPressCategory(group.category) : undefined}
+          />
+        ))}
+      </View>
+    </>
+  )
+}
+
 // ─── Estilos ────────────────────────────────────────────────────────
 // UN solo StyleSheet.create para todo el kit — Task 4 (Avisos) y Task 5
 // (tabs/categorías/filas) le agregan más claves a este mismo objeto, no
@@ -1933,4 +2329,39 @@ const styles = StyleSheet.create({
   },
   avisosMessageSubCalm: { maxWidth: 280 },
   avisosMessageSubEmpty: { maxWidth: 290 },
+
+  // ④ Todos tus fijos — label/CTA de sección + tabs + filas de categoría
+  categoriesHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  categoriesLabel: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.84 },
+  addFijoText: { fontSize: 12, fontWeight: '900', fontFamily: nunitoFamily('900') },
+
+  tabsRow: { flexDirection: 'row', gap: 8, marginTop: 10 },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: FIJOS_RADII.chip, paddingVertical: 8, paddingHorizontal: 11 },
+  tabLabelActive: { fontSize: 11.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  tabLabelInactive: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  tabBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: FIJOS_RADII.tabBadge,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabBadgeText: { fontSize: 10, fontWeight: '900', fontFamily: nunitoFamily('900') },
+
+  categoryList: { flexDirection: 'column', gap: 10, marginTop: 12 },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: FIJOS_RADII.row,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  categoryTile: { width: 44, height: 44, borderRadius: FIJOS_RADII.tile, alignItems: 'center', justifyContent: 'center' },
+  categoryEmoji: { fontSize: 19 },
+  categoryTexts: { flex: 1, minWidth: 0 },
+  categoryName: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  categoryMeta: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700') },
+  categoryAmount: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
 })
