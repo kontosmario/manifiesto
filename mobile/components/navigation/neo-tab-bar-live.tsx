@@ -13,6 +13,7 @@ import { NeoTabIcon } from '@/components/navigation/neo-tab-icons'
 import {
   NAV_FAB_GUTTER_X,
   NAV_FAB_SLOT_WIDTH,
+  NAV_KEY_GROUPS,
   resolveIndicatorX,
   resolveWellWidth,
   type GroupOffsets,
@@ -81,6 +82,18 @@ const NAV_ITEMS: {
   { key: 'fijos', icon: 'fixed', labelKey: 'states:tabs.fixed' },
   { key: 'control', icon: 'control', labelKey: 'states:tabs.control' },
 ]
+
+// Derivados de `NAV_KEY_GROUPS` (nav-indicator-geometry.ts) — ÚNICA fuente de
+// la partición por grupo. Antes cada `navGroup` se armaba con
+// `NAV_ITEMS.slice(0, 2)` / `.slice(2)`, una segunda codificación del mismo
+// hecho que `resolveIndicatorX` ya usaba por su cuenta: coincidían solo
+// porque nadie había reordenado `NAV_ITEMS` todavía. Filtrar por key en vez
+// de por posición hace que un reorder no pueda desalinear el grupo que
+// renderiza un ítem del grupo que el indicador usa para ubicarlo. Módulo-level
+// (no `useMemo`): `NAV_ITEMS` y `NAV_KEY_GROUPS` son estáticos, así que esto
+// se calcula una sola vez por proceso, no por render.
+const NAV_ITEMS_LEFT = NAV_ITEMS.filter((item) => NAV_KEY_GROUPS.left.includes(item.key))
+const NAV_ITEMS_RIGHT = NAV_ITEMS.filter((item) => NAV_KEY_GROUPS.right.includes(item.key))
 
 /** Fallback sólido de los gradientes cuando `experimental_backgroundImage` no
  *  esté soportado. El de la barra usa el `bg` neo (el gradiente ronda ese tono);
@@ -197,9 +210,19 @@ function NeoNavItem({
       <Animated.View style={[styles.navIdle, popStyle]}>
         <NeoTabIcon name={item.icon} color={s.navIdleInk} size={20} strokeWidth={2.2} />
         <Text style={[styles.navIdleLabel, { color: s.navIdleInk }]}>{label}</Text>
-        <Animated.View pointerEvents="none" style={[styles.navActiveInk, activeInkStyle]}>
+        {/* Capa activa: duplica ícono+label del `navIdle` de arriba, así que en
+            la rama SIN `onPress` (preview estático) la anunciaría dos veces —
+            en la rama interactiva el `Pressable` colapsa a un solo elemento
+            accesible, pero acá no hay Pressable. Ocultarla explícitamente de
+            a11y en los dos casos: es decoración de cross-fade, no contenido. */}
+        <Animated.View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={[styles.navInkOverlay, activeInkStyle]}
+        >
           <NeoTabIcon name={item.icon} color={s.navActiveInk} size={20} strokeWidth={2.3} />
-          <Text style={[styles.navIdleLabel, { color: s.navActiveInk }]}>{label}</Text>
+          <Text style={[styles.navActiveLabel, { color: s.navActiveInk }]}>{label}</Text>
         </Animated.View>
         {dot ? <View style={[styles.navItemDot, { backgroundColor: s.navItemDot }]} /> : null}
       </Animated.View>
@@ -350,16 +373,33 @@ export function NeoTabBarLive({
   // así que ningún cambio de tab vuelve a animar.
   const indicatorX = useSharedValue(0)
   const hasPosition = useSharedValue(false)
+  // Rising-edge de CAMBIO DE TAB — mismo patrón que `wasActiveRef` en
+  // `NeoNavItem` más abajo. `targetX` no se mueve solo cuando cambia la tab:
+  // un cambio de idioma, de Dynamic Type, o directamente un segundo batch de
+  // `onLayout` en el primer mount (los cuatro ítems no siempre miden en el
+  // mismo frame) también lo recalculan. Esos casos deben SALTAR, no animar —
+  // comparar contra `targetX` no lo distingue (una tab distinta puede
+  // compartir `targetX` con la anterior si los labels miden igual, y la
+  // MISMA tab puede recalcular `targetX` sin haber cambiado). Comparar
+  // contra `activeTab` sí aísla la causa real.
+  const prevActiveRef = useRef(activeTab)
   useEffect(() => {
     if (targetX == null) return
-    if (!hasPosition.value || reduceMotion) {
-      // Primer posicionamiento (o reduced motion): sin viaje.
+    // Actualizado SIEMPRE, antes de cualquier return de acá abajo: si se
+    // actualizara solo en la rama del spring, una transición de geometría
+    // (que cae en la rama de "salto") se comería el cambio de tab que la
+    // originó, y la vuelta a esa tab ya no animaría (creería que sigue ahí).
+    const isTabChange = prevActiveRef.current !== activeTab
+    prevActiveRef.current = activeTab
+    if (!hasPosition.value || reduceMotion || !isTabChange) {
+      // Primer posicionamiento, reduced motion, o geometría que se movió
+      // SIN cambio de tab: sin viaje.
       indicatorX.value = targetX
       hasPosition.value = true
       return
     }
     indicatorX.value = withSpring(targetX, motionSprings.tabShift)
-  }, [targetX, reduceMotion, indicatorX, hasPosition])
+  }, [targetX, reduceMotion, indicatorX, hasPosition, activeTab])
   useEffect(() => () => cancelAnimation(indicatorX), [indicatorX])
 
   const wellStyle = useAnimatedStyle(() => ({
@@ -435,7 +475,7 @@ export function NeoTabBarLive({
         ]}
       />
       <View style={styles.navGroup} onLayout={onLayoutLeftGroup}>
-        {NAV_ITEMS.slice(0, 2).map(renderItem)}
+        {NAV_ITEMS_LEFT.map(renderItem)}
       </View>
       <View style={styles.fabSlot}>
         {renderFab ? (
@@ -445,7 +485,7 @@ export function NeoTabBarLive({
         )}
       </View>
       <View style={styles.navGroup} onLayout={onLayoutRightGroup}>
-        {NAV_ITEMS.slice(2).map(renderItem)}
+        {NAV_ITEMS_RIGHT.map(renderItem)}
       </View>
     </View>
   )
@@ -496,14 +536,23 @@ const styles = StyleSheet.create({
   // Capa activa del cross-fade (Task 4): se superpone exacto sobre `navIdle`
   // vía `absoluteFill` + el mismo `alignItems`/`gap` — ambas capas centran su
   // contenido en la misma caja, y el padding de `navIdle` es simétrico, así
-  // que no hace falta compensar ningún offset.
-  navActiveInk: {
+  // que no hace falta compensar ningún offset. Nombrado `navInkOverlay` (no
+  // `navActiveInk`) a propósito: ese nombre quedaba a un carácter de
+  // `s.navActiveInk`, el token de color de HOME_SPEC usado en las líneas de
+  // al lado — mismo prefijo, cosas distintas, fácil de confundir al leer.
+  navInkOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
   },
   navIdleLabel: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  // Label de la capa ACTIVA únicamente (catálogo aprobado: 900 vs 800 del
+  // idle — design/home-final-2026-07/home.dc.html:81, kit home-screen.tsx
+  // `navActiveLabel`). Peso propio: el ítem no cambia de ancho al activarse
+  // (esta capa es `absoluteFill` sobre `navInkOverlay`), así que el 900 no
+  // puede mover al FAB — el ancla de la Task 2 sigue intacta.
+  navActiveLabel: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   navItemDot: { position: 'absolute', top: 3, right: 6, width: 8, height: 8, borderRadius: 4 },
   fab: {
     position: 'relative',
