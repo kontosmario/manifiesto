@@ -4,10 +4,14 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Screen } from '@/components/ui/screen'
 import { NeoTabBarLive } from '@/components/navigation/neo-tab-bar-live'
 import {
+  FijosAvisos,
+  FijosCategories,
   FijosHeader,
   FijosHero,
   fijosHeaderHeroSpacing,
+  type FijosAvisosVariant,
   type FijosHeroVariant,
+  type FijosTabKey,
 } from '@/components/redesign/fijos/fijos-screen'
 import type { FijosMode } from '@/components/redesign/fijos/fijos-spec'
 import { PreviewHomeIndicator, PreviewPhoneSection } from '@/screens/dev/redesign/redesign-preview-shared'
@@ -16,27 +20,25 @@ import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Preview dev-only de la vista FIJOS del rediseño (design/fijos-2026-07/
- * Fijos Manifiesto.dc.html): réplica pixel-perfect del header + hero, claro
- * y oscuro, MÁS un ciclador de los 8 estados del hero (E1–E8).
+ * Fijos Manifiesto.dc.html): réplica pixel-perfect de las 4 áreas del kit
+ * — header, hero (8 estados E1–E8), Avisos (6 estados A1–A6) y "Todos tus
+ * fijos" (tabs + categorías) —, cada una en claro y oscuro, más la nav real
+ * (`NeoTabBarLive`, ya aprobada) con `activeTab="fijos"`.
  *
- * ALCANCE — adelantado del Task 6 del plan
- * docs/superpowers/plans/2026-07-29-fijos-f0-f1.md. Se trajo al frente
- * (antes de Tasks 4/5) porque el owner no puede aprobar lo que no puede
- * abrir, y la aprobación es lo que destraba el resto: por eso esta pantalla
- * cubre SOLO lo que hoy existe en fijos-screen.tsx (`FijosHeader` +
- * `FijosHero`). El componente Avisos (ticker + 6 estados, Task 4) y "Todos
- * tus fijos" (tabs/categorías/filas, Task 5) TODAVÍA no están construidos.
+ * HISTORIA — Task 6 del plan docs/superpowers/plans/2026-07-29-fijos-f0-f1.md
+ * trajo este preview al frente (antes de las Tasks 4/5) porque el owner no
+ * puede aprobar lo que no puede abrir, y la aprobación es lo que destraba
+ * el resto: por eso esa entrega cubrió SOLO `FijosHeader` + `FijosHero`.
+ * Avisos y "Todos tus fijos" quedaron pendientes de Tasks 4/5 — Task 7
+ * (esta) los suma ahora que ambas aterrizaron, sin tocar lo que ya había.
  *
- * Por eso el archivo está armado como UNA SECCIÓN POR ÁREA DEL KIT — cuando
- * Avisos y "Todos tus fijos" aterricen, se agregan acá como secciones
- * nuevas (mismo patrón: PreviewLabel + PreviewPhoneSection claro/oscuro, con
- * su propio ciclador si el área tiene estados) sin reescribir lo que ya hay.
- *
- * Sin chrome de pantalla completa (status bar / nav / home indicator): cada
- * sección es un swatch del área del kit que representa, no una simulación
- * de la pantalla entera — mismo criterio que el preview de la nav bar
- * (redesign-nav-bar-preview-screen.tsx), que tampoco arma una pantalla
- * completa alrededor del componente que muestra.
+ * El archivo sigue armado como UNA SECCIÓN POR ÁREA DEL KIT: cada área es
+ * su propio bloque (PreviewLabel + PreviewPhoneSection claro/oscuro, con su
+ * propio ciclador cuando el área tiene estados) en vez de una sola pantalla
+ * continua — mismo criterio que el preview de la nav bar
+ * (redesign-nav-bar-preview-screen.tsx). La única sección con chrome de
+ * pantalla completa es la de nav (`PreviewHomeIndicator`); las demás son
+ * swatches del área que representan, sin status bar ni home indicator.
  */
 
 const CYCLE_LABEL = 'Ciclo 20 jun → 19 jul · día 18'
@@ -52,6 +54,21 @@ const HERO_STATES: Array<{ variant: FijosHeroVariant; name: string }> = [
   { variant: 'E8', name: 'fuera de ciclo' },
 ]
 
+const AVISOS_STATES: Array<{ variant: FijosAvisosVariant; name: string }> = [
+  { variant: 'A1', name: 'con avisos (actual)' },
+  { variant: 'A2', name: 'sin aumentos' },
+  { variant: 'A3', name: 'nada por pagar' },
+  { variant: 'A4', name: 'todo tranquilo' },
+  { variant: 'A5', name: 'urgente' },
+  { variant: 'A6', name: 'sin fijos' },
+]
+
+const TAB_STATES: Array<{ key: FijosTabKey; name: string }> = [
+  { key: 'vencidos', name: 'activa por defecto en los 2 teléfonos' },
+  { key: 'pendientes', name: 'mismo layout y montos, otro tab activo' },
+  { key: 'pagados', name: 'mismo layout y montos, otro tab activo' },
+]
+
 export function RedesignFijosPreviewScreen() {
   const theme = useThemeTokens()
   const [heroIdx, setHeroIdx] = useState(0)
@@ -59,13 +76,27 @@ export function RedesignFijosPreviewScreen() {
   const goPrev = () => setHeroIdx((i) => (i - 1 + HERO_STATES.length) % HERO_STATES.length)
   const goNext = () => setHeroIdx((i) => (i + 1) % HERO_STATES.length)
 
+  const [avisosIdx, setAvisosIdx] = useState(0)
+  const avisosState = AVISOS_STATES[avisosIdx] ?? AVISOS_STATES[0]
+  const goPrevAvisos = () => setAvisosIdx((i) => (i - 1 + AVISOS_STATES.length) % AVISOS_STATES.length)
+  const goNextAvisos = () => setAvisosIdx((i) => (i + 1) % AVISOS_STATES.length)
+
+  const [tabIdx, setTabIdx] = useState(0)
+  const tabState = TAB_STATES[tabIdx] ?? TAB_STATES[0]
+  const goPrevTab = () => setTabIdx((i) => (i - 1 + TAB_STATES.length) % TAB_STATES.length)
+  const goNextTab = () => setTabIdx((i) => (i + 1) % TAB_STATES.length)
+  const selectTab = (tab: FijosTabKey) => {
+    const idx = TAB_STATES.findIndex((t) => t.key === tab)
+    if (idx >= 0) setTabIdx(idx)
+  }
+
   return (
     <Screen
       title="Rediseño · Fijos"
       subtitle={
-        'Réplica pixel-perfect de design/fijos-2026-07/Fijos Manifiesto.dc.html — header + hero con sus 8 estados. ' +
-        'Avisos (ticker + 6 estados) y "Todos tus fijos" (tabs/categorías/filas) todavía no están construidos: se suman ' +
-        'acá como secciones nuevas cuando aterricen.'
+        'Réplica pixel-perfect de design/fijos-2026-07/Fijos Manifiesto.dc.html — header, hero (8 estados), ' +
+        'Avisos (6 estados) y "Todos tus fijos" (tabs + categorías), claro y oscuro, más la nav real con ' +
+        'activeTab="fijos". Nada cableado a datos reales: son fixtures del mockup.'
       }
       canGoBack
     >
@@ -110,7 +141,7 @@ export function RedesignFijosPreviewScreen() {
         {heroState.variant === 'E1' ? (
           <Callout text="E1: el Brot se ve más chato que en el mockup. El diseño lo envuelve en un filter: drop-shadow() de CSS que React Native no soporta (mismo criterio que onb-5c-hogar.tsx) — la ausencia solo quita brillo, no cambia el dibujo." />
         ) : null}
-        <View style={styles.heroSwatchGap}>
+        <View style={styles.swatchPairGap}>
           <FijosSwatch mode="light">
             <FijosHero key={`light-${heroState.variant}`} mode="light" variant={heroState.variant} />
           </FijosSwatch>
@@ -119,21 +150,73 @@ export function RedesignFijosPreviewScreen() {
           <FijosHero key={`dark-${heroState.variant}`} mode="dark" variant={heroState.variant} />
         </FijosSwatch>
 
+        {/* fijosHeroAvisosSpacing/fijosAvisosCategoriesSpacing (el gap hacia
+            Hero/Avisos de la pantalla continua real) no se usan acá: cada
+            área se monta sola, mismo criterio que el par E1–E8 de arriba
+            (que tampoco usa fijosHeaderHeroSpacing). Esos tokens quedan para
+            cuando el plan de cableado arme la pantalla continua real. */}
+        <PreviewLabel
+          title="Avisos — 6 estados (A1–A6)"
+          note="claro y oscuro juntos, un solo ciclador mueve los dos · A1 es el estado (ACTUAL) que dibujan los 2 teléfonos"
+        />
+        <HeroStateCycler
+          index={avisosIdx}
+          total={AVISOS_STATES.length}
+          variant={avisosState.variant}
+          name={avisosState.name}
+          onPrev={goPrevAvisos}
+          onNext={goNextAvisos}
+        />
+        {avisosState.variant === 'A1' || avisosState.variant === 'A3' ? (
+          <Callout text='A1/A3 (mockup, no bug de esta réplica): la fila-resumen dice que Disney +, Ecogas y Fútbol Otti suman "$96.400", pero 8.900 + 12.300 + 6.500 = 27.700. Es la fixture literal de Fijos Manifiesto.dc.html — se transcribió tal cual, mismo criterio que el total de E7.' />
+        ) : null}
+        <View style={styles.swatchPairGap}>
+          <FijosSwatch mode="light">
+            <FijosAvisos key={`light-${avisosState.variant}`} mode="light" variant={avisosState.variant} />
+          </FijosSwatch>
+        </View>
+        <FijosSwatch mode="dark">
+          <FijosAvisos key={`dark-${avisosState.variant}`} mode="dark" variant={avisosState.variant} />
+        </FijosSwatch>
+
+        <PreviewLabel
+          title="Todos tus fijos — 3 estados de tab (Vencidos/Pendientes/Pagados)"
+          note="claro y oscuro juntos, un solo ciclador mueve los dos · categorías y montos vienen de la fixture única (no varían por tab) · los 3 tabs también responden al toque directo"
+        />
+        <HeroStateCycler
+          index={tabIdx}
+          total={TAB_STATES.length}
+          variant={tabState.key}
+          name={tabState.name}
+          onPrev={goPrevTab}
+          onNext={goNextTab}
+        />
+        <View style={styles.swatchPairGap}>
+          <FijosSwatch mode="light">
+            <FijosCategories mode="light" activeTab={tabState.key} onSelectTab={selectTab} />
+          </FijosSwatch>
+        </View>
+        <FijosSwatch mode="dark">
+          <FijosCategories mode="dark" activeTab={tabState.key} onSelectTab={selectTab} />
+        </FijosSwatch>
+
         <PreviewLabel
           title="Nav — activeTab “fijos”"
           note="NeoTabBarLive real (aprobada), no se replica el markup — verificación gratis de que la barra se lee bien bajo este fondo"
         />
-        <PreviewPhoneSection mode="light" minHeight={230}>
-          <NeoTabBarLive mode="light" activeTab="fijos" onPressTab={() => {}} />
-          <PreviewHomeIndicator mode="light" />
-        </PreviewPhoneSection>
+        <View style={styles.swatchPairGap}>
+          <PreviewPhoneSection mode="light" minHeight={230}>
+            <NeoTabBarLive mode="light" activeTab="fijos" onPressTab={() => {}} />
+            <PreviewHomeIndicator mode="light" />
+          </PreviewPhoneSection>
+        </View>
         <PreviewPhoneSection mode="dark" minHeight={230}>
           <NeoTabBarLive mode="dark" activeTab="fijos" onPressTab={() => {}} />
           <PreviewHomeIndicator mode="dark" />
         </PreviewPhoneSection>
 
         <Text style={[styles.scopeFooter, { color: theme.colors.textMuted }]}>
-          {'— Fin de lo construido — Avisos (A1–A6) y "Todos tus fijos" llegan en tareas siguientes del mismo kit —'}
+          {'— Fin del kit F0+F1: header, hero, Avisos, tabs/categorías y nav — nada cableado a datos reales —'}
         </Text>
       </View>
     </Screen>
@@ -161,9 +244,10 @@ function HeroStateCycler({
 }: {
   index: number
   total: number
-  // string (no FijosHeroVariant): este ciclador es genérico — lo reusará el
-  // ciclador de Avisos (A1–A6, próxima tarea del mismo kit) sin ensanchar el
-  // tipo ni copiar el componente.
+  // string (no FijosHeroVariant/FijosAvisosVariant/FijosTabKey): este
+  // ciclador es genérico — lo reusan también el ciclador de Avisos (A1–A6)
+  // y el de tabs (Vencidos/Pendientes/Pagados) sin ensanchar el tipo ni
+  // copiar el componente.
   variant: string
   name: string
   onPrev: () => void
@@ -174,7 +258,7 @@ function HeroStateCycler({
     <View style={styles.cyclerRow}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Estado anterior del hero"
+        accessibilityLabel="Estado anterior"
         hitSlop={10}
         onPress={onPrev}
         style={[styles.cyclerBtn, { borderColor: theme.colors.border }]}
@@ -189,7 +273,7 @@ function HeroStateCycler({
       </Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Estado siguiente del hero"
+        accessibilityLabel="Estado siguiente"
         hitSlop={10}
         onPress={onNext}
         style={[styles.cyclerBtn, { borderColor: theme.colors.border }]}
@@ -233,12 +317,18 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 24,
   },
-  // Separación entre las dos tarjetas claro/oscuro del ciclador E1–E8: sin
-  // esto quedan al ras (`PreviewPhoneSection` no trae margin propio y acá no
-  // hay un `PreviewLabel` entre medio, a diferencia de los otros pares de
-  // este archivo). Envuelve solo la tarjeta clara del par para no tocar
-  // `FijosSwatch` (compartido por los otros 3 usos) ni `styles.stack`.
-  heroSwatchGap: {
+  // Separación entre las dos tarjetas claro/oscuro de un mismo ciclador —
+  // pares que comparten UN solo `PreviewLabel` arriba, sin nada entre medio
+  // que ya les dé margen (a diferencia de los pares "tema claro"/"tema
+  // oscuro" de la primera sección, que tienen su propio `PreviewLabel` cada
+  // uno). `PreviewPhoneSection`/`FijosSwatch` no traen margin propio, así
+  // que sin esto quedan al ras — bug real que tuvo el par E1–E8 (origen de
+  // este estilo) y que un fix round posterior repitió en el par de la nav;
+  // Avisos y tabs/categorías lo usan desde el vamos para no repetirlo un
+  // tercer par. Envuelve solo la tarjeta/sección clara de cada par para no
+  // tocar `FijosSwatch`/`PreviewPhoneSection` (compartidos por más usos) ni
+  // `styles.stack`.
+  swatchPairGap: {
     marginBottom: 12,
   },
   labelBlock: {
