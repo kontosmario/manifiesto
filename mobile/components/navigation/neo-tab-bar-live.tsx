@@ -1,11 +1,21 @@
-import type { ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
-import Animated from 'react-native-reanimated'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
 import { NeoTabIcon } from '@/components/navigation/neo-tab-icons'
-import { NAV_FAB_GUTTER_X, NAV_FAB_SLOT_WIDTH } from '@/components/navigation/nav-indicator-geometry'
+import {
+  NAV_FAB_GUTTER_X,
+  NAV_FAB_SLOT_WIDTH,
+  resolveIndicatorX,
+  resolveWellWidth,
+  type GroupOffsets,
+  type SlotRect,
+  type SlotRects,
+} from '@/components/navigation/nav-indicator-geometry'
 import { HOME_SPEC, type HomeMode, type HomeSpec } from '@/components/redesign/home/home-spec'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { usePressScale } from '@/hooks/use-press-scale'
+import { motionSprings } from '@/lib/motion'
 import { cssGradient } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import type { NeoTabKey } from '@/components/navigation/neo-tab-bar-route-map'
@@ -82,6 +92,8 @@ function NeoNavItem({
   dot,
   label,
   onPress,
+  onMeasure,
+  reduceMotion,
 }: {
   s: HomeSpec
   item: (typeof NAV_ITEMS)[number]
@@ -89,26 +101,55 @@ function NeoNavItem({
   dot: boolean
   label: string
   onPress?: () => void
+  /** Reporta el slot (x relativo al grupo, width) al padre para que el
+   *  indicador sepa a dónde viajar. Ausente en el preview sin `onMeasure`. */
+  onMeasure?: (key: NeoTabKey, rect: SlotRect) => void
+  /** Bajado desde `NeoTabBarLive` (una sola lectura de `useReducedMotion`)
+   *  para que los cuatro ítems y el surco animen contra la misma fuente de
+   *  verdad — mismo patrón que el prop homónimo de `usePressScale`. */
+  reduceMotion: boolean
 }) {
   // Press-scale equivalente a TabBarPressable (0.94 spring). El haptic NO va
   // acá: en live lo dispara `screenListeners.tabPress` del <Tabs>.
-  const pressScale = usePressScale({ pressedScale: 0.94 })
+  const pressScale = usePressScale({ pressedScale: 0.94, reduceMotion })
 
-  const inner = active ? (
-    <View style={[styles.navActive, { backgroundColor: s.navActiveBackground, boxShadow: s.navActiveShadow }]}>
-      <NeoTabIcon name={item.icon} color={s.navActiveInk} size={20} strokeWidth={2.3} />
-      <Text style={[styles.navActiveLabel, { color: s.navActiveInk }]}>{label}</Text>
-    </View>
-  ) : (
-    <View style={styles.navIdle}>
-      <NeoTabIcon name={item.icon} color={s.navIdleInk} size={20} strokeWidth={2.2} />
-      <Text style={[styles.navIdleLabel, { color: s.navIdleInk }]}>{label}</Text>
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      onMeasure?.(item.key, { x: e.nativeEvent.layout.x, width: e.nativeEvent.layout.width })
+    },
+    [onMeasure, item.key],
+  )
+
+  // El ítem ya NO dibuja el estado activo (el surco es el indicador
+  // absoluto, animado aparte): siempre la misma caja, solo cambia la tinta
+  // (ícono/label) según `active`. La Task 4 vuelve sobre este bloque para
+  // cruzar las tintas con un cross-fade.
+  //
+  // `onLayout` va en la raíz REAL del ítem, no siempre en `navIdle`: RN
+  // reporta `x`/`y` relativos al padre INMEDIATO nada más (no se acumulan
+  // atravesando wrappers), y `SlotRect.x` está documentado + testeado
+  // (nav-indicator-geometry.test.ts) como relativo a `navGroup`. Con
+  // `onPress` la raíz es `AnimatedPressable` — `navIdle` queda anidado un
+  // nivel adentro, y como el Pressable no tiene ancho/padding propio abraza
+  // a `navIdle` exacto, así que el `x` de `navIdle` (relativo al Pressable)
+  // da SIEMPRE 0, sin importar dónde caiga el Pressable dentro del grupo. En
+  // los `space-between` de dos ítems eso es coincidentemente correcto para
+  // el primero de cada grupo (inicio/fijos, que arrancan al ras) pero rompe
+  // el segundo (gastos/control, empujados al borde opuesto): el surco
+  // aterrizaría en el lugar del primer ítem. Por eso el layout se mide en
+  // `AnimatedPressable` (la raíz real) cuando hay `onPress`, y en `navIdle`
+  // (que ahí sí es la raíz) cuando no lo hay.
+  const inner = (
+    <View style={styles.navIdle} onLayout={onPress ? undefined : handleLayout}>
+      <NeoTabIcon name={item.icon} color={active ? s.navActiveInk : s.navIdleInk} size={20} strokeWidth={active ? 2.3 : 2.2} />
+      <Text style={[styles.navIdleLabel, { color: active ? s.navActiveInk : s.navIdleInk }]}>{label}</Text>
       {dot ? <View style={[styles.navItemDot, { backgroundColor: s.navItemDot }]} /> : null}
     </View>
   )
 
   if (!onPress) {
     // Preview estático sin handler: sin press-scale (nada que presionar).
+    // Acá `navIdle` (arriba) YA es la raíz del ítem.
     return inner
   }
 
@@ -120,6 +161,7 @@ function NeoNavItem({
       onPress={onPress}
       onPressIn={pressScale.onPressIn}
       onPressOut={pressScale.onPressOut}
+      onLayout={handleLayout}
       style={pressScale.animatedStyle}
     >
       {inner}
@@ -182,6 +224,58 @@ export function NeoTabBarLive({
   const { t } = useTranslation()
   const s = HOME_SPEC[mode]
 
+  // ── Geometría del surco ──────────────────────────────────────────────
+  // Los dos `navGroup` reportan su offset x relativo a `nav`; cada ítem
+  // reporta su slot (x relativo a SU grupo, width) relativo a sí. Juntos
+  // resuelven `targetX` (Task 1, módulo puro, testeado ahí — no se
+  // reimplementa la aritmética acá).
+  const [groupOffsets, setGroupOffsets] = useState<GroupOffsets>({ left: 0, right: 0 })
+  const onLayoutLeftGroup = useCallback((e: LayoutChangeEvent) => {
+    const x = e.nativeEvent.layout.x
+    setGroupOffsets((prev) => (prev.left === x ? prev : { ...prev, left: x }))
+  }, [])
+  const onLayoutRightGroup = useCallback((e: LayoutChangeEvent) => {
+    const x = e.nativeEvent.layout.x
+    setGroupOffsets((prev) => (prev.right === x ? prev : { ...prev, right: x }))
+  }, [])
+
+  const [slots, setSlots] = useState<SlotRects>({})
+  const onMeasureSlot = useCallback((key: NeoTabKey, rect: SlotRect) => {
+    setSlots((prev) => {
+      const cur = prev[key]
+      if (cur && cur.x === rect.x && cur.width === rect.width) return prev
+      return { ...prev, [key]: rect }
+    })
+  }, [])
+
+  // Leído UNA vez acá y bajado por prop a los cuatro ítems (+ el spring de
+  // abajo): una sola fuente de verdad, mismo patrón que `usePressScale`.
+  const reduceMotion = useReducedMotion()
+  const wellWidth = useMemo(() => resolveWellWidth(slots), [slots])
+  const targetX = useMemo(
+    () => resolveIndicatorX(slots, groupOffsets, activeTab, wellWidth),
+    [slots, groupOffsets, activeTab, wellWidth],
+  )
+
+  // `-1` = todavía sin medir. El surco no se dibuja hasta tener una posición
+  // real: plantarlo en 0 lo mostraría pegado al borde izquierdo por un frame.
+  const indicatorX = useSharedValue(-1)
+  useEffect(() => {
+    if (targetX == null) return
+    if (indicatorX.value < 0 || reduceMotion) {
+      // Primer posicionamiento (o reduced motion): sin viaje.
+      indicatorX.value = targetX
+      return
+    }
+    indicatorX.value = withSpring(targetX, motionSprings.tabShift)
+  }, [targetX, reduceMotion, indicatorX])
+  useEffect(() => () => cancelAnimation(indicatorX), [indicatorX])
+
+  const wellStyle = useAnimatedStyle(() => ({
+    opacity: indicatorX.value < 0 ? 0 : 1,
+    transform: [{ translateX: indicatorX.value < 0 ? 0 : indicatorX.value }],
+  }))
+
   const renderItem = (item: (typeof NAV_ITEMS)[number]) => (
     <NeoNavItem
       key={item.key}
@@ -191,6 +285,8 @@ export function NeoTabBarLive({
       active={item.key === activeTab}
       dot={Boolean(itemDots?.[item.key]) && item.key !== activeTab}
       onPress={onPressTab ? () => onPressTab(item.key) : undefined}
+      onMeasure={onMeasureSlot}
+      reduceMotion={reduceMotion}
     />
   )
 
@@ -230,7 +326,24 @@ export function NeoTabBarLive({
           corría ~14px. Con dos grupos de `flex: 1` idéntico, el centro del FAB
           ES el centro de la barra por construcción — inmune al largo de los
           labels (ES vs EN), al padding del activo y al fontScale. */}
-      <View style={styles.navGroup}>
+      {/* EL SURCO. Es el mismo material de la barra, hundido — en light
+          `navActiveBackground` es undefined a propósito. Se TRASLADA, nunca
+          escala: los offsets de la sombra inset son fijos (4/4 y −4/−4), así
+          que mover el nodo mantiene la dirección de la luz y el relieve se lee
+          real; escalarlo estiraría la profundidad percibida y delataría el
+          material. El `boxShadow` NO se anima (es un string: no se interpola en
+          worklet y costaría un commit de Fabric por frame) — viaja con el nodo
+          sin recalcularse. Primer hijo de `nav` para pintar detrás de ítems y
+          FAB (cruza por DEBAJO del disco, que tiene su propia sombra externa). */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.well,
+          { width: wellWidth, backgroundColor: s.navActiveBackground, boxShadow: s.navActiveShadow },
+          wellStyle,
+        ]}
+      />
+      <View style={styles.navGroup} onLayout={onLayoutLeftGroup}>
         {NAV_ITEMS.slice(0, 2).map(renderItem)}
       </View>
       <View style={styles.fabSlot}>
@@ -240,7 +353,7 @@ export function NeoTabBarLive({
           <DefaultNeoFab s={s} mode={mode} fabBadge={fabBadge} label={t('states:tabs.add')} onPress={onPressFab} />
         )}
       </View>
-      <View style={styles.navGroup}>
+      <View style={styles.navGroup} onLayout={onLayoutRightGroup}>
         {NAV_ITEMS.slice(2).map(renderItem)}
       </View>
     </View>
@@ -274,8 +387,19 @@ const styles = StyleSheet.create({
     // del grupo queda ENTRE sus dos ítems, que es donde estaba antes.
     justifyContent: 'space-between',
   },
-  navActive: { alignItems: 'center', gap: 4, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 13 },
-  navActiveLabel: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  // El surco (indicador activo) — mismo material de la barra, hundido. Ancho
+  // dinámico (`resolveWellWidth`, seteado inline junto al style), posición
+  // animada vía `wellStyle` (translateX puro). top/bottom fijos reproducen el
+  // footprint vertical de la vieja píldora `navActive` (paddingVertical 8 con
+  // labels 10.5 + ícono 20 + gap 4 ⇒ alto ~46 dentro de nav con paddingTop 12 /
+  // paddingBottom 13).
+  well: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    bottom: 13,
+    borderRadius: 18,
+  },
   navIdle: { alignItems: 'center', gap: 4, paddingVertical: 8, paddingHorizontal: 6 },
   navIdleLabel: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   navItemDot: { position: 'absolute', top: 3, right: 6, width: 8, height: 8, borderRadius: 4 },
