@@ -36,12 +36,21 @@ export interface CalendarDropImpactProps {
   day: number | null
   onChangeDay: (next: number) => void
   category: { id: string; name: string; color: string }
+  /**
+   * El usuario intentó confirmar sin elegir día. En `classic` la card ya
+   * pulsaba sola mientras faltaba el día; en `neo` la card no tiene borde que
+   * pulsear, así que el gate del paso 2 no pintaba NADA — se tocaba el CTA,
+   * sonaba el háptico de error y la pantalla quedaba igual. Este flag es el
+   * cue que faltaba.
+   */
+  warning?: boolean
 }
 
 export function CalendarDropImpact({
   day,
   onChangeDay,
   category,
+  warning = false,
 }: CalendarDropImpactProps) {
   const { theme } = useAppTheme()
   const skin = useFijosSkin()
@@ -112,7 +121,12 @@ export function CalendarDropImpact({
               borderWidth: 0,
               backgroundColor: neo.add.step2Card.background,
               experimental_backgroundImage: neo.add.step2Card.gradientCss,
-              boxShadow: neo.add.step2Card.shadow,
+              // Con el aviso encendido la card gana el anillo de terracota del
+              // sistema — el mismo acento que usan los fijos vencidos. No es
+              // rojo de error: falta un dato, no hay nada roto.
+              boxShadow: warning
+                ? `${neo.add.step2Card.shadow}, inset 0 0 0 2px ${neo.add.accentClay}`
+                : neo.add.step2Card.shadow,
             }
           : cardPulseStyle,
       ]}
@@ -237,6 +251,13 @@ export function CalendarDropImpact({
             styles.calendarFoot,
             styles.calendarFootPrompt,
             { color: theme.colors.primary },
+            neo
+              ? {
+                  color: warning ? neo.add.accentClay : neo.mutedInk,
+                  fontFamily: neo.font(warning ? '900' : '800'),
+                  fontWeight: warning ? '900' : '800',
+                }
+              : null,
           ]}
         >
           {t('fijos:wizard.calendar.footPrompt')}

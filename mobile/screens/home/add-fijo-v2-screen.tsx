@@ -8,7 +8,7 @@
 // Todo el state machine del form vive en `useAddFijoForm`. Las pure
 // helpers (FREQ_OPTIONS, CUOTA_OPTIONS, QUICK_AMOUNTS, hexAlpha,
 // buildNextDueOn) viven en `add-fijo-helpers.ts`.
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Alert,
   Keyboard,
@@ -98,7 +98,9 @@ export function AddFijoV2Screen({
   const fijosTileHeight = RAIL_TILE_HEIGHT
   const isEditing = Boolean(fixedExpenseId)
   const categoriesQuery = useFixedExpenseCategories(familyId)
-  const categories = categoriesQuery.data ?? []
+  // Memoizado: `?? []` crea un array nuevo por render, y de él cuelga el
+  // validador de categoría que consume el form.
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data])
   const financeQuery = useFamilyFinance(familyId)
   // DINÁMICO: base 0 aunque quede un monthly_income stale post-switch —
   // sin esto el paso 2 mostraba "% de tu sueldo" sobre un sueldo fantasma.
@@ -130,12 +132,23 @@ export function AddFijoV2Screen({
     (isEditing ? updateMutation.isPending : createMutation.isPending) ||
     recordPaymentMutation.isPending
 
+  // La screen es la que tiene la query de categorías, así que es la que puede
+  // decir si un id RESUELVE. Va como función y no como booleano a propósito:
+  // el `categoryId` es del hook, y espejarlo acá para validarlo metía un
+  // render de lag en el que `canContinue` parpadeaba a false justo después de
+  // elegir la categoría.
+  const isCategoryIdValid = useCallback(
+    (id: string) => categories.some((c) => c.id === id),
+    [categories],
+  )
+
   // Todo el form state + validation en un hook propio.
   const form = useAddFijoForm({
     fixedExpenseId,
     prefillAmount,
     prefillDescription,
     editingFijo,
+    isCategoryIdValid,
   })
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId)
@@ -377,6 +390,7 @@ export function AddFijoV2Screen({
             totalCuotas={form.totalCuotas}
             day={form.day}
             onChangeDay={form.setDay}
+            flagDay={form.flagDay}
             prevTotal={prevTotal}
             nuevoTotal={nuevoTotal}
             pctAntes={pctAntes}

@@ -51,6 +51,8 @@ export interface Step2SummaryProps {
   totalCuotas: number
   day: number | null
   onChangeDay: (next: number) => void
+  /** El día no está elegido y el usuario ya intentó confirmar. */
+  flagDay: boolean
   // Impact math
   prevTotal: number
   nuevoTotal: number
@@ -84,6 +86,7 @@ export function Step2Summary(props: Step2SummaryProps) {
     totalCuotas,
     day,
     onChangeDay,
+    flagDay,
     prevTotal,
     nuevoTotal,
     pctAntes,
@@ -457,6 +460,7 @@ export function Step2Summary(props: Step2SummaryProps) {
               day={day}
               onChangeDay={onChangeDay}
               category={selectedCategory}
+              warning={flagDay}
             />
           </View>
         </RiseView>
