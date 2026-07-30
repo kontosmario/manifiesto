@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SuggestedAmountStripProps {
@@ -16,6 +17,10 @@ export function SuggestedAmountStrip({
   onClear,
 }: SuggestedAmountStripProps) {
   const { theme } = useAppTheme()
+  // COMPARTIDO con add-ingreso: solo resuelve a `neo` dentro del wizard de
+  // fijos, que es el único que monta el provider.
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
 
   return (
@@ -34,9 +39,28 @@ export function SuggestedAmountStrip({
           style={[
             styles.chip,
             { backgroundColor: theme.colors.creamSoft, borderColor: theme.colors.line },
+            // Handoff: chip ELEVADO con la tinta terracota, radio 13 (no pill)
+            // y sin borde — el relieve reemplaza al contorno.
+            neo
+              ? {
+                  backgroundColor: neo.add.quickChip.background,
+                  experimental_backgroundImage: neo.add.quickChip.gradientCss,
+                  borderRadius: neo.add.quickChip.radius,
+                  borderWidth: 0,
+                  boxShadow: neo.add.quickChip.shadow,
+                  paddingHorizontal: neo.add.quickChip.padH,
+                  paddingVertical: neo.add.quickChip.padV,
+                }
+              : null,
           ]}
         >
-          <Text style={[styles.chipText, { color: theme.colors.text }]}>
+          <Text
+            style={[
+              styles.chipText,
+              { color: theme.colors.text },
+              neo ? { color: neo.add.quickChip.ink, fontSize: neo.add.quickChip.fontSize } : null,
+            ]}
+          >
             +${v / 1000}k
           </Text>
         </Pressable>

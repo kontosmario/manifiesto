@@ -15,6 +15,7 @@ import {
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { CalendarDropImpact } from './calendar-drop-impact'
 import { HealthBadge, ImpactBar, ImpactRow } from './impact-card'
@@ -49,6 +50,8 @@ export interface Step2SummaryProps {
 
 export function Step2Summary(props: Step2SummaryProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const {
     name,
@@ -109,6 +112,14 @@ export function Step2Summary(props: Step2SummaryProps) {
           style={[
             styles.summaryCard,
             { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+            neo
+              ? {
+                  backgroundColor: neo.row.background,
+                  borderWidth: 0,
+                  boxShadow: neo.row.shadow,
+                }
+              : null,
+
           ]}
         >
           <View
@@ -176,6 +187,14 @@ export function Step2Summary(props: Step2SummaryProps) {
             style={[
               styles.impactCard,
               { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+            neo
+              ? {
+                  backgroundColor: neo.row.background,
+                  borderWidth: 0,
+                  boxShadow: neo.row.shadow,
+                }
+              : null,
+
             ]}
           >
             <ImpactRow
@@ -208,6 +227,15 @@ export function Step2Summary(props: Step2SummaryProps) {
                 style={[
                   styles.libreRow,
                   { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
+                  // Bloque de datos: POZO, no card. Mismo recurso que los
+                  // campos del paso 1.
+                  neo
+                    ? {
+                        backgroundColor: neo.add.well.background,
+                        borderWidth: 0,
+                        boxShadow: neo.add.well.shadow,
+                      }
+                    : null,
                 ]}
               >
                 <View style={{ flex: 1 }}>
@@ -276,7 +304,13 @@ export function Step2Summary(props: Step2SummaryProps) {
               {notify ? '🔔' : '🔕'}
             </Text>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.eyebrow,
+                  { color: theme.colors.textMuted },
+                  neo ? { ...neo.add.sectionLabel, color: neo.add.sectionLabelInk } : null,
+                ]}
+              >
                 {t('fijos:wizard.step2.reminderEyebrow')}
               </Text>
               <Text style={[styles.reminderText, { color: theme.colors.text }]}>
@@ -302,7 +336,7 @@ export function Step2Summary(props: Step2SummaryProps) {
               style={[
                 styles.reminderToggleKnob,
                 {
-                  backgroundColor: theme.colors.creamCard,
+                  backgroundColor: neo ? neo.row.background : theme.colors.creamCard,
                   transform: [{ translateX: notify ? 18 : 2 }],
                 },
               ]}
@@ -361,7 +395,13 @@ export function Step2Summary(props: Step2SummaryProps) {
                 {alreadyPaidCurrentCuota ? '✅' : '⏳'}
               </Text>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+                <Text
+                style={[
+                  styles.eyebrow,
+                  { color: theme.colors.textMuted },
+                  neo ? { ...neo.add.sectionLabel, color: neo.add.sectionLabelInk } : null,
+                ]}
+              >
                   {t('fijos:wizard.step2.currentStateEyebrow')}
                 </Text>
                 <Text style={[styles.reminderText, { color: theme.colors.text }]}>
@@ -387,7 +427,7 @@ export function Step2Summary(props: Step2SummaryProps) {
                 style={[
                   styles.reminderToggleKnob,
                   {
-                    backgroundColor: theme.colors.creamCard,
+                    backgroundColor: neo ? neo.row.background : theme.colors.creamCard,
                     transform: [
                       { translateX: alreadyPaidCurrentCuota ? 18 : 2 },
                     ],

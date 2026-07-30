@@ -23,6 +23,7 @@ import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { StickyFooter } from '@/components/ui/sticky-footer'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { Step1Form } from '@/components/fijos/add-fijo-parts/step1-form'
 import { Step2Summary } from '@/components/fijos/add-fijo-parts/step2-summary'
 import { StepDots, StepHeader } from '@/components/fijos/add-fijo-parts/step-header'
@@ -76,6 +77,8 @@ export function AddFijoV2Screen({
 }: AddFijoV2ScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
   // Ancho/alto de tile unificados con add-gasto y add-ingreso (mismo helper).
@@ -337,6 +340,14 @@ export function AddFijoV2Screen({
               form.canContinue
                 ? { backgroundColor: theme.colors.text }
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
+            neo
+              ? {
+                  backgroundColor: neo.add.cta.background,
+                  experimental_backgroundImage: neo.add.cta.gradientCss,
+                  borderRadius: neo.add.cta.radius,
+                  paddingVertical: neo.add.cta.padV,
+                }
+              : null,
             ]}
             accessibilityRole="button"
             accessibilityLabel={
@@ -349,6 +360,7 @@ export function AddFijoV2Screen({
               style={[
                 styles.primaryCtaText,
                 { color: theme.colors.creamCard },
+                neo ? { color: neo.add.cta.ink, fontSize: neo.add.cta.fontSize } : null,
               ]}
             >
               {form.canContinue
@@ -369,6 +381,14 @@ export function AddFijoV2Screen({
               form.canSubmit
                 ? { backgroundColor: theme.colors.text, opacity: pending ? 0.7 : 1 }
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
+            neo
+              ? {
+                  backgroundColor: neo.add.cta.background,
+                  experimental_backgroundImage: neo.add.cta.gradientCss,
+                  borderRadius: neo.add.cta.radius,
+                  paddingVertical: neo.add.cta.padV,
+                }
+              : null,
             ]}
             accessibilityRole="button"
             accessibilityLabel={
@@ -386,6 +406,7 @@ export function AddFijoV2Screen({
                 // del Pressable, NO un fg de bajo contraste. Antes textMuted
                 // (verde-claro) sobre el fill crema daba 1.14:1 en dark (ilegible).
                 { color: theme.colors.creamCard },
+                neo ? { color: neo.add.cta.ink, fontSize: neo.add.cta.fontSize } : null,
               ]}
             >
               {!form.canSubmit

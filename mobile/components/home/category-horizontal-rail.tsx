@@ -25,6 +25,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { resolveCategoryHueByName } from '@/theme/category-hues'
 
@@ -308,6 +309,10 @@ interface TileProps {
 
 function Tile({ tile, selected, width, height, onPress }: TileProps) {
   const { theme } = useAppTheme()
+  // COMPARTIDO con add-gasto / add-ingreso: solo resuelve a `neo` dentro del
+  // wizard de fijos, que es el único que monta el provider.
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
@@ -370,7 +375,25 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
             // Un solo color de fondo (pastel claro del hue) ocupa TODO el tile,
             // igual en light y dark. Sin placa: el sticker va directo encima.
             { width, height, backgroundColor: hue.surface },
-            borderStyle,
+            neo ? null : borderStyle,
+            // Handoff: el tile está ELEVADO y el seleccionado se HUNDE con un
+            // anillo verde. No se rellena ni engorda el borde — es el recurso
+            // de "presionado" del neumorfismo.
+            //
+            // El FONDO no se toca a propósito. El handoff pone el tile oscuro
+            // en `rgba(255,255,255,0.06)`, pero ahí dibuja EMOJI; nosotros
+            // ponemos los stickers PNG, que están ilustrados para fondo claro
+            // y sobre ese velo se funden. El pastel del hue se conserva en los
+            // dos temas, que es la decisión que ya tomaba este componente.
+            neo
+              ? {
+                  borderRadius: neo.add.tile.radius,
+                  borderWidth: 0,
+                  boxShadow: selected
+                    ? `${neo.add.tile.selectedShadow}, 0 0 0 2.5px ${neo.add.tile.selectedRing}`
+                    : neo.add.tile.idleShadow,
+                }
+              : null,
           ]}
         >
           {tile.icon}
