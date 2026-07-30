@@ -78,6 +78,8 @@ interface TileRailProps {
   /** Texto del eyebrow sobre el rail (lo computa el caller — la copy de
    *  "requerido/sin elegir" difiere entre categorías e ingresos). */
   labelText: string
+  /** Píldora informativa a la derecha del label (solo piel `neo`). */
+  hint?: string
   /** Number of rows to stack vertically. Columns flow horizontally
    *  with overflow scroll. Defaults to 3 (gastos). */
   rows?: number
@@ -98,6 +100,7 @@ interface TileRailProps {
  * No conoce categorías ni ingresos — sólo `RailTile[]`.
  */
 export function TileRail({
+  hint,
   tiles,
   selectedId,
   onSelect,
@@ -108,6 +111,8 @@ export function TileRail({
   staticGrid = false,
   warning = false,
 }: TileRailProps) {
+  const skinRail = useFijosSkin()
+  const neoRail = skinRail.kind === 'neo' ? skinRail : null
   const { theme } = useAppTheme()
   const scrollRef = useRef<ScrollView>(null)
   // Smooth label tint transition when `warning` toggles. iOS-cubic at
@@ -177,11 +182,33 @@ export function TileRail({
 
   return (
     <View style={styles.root}>
-      <Animated.Text
-        style={[typography.eyebrow, { paddingHorizontal: 4 }, labelAnimatedStyle]}
-      >
-        {labelText}
-      </Animated.Text>
+      <View style={styles.eyebrowRow}>
+        <Animated.Text
+          style={[
+            typography.eyebrow,
+            { paddingHorizontal: 4 },
+            labelAnimatedStyle,
+            neoRail ? neoRail.add.sectionLabel : null,
+          ]}
+        >
+          {labelText}
+        </Animated.Text>
+        {/* Píldora "sugerida por el nombre" del handoff. Solo cuando el caller
+            la pasa Y estamos en `neo`; la pantalla vieja nunca la tuvo. */}
+        {hint && neoRail ? (
+          <Text
+            style={[
+              styles.hintPill,
+              {
+                color: neoRail.detail.ctaEditInk,
+                backgroundColor: neoRail.accent('paid').chipBackground,
+              },
+            ]}
+          >
+            {hint}
+          </Text>
+        ) : null}
+      </View>
       {staticGrid ? (
         <View
           onLayout={handleStaticLayout}
@@ -224,6 +251,8 @@ interface CategoryHorizontalRailProps {
   iconScope?: CategoryIconScope
   /** Override which label is shown above the rail. */
   label?: string
+  /** Píldora informativa a la derecha del label (solo piel `neo`). */
+  hint?: string
   /** Per-tile width in points. Defaults to 68. */
   tileWidth?: number
   /** Per-tile height in points. Defaults to 86. */
@@ -246,6 +275,7 @@ export function CategoryHorizontalRail({
   rows = 3,
   iconScope = 'expense',
   label,
+  hint,
   tileWidth = DEFAULT_TILE_WIDTH,
   tileHeight = DEFAULT_TILE_HEIGHT,
   staticGrid = false,
@@ -289,6 +319,7 @@ export function CategoryHorizontalRail({
       tiles={tiles}
       selectedId={selectedCategoryId}
       onSelect={onSelect}
+      hint={hint}
       labelText={labelText}
       rows={rows}
       tileWidth={tileWidth}
@@ -426,6 +457,14 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
 }
 
 const styles = StyleSheet.create({
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hintPill: {
+    borderRadius: 8,
+    fontSize: 9.5,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
   root: {
     gap: 10,
   },
