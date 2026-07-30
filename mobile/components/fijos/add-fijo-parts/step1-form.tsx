@@ -5,7 +5,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
-import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
+import { RiseView } from '@/components/home/animated/rise-view'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
@@ -93,26 +94,37 @@ export function Step1Form(props: Step1FormProps) {
       layout={LinearTransition.duration(260)}
       style={styles.formStack}
     >
-      <Field
-        label={t('fijos:wizard.step1.nameLabel')}
-        trailing={name.trim().length > 0 ? t('fijos:wizard.step1.nameEditHint') : undefined}
-      >
-        <NameInput
-          value={name}
-          onChange={onChangeName}
-          isFocused={isNameFocused}
-          onFocus={onNameFocus}
-          onBlur={onNameBlur}
-          warning={flagName}
-        />
-      </Field>
+      {/*
+        El paso 2 entra escalonado (`RiseView` con delays) y el paso 1 entraba
+        de una. Se equipara: los cuatro campos suben en cascada, que además
+        ordena la lectura —nombre, monto, categoría, frecuencia— en vez de
+        presentar el formulario entero de golpe. `Stagger` es no-op en classic:
+        la pantalla viva no cambia.
+      */}
+      <Stagger neo={neo != null} delay={0}>
+        <Field
+          label={t('fijos:wizard.step1.nameLabel')}
+          trailing={name.trim().length > 0 ? t('fijos:wizard.step1.nameEditHint') : undefined}
+        >
+          <NameInput
+            value={name}
+            onChange={onChangeName}
+            isFocused={isNameFocused}
+            onFocus={onNameFocus}
+            onBlur={onNameBlur}
+            warning={flagName}
+          />
+        </Field>
+      </Stagger>
 
-      <AmountCard
-        amount={amount}
-        isActive={isNumpadVisible}
-        onPress={onPressAmount}
-        warning={flagAmount}
-      />
+      <Stagger neo={neo != null} delay={70}>
+        <AmountCard
+          amount={amount}
+          isActive={isNumpadVisible}
+          onPress={onPressAmount}
+          warning={flagAmount}
+        />
+      </Stagger>
 
       {isInstallment && amount > 0 ? (
         <Text style={[styles.cuotaInlineHint, { color: theme.colors.textMuted }]}>
@@ -124,13 +136,16 @@ export function Step1Form(props: Step1FormProps) {
         </Text>
       ) : null}
 
-      <SuggestedAmountStrip
-        amounts={[...QUICK_AMOUNTS]}
-        currentAmount={amount}
-        onAdd={onAddQuickAmount}
-        onClear={onClearAmount}
-      />
+      <Stagger neo={neo != null} delay={110}>
+        <SuggestedAmountStrip
+          amounts={[...QUICK_AMOUNTS]}
+          currentAmount={amount}
+          onAdd={onAddQuickAmount}
+          onClear={onClearAmount}
+        />
+      </Stagger>
 
+      <Stagger neo={neo != null} delay={160}>
       <CategoryHorizontalRail
         categories={categories}
         // El handoff muestra la píldora sólo cuando la categoría se dedujo
@@ -149,11 +164,14 @@ export function Step1Form(props: Step1FormProps) {
         tileHeight={fijosTileHeight}
         warning={flagCategory}
       />
+      </Stagger>
 
+      <Stagger neo={neo != null} delay={220}>
       <Field label={t('fijos:wizard.step1.frequencyLabel')}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={neo ? styles.freqBleedNeo : undefined}
           contentContainerStyle={[styles.freqRow, neo ? styles.freqRowNeo : null]}
           decelerationRate="fast"
           // El snap de 72+8 sobra de la geometría vieja (tiles cuadrados de
@@ -233,8 +251,27 @@ export function Step1Form(props: Step1FormProps) {
           </Animated.View>
         ) : null}
       </Field>
+      </Stagger>
     </Animated.View>
   )
+}
+
+/**
+ * Envuelve un bloque del paso 1 en la entrada escalonada del rediseño. En
+ * `classic` NO envuelve nada: devuelve a los hijos tal cual, así el árbol de
+ * la pantalla viva queda idéntico (un `<View>` de más ahí ya es un cambio).
+ */
+function Stagger({
+  neo,
+  delay,
+  children,
+}: {
+  neo: boolean
+  delay: number
+  children: React.ReactNode
+}) {
+  if (!neo) return <>{children}</>
+  return <RiseView delay={delay}>{children}</RiseView>
 }
 
 const styles = StyleSheet.create({
@@ -250,8 +287,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 4,
   },
-  // Aire para que el ScrollView no corte la sombra de los chips.
-  freqRowNeo: { paddingHorizontal: 10, paddingVertical: 13 },
+  // El ScrollView recorta la sombra contra sus bordes laterales. Sangra hacia
+  // afuera lo mismo que el contenido se mete hacia adentro: los chips quedan
+  // donde estaban y la sombra entra en el área de clip.
+  freqBleedNeo: { marginHorizontal: -FIJOS_SHADOW_BLEED },
+  freqRowNeo: { paddingHorizontal: FIJOS_SHADOW_BLEED, paddingVertical: 13 },
   cuotaCard: {
     marginTop: 10,
     paddingHorizontal: 14,

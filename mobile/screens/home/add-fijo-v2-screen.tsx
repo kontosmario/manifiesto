@@ -511,10 +511,13 @@ const styles = StyleSheet.create({
   screenNeo: { flexGrow: 1 },
   bodyNeo: { flexGrow: 1 },
   stack: { gap: 12, paddingBottom: 40 },
-  // El `paddingBottom: 40` deja de tener sentido cuando el footer está
-  // anclado: era el colchón que evitaba que el CTA quedara pegado al último
-  // campo. El handoff separa con el padding del propio bloque del CTA.
-  stackNeo: { flexGrow: 1, paddingBottom: 0 },
+  // El footer anclado ya no necesita el colchón de 40 para empujar al CTA
+  // abajo — pero SÍ una separación mínima. Sin ella, en cuanto el contenido
+  // llega hasta abajo (cuotas abiertas en el paso 1, el switch de "estado
+  // actual" en el paso 2) el CTA queda pegado al último elemento. 18 + el
+  // `paddingTop` del footer (14 / 10) da el aire del handoff en el caso corto
+  // y una separación que se sostiene en el largo.
+  stackNeo: { flexGrow: 1, paddingBottom: 18 },
   primaryCta: {
     paddingVertical: 16,
     borderRadius: 16,

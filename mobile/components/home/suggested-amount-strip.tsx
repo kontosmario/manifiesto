@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { useFijosSkin, FIJOS_SHADOW_BLEED } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface SuggestedAmountStripProps {
@@ -27,6 +27,7 @@ export function SuggestedAmountStrip({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={neo ? styles.bleedNeo : undefined}
       contentContainerStyle={[styles.row, neo ? styles.rowNeo : null]}
       keyboardShouldPersistTaps="handled"
     >
@@ -103,7 +104,11 @@ const styles = StyleSheet.create({
   // este aire la sombra neumórfica —que se extiende 17px: offset 5 + blur 12—
   // se ve CORTADA arriba y abajo. Mismo aire a los lados para que el primer
   // y el último chip no pierdan la suya.
-  rowNeo: { gap: 8, paddingVertical: 13, paddingHorizontal: 8 },
+  // El ScrollView recorta la sombra contra sus bordes. Sangra hacia afuera lo
+  // mismo que el contenido se mete hacia adentro: los chips no se corren y la
+  // sombra entra en el área de clip. Ver `FIJOS_SHADOW_BLEED`.
+  bleedNeo: { marginHorizontal: -FIJOS_SHADOW_BLEED },
+  rowNeo: { gap: 8, paddingVertical: 13, paddingHorizontal: FIJOS_SHADOW_BLEED },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,

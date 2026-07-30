@@ -42,6 +42,15 @@ export type FijoSkinStatus = 'paid' | 'overdue' | 'pending' | 'future'
 const TILE_RAISE_L = '5px 5px 12px rgba(151,160,136,0.42), -5px -5px 12px rgba(255,255,255,0.92)'
 const TILE_RAISE_D = '5px 5px 12px rgba(0,0,0,0.5), -4px -4px 11px rgba(101,152,113,0.11)'
 
+/**
+ * Cuánto se extiende la sombra de un tile más allá de su caja: offset 5 +
+ * blur 12. Lo necesitan los `ScrollView` horizontales, que tienen
+ * `overflow: auto hidden` y la recortan contra sus bordes: sangran este tanto
+ * hacia afuera y lo compensan con padding hacia adentro, así el contenido no
+ * se desalinea y la sombra igual entra en el área de clip.
+ */
+export const FIJOS_SHADOW_BLEED = 17
+
 // Raise de la fila de ítem ANIDADA. Es el mismo 5/5/12 del handoff pero con
 // el término de LUZ (el de arriba-izquierda) reforzado: 0.11 → 0.20 en oscuro
 // y 0.92 → 0.98 en claro, y a la misma distancia que la sombra oscura (-5/-5
