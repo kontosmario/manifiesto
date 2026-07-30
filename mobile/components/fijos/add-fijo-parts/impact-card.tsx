@@ -1,6 +1,13 @@
 // Cards de "Impacto en el presupuesto" del wizard add-fijo: ImpactRow
 // (label + value + delta), ImpactBar (before vs after gradient bar) y
 // HealthBadge (alto/medio/sano). Extraído de `add-fijo-v2-screen.tsx`.
+//
+// En la piel `neo` el bloque cambia de ESTRUCTURA, no solo de material: las
+// dos filas apiladas pasan a dos columnas enfrentadas por una flecha
+// (`ImpactColumns`) y la barra de delta se reemplaza por el medidor de zonas
+// (`ZoneGauge`). Por eso hay componentes nuevos en vez de ramas: el árbol es
+// otro. `ImpactRow` e `ImpactBar` quedan intactos para la pantalla VIVA, que
+// monta estos mismos archivos sin provider y cae a `classic`.
 import { useEffect } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +20,20 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
+import Svg, { Path } from 'react-native-svg'
+import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+
+/** Zonas del medidor, en los términos del handoff: sana ≤30%, media 30-50%,
+ *  alta >50% del sueldo. NO son los umbrales viejos del `HealthBadge`
+ *  (50/70): el medidor codifica 30/50 y el caption dice "límite sano 30%",
+ *  así que en la piel neo mandan estos y la badge se alinea a ellos vía
+ *  `zone`. La rama classic conserva sus cortes de siempre. */
+export type ImpactZone = 'sana' | 'media' | 'alta'
+
+export function zoneForPct(pct: number): ImpactZone {
+  return pct > 50 ? 'alta' : pct > 30 ? 'media' : 'sana'
+}
 
 interface ImpactRowProps {
   label: string
@@ -74,10 +94,264 @@ export function ImpactRow({
   )
 }
 
-export function HealthBadge({ pct }: { pct: number }) {
+/** Columna ANTES o AHORA del bloque de impacto (sólo `neo`). La de la derecha
+ *  alinea a la derecha; el ancho lo reparten con `flex:1`, así el par queda
+ *  centrado sobre la flecha sin medir nada. */
+function ImpactColumn({
+  neo,
+  align,
+  label,
+  labelInk,
+  value,
+  valueInk,
+  valueSize,
+  sub,
+}: {
+  neo: FijosNeoSkin
+  align: 'left' | 'right'
+  label: string
+  labelInk: string
+  value: string
+  valueInk: string
+  valueSize: number
+  sub: React.ReactNode
+}) {
+  const textAlign = align
+  return (
+    <View style={{ flex: 1 }}>
+      <Text
+        style={[
+          styles.colLabel,
+          { color: labelInk, fontFamily: neo.font('800'), textAlign },
+        ]}
+      >
+        {label}
+      </Text>
+      <Text
+        style={[
+          styles.colValue,
+          {
+            color: valueInk,
+            fontSize: valueSize,
+            fontFamily: neo.font('900'),
+            textAlign,
+          },
+        ]}
+      >
+        {value}
+      </Text>
+      {sub}
+    </View>
+  )
+}
+
+export interface ImpactColumnsProps {
+  beforeLabel: string
+  afterLabel: string
+  beforeValue: string
+  afterValue: string
+  /** Ausentes cuando no hay sueldo con el que calcular el porcentaje. */
+  beforePctText?: string
+  afterPctText?: string
+  deltaPctText?: string
+}
+
+export function ImpactColumns(props: ImpactColumnsProps) {
+  const skin = useFijosSkin()
+  if (skin.kind !== 'neo') return null
+  const neo = skin
+  const {
+    beforeLabel,
+    afterLabel,
+    beforeValue,
+    afterValue,
+    beforePctText,
+    afterPctText,
+    deltaPctText,
+  } = props
+  return (
+    <View style={styles.columns}>
+      <ImpactColumn
+        neo={neo}
+        align="left"
+        label={beforeLabel}
+        labelInk={neo.faintInk}
+        value={beforeValue}
+        // El ANTES va de-enfatizado en tinta SUB aunque el peso sea 900: el
+        // contraste lo hace el color, no el grosor. Así el AHORA gana sin
+        // que el par pierda simetría tipográfica.
+        valueInk={neo.mutedInk}
+        valueSize={17}
+        sub={
+          beforePctText != null ? (
+            <Text
+              style={[
+                styles.colSub,
+                { color: neo.faintInk, fontFamily: neo.font('800'), textAlign: 'left' },
+              ]}
+            >
+              {beforePctText}
+            </Text>
+          ) : null
+        }
+      />
+      <View style={styles.arrow}>
+        <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M5 12h13M12 6l6 6-6 6"
+            stroke={neo.faintInk}
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+      <ImpactColumn
+        neo={neo}
+        align="right"
+        label={afterLabel}
+        labelInk={neo.add.accentGreen}
+        value={afterValue}
+        valueInk={neo.ink.title}
+        valueSize={20}
+        sub={
+          afterPctText != null ? (
+            // Porcentaje y delta en UNA línea: el `+1pp` es un modificador
+            // del porcentaje, no un dato aparte. Nunito son faces estáticas
+            // por peso, así que el <Text> anidado pisa familia junto al peso.
+            <Text
+              style={[
+                styles.colSub,
+                {
+                  color: neo.add.accentGreen,
+                  fontFamily: neo.font('900'),
+                  fontWeight: '900',
+                  textAlign: 'right',
+                },
+              ]}
+            >
+              {afterPctText}
+              {deltaPctText != null ? (
+                <Text
+                  style={{
+                    color: neo.add.accentClay,
+                    fontFamily: neo.font('900'),
+                    fontWeight: '900',
+                  }}
+                >
+                  {' '}
+                  {deltaPctText}
+                </Text>
+              ) : null}
+            </Text>
+          ) : null
+        }
+      />
+    </View>
+  )
+}
+
+/** Medidor de zonas: track de 9px con los tramos 30/20/50, dos ticks en los
+ *  cortes y la perilla en el porcentaje actual. Reemplaza a `ImpactBar` en la
+ *  piel neo — el handoff no dibuja ninguna barra dentro de la card de
+ *  impacto, dibuja ésta dentro del bloque libre. */
+export function ZoneGauge({ pct }: { pct: number }) {
+  const skin = useFijosSkin()
+  if (skin.kind !== 'neo') return null
+  const g = skin.add.gauge
+  const clamped = Math.max(0, Math.min(100, pct))
+  return (
+    <View style={styles.gaugeWrap}>
+      <View
+        style={[
+          styles.gaugeTrack,
+          { height: g.height, borderRadius: g.radius, boxShadow: g.shadow },
+        ]}
+      >
+        {[30, 20, 50].map((w, i) => (
+          <View key={w} style={{ flex: w, backgroundColor: g.zones[i] }} />
+        ))}
+      </View>
+      {[30, 50].map((at) => (
+        <View
+          key={at}
+          style={[
+            styles.gaugeTick,
+            {
+              left: `${at}%`,
+              marginLeft: -g.tickWidth / 2,
+              width: g.tickWidth,
+              height: g.height,
+              marginTop: -g.height / 2,
+              backgroundColor: g.tickColor,
+              opacity: g.tickOpacity,
+            },
+          ]}
+        />
+      ))}
+      <View
+        style={[
+          styles.gaugeKnob,
+          {
+            left: `${clamped}%`,
+            marginLeft: -g.knob.width / 2,
+            marginTop: -g.knob.height / 2,
+            width: g.knob.width,
+            height: g.knob.height,
+            borderRadius: g.knob.radius,
+            backgroundColor: g.knob.background,
+            boxShadow: g.knob.shadow,
+          },
+        ]}
+      />
+    </View>
+  )
+}
+
+export function HealthBadge({ pct, zone }: { pct: number; zone?: ImpactZone }) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
   const { t } = useTranslation()
   const tone: 'alto' | 'medio' | 'sano' = pct > 70 ? 'alto' : pct > 50 ? 'medio' : 'sano'
+  if (skin.kind === 'neo') {
+    // En neo la badge sigue el modelo del medidor (30/50), no sus cortes
+    // viejos: badge y caption viven en el mismo bloque y decir "Sano" con la
+    // perilla en el tramo ámbar sería contradecirse a 20px de distancia.
+    const z = zone ?? zoneForPct(pct)
+    const hb = skin.add.healthBadge
+    const ok = z === 'sana'
+    return (
+      <View
+        style={[
+          styles.healthBadge,
+          {
+            borderRadius: hb.radius,
+            paddingHorizontal: hb.padH,
+            paddingVertical: hb.padV,
+            backgroundColor: ok ? hb.okBackground : hb.warnBackground,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.healthBadgeText,
+            {
+              fontSize: hb.fontSize,
+              fontWeight: '900',
+              fontFamily: skin.font('900'),
+              color: ok ? hb.okInk : hb.warnInk,
+            },
+          ]}
+        >
+          {z === 'alta'
+            ? t('fijos:wizard.healthBadge.high')
+            : z === 'media'
+              ? t('fijos:wizard.healthBadge.mid')
+              : t('fijos:wizard.healthBadge.healthy')}
+        </Text>
+      </View>
+    )
+  }
   // V1 health badge palette — alto/medio/sano = high/mid/healthy fijos
   // ratio. AA verified for fg-on-bg en ambos modos.
   const palette = theme.isDark
@@ -195,4 +469,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   healthBadgeText: { fontSize: 11, fontWeight: '800' },
+  // ── neo ────────────────────────────────────────────────────────────────
+  columns: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 13 },
+  colLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.95 },
+  colValue: { fontWeight: '900', marginTop: 2 },
+  colSub: { fontSize: 11, fontWeight: '800' },
+  arrow: { flexGrow: 0, flexShrink: 0 },
+  // La perilla mide 17px sobre un track de 9: SOBRESALE 4px arriba y abajo.
+  // El wrapper no puede clipear (por eso el `overflow:'hidden'` vive en el
+  // track, no acá) y el bloque que lo contiene tiene que darle ese aire.
+  gaugeWrap: { position: 'relative', marginTop: 12 },
+  gaugeTrack: { flexDirection: 'row', overflow: 'hidden' },
+  gaugeTick: { position: 'absolute', top: '50%' },
+  gaugeKnob: { position: 'absolute', top: '50%' },
 })
