@@ -127,14 +127,20 @@
     "revertPayment": "Revertir pago",
     "revertPaymentHint": "Deshace el pago: borra el movimiento y vuelve el fijo a pendiente.",
     "editFijo": "Editar fijo",
-    "edit": "Editar"
+    "edit": "Editar",
+    "deleteFijo": "Eliminar fijo",
+    "delete": "Eliminar",
+    "deleteHint": "Elimina el fijo y todo su historial"
   },
   "trendCopy": {
     "keepsPrice": "Mantiene el precio",
     "wentUp": "Subió {{pct}}% desde el último pago",
     "wentDown": "Bajó {{pct}}% desde el último pago",
     "deltaOverPayments": "{{delta}}% en {{count}} pagos",
-    "comparisonPrevious": "Comparación con el pago anterior"
+    "comparisonPrevious": "Comparación con el pago anterior",
+    "noComparison": "Primer pago registrado",
+    "noComparisonSub": "Todavía no hay con qué comparar",
+    "noChangeOverPayments": "Sin cambios en {{count}} pagos"
   },
   "dueLabel": {
     "noDate": "Sin fecha programada",

@@ -1478,8 +1478,13 @@ function FijosTicker({ s, items, paused }: { s: FijosSpec; items: FijosTickerIte
       translateX.value = 0
       return
     }
-    translateX.value = -shiftWidth
-    translateX.value = withRepeat(withTiming(0, { duration: decorativeDurations.tickerLoop, easing: Easing.linear }), -1, false)
+    // Sentido DERECHA → IZQUIERDA (fallo del owner 2026-07-30). Antes iba de
+    // `-shiftWidth` a `0`, o sea los chips entraban por la izquierda y salían
+    // por la derecha — al revés de cómo se lee un ticker. Ahora arranca en 0 y
+    // se desplaza a `-shiftWidth`: la lista duplicada hace que el loop sea
+    // igual de continuo en este sentido.
+    translateX.value = 0
+    translateX.value = withRepeat(withTiming(-shiftWidth, { duration: decorativeDurations.tickerLoop, easing: Easing.linear }), -1, false)
     return () => cancelAnimation(translateX)
   }, [reduced, paused, shiftWidth, translateX])
 

@@ -44,14 +44,45 @@ export function monthOfLabel(yyyyMm01: string): string {
  * a "Mantiene" para deltas chicos (< 1%) para no alarmar sobre ruido
  * de redondeo.
  */
-export function trendCopyLabel(deltaPct: number): string {
-  if (Math.abs(deltaPct) < 1) return i18n.t('fijos:trendCopy.keepsPrice')
+/**
+ * Estados de la tendencia. Son TRES, no dos:
+ *
+ *   · `no-comparison` — no hay pagos anteriores contra los que comparar. El
+ *     `priceHistory` es `[...pagosPrevios, montoActual]`, así que con menos de
+ *     2 puntos el único "punto" es el monto de hoy. Antes caía en el mismo
+ *     branch que "sin cambios" y afirmaba "Mantiene el precio" sobre una
+ *     comparación que no existe.
+ *   · `flat` — hay pagos previos y el precio no se movió.
+ *   · `up` / `down` — se movió.
+ */
+export type TrendState = 'no-comparison' | 'flat' | 'up' | 'down'
+
+export function trendState(history: number[], deltaPct: number | null): TrendState {
+  if (history.length < 2 || deltaPct == null) return 'no-comparison'
+  // Sin variación REAL entre los puntos: aunque haya varios pagos, si todos
+  // valen lo mismo no hay curva que dibujar (la spark devuelve null) y el
+  // copy tiene que decir eso y no insinuar un gráfico que no está.
+  const min = Math.min(...history)
+  const max = Math.max(...history)
+  if (max === min || Math.abs(deltaPct) < 1) return 'flat'
+  return deltaPct > 0 ? 'up' : 'down'
+}
+
+export function trendCopyLabel(deltaPct: number, state: TrendState = 'flat'): string {
+  if (state === 'no-comparison') return i18n.t('fijos:trendCopy.noComparison')
+  if (state === 'flat') return i18n.t('fijos:trendCopy.keepsPrice')
   return deltaPct > 0
     ? i18n.t('fijos:trendCopy.wentUp', { pct: Math.abs(deltaPct) })
     : i18n.t('fijos:trendCopy.wentDown', { pct: Math.abs(deltaPct) })
 }
 
-export function trendCopySubLabel(history: number[]): string {
+export function trendCopySubLabel(history: number[], state: TrendState = 'flat'): string {
+  if (state === 'no-comparison') return i18n.t('fijos:trendCopy.noComparisonSub')
+  // Precio estable: decir CUÁNTOS pagos se miraron es más informativo que
+  // "comparación con el pago anterior", que sugiere que hubo un delta.
+  if (state === 'flat' && history.length >= 2) {
+    return i18n.t('fijos:trendCopy.noChangeOverPayments', { count: history.length })
+  }
   // Si hay 3+ puntos, mostramos contexto del rango histórico: "del último
   // pago vs el primero registrado". Solo 2 puntos = "vs el anterior".
   if (history.length >= 3) {

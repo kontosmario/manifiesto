@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -22,12 +23,22 @@ export function InlinePayButton({
   status,
   pressScale,
   onPress,
+  fullWidth = false,
 }: {
   status: 'pending' | 'overdue'
   pressScale: ReturnType<typeof usePressScale>
   onPress: () => void
+  /**
+   * CTA de ancho completo, para la card EXPANDIDA. En la fila superior del
+   * handoff el pill convive con el monto a 21/900 y no queda ancho para el
+   * nombre (medido: 47px disponibles, "Netflix" necesita ~75). El handoff ya
+   * usa un CTA de ancho completo abajo de la card ("Editar" en pendiente,
+   * acción doble en pagada), así que Pagar baja a ese slot al expandir.
+   */
+  fullWidth?: boolean
 }) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
   const { t } = useTranslation()
   const isOverdue = status === 'overdue'
 
@@ -40,12 +51,24 @@ export function InlinePayButton({
       accessibilityRole="button"
       accessibilityLabel={isOverdue ? t('fijos:row.payOverdue') : t('fijos:row.pay')}
       accessibilityHint={t('fijos:row.payHint')}
-      style={styles.inlinePayWrap}
+      style={[styles.inlinePayWrap, fullWidth ? styles.fullWidthWrap : null]}
     >
       <Animated.View
         style={[
           styles.inlinePayBtn,
           { backgroundColor: theme.colors.text },
+          // `neo` conserva el MISMO fill neutro — el owner no usa fills
+          // saturados para acciones. Lo único que cambia es que el pill deja
+          // de ser una calcomanía plana y se levanta como el resto del kit.
+          skin.kind === 'neo'
+            ? {
+                borderRadius: skin.pay.radius,
+                boxShadow: skin.pay.shadow,
+                paddingHorizontal: skin.pay.padH,
+                paddingVertical: skin.pay.padV,
+              }
+            : null,
+          fullWidth ? styles.fullWidthBtn : null,
           pressScale.animatedStyle,
         ]}
       >
@@ -84,4 +107,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.2,
   },
+  // Ancho completo: el wrap pierde el margen izquierdo (ya no está al lado
+  // del monto, es una fila propia) y el botón se estira.
+  fullWidthWrap: { marginLeft: 0, alignSelf: 'stretch' },
+  fullWidthBtn: { alignSelf: 'stretch', paddingVertical: 13 },
 })

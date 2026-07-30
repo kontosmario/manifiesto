@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
@@ -17,11 +18,35 @@ export function InfoLine({
   label: string
   theme: ReturnType<typeof useThemeTokens>
 }) {
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   return (
-    <View style={styles.infoLine}>
-      <MaterialIcons name={icon} size={14} color={theme.colors.textMuted} />
+    <View
+      style={[
+        styles.infoLine,
+        // El handoff da a estas líneas MUCHO más aire (gap 11, 7px arriba y
+        // abajo) y un ícono verde de 18: leen como una lista de datos, no
+        // como metadata apretada.
+        neo
+          ? {
+              gap: neo.detail.infoGap,
+              paddingVertical: neo.detail.infoPadV,
+              alignItems: 'center',
+            }
+          : null,
+      ]}
+    >
+      <MaterialIcons
+        name={icon}
+        size={neo ? 18 : 14}
+        color={neo ? neo.detail.sectionLabelInk : theme.colors.textMuted}
+      />
       <Text
-        style={[styles.infoLineText, { color: theme.colors.text }]}
+        style={[
+          styles.infoLineText,
+          { color: theme.colors.text },
+          neo ? { ...neo.detail.infoText, color: neo.ink.title, lineHeight: 19 } : null,
+        ]}
         numberOfLines={2}
       >
         {label}

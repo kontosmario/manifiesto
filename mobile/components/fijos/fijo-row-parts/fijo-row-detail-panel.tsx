@@ -7,13 +7,16 @@ import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { InfoLine } from './info-line'
+import { InlinePayButton } from './inline-pay-button'
 import {
   frequencyLabel,
   nextDueLabel,
   trendCopyColor,
   trendCopyLabel,
   trendCopySubLabel,
+  trendState,
 } from './fijo-row-helpers'
 import type { AccentPalette } from './fijo-row-styling'
 
@@ -25,7 +28,20 @@ interface FijoRowDetailPanelProps {
   accent: AccentPalette
   categoryName: string
   onEdit?: (id: string) => void
+  /**
+   * Presente SOLO cuando la card está expandida con la piel `neo`: ahí el pill
+   * "Pagar" sale de la fila superior (no entraba el nombre) y aparece acá como
+   * CTA primario de ancho completo, en el mismo slot donde el handoff pone
+   * "Editar" / la acción doble de pagada.
+   */
+  onMarkPaid?: (id: string) => void
   onRevertPaid?: (paymentId: string) => void
+  /**
+   * Eliminar el fijo. Va SEPARADO de la fila de acciones y con menos peso
+   * visual: es destructivo e irreversible, así que no comparte prominencia
+   * con Editar. La pantalla huésped confirma con `Alert` antes de mutar.
+   */
+  onDelete?: (id: string) => void
 }
 
 /**
@@ -44,11 +60,26 @@ export function FijoRowDetailPanel({
   accent,
   categoryName,
   onEdit,
+  onMarkPaid,
   onRevertPaid,
+  onDelete,
 }: FijoRowDetailPanelProps) {
   const theme = useThemeTokens()
+  const skin = useFijosSkin()
+  /** Atajo: `null` en classic, el skin resuelto en neo. Mantiene las ramas
+   *  legibles sin repetir el discriminante en cada style array. */
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const actionSecondaryPress = usePressScale({ pressedScale: 0.96 })
+  const payPress = usePressScale({ pressedScale: 0.96 })
+  const deletePress = usePressScale({ pressedScale: 0.96 })
+  /**
+   * Estado de la tendencia. La sección entera se OCULTA cuando no hay con qué
+   * comparar: antes se renderizaba igual, con el slot de la spark vacío (la
+   * spark devuelve null si no hay variación) al lado de un "Mantiene el
+   * precio" que afirmaba una comparación inexistente.
+   */
+  const trend = trendState(fijo.priceHistory, fijo.trendDeltaPct)
 
   return (
     <Animated.View
@@ -65,30 +96,88 @@ export function FijoRowDetailPanel({
         RESTANTE". Cifra grande para anclar el ojo + sublabel
         con % del sueldo (cuando hay sueldo configurado).
       */}
-      <View style={[styles.statsHero, { backgroundColor: accent.bg }]}>
-        {/* Accent stripe — barra vertical 3pt en el left edge. */}
+      <View
+        style={[
+          styles.statsHero,
+          { backgroundColor: accent.bg },
+          neo
+            ? {
+                backgroundColor: neo.detail.stats(status).background,
+                boxShadow: neo.detail.stats(status).ring,
+                borderRadius: neo.detail.statsRadius,
+                paddingVertical: neo.detail.statsPadV,
+                paddingLeft: neo.detail.statsPadH,
+                paddingRight: neo.detail.statsPadH,
+                gap: 0,
+              }
+            : null,
+        ]}
+      >
+        {/* Accent stripe — barra vertical en el left edge (3pt classic, 5 neo). */}
         <View
           pointerEvents="none"
-          style={[styles.statsAccentStripe, { backgroundColor: accent.solid }]}
+          style={[
+            styles.statsAccentStripe,
+            { backgroundColor: accent.solid },
+            neo
+              ? { width: neo.detail.stripeWidth, backgroundColor: neo.detail.stats(status).stripe }
+              : null,
+          ]}
         />
-        <Text style={[styles.statsEyebrow, { color: accent.solid }]}>
+        <Text
+          style={[
+            styles.statsEyebrow,
+            { color: accent.solid },
+            neo
+              ? {
+                  ...neo.detail.eyebrow,
+                  color: neo.detail.stats(status).stripe,
+                  paddingLeft: neo.detail.statsInnerPadLeft,
+                }
+              : null,
+          ]}
+        >
           {fijo.kind === 'installment'
             ? t('fijos:detailPanel.totalDebtEyebrow')
             : fijo.kind === 'debt'
               ? t('fijos:detailPanel.remainingDebtEyebrow')
               : t('fijos:detailPanel.annualEyebrow')}
         </Text>
-        <Text style={[styles.statsValue, { color: theme.colors.text }]}>
+        <Text
+          style={[
+            styles.statsValue,
+            { color: theme.colors.text },
+            neo
+              ? {
+                  ...neo.detail.value,
+                  color: neo.ink.title,
+                  marginTop: 3,
+                  paddingLeft: neo.detail.statsInnerPadLeft,
+                }
+              : null,
+          ]}
+        >
           {formatMoney(fijo.annualCost)}
         </Text>
         {fijo.pctOfIncome != null && fijo.pctOfIncome > 0 ? (
-          <View style={styles.statsPctRow}>
+          <View
+            style={[
+              styles.statsPctRow,
+              neo ? { gap: 6, marginTop: 4, paddingLeft: neo.detail.statsInnerPadLeft } : null,
+            ]}
+          >
             <MaterialIcons
               name="account-balance-wallet"
-              size={11}
-              color={theme.colors.textMuted}
+              size={neo ? 15 : 11}
+              color={neo ? neo.detail.stats(status).stripe : theme.colors.textMuted}
             />
-            <Text style={[styles.statsPctText, { color: theme.colors.textMuted }]}>
+            <Text
+              style={[
+                styles.statsPctText,
+                { color: theme.colors.textMuted },
+                neo ? { ...neo.detail.pct, color: neo.detail.stats(status).stripe } : null,
+              ]}
+            >
               {t('fijos:detailPanel.pctOfSalary', { pct: fijo.pctOfIncome })}
             </Text>
           </View>
@@ -98,26 +187,58 @@ export function FijoRowDetailPanel({
       {/*
         Tendencia. Solo cuando hay >= 2 puntos de historia.
       */}
-      {fijo.priceHistory.length >= 2 && fijo.trendDeltaPct != null ? (
+      {trend !== 'no-comparison' ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+          <Text
+            style={[
+              styles.sectionEyebrow,
+              { color: theme.colors.textMuted },
+              neo ? { ...neo.detail.sectionLabel, color: neo.detail.sectionLabelInk } : null,
+            ]}
+          >
             {t('fijos:detailPanel.trendEyebrow')}
           </Text>
-          <View style={styles.trendRow}>
-            <View style={styles.trendSparkSlot}>
-              <FijoTrendSpark points={fijo.priceHistory} />
-            </View>
+          <View
+            style={[
+              styles.trendRow,
+              neo
+                ? {
+                    borderRadius: neo.detail.trendWell.radius,
+                    boxShadow: neo.detail.trendWell.shadow,
+                    paddingVertical: neo.detail.trendWell.padV,
+                    paddingHorizontal: neo.detail.trendWell.padH,
+                    gap: neo.detail.trendWell.gap,
+                    marginTop: 8,
+                  }
+                : null,
+            ]}
+          >
+            {/* El slot solo existe si hay curva. `FijoTrendSpark` devuelve
+                null sin variación de precio, y reservar 70×30 igual dejaba un
+                hueco al lado del texto que leía como gráfico roto. */}
+            {trend === 'up' || trend === 'down' ? (
+              <View style={styles.trendSparkSlot}>
+                <FijoTrendSpark points={fijo.priceHistory} />
+              </View>
+            ) : null}
             <View style={styles.trendCopySlot}>
               <Text
                 style={[
                   styles.trendCopyMain,
-                  { color: trendCopyColor(fijo.trendDeltaPct, theme.isDark) },
+                  { color: trendCopyColor(fijo.trendDeltaPct ?? 0, theme.isDark) },
+                  neo ? { ...neo.detail.trendTitle, color: neo.ink.title } : null,
                 ]}
               >
-                {trendCopyLabel(fijo.trendDeltaPct)}
+                {trendCopyLabel(fijo.trendDeltaPct ?? 0, trend)}
               </Text>
-              <Text style={[styles.trendCopySub, { color: theme.colors.textMuted }]}>
-                {trendCopySubLabel(fijo.priceHistory)}
+              <Text
+                style={[
+                  styles.trendCopySub,
+                  { color: theme.colors.textMuted },
+                  neo ? { ...neo.detail.trendSub, color: neo.detail.trendSubInk } : null,
+                ]}
+              >
+                {trendCopySubLabel(fijo.priceHistory, trend)}
               </Text>
             </View>
           </View>
@@ -126,7 +247,13 @@ export function FijoRowDetailPanel({
 
       {/* Este pago. */}
       <View style={styles.section}>
-        <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+        <Text
+            style={[
+              styles.sectionEyebrow,
+              { color: theme.colors.textMuted },
+              neo ? { ...neo.detail.sectionLabel, color: neo.detail.sectionLabelInk } : null,
+            ]}
+          >
           {t('fijos:detailPanel.thisPaymentEyebrow')}
         </Text>
         <InfoLine
@@ -159,7 +286,13 @@ export function FijoRowDetailPanel({
       {/* Historial — solo cuando hay >= 1 pago lifetime registrado. */}
       {fijo.paymentsLifetime > 0 ? (
         <View style={styles.section}>
-          <Text style={[styles.sectionEyebrow, { color: theme.colors.textMuted }]}>
+          <Text
+            style={[
+              styles.sectionEyebrow,
+              { color: theme.colors.textMuted },
+              neo ? { ...neo.detail.sectionLabel, color: neo.detail.sectionLabelInk } : null,
+            ]}
+          >
             {t('fijos:detailPanel.historyEyebrow')}
           </Text>
           <InfoLine
@@ -178,6 +311,19 @@ export function FijoRowDetailPanel({
               theme={theme}
             />
           ) : null}
+        </View>
+      ) : null}
+
+      {/* CTA primario "Pagar" — ancho completo, arriba de las acciones
+          secundarias. Solo llega con handler desde la card expandida `neo`. */}
+      {onMarkPaid && (status === 'pending' || status === 'overdue') ? (
+        <View style={styles.payCtaRow}>
+          <InlinePayButton
+            fullWidth
+            status={status}
+            pressScale={payPress}
+            onPress={() => onMarkPaid(fijo.id)}
+          />
         </View>
       ) : null}
 
@@ -202,6 +348,19 @@ export function FijoRowDetailPanel({
                     : 'rgba(242,167,140,0.18)',
                   borderColor: theme.isDark ? '#F2A78C' : '#B84014',
                 },
+                // Handoff: OUTLINE puro (anillo de 1.5px del mismo color), sin
+                // relleno. Es la acción de deshacer, no la principal.
+                neo
+                  ? {
+                      backgroundColor: 'transparent',
+                      borderWidth: 0,
+                      borderRadius: neo.detail.cta.radius,
+                      paddingVertical: neo.detail.cta.padV,
+                      // Anillo del handoff + el MISMO relieve que el pill de
+                      // Pagar: los dos shadows conviven en una sola prop.
+                      boxShadow: `inset 0 0 0 1.5px ${neo.detail.ctaRevertInk}, ${neo.pay.shadow}`,
+                    }
+                  : null,
                 actionSecondaryPress.animatedStyle,
               ]}
             >
@@ -209,12 +368,13 @@ export function FijoRowDetailPanel({
                 <MaterialIcons
                   name="undo"
                   size={14}
-                  color={theme.isDark ? '#F2A78C' : '#B84014'}
+                  color={neo ? neo.detail.ctaRevertInk : theme.isDark ? '#F2A78C' : '#B84014'}
                 />
                 <Text
                   style={[
                     styles.actionSecondaryText,
                     { color: theme.isDark ? '#F2A78C' : '#B84014' },
+                    neo ? { ...neo.detail.cta, color: neo.detail.ctaRevertInk } : null,
                   ]}
                 >
                   {t('fijos:detailPanel.revertPayment')}
@@ -236,16 +396,76 @@ export function FijoRowDetailPanel({
               style={[
                 styles.actionSecondary,
                 { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
+                // Handoff: relleno tintado verde, SIN borde.
+                neo
+                  ? {
+                      backgroundColor: neo.detail.ctaEditBackground,
+                      borderWidth: 0,
+                      borderRadius: neo.detail.cta.radius,
+                      paddingVertical: neo.detail.cta.padV,
+                      boxShadow: neo.pay.shadow,
+                    }
+                  : null,
                 actionSecondaryPress.animatedStyle,
               ]}
             >
-              <Text style={[styles.actionSecondaryText, { color: theme.colors.text }]}>
+              <Text
+                style={[
+                  styles.actionSecondaryText,
+                  { color: theme.colors.text },
+                  neo ? { ...neo.detail.cta, color: neo.detail.ctaEditInk } : null,
+                ]}
+              >
                 {t('fijos:detailPanel.edit')}
               </Text>
             </Animated.View>
           </Pressable>
         ) : null}
       </View>
+
+      {/* Eliminar — fila propia, sin fill y en el rojo del sistema. Es
+          destructivo e irreversible: no debe competir en peso con Editar ni
+          quedar a un dedo de distancia del CTA de pago. */}
+      {onDelete ? (
+        <Pressable
+          onPress={() => onDelete(fijo.id)}
+          onPressIn={deletePress.onPressIn}
+          onPressOut={deletePress.onPressOut}
+          accessibilityRole="button"
+          accessibilityLabel={t('fijos:detailPanel.deleteFijo')}
+          accessibilityHint={t('fijos:detailPanel.deleteHint')}
+        >
+          <Animated.View
+            style={[
+              styles.actionDelete,
+              neo
+                ? {
+                    borderRadius: neo.detail.cta.radius,
+                    paddingVertical: neo.detail.cta.padV,
+                    boxShadow: neo.pay.shadow,
+                    backgroundColor: neo.row.background,
+                    marginTop: 6,
+                  }
+                : null,
+              deletePress.animatedStyle,
+            ]}
+          >
+            <MaterialIcons
+              name="delete-outline"
+              size={15}
+              color={theme.isDark ? '#F18C8C' : '#A8211B'}
+            />
+            <Text
+              style={[
+                styles.actionSecondaryText,
+                { color: theme.isDark ? '#F18C8C' : '#A8211B' },
+              ]}
+            >
+              {t('fijos:detailPanel.deleteFijo')}
+            </Text>
+          </Animated.View>
+        </Pressable>
+      ) : null}
     </Animated.View>
   )
 }
@@ -318,6 +538,15 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   trendCopySub: { fontSize: 11, fontWeight: '500' },
+  payCtaRow: { marginTop: 10, marginBottom: 2 },
+  actionDelete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    marginTop: 2,
+  },
   actionsRow: { flexDirection: 'row', gap: 6, marginTop: 4 },
   actionFullWidthWrap: { flex: 1 },
   actionSecondary: {

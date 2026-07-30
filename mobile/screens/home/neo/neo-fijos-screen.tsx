@@ -35,8 +35,18 @@
  * verdad: NO es reversible desde acá y además descongela el saldo de Home.
  * Por eso va con `Alert` de confirmación explícito.
  */
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  type ScrollView,
+} from 'react-native'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { router } from 'expo-router'
@@ -49,6 +59,10 @@ import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payme
 // comportamiento pedido. Reusarlo además elimina el colapso de las ~11
 // categorías reales a las 3 llaves del kit: van todas con su nombre e ícono.
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
+// La piel del rediseño para esa lista. El provider es lo ÚNICO que la separa
+// de la que dibuja la pantalla viva: sin él, los mismos componentes resuelven
+// sus tokens de siempre (ver el docblock de fijos-skin.tsx).
+import { FijosSkinProvider } from '@/components/fijos/fijos-skin'
 import {
   FijosAvisos,
   FijosHeader,
@@ -65,11 +79,12 @@ import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
 import {
+  useDeleteFixedExpense,
   useRecordFixedExpensePayment,
   useRevertFixedExpensePayment,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import { triggerHaptic } from '@/lib/haptics'
-import { useFijosController } from '@/features/fijos/use-fijos-controller'
+import { useFijosController, type FijosTab } from '@/features/fijos/use-fijos-controller'
 import { useDismissedHikes } from '@/features/fijos/use-hike-dismiss-store'
 import {
   buildAvisosContent,
@@ -88,12 +103,14 @@ import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-exp
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 // NO se monta `useMonthlyAccounting`: la spec (§2.2/C4) lo pedía para
 // `daysIntoMonth`, pero el review del view-model —posterior— estableció que el
 // header necesita el día DEL CICLO (`computeDaysIntoCycle`), no el del mes
 // calendario. Con un ciclo semanal, `daysIntoMonth` produciría
 // "Semana del 6 jul → 12 jul · día 22". El view-model supersede a la spec acá.
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { motionDurations, motionEasings } from '@/lib/motion'
 import { toast } from '@/lib/toast-bus'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeMode } from '@/theme/theme-provider'
@@ -103,6 +120,27 @@ import { getErrorMessage } from '@/utils/error-message'
  *  la cantidad de chips y el owner aprobaría una sensación que el usuario real
  *  no va a tener. El excedente se reporta en el banner de dev. */
 const TICKER_CAP = 8
+
+/** Aire sobre el título al auto-scrollear a la sección al cambiar de tab. */
+const SECTION_SCROLL_PADDING = 8
+
+/**
+ * `measure` existe en runtime en todo host component (viene de `NativeMethods`)
+ * pero los tipos de `ScrollView` no lo exponen. Se tipa la forma mínima que se
+ * usa en vez de castear a `any`, así el callback conserva sus tipos.
+ */
+type Measurable = {
+  measure?: (
+    callback: (
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      pageX: number,
+      pageY: number,
+    ) => void,
+  ) => void
+}
 
 interface NeoFijosScreenProps {
   userId: string
@@ -125,10 +163,83 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   /** Fijo cuyo sheet de confirmación de precio está abierto (2do+ pago). */
   const [confirmFor, setConfirmFor] = useState<FijoItem | null>(null)
 
+  // ── Auto-scroll al cambiar de tab ───────────────────────────────────────
+  // Cambiar de Vencidos a Pendientes puede cambiar la altura de la sección
+  // entera (8 fijos vs 1), así que el usuario se queda mirando el hero o
+  // vacío. Al cambiar de tab llevamos "TODOS TUS FIJOS" al tope: el ancla es
+  // el TÍTULO, no la primera fila, para que la sección se lea completa desde
+  // su encabezado.
+  const scrollRef = useRef<ScrollView>(null)
+  const sectionRef = useRef<View>(null)
+  /**
+   * Offset Y de la sección, cacheado por `onLayout`. Es solo el FALLBACK: el
+   * scroll real vuelve a medir contra el ScrollView en el momento.
+   *
+   * Por qué no alcanza el cacheado: `onLayout` corre cuando la sección se
+   * monta, con el hero y los Avisos todavía en su altura de carga. Después
+   * llegan los datos, el contenido de arriba crece ~600px y la sección baja —
+   * pero `onLayout` no siempre vuelve a disparar cuando lo único que cambia es
+   * la POSICIÓN del view. Verificado: el valor cacheado quedaba en ~260
+   * cuando la sección estaba en ~856, y el scroll aterrizaba a media página.
+   */
+  const sectionYRef = useRef(0)
+  const handleSectionLayout = useCallback((e: LayoutChangeEvent) => {
+    sectionYRef.current = e.nativeEvent.layout.y
+  }, [])
+
+  /** Offset de scroll vivo — lo necesita el cálculo del delta de abajo. */
+  const scrollYRef = useRef(0)
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollYRef.current = e.nativeEvent.contentOffset.y
+  }, [])
+
+  /**
+   * Lleva "TODOS TUS FIJOS" al tope del área visible.
+   *
+   * Mide en PANTALLA los dos nodos (la sección y el propio ScrollView) y
+   * scrollea por la diferencia. Se descartaron dos caminos más simples:
+   *   · el `y` de `onLayout` — queda viejo (ver `sectionYRef`);
+   *   · `measureLayout` contra el ScrollView — devuelve coordenadas relativas
+   *     a su caja VISIBLE, no al contenido, así que con la lista scrolleada da
+   *     un número que no sirve para `scrollTo`.
+   * Restar el `pageY` del ScrollView en vez de usar 0 hace que el cálculo sea
+   * correcto aunque arriba haya safe-area o cualquier chrome.
+   */
+  const scrollToSection = useCallback(() => {
+    const scroll = scrollRef.current
+    const section = sectionRef.current as View & Measurable | null
+    if (!scroll) return
+    const go = (y: number) => scroll.scrollTo({ y: Math.max(0, y), animated: true })
+    const scrollMeasurable = scroll as unknown as Measurable
+    if (!section?.measure || !scrollMeasurable.measure) {
+      go(sectionYRef.current - SECTION_SCROLL_PADDING)
+      return
+    }
+    scrollMeasurable.measure((_sx, _sy, _sw, _sh, _spx, scrollPageY) => {
+      section.measure?.((_x, _y, _w, _h, _px, sectionPageY) => {
+        const delta = sectionPageY - scrollPageY
+        go(scrollYRef.current + delta - SECTION_SCROLL_PADDING)
+      })
+    })
+  }, [])
+
   // ── Datos ───────────────────────────────────────────────────────────────
   // Casi todo es CACHE-HIT del cluster que ya arma el controller (mismos
   // queryKeys, mismos deps) → cero round-trips extra.
   const controller = useFijosController(familyId)
+  /** Espejo en ref: `handleSelectTab` tiene que ser estable (es prop de un
+   *  componente memoizado del kit) y el controller es objeto nuevo por render. */
+  const controllerRef = useRef(controller)
+  controllerRef.current = controller
+  /**
+   * Transición de altura de la sección. Cambiar de tab puede pasar de 8 fijos
+   * a 1, y sin esto el bloque saltaba de golpe mientras Avisos —que sí anima—
+   * se quedaba quieto: dos lenguajes de movimiento en la misma pantalla.
+   * Gateada como el resto: el primer attach NO debe interpolar (warp).
+   */
+  const sectionLayout = useGatedLayout(
+    LinearTransition.duration(motionDurations.standard).easing(motionEasings.standard),
+  )
   const payCycle = usePayCycle(familyId, { freeze: false })
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const dismissedHikes = useDismissedHikes()
@@ -358,6 +469,31 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   // ── Mutaciones de pago (ESCRITURAS REALES) ──────────────────────────────
   const recordPaymentMutation = useRecordFixedExpensePayment(familyId, userId)
   const revertPaymentMutation = useRevertFixedExpensePayment(familyId, userId)
+  const deleteMutation = useDeleteFixedExpense(familyId, userId)
+
+  /**
+   * El scroll dispara SOLO cuando el usuario toca una tab.
+   *
+   * No alcanza con "ignorar el primer render": el controller re-elige el tab
+   * activo por urgencia cuando llegan los datos y cuando una tab se queda sin
+   * ítems, así que `controller.tab` cambia SOLO por eso al entrar a la
+   * pantalla — y eso abría la vista ya scrolleada, escondiendo el hero y los
+   * Avisos. Por eso la señal es la intención del usuario (el tap), no el
+   * cambio de valor.
+   */
+  const tabPressedRef = useRef(false)
+  const handleSelectTab = useCallback(
+    (next: FijosTab) => {
+      tabPressedRef.current = true
+      controllerRef.current.setTab(next)
+    },
+    [],
+  )
+  useEffect(() => {
+    if (!tabPressedRef.current) return
+    tabPressedRef.current = false
+    scrollToSection()
+  }, [controller.tab, scrollToSection])
 
   // `useMutation` de RQ v5 devuelve un objeto NUEVO en cada render. Guardarlo en
   // ref evita que los `useCallback` de abajo lo lleven en deps y se reconstruyan
@@ -478,6 +614,46 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     router.push('/(app)/add-fixed-expense')
   }, [])
 
+  /** Editar — misma ruta y mismos params que la pantalla viva. */
+  const handleEdit = useCallback((fixedExpenseId: string) => {
+    void triggerHaptic('light')
+    router.push({
+      pathname: '/(app)/add-fixed-expense',
+      params: { id: fixedExpenseId },
+    })
+  }, [])
+
+  /**
+   * Eliminar — ESCRITURA REAL contra producción y NO reversible (se lleva el
+   * historial de pagos del fijo). Confirmación explícita antes de mutar, con
+   * el mismo copy y el mismo flujo de errores que la pantalla viva.
+   */
+  const handleDelete = useCallback(
+    (fixedExpenseId: string) => {
+      void triggerHaptic('warning')
+      Alert.alert(t('fijos:alerts.deleteTitle'), t('fijos:alerts.deleteMessage'), [
+        { text: t('common:actions.cancel'), style: 'cancel' },
+        {
+          text: t('common:actions.delete'),
+          style: 'destructive',
+          onPress: () => {
+            deleteMutation.mutate(fixedExpenseId, {
+              onError: (error: unknown) => {
+                void triggerHaptic('error')
+                Alert.alert(
+                  t('fijos:alerts.deleteFailedTitle'),
+                  getErrorMessage(error, t('states:error.server')),
+                )
+              },
+              onSuccess: () => void triggerHaptic('success'),
+            })
+          },
+        },
+      ])
+    },
+    [deleteMutation, t],
+  )
+
   /**
    * ESCRITURA REAL y NO reversible desde acá: ancla el ciclo y descongela el
    * saldo de Home. Por eso el `Alert` explícito antes de mutar.
@@ -527,7 +703,14 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   }
 
   return (
-    <Screen backgroundColor={s.bg} contentContainerStyle={styles.body} scrollable>
+    <Screen
+      backgroundColor={s.bg}
+      contentContainerStyle={styles.body}
+      onScroll={handleScroll}
+      scrollEventThrottle={32}
+      scrollRef={scrollRef}
+      scrollable
+    >
       <NeoFijosDevBanner
         activeFixedCount={activeFixedCount}
         avisosReason={avisosSelection.reason}
@@ -582,38 +765,48 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           componente colapsable de la pantalla viva. El kit dibuja una fila por
           categoría, sin expansión y sin acción por-fijo, así que no puede
           mostrar los fijos adentro de su categoría con su botón "Pagar". */}
-      <View style={fijosAvisosCategoriesSpacing}>
+      <View
+        onLayout={handleSectionLayout}
+        ref={sectionRef}
+        style={fijosAvisosCategoriesSpacing}
+      >
+        {/* El link "+ Agregar fijo" se sacó a pedido del owner (2026-07-30):
+            el alta ya está a un tap desde el botón de calendario del header y
+            desde el FAB, así que acá era una tercera puerta a lo mismo
+            compitiendo con el título de la sección. */}
         <View style={styles.categoriesHeaderRow}>
           <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>
             TODOS TUS FIJOS
           </Text>
-          <Pressable
-            accessibilityLabel="Agregar fijo"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={handleAddFijo}
-          >
-            <Text style={[styles.addFijoText, { color: s.addFijoInk }]}>+ Agregar fijo</Text>
-          </Pressable>
         </View>
         <FijosTabs
           activeTab={controller.tab}
           mode={mode}
-          onSelectTab={controller.setTab}
+          onSelectTab={handleSelectTab}
           pagadosCount={String(paidCount)}
           pendientesCount={String(pendingCount)}
           vencidosCount={String(overdueCount)}
         />
-        <View style={styles.categoryList}>
+        <Animated.View layout={sectionLayout} style={styles.categoryList}>
           {/* `controller.groups` SÍ está filtrado por el tab activo — igual que
               en la pantalla viva, así que las tabs filtran de verdad. */}
-          <FijoCategoryGroups
-            groups={controller.groups}
-            onMarkPaid={handleMarkPaid}
-            onRevertPaid={handleRevertPaid}
-            todayDay={summary.todayDay}
-          />
-        </View>
+          <FijosSkinProvider mode={mode}>
+            <FijoCategoryGroups
+              groups={controller.groups}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+              onMarkPaid={handleMarkPaid}
+              onRevertPaid={handleRevertPaid}
+              pendingFixedExpenseId={
+                deleteMutation.isPending ? (deleteMutation.variables ?? null) : null
+              }
+              // Gobierna el colapso inicial por tab (vencidos abre, el resto
+              // cierra) y separa la memoria de colapso entre tabs.
+              tab={controller.tab}
+              todayDay={summary.todayDay}
+            />
+          </FijosSkinProvider>
+        </Animated.View>
       </View>
       {/* Confirmación de precio para el 2do+ pago — mismo sheet que la viva. */}
       <ConfirmFixedPaymentSheet

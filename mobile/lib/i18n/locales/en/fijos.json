@@ -127,14 +127,20 @@
     "revertPayment": "Revert payment",
     "revertPaymentHint": "Undoes the payment: removes the expense and sets the fixed expense back to pending.",
     "editFijo": "Edit fixed expense",
-    "edit": "Edit"
+    "edit": "Edit",
+    "deleteFijo": "Delete fixed expense",
+    "delete": "Delete",
+    "deleteHint": "Deletes the fixed expense and all its history"
   },
   "trendCopy": {
     "keepsPrice": "Holds its price",
     "wentUp": "Up {{pct}}% since the last payment",
     "wentDown": "Down {{pct}}% since the last payment",
     "deltaOverPayments": "{{delta}}% over {{count}} payments",
-    "comparisonPrevious": "Compared with the previous payment"
+    "comparisonPrevious": "Compared with the previous payment",
+    "noComparison": "First payment recorded",
+    "noComparisonSub": "Nothing to compare against yet",
+    "noChangeOverPayments": "No changes across {{count}} payments"
   },
   "dueLabel": {
     "noDate": "No date scheduled",
