@@ -85,12 +85,42 @@ async function readManifest(key: string): Promise<ChunkManifest | null> {
 // persist on the web build keeps a "logged in once" web session from
 // living forever in a plaintext localStorage. The user re-auths on
 // each cold load, which on web is a single click.
+//
+// DEV EXCEPTION (2026-07-30): `expo start --web` is the preview harness for
+// the redesign work, and in-memory-only means EVERY full reload — a new
+// import, a bundle error, a hard navigation — drops the session and needs a
+// manual re-login. That made the loop unusable. In `__DEV__` on web only, the
+// session persists to localStorage instead.
+//
+// What this does NOT change:
+//   · native (iOS/Android) — still SecureStore/Keychain, both dev and prod;
+//   · the production web bundle — `__DEV__` is false there, so it stays
+//     in-memory-only and the threat model above holds unchanged.
+// The exposure is a refresh token in localStorage of the developer's own
+// browser, against a dev server on localhost. Accepted deliberately by the
+// owner; do not widen the guard to cover production.
 const memoryStore = new Map<string, string>()
 const isWeb = Platform.OS === 'web'
+const usesWebDevPersistence = isWeb && __DEV__
+
+function webDevStore(): Storage | null {
+  // `localStorage` can throw on access (Safari private mode, blocked
+  // third-party storage). Falling back to the in-memory map keeps the dev
+  // affordance from ever being the reason auth breaks.
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
 
 export const supabaseSecureStorage = {
   async getItem(key: string): Promise<string | null> {
-    if (isWeb) return memoryStore.get(key) ?? null
+    if (isWeb) {
+      const store = usesWebDevPersistence ? webDevStore() : null
+      if (store) return store.getItem(key)
+      return memoryStore.get(key) ?? null
+    }
 
     const manifest = await readManifest(key)
     if (!manifest) {
@@ -110,7 +140,9 @@ export const supabaseSecureStorage = {
 
   async setItem(key: string, value: string): Promise<void> {
     if (isWeb) {
-      memoryStore.set(key, value)
+      const store = usesWebDevPersistence ? webDevStore() : null
+      if (store) store.setItem(key, value)
+      else memoryStore.set(key, value)
       return
     }
 
@@ -142,6 +174,10 @@ export const supabaseSecureStorage = {
 
   async removeItem(key: string): Promise<void> {
     if (isWeb) {
+      const store = usesWebDevPersistence ? webDevStore() : null
+      if (store) store.removeItem(key)
+      // Siempre limpiar el map también: si `localStorage` empezó a fallar
+      // entre el setItem y el removeItem, el valor viejo quedaría vivo.
       memoryStore.delete(key)
       return
     }

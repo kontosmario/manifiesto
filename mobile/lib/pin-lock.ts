@@ -45,6 +45,7 @@
 // top costs ~20 lines and avoids the Node-stdlib dependency chain.
 
 import * as SecureStore from 'expo-secure-store'
+import { Platform } from 'react-native'
 import { sha256 } from 'js-sha256'
 import { getSecureRandomBytes } from '@/lib/secure-random'
 import {
@@ -456,6 +457,23 @@ export async function clearPin(): Promise<void> {
 }
 
 export async function getPinLockState(): Promise<{ isSet: boolean; lockedForMs: number }> {
+  // El PIN es una defensa NATIVA: todo su estado vive en SecureStore, que en
+  // web es un stub vacío (`ExpoSecureStore.web.ts` exporta `{}`), así que
+  // `getItemAsync` tira `TypeError` en vez de devolver null.
+  //
+  // Sin este guard la rejection escalaba de una forma nada obvia: es una de
+  // las 4 probes del `Promise.all` de `runProbes` (auth-flow-adapters), así
+  // que tumbaba las OTRAS TRES — incluida `supabase.auth.getSession()` — y el
+  // controller caía a su default seguro `hasSession: false`. Efecto neto en
+  // web: un usuario CON sesión válida aterrizaba siempre en welcome, sin una
+  // sola llamada a Supabase ni un error en consola.
+  //
+  // Mismo criterio que `getBiometricLoginState` (biometric-auth.ts), que ya
+  // corta en web antes de tocar SecureStore/LocalAuthentication.
+  if (Platform.OS === 'web') {
+    return { isSet: false, lockedForMs: 0 }
+  }
+
   const [hashResult, flagResult, lockout, serverLockedForMs] = await Promise.all([
     SecureStore.getItemAsync(PIN_HASH_KEY, storeOptions),
     isPinEnabledFlagSet(),

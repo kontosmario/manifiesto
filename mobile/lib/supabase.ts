@@ -1,5 +1,5 @@
 import '@/lib/runtime'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, processLock } from '@supabase/supabase-js'
 import { AppState, Platform } from 'react-native'
 import { supabaseSecureStorage } from '@/lib/supabase-secure-storage'
 
@@ -27,6 +27,24 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     // session-fixation vector via deep-link phishing
     // (manifiesto://auth/callback?access_token=<attacker-jwt>).
     flowType: 'pkce',
+    // Lock del storage de auth. auth-js elige `navigatorLock` (Web Locks API)
+    // en cuanto detecta un entorno de browser, y NUNCA lo hace en React
+    // Native — así que esto solo aplica a web y el nativo queda igual que
+    // antes (sin lock explícito, que es su default).
+    //
+    // Por qué se pisa: `navigatorLock` toma un lock EXCLUSIVO por storageKey
+    // con timeout de 10s. En el harness de dev de web (`expo start --web`) el
+    // lock se queda tomado entre fast-refreshes y recargas — cada
+    // `getSession()` posterior (y esta app lo llama desde runProbes,
+    // confirmSession, prefetch y cada header de query) revienta con
+    // `NavigatorLockAcquireTimeoutError` en loop de a 10s.
+    //
+    // `processLock` es la alternativa que la propia doc de Supabase indica
+    // para entornos no-browser: serializa in-process con una cadena de
+    // promesas, sin coordinación entre pestañas. Para una preview de una sola
+    // pestaña es exactamente la semántica que se quiere, y coincide con la
+    // que el nativo ya tiene de hecho.
+    ...(Platform.OS === 'web' ? { lock: processLock } : {}),
   },
 })
 
