@@ -156,7 +156,9 @@ export function Step1Form(props: Step1FormProps) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.freqRow, neo ? styles.freqRowNeo : null]}
           decelerationRate="fast"
-          snapToInterval={72 + 8}
+          // El snap de 72+8 sobra de la geometría vieja (tiles cuadrados de
+          // 72). Con chips de ancho variable el snap cae a mitad de chip.
+          snapToInterval={neo ? undefined : 72 + 8}
           snapToAlignment="start"
         >
           {FREQ_OPTIONS.map((f) => (

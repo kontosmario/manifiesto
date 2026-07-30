@@ -260,10 +260,21 @@ export function AddFijoV2Screen({
       // (`#F4F2ED`/`#12211A`) en vez del del rediseño. Sin esto el relieve del
       // botón de volver no se lee y la banda del footer queda de otro color.
       backgroundColor={neo ? neo.screenBackground : undefined}
-      contentContainerStyle={styles.screen}
+      // El handoff ancla el CTA abajo (`margin-top:auto` en una columna
+      // `flex:1`). Acá el `StickyFooter` vive DENTRO del ScrollView, así que
+      // fluye con el contenido: en pantallas altas quedaba flotando a media
+      // altura con aire muerto abajo. La cadena de `flexGrow` hace que la
+      // columna ocupe al menos el alto disponible y que el stack empuje al
+      // footer contra el piso, sin impedir que crezca y scrollee si el
+      // contenido es más alto.
+      contentContainerStyle={neo ? [styles.screen, styles.screenNeo] : styles.screen}
+      bodyStyle={neo ? styles.bodyNeo : undefined}
       showGrabHandle
     >
-      <Pressable style={styles.stack} onPress={Keyboard.dismiss}>
+      <Pressable
+        style={neo ? [styles.stack, styles.stackNeo] : styles.stack}
+        onPress={Keyboard.dismiss}
+      >
         <Animated.View layout={LinearTransition.duration(260)}>
           <StepHeader
             step={form.step}
@@ -331,7 +342,21 @@ export function AddFijoV2Screen({
         )}
       </Pressable>
 
-      <StickyFooter divider={false}>
+      {/* El footer pinta `theme.colors.canvas` (`#F4F2ED`/`#12211A`). Mientras
+          toda la pantalla era canvas no se veía; con el fondo del rediseño
+          (`#E9EBE0`/`#16271C`) se convierte en una banda de otro color abajo
+          del CTA. El handoff separa el bloque con padding, no con una banda. */}
+      <StickyFooter
+        divider={false}
+        style={
+          neo
+            ? {
+                backgroundColor: neo.screenBackground,
+                paddingTop: form.step === 1 ? 14 : 10,
+              }
+            : undefined
+        }
+      >
         {form.step === 1 ? (
           <Animated.View style={ctaStep1Press.animatedStyle}>
           <Pressable
@@ -462,7 +487,13 @@ export function AddFijoV2Screen({
 
 const styles = StyleSheet.create({
   screen: { paddingTop: 4 },
+  screenNeo: { flexGrow: 1 },
+  bodyNeo: { flexGrow: 1 },
   stack: { gap: 12, paddingBottom: 40 },
+  // El `paddingBottom: 40` deja de tener sentido cuando el footer está
+  // anclado: era el colchón que evitaba que el CTA quedara pegado al último
+  // campo. El handoff separa con el padding del propio bloque del CTA.
+  stackNeo: { flexGrow: 1, paddingBottom: 0 },
   primaryCta: {
     paddingVertical: 16,
     borderRadius: 16,

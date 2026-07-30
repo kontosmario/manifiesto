@@ -147,7 +147,10 @@ export function FreqTile({
                   fontSize: neo.add.freqChip.fontSize,
                   fontWeight: '800' as const,
                   fontFamily: neo.font('800'),
-                  color: selected ? neo.add.freqChip.activeInk : neo.ink.title,
+                  // Inactivo va en tinta SUB, no en la del título: en oscuro
+                  // los 6 chips apagados gritaban en crema `#F1EEDD` y
+                  // mataban la jerarquía contra el activo.
+                  color: selected ? neo.add.freqChip.activeInk : neo.mutedInk,
                   width: 'auto' as const,
                 }
               : null,

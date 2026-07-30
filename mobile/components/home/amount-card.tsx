@@ -1,5 +1,12 @@
-import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useEffect, type ReactNode } from 'react'
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native'
 import Animated, {
   Easing,
   useSharedValue,
@@ -115,8 +122,27 @@ export function AmountCard({
 
   const displayText = formatAnimatedAmount(amount)
 
+  // El handoff saca el label AFUERA del pozo, con el mismo tratamiento que
+  // NOMBRE / CATEGORÍA / FRECUENCIA y el pozo 8px abajo. Adentro queda UNA
+  // sola fila: la cifra y el hint alineados por baseline. Dejarlo adentro
+  // rompía la simetría con los otros tres campos del paso.
+  const neoEyebrow = neo ? (
+    // `typography.eyebrow` primero: de ahí sale el `textTransform` que pone
+    // el label en mayúsculas, igual que los de `Field`.
+    <Text
+      style={[
+        typography.eyebrow,
+        { ...neo.add.sectionLabel, color: neo.mutedInk },
+        styles.neoEyebrow,
+      ]}
+    >
+      {resolvedLabel}
+    </Text>
+  ) : null
+
   return (
     <Animated.View style={scaleStyle}>
+      {neoEyebrow}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('home:amountCard.amountAccessibility', {
@@ -155,54 +181,95 @@ export function AmountCard({
                   borderRadius: neo.add.well.radius,
                   borderWidth: 0,
                   boxShadow: neo.add.well.shadow,
+                  paddingHorizontal: 17,
+                  paddingVertical: 12,
+                  gap: 0,
                 }
               : null,
           ]}
         >
-          <View style={styles.topRow}>
+          {neo ? null : (
+            <View style={styles.topRow}>
+              <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>
+                {resolvedLabel}
+              </Text>
+              <Animated.Text
+                pointerEvents="none"
+                style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
+              >
+                {t('home:amountCard.tapToEdit')}
+              </Animated.Text>
+            </View>
+          )}
+          {/* El wrapper de fila existe SOLO en neo. En classic el `<Text>`
+              vuelve a ser hijo directo de la card, sin View de por medio:
+              este componente también lo montan add-gasto y add-ingreso. */}
+          <MaybeRow enabled={neo != null} style={styles.neoValueRow}>
             <Text
               style={[
-                typography.eyebrow,
-                { color: theme.colors.textMuted },
-                // `textMuted` es verde NEÓN en oscuro (#A6EF8F). El handoff
-                // pide la sub apagada del sistema.
-                neo ? { ...neo.add.sectionLabel, color: neo.mutedInk } : null,
-              ]}
-            >
-              {resolvedLabel}
-            </Text>
-            <Animated.Text
-              pointerEvents="none"
-              style={[
-                typography.caption,
-                hintStyle,
-                { color: theme.colors.textSoft },
-                // `textSoft` en oscuro es #77E755, más neón todavía.
+                size === 'compact' ? typography.metricLarge : typography.hero,
+                size === 'compact' ? styles.valueCompact : styles.value,
+                { color: theme.colors.text },
+                // 32px, no los 54 de `typography.hero`: con la hero el pozo
+                // quedaba casi al doble de alto que el del nombre y el paso
+                // dejaba de entrar sin scroll.
                 neo
-                  ? { color: neo.faintInk, fontSize: 11, fontWeight: '800', fontFamily: neo.font('800') }
+                  ? {
+                      fontSize: 32,
+                      fontWeight: '900',
+                      fontFamily: neo.font('900'),
+                      letterSpacing: -0.64,
+                      color: neo.ink.title,
+                      flexShrink: 1,
+                    }
                   : null,
               ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              allowFontScaling
+              maxFontSizeMultiplier={1.2}
             >
-              {t('home:amountCard.tapToEdit')}
-            </Animated.Text>
-          </View>
-          <Text
-            style={[
-              size === 'compact' ? typography.metricLarge : typography.hero,
-              size === 'compact' ? styles.valueCompact : styles.value,
-              { color: theme.colors.text },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            allowFontScaling
-            maxFontSizeMultiplier={1.2}
-          >
-            {displayText}
-          </Text>
+              {displayText}
+            </Text>
+            {neo ? (
+              <Animated.Text
+                pointerEvents="none"
+                style={[
+                  hintStyle,
+                  // `textSoft` en oscuro es #77E755 — verde flúor.
+                  {
+                    color: neo.faintInk,
+                    fontSize: 11,
+                    fontWeight: '800',
+                    fontFamily: neo.font('800'),
+                  },
+                ]}
+              >
+                {t('home:amountCard.tapToEdit')}
+              </Animated.Text>
+            ) : null}
+          </MaybeRow>
         </Animated.View>
       </Pressable>
     </Animated.View>
   )
+}
+
+/** Envuelve en una fila sólo si `enabled`; si no, deja a los hijos donde
+ *  estaban. Existe para que la rama `classic` de `AmountCard` conserve su
+ *  árbol EXACTO — este componente lo comparten add-gasto y add-ingreso, y un
+ *  `<View>` de más ahí es un cambio silencioso en producción. */
+function MaybeRow({
+  enabled,
+  style,
+  children,
+}: {
+  enabled: boolean
+  style: StyleProp<ViewStyle>
+  children: ReactNode
+}) {
+  if (!enabled) return <>{children}</>
+  return <View style={style}>{children}</View>
 }
 
 const styles = StyleSheet.create({
@@ -225,6 +292,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  neoEyebrow: { marginBottom: 8 },
+  // Alineados por BASELINE, no por centro: la cifra es 32px y el hint 11, y
+  // centrarlos deja el hint flotando a media altura del número.
+  neoValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   value: {
     letterSpacing: -2,

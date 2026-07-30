@@ -100,6 +100,11 @@ export function NameInput({
         // El handoff dibuja el campo como POZO (inset), no como card elevada:
         // comunica "acá se escribe". El borde animado se anula — el foco lo
         // sigue marcando el color del texto y el cursor.
+        // `borderStyle` va DESPUÉS a propósito en classic: es el borde
+        // animado de siempre. En neo NO puede ir después — pisaba el
+        // `borderWidth: 0` de acá arriba y dejaba un anillo de 1px (2px al
+        // foco, naranja con `flagName`) sobre un pozo que el handoff dibuja
+        // sin borde. El foco lo marcan el cursor y el color del texto.
         neo
           ? {
               backgroundColor: neo.add.well.background,
@@ -107,8 +112,7 @@ export function NameInput({
               borderWidth: 0,
               boxShadow: neo.add.well.shadow,
             }
-          : null,
-        borderStyle,
+          : borderStyle,
       ]}
     >
       <TextInput
@@ -117,8 +121,22 @@ export function NameInput({
         onFocus={onFocus}
         onBlur={onBlur}
         placeholder={t('fijos:wizard.step1.namePlaceholder')}
-        placeholderTextColor={theme.colors.textSoft}
-        style={[styles.textInputField, { color: theme.colors.text }]}
+        // `textSoft` en oscuro es `#77E755` — verde flúor sobre el pozo.
+        placeholderTextColor={neo ? neo.faintInk : theme.colors.textSoft}
+        style={[
+          styles.textInputField,
+          { color: theme.colors.text },
+          neo
+            ? {
+                paddingHorizontal: 17,
+                paddingVertical: 15,
+                fontSize: 17,
+                fontWeight: '800',
+                fontFamily: neo.font('800'),
+                color: neo.ink.title,
+              }
+            : null,
+        ]}
       />
     </Animated.View>
   )
