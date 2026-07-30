@@ -25,6 +25,7 @@ import Animated, {
 import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface CalendarDropImpactProps {
@@ -46,6 +47,9 @@ export function CalendarDropImpact({
   // category.name es el nombre CRUDO de la categoría. CategoryIcon rendea
   // el sticker si hay slug mapeado, sino cae al emoji.
   const color = category.color
+  // Tono de la categoría — el mismo de los headers colapsables y del rail del
+  // paso 1. Sólo lo consume la rama neo.
+  const tone = resolveFijosCategoryTone(category.name, theme.isDark)
   const TOTAL_DAYS = 31
 
   // Pulsea el border de la card + el prompt text mientras no haya día
@@ -125,31 +129,46 @@ export function CalendarDropImpact({
                   accessibilityRole="button"
                   accessibilityState={{ selected: true }}
                   accessibilityLabel={t('fijos:wizard.calendar.daySelectedA11y', { day: n })}
-                  // SIN `overflow:'hidden'`: el rayo vive FUERA de la celda
-                  // (top −5, right −4) y el clip se lo comía.
                   style={[
                     styles.calendarCell,
                     styles.calendarCellNeoSelected,
                     {
-                      backgroundColor: neo.add.calendarSelected.background,
-                      experimental_backgroundImage: neo.add.calendarSelected.gradientCss,
-                      boxShadow: neo.add.calendarSelected.shadow,
+                      backgroundColor: tone.surface,
+                      // El relieve sale del ink del propio tono, no de un
+                      // verde fijo: el día elegido tiene que leerse como "esta
+                      // categoría", no como "confirmado". En CLARO el ink es
+                      // oscuro y funciona de sombra proyectada; en OSCURO es
+                      // claro, así que sin offset queda un halo — el mismo
+                      // recurso que usa el CTA del kit en dark.
+                      boxShadow: theme.isDark
+                        ? `0px 0px 14px ${hexAlpha(tone.ink, 0.32)}`
+                        : `0px 5px 11px ${hexAlpha(tone.ink, 0.4)}`,
                     },
                   ]}
                 >
+                  {/* El sticker va DETRÁS del número, a tamaño casi de celda y
+                      apagado: identifica la categoría sin pelear con el dato.
+                      `onLightSurface` siempre — la placa clara de dark mode le
+                      pondría un recuadro al watermark. */}
+                  <View pointerEvents="none" style={styles.calendarCellSticker}>
+                    <CategoryIcon
+                      name={category.name}
+                      scope="fixed_expense"
+                      size={34}
+                      onLightSurface
+                      emojiStyle={styles.calendarCellEmoji}
+                    />
+                  </View>
                   <Text
                     allowFontScaling={false}
                     style={{
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: '900',
                       fontFamily: neo.font('900'),
-                      color: neo.add.calendarSelected.ink,
+                      color: tone.ink,
                     }}
                   >
                     {n}
-                  </Text>
-                  <Text allowFontScaling={false} style={styles.calendarCellBolt}>
-                    ⚡
                   </Text>
                 </Pressable>
               ) : isTarget ? (
@@ -300,13 +319,17 @@ const styles = StyleSheet.create({
   },
   calendarCellNeoSelected: {
     borderRadius: 11,
-    overflow: 'visible',
   },
-  calendarCellBolt: {
-    position: 'absolute',
-    top: -5,
-    right: -4,
-    fontSize: 11,
+  // Watermark: llena la celda y se recorta con su radio (`overflow:'hidden'`
+  // ya viene de `calendarCell`). Va apagado para que el número mande.
+  calendarCellSticker: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // 0.26 y no más: el número se apoya JUSTO encima del centro del sticker,
+    // que es su parte más densa. El par tinta/superficie del tono está
+    // verificado a ≥4.5:1, y el watermark no puede comerse ese margen.
+    opacity: 0.26,
   },
   calendarCellNum: {
     fontSize: 13,
