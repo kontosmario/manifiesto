@@ -16,6 +16,7 @@ import {
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
+import { motionDurations } from '@/lib/motion'
 import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -184,15 +185,10 @@ export function Step2Summary(props: Step2SummaryProps) {
                 scope="fixed_expense"
                 size={neo ? 32 : 30}
                 emojiStyle={neo ? styles.summaryIconTextNeo : styles.summaryIconText}
-                // En claro el tono ya es pastel; en oscuro es una superficie
-                // oscura y el sticker necesita su placa — y esa placa es la
-                // variante CLARA del mismo tono, no la de `categoryHues`.
-                onLightSurface={neo ? !theme.isDark : false}
-                plateColor={
-                  neo
-                    ? resolveFijosCategoryTone(selectedCategory.name, false).surface
-                    : undefined
-                }
+                // Sin placa en neo: en oscuro la placa clara se lee como un
+                // recorte de light mode adentro del tile. El sticker se apoya
+                // directo sobre el tono.
+                onLightSurface={neo ? true : false}
               />
             ) : (
               <Text style={styles.summaryIconText}>
@@ -297,7 +293,13 @@ export function Step2Summary(props: Step2SummaryProps) {
                 {t('fijos:wizard.step2.impactEyebrowNeo')}
               </Text>
               {nuevoTotal - prevTotal !== 0 ? (
-                <Text
+                // El chip es la cifra que el usuario acaba de decidir: entra
+                // después de la card, no con ella. Sin el retraso aparecía
+                // pintado desde el primer frame y se perdía el "esto sumaste".
+                <Animated.Text
+                  entering={FadeIn.duration(motionDurations.standard).delay(
+                    motionDurations.standard,
+                  )}
                   style={[
                     styles.deltaChip,
                     {
@@ -314,7 +316,7 @@ export function Step2Summary(props: Step2SummaryProps) {
                   {t('fijos:wizard.step2.deltaAdded', {
                     amount: formatMoney(nuevoTotal - prevTotal),
                   })}
-                </Text>
+                </Animated.Text>
               ) : null}
             </View>
 
@@ -343,6 +345,7 @@ export function Step2Summary(props: Step2SummaryProps) {
                 pctDespues={pctDespues}
                 zone={zone}
                 ink={neoLibreInk ?? neo.add.accentGreen}
+                pctAntes={pctAntes}
               />
             ) : null}
           </View>
@@ -758,12 +761,17 @@ function LibreBlockNeo({
   pctDespues,
   zone,
   ink,
+  pctAntes,
 }: {
   neo: FijosNeoSkin
   libreDespues: number
   pctDespues: number
   zone: 'sana' | 'media' | 'alta'
   ink: string
+  /** Punto de partida de la perilla: el medidor la hace VIAJAR de acá hasta
+   *  `pctDespues`, que es lo que comunica el delta desde que se sacó la
+   *  `ImpactBar`. */
+  pctAntes: number
 }) {
   const { t } = useTranslation()
   const lp = neo.add.librePanel
@@ -811,7 +819,7 @@ function LibreBlockNeo({
         <HealthBadge pct={pctDespues} zone={zone} />
       </View>
 
-      <ZoneGauge pct={pctDespues} />
+      <ZoneGauge pct={pctDespues} fromPct={pctAntes} />
 
       <View style={styles.zoneCaption}>
         {/* Nunito son faces estáticas por peso: el <Text> anidado que sube a

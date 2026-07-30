@@ -203,14 +203,14 @@ function FijoRowReal({
   // adentro de una card teal (Seguros) y uno casi negro adentro de una azul
   // (Servicios), porque el color de la base no tiene nada que ver con el tono.
   //
-  // Se usa la variante CLARA en los DOS temas a propósito. Con la oscura el
-  // tile se funde en la fila (`#1A2D21`), y además el sticker está ilustrado
-  // para fondo claro: así se apoya en su propio hue y no necesita placa, que
-  // es lo que evita el "cuadradito adentro del cuadrado".
+  // El tono SIGUE AL TEMA. Usar la variante clara en oscuro dejaba un parche
+  // de light mode en cada fila — el owner lo cazó en device. La oscura tiene
+  // croma de sobra (L=24%/S=50%) para diferenciarse del `#1A2D21` de la fila
+  // y para sostener el sticker sin placa.
   const iconTileBg = useMemo(
     () =>
       skin.kind === 'neo'
-        ? resolveFijosCategoryTone(iconName, false).surface
+        ? resolveFijosCategoryTone(iconName, theme.isDark).surface
         : theme.isDark
           ? resolveCategoryHueByName(iconName).light.surface
           : hexAlpha(categoryColor, 0.14),

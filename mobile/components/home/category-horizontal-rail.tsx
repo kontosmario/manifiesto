@@ -25,7 +25,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
-import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { resolveCategoryHueByName } from '@/theme/category-hues'
@@ -228,6 +228,7 @@ export function TileRail({
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={neoRail ? styles.scrollBleedNeo : undefined}
           contentContainerStyle={[styles.scrollContent, neoRail ? styles.scrollContentNeo : null]}
           decelerationRate="fast"
           snapToInterval={tileWidth + TILE_GAP}
@@ -285,16 +286,10 @@ export function CategoryHorizontalRail({
   warning = false,
 }: CategoryHorizontalRailProps) {
   const { t } = useTranslation()
-  const { theme } = useAppTheme()
   // COMPARTIDO con add-gasto / add-ingreso: solo resuelve a `neo` dentro del
   // wizard de fijos, que es el único que monta el provider.
   const railSkin = useFijosSkin()
   const railNeo = railSkin.kind === 'neo'
-  // En neo el tile se pinta con el TONO de la categoría, que en oscuro es una
-  // superficie oscura (L=24%): ahí el sticker sí necesita su placa clara, que
-  // es lo que hace `CategoryIcon` sin `onLightSurface`. En claro el tono ya es
-  // pastel y el sticker se apoya directo.
-  const stickerOnLight = railNeo ? !theme.isDark : true
 
   const tiles = useMemo<RailTile[]>(
     () =>
@@ -310,16 +305,12 @@ export function CategoryHorizontalRail({
               scope={iconScope}
               size={railNeo ? 42 : 32}
               emojiStyle={styles.emoji}
-              // La cápsula del tile ya es el pastel CLARO del hue (ambos modos)
-              // → el sticker se lee directo, sin placa.
-              onLightSurface={stickerOnLight}
-              // En oscuro la placa es la variante CLARA del MISMO tono que
-              // pinta el tile. Sin esto sale la de `categoryHues`, que mapea
-              // varias categorías a otro hue: placa azul adentro de un tile
-              // mostaza, placa amarilla adentro de uno violeta.
-              plateColor={
-                railNeo ? resolveFijosCategoryTone(category.name, false).surface : undefined
-              }
+              // NUNCA placa. La placa es una superficie CLARA detrás del
+              // sticker: en oscuro se lee como un recorte de light mode
+              // adentro de un tile oscuro. El sticker se apoya directo sobre
+              // el tono, que a L=24%/S=50% tiene croma de sobra para
+              // sostenerlo — el mismo criterio del watermark del colapsable.
+              onLightSurface
             />
           ),
           accessibilityLabel: t('home:categoryRail.selectAccessibility', {
@@ -327,7 +318,7 @@ export function CategoryHorizontalRail({
           }),
         }
       }),
-    [categories, iconScope, t, railNeo, stickerOnLight],
+    [categories, iconScope, t, railNeo],
   )
 
   const labelText = warning
@@ -504,7 +495,16 @@ const styles = StyleSheet.create({
   },
   // Ver el comentario de `rowNeo` en suggested-amount-strip: el ScrollView
   // corta la sombra en vertical si no se le deja el aire que ocupa.
-  scrollContentNeo: { paddingHorizontal: 10, paddingVertical: 13 },
+  // El ScrollView tiene `overflow: auto hidden`, así que RECORTA la sombra
+  // contra sus bordes laterales. La sombra se extiende SHADOW_BLEED (offset 5
+  // + blur 12), y con sólo 10px de padding se le comía la mitad.
+  //
+  // Subir el padding a 17 desalinearía el primer tile respecto del pozo del
+  // nombre y del monto. Entonces el ScrollView SANGRA hacia afuera lo mismo
+  // que su contenido se mete hacia adentro: el tile vuelve a caer donde caía
+  // y la sombra tiene su aire dentro del área de clip.
+  scrollBleedNeo: { marginHorizontal: -FIJOS_SHADOW_BLEED },
+  scrollContentNeo: { paddingHorizontal: FIJOS_SHADOW_BLEED, paddingVertical: 13 },
   staticContent: {
     paddingHorizontal: 4,
     paddingVertical: 4,
