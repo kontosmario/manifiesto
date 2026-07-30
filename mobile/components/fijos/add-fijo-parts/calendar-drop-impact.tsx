@@ -94,17 +94,65 @@ export function CalendarDropImpact({
       style={[
         styles.calendarCard,
         { backgroundColor: theme.colors.creamCard },
-        cardPulseStyle,
+        // El handoff dibuja la card SIN borde: es una superficie elevada del
+        // kit, no un contenedor delineado. Sin borde no hay qué pulsear, y el
+        // aviso de "elegí un día" queda en el texto del pie, que sí sobrevive.
+        neo
+          ? {
+              borderRadius: 20,
+              padding: 10,
+              borderWidth: 0,
+              backgroundColor: neo.add.step2Card.background,
+              experimental_backgroundImage: neo.add.step2Card.gradientCss,
+              boxShadow: neo.add.step2Card.shadow,
+            }
+          : cardPulseStyle,
       ]}
     >
-      <View style={styles.calendarGrid}>
+      <View style={[styles.calendarGrid, neo ? styles.calendarGridNeo : null]}>
         {Array.from({ length: TOTAL_DAYS }).map((_, idx) => {
           const n = idx + 1
           const isTarget = n === day
 
           return (
-            <View key={`d-${n}`} style={styles.calendarCellWrap}>
-              {isTarget ? (
+            <View
+              key={`d-${n}`}
+              style={[styles.calendarCellWrap, neo ? styles.calendarCellWrapNeo : null]}
+            >
+              {isTarget && neo ? (
+                <Pressable
+                  onPress={() => onChangeDay(n)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: true }}
+                  accessibilityLabel={t('fijos:wizard.calendar.daySelectedA11y', { day: n })}
+                  // SIN `overflow:'hidden'`: el rayo vive FUERA de la celda
+                  // (top −5, right −4) y el clip se lo comía.
+                  style={[
+                    styles.calendarCell,
+                    styles.calendarCellNeoSelected,
+                    {
+                      backgroundColor: neo.add.calendarSelected.background,
+                      experimental_backgroundImage: neo.add.calendarSelected.gradientCss,
+                      boxShadow: neo.add.calendarSelected.shadow,
+                    },
+                  ]}
+                >
+                  <Text
+                    allowFontScaling={false}
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '900',
+                      fontFamily: neo.font('900'),
+                      color: neo.add.calendarSelected.ink,
+                    }}
+                  >
+                    {n}
+                  </Text>
+                  <Text allowFontScaling={false} style={styles.calendarCellBolt}>
+                    ⚡
+                  </Text>
+                </Pressable>
+              ) : isTarget ? (
                 <Pressable
                   onPress={() => onChangeDay(n)}
                   accessibilityRole="button"
@@ -168,7 +216,16 @@ export function CalendarDropImpact({
                     style={[
                       styles.calendarCellNum,
                       { color: theme.colors.text },
-                      neo ? { fontSize: 12.5, fontWeight: '800' as const, color: neo.ink.title } : null,
+                      // Tinta SUB, no la del título: son 30 números idle que
+                      // no deben competir con el elegido ni con el monto.
+                      neo
+                        ? {
+                            fontSize: 12.5,
+                            fontWeight: '800' as const,
+                            fontFamily: neo.font('800'),
+                            color: neo.mutedInk,
+                          }
+                        : null,
                     ]}
                   >
                     {n}
@@ -180,10 +237,15 @@ export function CalendarDropImpact({
         })}
       </View>
 
+      {/* Con día elegido, en neo el pie NO se dibuja: ese dato ya subió al
+          eyebrow ("SE AGENDARÁ EN · DÍA 16"). El prompt sin día sí queda —
+          es un estado real de la app que el mock no cubre. */}
       {day != null ? (
-        <Text style={[styles.calendarFoot, { color: theme.colors.textMuted }]}>
-          {t('fijos:wizard.calendar.footSelected', { day })}
-        </Text>
+        neo ? null : (
+          <Text style={[styles.calendarFoot, { color: theme.colors.textMuted }]}>
+            {t('fijos:wizard.calendar.footSelected', { day })}
+          </Text>
+        )
       ) : (
         <Text
           style={[
@@ -225,6 +287,9 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     padding: 3,
   },
+  // El handoff usa gap 5, que en este layout es padding 2.5 por celda.
+  calendarGridNeo: { marginHorizontal: -2.5, marginVertical: -2.5 },
+  calendarCellWrapNeo: { padding: 2.5 },
   calendarCell: {
     flex: 1,
     borderRadius: 8,
@@ -232,6 +297,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
+  },
+  calendarCellNeoSelected: {
+    borderRadius: 11,
+    overflow: 'visible',
+  },
+  calendarCellBolt: {
+    position: 'absolute',
+    top: -5,
+    right: -4,
+    fontSize: 11,
   },
   calendarCellNum: {
     fontSize: 13,
