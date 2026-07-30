@@ -35,34 +35,44 @@
  * verdad: NO es reversible desde acá y además descongela el saldo de Home.
  * Por eso va con `Alert` de confirmación explícito.
  */
-import { useCallback, useMemo, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { router } from 'expo-router'
 
+import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
+// La lista de "Todos tus fijos" reusa el componente COLAPSABLE de la pantalla
+// viva, no las filas del kit. El kit dibuja UNA fila por categoría, sin
+// expansión y sin superficie por-fijo, así que no puede mostrar los fijos
+// adentro de su categoría ni tener un botón "Pagar" por fijo — que es el
+// comportamiento pedido. Reusarlo además elimina el colapso de las ~11
+// categorías reales a las 3 llaves del kit: van todas con su nombre e ícono.
+import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
 import {
   FijosAvisos,
-  FijosCategories,
   FijosHeader,
   FijosHero,
+  FijosTabs,
   fijosAvisosCategoriesSpacing,
   fijosHeaderHeroSpacing,
   fijosHeroAvisosSpacing,
 } from '@/components/redesign/fijos/fijos-screen'
-import type { FijosCategoryKey } from '@/components/redesign/fijos/fijos-screen'
 import { FIJOS_RADII, FIJOS_SPEC, type FijosMode } from '@/components/redesign/fijos/fijos-spec'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
-import { groupFijosByCategory, type FijoItem } from '@/features/fijos/fijos-aggregates.model'
-import { NeoFijosPaySheet } from '@/screens/home/neo/neo-fijos-pay-sheet'
+import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
+import {
+  useRecordFixedExpensePayment,
+  useRevertFixedExpensePayment,
+} from '@/features/fixed-expenses/use-fixed-expenses'
+import { triggerHaptic } from '@/lib/haptics'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useDismissedHikes } from '@/features/fijos/use-hike-dismiss-store'
 import {
   buildAvisosContent,
-  buildCategoriesContent,
-  buildCategoryBuckets,
   buildCycleHeaderLabel,
   buildHeroContent,
   buildHikeRows,
@@ -70,11 +80,9 @@ import {
   buildTickerItems,
   computeDaysIntoCycle,
   filterDueSoon,
-  mapCategoryToBucket,
   selectAvisosVariant,
   selectHeroVariant,
 } from '@/features/fijos/neo-fijos-view-model'
-import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { useCycleConfirmation } from '@/features/home/use-cycle-confirmation'
 import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-expense-payments'
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
@@ -114,8 +122,8 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const s = FIJOS_SPEC[mode]
   const isFocused = useIsFocused()
 
-  /** Bucket cuyo sheet de pago DEV está abierto (`null` = cerrado). */
-  const [paySheetBucket, setPaySheetBucket] = useState<FijosCategoryKey | null>(null)
+  /** Fijo cuyo sheet de confirmación de precio está abierto (2do+ pago). */
+  const [confirmFor, setConfirmFor] = useState<FijoItem | null>(null)
 
   // ── Datos ───────────────────────────────────────────────────────────────
   // Casi todo es CACHE-HIT del cluster que ya arma el controller (mismos
@@ -123,7 +131,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const controller = useFijosController(familyId)
   const payCycle = usePayCycle(familyId, { freeze: false })
   const fixedExpensesQuery = useFixedExpenses(familyId)
-  const categoriesQuery = useFixedExpenseCategories(familyId)
   const dismissedHikes = useDismissedHikes()
   const snapshot = useHomeSnapshot(userId)
   const dashboard = useFamilyDashboard(familyId)
@@ -348,76 +355,110 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     [avisosSelection.variant, hikeRows, isEmptyNoFijos, overdueCount, reminder, ticker.items],
   )
 
-  // ── "Todos tus fijos" ───────────────────────────────────────────────────
-  const categories = useMemo(
-    () =>
-      (categoriesQuery.data ?? []).map((c) => ({
-        color: c.color,
-        id: c.id,
-        name: c.displayName,
-        rawName: c.name,
-      })),
-    [categoriesQuery.data],
+  // ── Mutaciones de pago (ESCRITURAS REALES) ──────────────────────────────
+  const recordPaymentMutation = useRecordFixedExpensePayment(familyId, userId)
+  const revertPaymentMutation = useRevertFixedExpensePayment(familyId, userId)
+
+  // `useMutation` de RQ v5 devuelve un objeto NUEVO en cada render. Guardarlo en
+  // ref evita que los `useCallback` de abajo lo lleven en deps y se reconstruyan
+  // por render — que es lo que anula las memos de las filas de la lista.
+  const recordRef = useRef(recordPaymentMutation)
+  recordRef.current = recordPaymentMutation
+  const revertRef = useRef(revertPaymentMutation)
+  revertRef.current = revertPaymentMutation
+
+  const runRecord = useCallback(
+    (item: FijoItem, amountOverride?: number) => {
+      recordRef.current.mutate(
+        { amountOverride, fixedExpenseId: item.id },
+        {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            Alert.alert(
+              'No se pudo registrar el pago',
+              getErrorMessage(error, t('states:error.server')),
+            )
+          },
+          onSuccess: () => {
+            void triggerHaptic('success')
+            toast.success(`${item.name} marcado como pagado`)
+          },
+        },
+      )
+    },
+    [t],
   )
 
   /**
-   * Las filas listan TODOS los fijos del ciclo activo, NO los del tab: el
-   * fixture del mockup tiene `activeTab:'vencidos'` con `vencidosCount:'1'` y
-   * 3 filas que suman 13 ítems, así que no puede ser la lista filtrada.
-   * Por eso NO se usa `controller.groups`, que está construido sobre
-   * `filteredItems` y sí está filtrado por tab.
-   * Consecuencia a reportar, no a esconder: en el rediseño el tab no filtra
-   * nada visible. Está en el banner de dev.
+   * COPIADO LITERAL de la pantalla viva — es un bugfix documentado del
+   * 2026-05-30, no una heurística a re-derivar. `last_paid_at` del fijo es el
+   * source of truth: si nunca se pagó es null → 1er pago → se omite el sheet de
+   * precio. La versión anterior miraba el cache de expenses buscando
+   * `commitment_id`, y como los expenses se archivan al cerrar ciclo los fijos
+   * MENSUALES quedaban marcados como "1er pago" todos los meses.
+   * Si no se encuentra el fijo (race) devuelve `false` → abre el sheet
+   * conservadoramente: un sheet innecesario es 1 tap, saltearlo pierde data.
    */
-  const allCycleGroups = useMemo(
-    () =>
-      groupFijosByCategory({
-        categories,
-        items: [...summary.paidItems, ...summary.pendingItems, ...summary.overdueItems],
-      }),
-    [categories, summary.paidItems, summary.pendingItems, summary.overdueItems],
+  const handleMarkPaid = useCallback(
+    (fixedExpenseId: string) => {
+      const item = controller.allItems.find((i) => i.id === fixedExpenseId)
+      if (!item) return
+      // Guarda de id: un `temp-…` (fijo recién creado, todavía optimista) no
+      // existe server-side y tira `FixedExpenseNotPersistedError` sincrónico.
+      if (!isPersistedFixedExpenseId(item.id)) {
+        toast.error('El fijo todavía se está guardando — probá en un segundo')
+        return
+      }
+      void triggerHaptic('light')
+      if (item.last_paid_at == null) {
+        runRecord(item)
+        return
+      }
+      setConfirmFor(item)
+    },
+    [controller.allItems, runRecord],
   )
 
-  // Colapsa las ~11 categorías reales a ≤3 buckets. Obligatorio: el kit mapea
-  // con `key={group.category}` y `category` es una unión de 3 valores, así que
-  // N grupos con la misma llave serían keys duplicadas de React.
-  const categoryBuckets = useMemo(
-    () => buildCategoryBuckets({ groups: allCycleGroups }),
-    [allCycleGroups],
+  const handleRevertPaid = useCallback(
+    (paymentId: string) => {
+      // `paidPaymentId` ya viene null cuando el payment es `optimistic-…`; el
+      // componente de la lista solo dispara con un id real, pero la guarda
+      // queda porque mandar un optimista a la RPC da 22P02.
+      if (!paymentId || paymentId.startsWith('optimistic-')) {
+        toast.error('El pago todavía se está sincronizando — probá en un segundo')
+        return
+      }
+      void triggerHaptic('warning')
+      revertRef.current.mutate(paymentId, {
+        onError: (error: unknown) => {
+          void triggerHaptic('error')
+          Alert.alert('No se pudo revertir', getErrorMessage(error, t('states:error.server')))
+        },
+        onSuccess: () => {
+          void triggerHaptic('success')
+          toast.info('Pago revertido')
+        },
+      })
+    },
+    [t],
   )
 
-  const categoriesContent = useMemo(
-    () =>
-      buildCategoriesContent({
-        activeTab: controller.tab,
-        groups: categoryBuckets.buckets,
-        pagadosCount: paidCount,
-        pendientesCount: pendingCount,
-        vencidosCount: overdueCount,
-      }),
-    [controller.tab, categoryBuckets.buckets, overdueCount, paidCount, pendingCount],
+  const handleConfirmSame = useCallback(() => {
+    if (!confirmFor) return
+    const item = confirmFor
+    setConfirmFor(null)
+    runRecord(item)
+  }, [confirmFor, runRecord])
+
+  const handleConfirmChanged = useCallback(
+    (newAmount: number) => {
+      if (!confirmFor) return
+      const item = confirmFor
+      setConfirmFor(null)
+      runRecord(item, newAmount)
+    },
+    [confirmFor, runRecord],
   )
-
-  /**
-   * Mapa bucket → ítems, para el sheet de pago. Se deriva con el MISMO mapper
-   * puro que usó `buildCategoryBuckets`, así que un fijo cae siempre en el
-   * mismo bucket en los dos lados; si divergieran, el sheet listaría fijos que
-   * no son de la fila que tocaste.
-   */
-  const itemsByBucket = useMemo(() => {
-    const map = new Map<FijosCategoryKey, FijoItem[]>()
-    for (const group of allCycleGroups) {
-      const bucket = mapCategoryToBucket(group.rawLabel)
-      const prev = map.get(bucket) ?? []
-      prev.push(...group.items)
-      map.set(bucket, prev)
-    }
-    return map
-  }, [allCycleGroups])
-
-  const paySheetItems = paySheetBucket ? (itemsByBucket.get(paySheetBucket) ?? []) : []
-  const paySheetName =
-    categoryBuckets.buckets.find((b) => b.category === paySheetBucket)?.name ?? ''
 
   const cycleHeaderLabel = buildCycleHeaderLabel(controller.cycleLabel, daysIntoCycle)
 
@@ -428,27 +469,12 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     toast.info('Selector de ciclos: fase posterior')
   }, [])
 
-  const handlePressCalendar = useCallback(() => {
-    toast.info('Alta en 2 pasos: Fase 3')
-  }, [])
-
-  /**
-   * Abre el sheet de pago DEV del bucket tocado. El kit entrega la LLAVE del
-   * bucket (`FijosCategoryKey`), no los ítems, así que el mapa llave→ítems se
-   * rearma con el mismo `mapCategoryToBucket` puro que usó el colapso — sin
-   * duplicar la regla de mapeo.
-   */
-  const handlePressCategory = useCallback((category: FijosCategoryKey) => {
-    setPaySheetBucket(category)
-  }, [])
-
-  const closePaySheet = useCallback(() => {
-    setPaySheetBucket(null)
-  }, [])
-
-  /** El alta VIEJA existe y funciona. Transitorio: la Fase 3 la reemplaza por
-   *  el flujo de 2 pasos, que es también el destino del botón de calendario. */
+  /** El alta VIEJA existe y funciona. Es también la acción del botón de
+   *  calendario del header (fallo del owner 2026-07-30: el calendario con el
+   *  `+` hace lo mismo que "+ Agregar fijo"). Transitorio: la Fase 3 lo
+   *  reemplaza por el flujo de 2 pasos. */
   const handleAddFijo = useCallback(() => {
+    void triggerHaptic('light')
     router.push('/(app)/add-fixed-expense')
   }, [])
 
@@ -506,7 +532,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
         activeFixedCount={activeFixedCount}
         avisosReason={avisosSelection.reason}
         avisosVariant={avisosSelection.variant}
-        collapsed={categoryBuckets.collapsed}
         cycleActiveCount={cycleActiveCount}
         futureCount={summary.futureItems.length}
         hasIncome={hasIncome}
@@ -521,7 +546,10 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
       <FijosHeader
         cycleLabel={cycleHeaderLabel}
         mode={mode}
-        onPressCalendar={handlePressCalendar}
+        // El botón de calendario con el `+` hace lo mismo que "+ Agregar fijo"
+        // (fallo del owner 2026-07-30). La Fase 3 lo reemplaza por el alta en
+        // 2 pasos, que es el destino final.
+        onPressCalendar={handleAddFijo}
         onToggleDropdown={handleToggleDropdown}
       />
       <View style={fijosHeaderHeroSpacing}>
@@ -550,27 +578,53 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           variant={avisosSelection.variant}
         />
       </View>
+      {/* "Todos tus fijos": el header y las tabs son del kit; la LISTA es el
+          componente colapsable de la pantalla viva. El kit dibuja una fila por
+          categoría, sin expansión y sin acción por-fijo, así que no puede
+          mostrar los fijos adentro de su categoría con su botón "Pagar". */}
       <View style={fijosAvisosCategoriesSpacing}>
-        <FijosCategories
-          {...categoriesContent}
+        <View style={styles.categoriesHeaderRow}>
+          <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>
+            TODOS TUS FIJOS
+          </Text>
+          <Pressable
+            accessibilityLabel="Agregar fijo"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={handleAddFijo}
+          >
+            <Text style={[styles.addFijoText, { color: s.addFijoInk }]}>+ Agregar fijo</Text>
+          </Pressable>
+        </View>
+        <FijosTabs
+          activeTab={controller.tab}
           mode={mode}
-          onPressAddFijo={handleAddFijo}
-          onPressCategory={handlePressCategory}
           onSelectTab={controller.setTab}
+          pagadosCount={String(paidCount)}
+          pendientesCount={String(pendingCount)}
+          vencidosCount={String(overdueCount)}
         />
+        <View style={styles.categoryList}>
+          {/* `controller.groups` SÍ está filtrado por el tab activo — igual que
+              en la pantalla viva, así que las tabs filtran de verdad. */}
+          <FijoCategoryGroups
+            groups={controller.groups}
+            onMarkPaid={handleMarkPaid}
+            onRevertPaid={handleRevertPaid}
+            todayDay={summary.todayDay}
+          />
+        </View>
       </View>
-      {/* Sheet de pago DEV: el kit no tiene ninguna superficie que reciba un
-          `fixedExpenseId` (sus filas son por CATEGORÍA), así que marcar
-          pagado / revertir vive en UI propia fuera del kit — justo donde va a
-          ir el detalle expandido de la Fase 2. ESCRITURAS REALES. */}
-      <NeoFijosPaySheet
-        bucketName={paySheetName}
-        familyId={familyId}
-        items={paySheetItems}
-        mode={mode}
-        onClose={closePaySheet}
-        userId={userId}
-        visible={paySheetBucket != null}
+      {/* Confirmación de precio para el 2do+ pago — mismo sheet que la viva. */}
+      <ConfirmFixedPaymentSheet
+        fixedExpenseName={confirmFor?.name ?? ''}
+        isProcessing={recordPaymentMutation.isPending}
+        onClose={() => setConfirmFor(null)}
+        onConfirmChanged={handleConfirmChanged}
+        onConfirmSame={handleConfirmSame}
+        previousAmount={confirmFor?.amount ?? 0}
+        visible={confirmFor != null}
+        wasOverdue={confirmFor?.computedStatus === 'overdue'}
       />
       {/* TODO (fase posterior): el tour de Fijos, gateado con
           `enabled: !preview`. Omitido a propósito — con `preview` siempre true
@@ -589,7 +643,6 @@ function NeoFijosDevBanner(props: {
   activeFixedCount: number
   avisosReason: string
   avisosVariant: string
-  collapsed: Array<{ bucket: string; realLabels: string[] }>
   cycleActiveCount: number
   futureCount: number
   hasIncome: boolean
@@ -615,12 +668,10 @@ function NeoFijosDevBanner(props: {
     props.tickerDropped > 0
       ? `ticker: ${props.tickerDropped} ítem(s) fuera por el cap de ${TICKER_CAP} (la duración es fija, sin cap la velocidad escalaría)`
       : null,
-    ...props.collapsed.map(
-      (c) => `bucket ${c.bucket} ← ${c.realLabels.join(', ')}`,
-    ),
-    'las tabs NO filtran las filas: las filas listan todo el ciclo (es el mockup literal)',
-    'tocá una fila de categoría → sheet de pago DEV (el kit no tiene superficie por-fijo; el detalle real es Fase 2). ESCRITURAS REALES, reversibles',
-    'calendario del header → Fase 3 (alta en 2 pasos). "+ Agregar fijo" va al alta VIEJA, que sí funciona',
+    'lista de fijos: componente COLAPSABLE de la pantalla viva, no las filas del kit (el kit no expande ni tiene acción por-fijo). Por eso las ~11 categorías reales van con su nombre e ícono, sin colapsar a 3',
+    'las tabs SÍ filtran la lista (controller.groups está sobre filteredItems)',
+    'pagar / revertir desde cada fijo: ESCRITURAS REALES contra producción, reversibles entre sí',
+    'calendario del header y "+ Agregar fijo" hacen lo mismo: van al alta VIEJA. La Fase 3 la reemplaza por el alta en 2 pasos',
   ].filter(Boolean) as string[]
 
   return (
@@ -713,6 +764,23 @@ const styles = StyleSheet.create({
   },
   // Transcrito del markup, igual que el preview aprobado.
   body: { paddingHorizontal: 20, paddingTop: 10 },
+  // Métricas copiadas del kit (`categoriesHeaderRow`/`categoriesLabel`/
+  // `addFijoText`) para que el header de sección se vea idéntico aunque la
+  // lista de abajo sea el componente colapsable de la pantalla viva.
+  addFijoText: { fontFamily: nunitoFamily('900'), fontSize: 12, fontWeight: '900' },
+  categoriesHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  categoriesLabel: {
+    fontFamily: nunitoFamily('800'),
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 1.84,
+  },
+  categoryList: { marginTop: 12 },
   skAvisos: { borderRadius: FIJOS_RADII.card, height: 260, marginTop: 20 },
   skCalendarBtn: { borderRadius: 22, height: 44, width: 44 },
   skCyclePill: { borderRadius: 14, height: 18, width: 190 },
