@@ -20,13 +20,17 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { motionSprings } from '@/lib/motion'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
-import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 export interface CalendarDropImpactProps {
   day: number | null
@@ -124,53 +128,15 @@ export function CalendarDropImpact({
               style={[styles.calendarCellWrap, neo ? styles.calendarCellWrapNeo : null]}
             >
               {isTarget && neo ? (
-                <Pressable
+                <SelectedDayCellNeo
+                  day={n}
+                  neo={neo}
+                  tone={tone}
+                  isDark={theme.isDark}
+                  categoryName={category.name}
                   onPress={() => onChangeDay(n)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: true }}
-                  accessibilityLabel={t('fijos:wizard.calendar.daySelectedA11y', { day: n })}
-                  style={[
-                    styles.calendarCell,
-                    styles.calendarCellNeoSelected,
-                    {
-                      backgroundColor: tone.surface,
-                      // El relieve sale del ink del propio tono, no de un
-                      // verde fijo: el día elegido tiene que leerse como "esta
-                      // categoría", no como "confirmado". En CLARO el ink es
-                      // oscuro y funciona de sombra proyectada; en OSCURO es
-                      // claro, así que sin offset queda un halo — el mismo
-                      // recurso que usa el CTA del kit en dark.
-                      boxShadow: theme.isDark
-                        ? `0px 0px 14px ${hexAlpha(tone.ink, 0.32)}`
-                        : `0px 5px 11px ${hexAlpha(tone.ink, 0.4)}`,
-                    },
-                  ]}
-                >
-                  {/* El sticker va DETRÁS del número, a tamaño casi de celda y
-                      apagado: identifica la categoría sin pelear con el dato.
-                      `onLightSurface` siempre — la placa clara de dark mode le
-                      pondría un recuadro al watermark. */}
-                  <View pointerEvents="none" style={styles.calendarCellSticker}>
-                    <CategoryIcon
-                      name={category.name}
-                      scope="fixed_expense"
-                      size={34}
-                      onLightSurface
-                      emojiStyle={styles.calendarCellEmoji}
-                    />
-                  </View>
-                  <Text
-                    allowFontScaling={false}
-                    style={{
-                      fontSize: 14,
-                      fontWeight: '900',
-                      fontFamily: neo.font('900'),
-                      color: tone.ink,
-                    }}
-                  >
-                    {n}
-                  </Text>
-                </Pressable>
+                  label={t('fijos:wizard.calendar.daySelectedA11y', { day: n })}
+                />
               ) : isTarget ? (
                 <Pressable
                   onPress={() => onChangeDay(n)}
@@ -277,6 +243,99 @@ export function CalendarDropImpact({
         </Text>
       )}
     </Animated.View>
+  )
+}
+
+/**
+ * Celda del día ELEGIDO en la piel neo. Es su propio componente porque
+ * necesita hooks y las celdas se rendean dentro de un `.map()`.
+ *
+ * Al elegir un día la celda ATERRIZA: entra con un spring desde 0.7 y el
+ * sticker de fondo llega con un fade corrido. Sin eso el cambio de día era un
+ * corte seco de un cuadrado a otro, y con 31 celdas iguales cuesta ver cuál se
+ * movió. El spring es el mismo `motionSprings.press` del resto del kit.
+ */
+function SelectedDayCellNeo({
+  day,
+  neo,
+  tone,
+  isDark,
+  categoryName,
+  onPress,
+  label,
+}: {
+  day: number
+  neo: FijosNeoSkin
+  tone: { surface: string; ink: string }
+  isDark: boolean
+  categoryName: string
+  onPress: () => void
+  label: string
+}) {
+  const reduceMotion = useReducedMotion()
+  const enter = useSharedValue(reduceMotion ? 1 : 0)
+
+  useEffect(() => {
+    if (reduceMotion) {
+      enter.value = 1
+      return
+    }
+    enter.value = 0
+    enter.value = withSpring(1, motionSprings.press)
+  }, [day, reduceMotion, enter])
+
+  const cellStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.7 + enter.value * 0.3 }],
+  }))
+  const stickerStyle = useAnimatedStyle(() => ({ opacity: enter.value * 0.26 }))
+
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: true }}
+      accessibilityLabel={label}
+      style={[
+        styles.calendarCell,
+        styles.calendarCellNeoSelected,
+        {
+          backgroundColor: tone.surface,
+          // El relieve sale del ink del propio tono, no de un verde fijo: el
+          // día elegido tiene que leerse como "esta categoría", no como
+          // "confirmado". En CLARO el ink es oscuro y funciona de sombra
+          // proyectada; en OSCURO es claro, así que sin offset queda un halo —
+          // el mismo recurso que usa el CTA del kit en dark.
+          boxShadow: isDark
+            ? `0px 0px 14px ${hexAlpha(tone.ink, 0.32)}`
+            : `0px 5px 11px ${hexAlpha(tone.ink, 0.4)}`,
+        },
+        cellStyle,
+      ]}
+    >
+      {/* El sticker va DETRÁS del número, a tamaño casi de celda y apagado:
+          identifica la categoría sin pelear con el dato. `onLightSurface`
+          siempre — la placa clara le pondría un recuadro al watermark. */}
+      <Animated.View pointerEvents="none" style={[styles.calendarCellSticker, stickerStyle]}>
+        <CategoryIcon
+          name={categoryName}
+          scope="fixed_expense"
+          size={34}
+          onLightSurface
+          emojiStyle={styles.calendarCellEmoji}
+        />
+      </Animated.View>
+      <Text
+        allowFontScaling={false}
+        style={{
+          fontSize: 14,
+          fontWeight: '900',
+          fontFamily: neo.font('900'),
+          color: tone.ink,
+        }}
+      >
+        {day}
+      </Text>
+    </AnimatedPressable>
   )
 }
 

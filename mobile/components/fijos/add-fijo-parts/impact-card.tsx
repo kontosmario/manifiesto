@@ -19,6 +19,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { motionDurations } from '@/lib/motion'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Path } from 'react-native-svg'
 import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
@@ -254,12 +255,38 @@ export function ImpactColumns(props: ImpactColumnsProps) {
 /** Medidor de zonas: track de 9px con los tramos 30/20/50, dos ticks en los
  *  cortes y la perilla en el porcentaje actual. Reemplaza a `ImpactBar` en la
  *  piel neo — el handoff no dibuja ninguna barra dentro de la card de
- *  impacto, dibuja ésta dentro del bloque libre. */
-export function ZoneGauge({ pct }: { pct: number }) {
+ *  impacto, dibuja ésta dentro del bloque libre.
+ *
+ *  La perilla VIAJA de `fromPct` a `pct` al montar. Es lo que recupera la
+ *  lectura que daba `ImpactBar` y que se perdió al sacarla: el ojo ve el
+ *  desplazamiento —"esto es lo que sumás"— en vez de encontrar la perilla ya
+ *  puesta. El arranque espera a que la card termine de entrar. */
+export function ZoneGauge({ pct, fromPct }: { pct: number; fromPct?: number }) {
   const skin = useFijosSkin()
+  const reduced = useReducedMotion()
+  const clamp = (v: number) => Math.max(0, Math.min(100, v))
+  const clamped = clamp(pct)
+  const start = fromPct == null ? clamped : clamp(fromPct)
+  const knobPct = useSharedValue(reduced ? clamped : start)
+
+  useEffect(() => {
+    if (reduced) {
+      knobPct.value = clamped
+      return
+    }
+    knobPct.value = withDelay(
+      motionDurations.quick,
+      withTiming(clamped, {
+        duration: motionDurations.slow,
+        easing: Easing.out(Easing.cubic),
+      }),
+    )
+  }, [clamped, reduced, knobPct])
+
+  const knobStyle = useAnimatedStyle(() => ({ left: `${knobPct.value}%` }))
+
   if (skin.kind !== 'neo') return null
   const g = skin.add.gauge
-  const clamped = Math.max(0, Math.min(100, pct))
   return (
     <View style={styles.gaugeWrap}>
       <View
@@ -289,11 +316,10 @@ export function ZoneGauge({ pct }: { pct: number }) {
           ]}
         />
       ))}
-      <View
+      <Animated.View
         style={[
           styles.gaugeKnob,
           {
-            left: `${clamped}%`,
             marginLeft: -g.knob.width / 2,
             marginTop: -g.knob.height / 2,
             width: g.knob.width,
@@ -302,6 +328,7 @@ export function ZoneGauge({ pct }: { pct: number }) {
             backgroundColor: g.knob.background,
             boxShadow: g.knob.shadow,
           },
+          knobStyle,
         ]}
       />
     </View>
