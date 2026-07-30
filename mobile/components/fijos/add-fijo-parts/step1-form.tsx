@@ -29,6 +29,7 @@ import {
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
 import { usePressScale } from '@/hooks/use-press-scale'
+import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 import { Field } from './field'
@@ -269,7 +270,12 @@ export function Step1Form(props: Step1FormProps) {
                 style={[
                   styles.cuotaFootnote,
                   { color: theme.colors.textMuted },
-                  neo ? { color: neo.mutedInk, fontWeight: '700', fontFamily: neo.font('700') } : null,
+                  neo
+                    ? [
+                        styles.cuotaFootnoteNeo,
+                        { color: neo.mutedInk, fontWeight: '700', fontFamily: neo.font('700') },
+                      ]
+                    : null,
                 ]}
               >
                 {t('fijos:wizard.step1.installmentSummary', {
@@ -360,7 +366,10 @@ function CuotaPill({
 
   return (
     <AnimatedPressable
-      onPress={onPress}
+      onPress={() => {
+        void triggerHaptic('selection')
+        onPress()
+      }}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       accessibilityRole="button"
@@ -459,15 +468,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cuotaPillText: { fontSize: 12, fontWeight: '700' },
-  cuotaRowNeo: { gap: 9, marginTop: 9 },
+  // Las seis opciones REPARTEN el ancho en una sola fila. Con `minWidth` fijo
+  // la sexta se caía a un segundo renglón y el bloque se leía como una grilla
+  // rota: son seis alternativas del mismo eje, tienen que verse como una
+  // escala. `flexWrap:'nowrap'` pisa el `wrap` de la fila classic.
+  cuotaRowNeo: { gap: 7, marginTop: 10, flexWrap: 'nowrap' },
   cuotaPillNeo: {
-    minWidth: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    flex: 1,
+    minWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cuotaPillTextNeo: { fontSize: 13, fontWeight: '900', textAlign: 'center' },
+  // El total es la consecuencia de elegir — se lee antes que el desglose.
+  cuotaFootnoteNeo: { fontSize: 11.5, marginTop: 10 },
   cuotaFootnote: { fontSize: 11, marginTop: 8 },
 })
