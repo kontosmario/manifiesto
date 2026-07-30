@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface CalendarDropImpactProps {
@@ -38,6 +39,8 @@ export function CalendarDropImpact({
   category,
 }: CalendarDropImpactProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   // category.name es el nombre CRUDO de la categoría. CategoryIcon rendea
@@ -116,8 +119,10 @@ export function CalendarDropImpact({
                     style={[
                       StyleSheet.absoluteFill,
                       {
-                        borderRadius: 8,
-                        boxShadow: `0px 4px 10px -3px ${hexAlpha(color, 0.55)}`,
+                        borderRadius: neo ? 11 : 8,
+                        boxShadow: neo
+                          ? '0px 5px 11px rgba(46,116,52,0.4)'
+                          : `0px 4px 10px -3px ${hexAlpha(color, 0.55)}`,
                       } as unknown as object,
                     ]}
                   />
@@ -147,11 +152,24 @@ export function CalendarDropImpact({
                       backgroundColor: theme.colors.creamSoft,
                       opacity: pressed ? 0.7 : 1,
                     },
+                    // Handoff: cada día es un POZO (r11, inset 3/3/7), no una
+                    // celda plana. El seleccionado sale del pozo y se eleva.
+                    neo
+                      ? {
+                          backgroundColor: neo.add.well.background,
+                          borderRadius: 11,
+                          boxShadow: neo.chip.shadow,
+                        }
+                      : null,
                   ]}
                 >
                   <Text
                     allowFontScaling={false}
-                    style={[styles.calendarCellNum, { color: theme.colors.text }]}
+                    style={[
+                      styles.calendarCellNum,
+                      { color: theme.colors.text },
+                      neo ? { fontSize: 12.5, fontWeight: '800' as const, color: neo.ink.title } : null,
+                    ]}
                   >
                     {n}
                   </Text>

@@ -92,6 +92,10 @@ export function FreqTile({
       <Animated.View
         style={[
           styles.freqTile,
+          // Handoff: CHIP horizontal (r15, 9×15), no tile cuadrado. El ícono se
+          // conserva a pedido del owner —el markup lo dibuja sin ícono— y va
+          // adentro del chip, a la izquierda del label.
+          neo ? styles.freqChipNeo : null,
           // Match el category rail tile bg (`theme.colors.surface`) así
           // ambos rails comparten el mismo light-mode tone en vez de
           // mezclar white categories con cream-tinted frequency tiles.
@@ -104,12 +108,21 @@ export function FreqTile({
           neo ? null : borderStyle,
           neo
             ? {
-                borderRadius: neo.add.tile.radius,
+                borderRadius: neo.add.freqChip.radius,
                 borderWidth: 0,
-                backgroundColor: neo.add.tile.idleBackground ?? theme.colors.surface,
+                paddingHorizontal: neo.add.freqChip.padH,
+                paddingVertical: neo.add.freqChip.padV,
+                // Activo: RELLENO oscuro con drop shadow. Acá el handoff SÍ
+                // rellena, a diferencia de los tiles de categoría que se hunden.
+                backgroundColor: selected
+                  ? neo.add.freqChip.activeBackground
+                  : neo.add.quickChip.background,
+                experimental_backgroundImage: selected
+                  ? undefined
+                  : neo.add.quickChip.gradientCss,
                 boxShadow: selected
-                  ? `${neo.add.tile.selectedShadow}, 0 0 0 2.5px ${neo.add.tile.selectedRing}`
-                  : neo.add.tile.idleShadow,
+                  ? neo.add.freqChip.activeShadow
+                  : neo.add.quickChip.shadow,
               }
             : null,
         ]}
@@ -117,7 +130,7 @@ export function FreqTile({
         {CATEGORY_ICONS[icon] ? (
           <Image
             source={CATEGORY_ICONS[icon]}
-            style={styles.freqTileImage}
+            style={[styles.freqTileImage, neo ? styles.freqChipImageNeo : null]}
             resizeMode="contain"
           />
         ) : (
@@ -126,7 +139,18 @@ export function FreqTile({
           </Text>
         )}
         <Text
-          style={[styles.freqTileLabel, { color: theme.colors.text }]}
+          style={[
+            styles.freqTileLabel,
+            { color: theme.colors.text },
+            neo
+              ? {
+                  fontSize: neo.add.freqChip.fontSize,
+                  fontWeight: '800' as const,
+                  color: selected ? neo.add.freqChip.activeInk : neo.ink.title,
+                  width: 'auto' as const,
+                }
+              : null,
+          ]}
           numberOfLines={1}
           allowFontScaling={false}
         >
@@ -155,6 +179,9 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
   freqTileImage: { width: 32, height: 32 },
+  // Chip horizontal del handoff: alto natural, ícono + label en fila.
+  freqChipNeo: { width: 'auto', height: 'auto', flexDirection: 'row', gap: 7 },
+  freqChipImageNeo: { width: 18, height: 18 },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',

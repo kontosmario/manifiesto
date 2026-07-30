@@ -294,6 +294,23 @@ export function Step2Summary(props: Step2SummaryProps) {
                   : '#49D61F'  // V1 primary-500
                 : theme.colors.line,
             },
+            // Handoff: card r18 con fondo verde suave y ANILLO interno de 2px
+            // cuando está activo. El borde de 1px se anula — el anillo lo
+            // reemplaza, igual que en el resto del rediseño.
+            neo
+              ? {
+                  borderRadius: 18,
+                  borderWidth: 0,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                  backgroundColor: notify
+                    ? neo.accent('paid').chipBackground
+                    : neo.row.background,
+                  boxShadow: notify
+                    ? `inset 0 0 0 2px ${neo.detail.ctaEditInk}`
+                    : neo.row.shadow,
+                }
+              : null,
           ]}
           accessibilityRole="switch"
           accessibilityState={{ checked: notify }}
