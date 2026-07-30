@@ -109,6 +109,10 @@ const ADD = {
     ctaGradient: 'linear-gradient(180deg,#6DBC71,#327E39)',
     ctaBackground: '#4E9E52',
     ctaInk: '#F5F2E1',
+    backBackground: '#E9EBE0',
+    backGradient: undefined as string | undefined,
+    progressDone: '#2E7C39',
+    progressPending: 'rgba(194,91,51,0.22)',
   },
   dark: {
     wellBackground: '#20372A',
@@ -123,6 +127,10 @@ const ADD = {
     ctaGradient: 'linear-gradient(180deg,#7ED083,#35793E)',
     ctaBackground: '#5AA45F',
     ctaInk: '#0F1E14',
+    backBackground: '#1D3426',
+    backGradient: 'linear-gradient(145deg, #1D3426, #132318)' as string | undefined,
+    progressDone: '#A4E3A6',
+    progressPending: 'rgba(240,164,126,0.2)',
   },
 } as const
 
@@ -206,6 +214,21 @@ export interface FijosNeoSkin {
   detail: FijosDetailSkin
   /** Wizard de alta, transcrito de `Agregar Fijo Manifiesto.dc.html`. */
   add: FijosAddSkin
+  /** Header del wizard: botón circular, título y barra de progreso. */
+  header: FijosHeaderSkin
+}
+
+export interface FijosHeaderSkin {
+  backSize: number
+  backBackground: string
+  backGradientCss: string | undefined
+  backShadow: string
+  title: TextTokens
+  progressGap: number
+  progressHeight: number
+  progressDone: string
+  /** Tramo pendiente: NO es un gris neutro, es terracota tenue. */
+  progressPending: string
 }
 
 export interface FijosAddSkin {
@@ -382,6 +405,17 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       }
       // `future` — ni urgente ni cerrado: neutro sobre el verde suave.
       return { ink: s.rowMetaNeutralInk, chipBackground: s.tagUpcomingBackground }
+    },
+    header: {
+      backSize: 44,
+      backBackground: ADD[mode].backBackground,
+      backGradientCss: ADD[mode].backGradient,
+      backShadow: mode === 'light' ? TILE_RAISE_L : TILE_RAISE_D,
+      title: { fontSize: 27, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.6 },
+      progressGap: 7,
+      progressHeight: 4,
+      progressDone: ADD[mode].progressDone,
+      progressPending: ADD[mode].progressPending,
     },
     detail: {
       statsRadius: 18,

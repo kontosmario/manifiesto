@@ -4,6 +4,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 type Step = 1 | 2
@@ -17,6 +18,8 @@ export interface StepHeaderProps {
 
 export function StepHeader({ step, isEditing, onBack }: StepHeaderProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const stepTitle =
     step === 1
@@ -35,21 +38,46 @@ export function StepHeader({ step, isEditing, onBack }: StepHeaderProps) {
         style={[
           styles.backPill,
           { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
+          // Handoff: 44×44 circular, ELEVADO y sin borde.
+          neo
+            ? {
+                width: neo.header.backSize,
+                height: neo.header.backSize,
+                borderWidth: 0,
+                backgroundColor: neo.header.backBackground,
+                experimental_backgroundImage: neo.header.backGradientCss,
+                boxShadow: neo.header.backShadow,
+              }
+            : null,
         ]}
         hitSlop={10}
       >
-        <MaterialIcons name="arrow-back-ios-new" size={18} color={theme.colors.text} />
+        <MaterialIcons
+          name="arrow-back-ios-new"
+          size={18}
+          color={neo ? neo.ink.title : theme.colors.text}
+        />
       </Pressable>
-      <Text style={[styles.title, { color: theme.colors.text }]}>{stepTitle}</Text>
-      <View style={styles.headerRightSpacer} />
+      <Text
+        style={[
+          styles.title,
+          { color: theme.colors.text },
+          neo ? { ...neo.header.title, color: neo.ink.title } : null,
+        ]}
+      >
+        {stepTitle}
+      </Text>
+      <View style={[styles.headerRightSpacer, neo ? { width: 0 } : null]} />
     </View>
   )
 }
 
 export function StepDots({ step }: { step: Step }) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   return (
-    <View style={styles.dotsRow}>
+    <View style={[styles.dotsRow, neo ? { gap: neo.header.progressGap, marginTop: 14 } : null]}>
       {[1, 2].map((s) => (
         <View
           key={s}
@@ -58,6 +86,16 @@ export function StepDots({ step }: { step: Step }) {
             {
               backgroundColor: s <= step ? theme.colors.text : theme.colors.line,
             },
+            // El progreso CODIFICA el paso: en el 1 el tramo pendiente va en
+            // terracota tenue (el color de "todavía no"), y al llegar al 2 los
+            // dos quedan verdes. No es un gris neutro — literal del handoff.
+            neo
+              ? {
+                  height: neo.header.progressHeight,
+                  backgroundColor:
+                    s <= step ? neo.header.progressDone : neo.header.progressPending,
+                }
+              : null,
           ]}
         />
       ))}
