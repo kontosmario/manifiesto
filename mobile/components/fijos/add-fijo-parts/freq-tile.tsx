@@ -184,8 +184,12 @@ const styles = StyleSheet.create({
   },
   freqTileImage: { width: 32, height: 32 },
   // Chip horizontal del handoff: alto natural, ícono + label en fila.
-  freqChipNeo: { width: 'auto', height: 'auto', flexDirection: 'row', gap: 7 },
-  freqChipImageNeo: { width: 18, height: 18 },
+  //
+  // El handoff dibuja los chips SIN ícono; conservarlos fue decisión del owner.
+  // A 18px el sticker era una mancha al lado de un label de 12.5 — a 26 se lee
+  // y el chip crece ~6px, que es lo que costaba la decisión.
+  freqChipNeo: { width: 'auto', height: 'auto', flexDirection: 'row', gap: 8 },
+  freqChipImageNeo: { width: 26, height: 26 },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',

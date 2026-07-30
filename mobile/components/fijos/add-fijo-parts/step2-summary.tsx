@@ -17,7 +17,7 @@ import {
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
 import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
-import { resolveCategoryHueByName } from '@/theme/category-hues'
+import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { CalendarDropImpact } from './calendar-drop-impact'
 import {
@@ -159,18 +159,19 @@ export function Step2Summary(props: Step2SummaryProps) {
                   ? hexAlpha(selectedCategory.color, 0.34)
                   : theme.colors.line,
               },
-              // 44×44 sin borde, con el PASTEL de la categoría en los dos
-              // temas. El handoff pide el hue al 14% en oscuro, pero los
-              // stickers están ilustrados para fondo claro y sobre un velo
-              // oscuro se funden — es el mismo desvío ya vivo en el rail de
-              // categorías del paso 1, unificado por decisión del owner.
+              // 44×44 sin borde, con el TONO de la categoría — el mismo que
+              // pinta los headers colapsables de la lista y el tile del rail
+              // del paso 1. Acá sí cambia con el tema: la categoría se tiene
+              // que ver igual donde se la elige y donde se la lee después.
               neo && selectedCategory
                 ? {
                     width: 44,
                     height: 44,
                     borderWidth: 0,
-                    backgroundColor: resolveCategoryHueByName(selectedCategory.name).light
-                      .surface,
+                    backgroundColor: resolveFijosCategoryTone(
+                      selectedCategory.name,
+                      theme.isDark,
+                    ).surface,
                   }
                 : null,
             ]}
@@ -181,8 +182,11 @@ export function Step2Summary(props: Step2SummaryProps) {
               <CategoryIcon
                 name={selectedCategory.name}
                 scope="fixed_expense"
-                size={neo ? 28 : 30}
+                size={neo ? 32 : 30}
                 emojiStyle={neo ? styles.summaryIconTextNeo : styles.summaryIconText}
+                // En claro el tono ya es pastel; en oscuro es una superficie
+                // oscura y el sticker necesita su placa.
+                onLightSurface={neo ? !theme.isDark : false}
               />
             ) : (
               <Text style={styles.summaryIconText}>

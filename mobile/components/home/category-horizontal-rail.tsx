@@ -27,6 +27,7 @@ import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { resolveCategoryHueByName } from '@/theme/category-hues'
 
 // Bumped 60 → 68pt (add-gasto pedido del owner): categorías más grandes y
@@ -284,6 +285,16 @@ export function CategoryHorizontalRail({
   warning = false,
 }: CategoryHorizontalRailProps) {
   const { t } = useTranslation()
+  const { theme } = useAppTheme()
+  // COMPARTIDO con add-gasto / add-ingreso: solo resuelve a `neo` dentro del
+  // wizard de fijos, que es el único que monta el provider.
+  const railSkin = useFijosSkin()
+  const railNeo = railSkin.kind === 'neo'
+  // En neo el tile se pinta con el TONO de la categoría, que en oscuro es una
+  // superficie oscura (L=24%): ahí el sticker sí necesita su placa clara, que
+  // es lo que hace `CategoryIcon` sin `onLightSurface`. En claro el tono ya es
+  // pastel y el sticker se apoya directo.
+  const stickerOnLight = railNeo ? !theme.isDark : true
 
   const tiles = useMemo<RailTile[]>(
     () =>
@@ -297,11 +308,11 @@ export function CategoryHorizontalRail({
             <CategoryIcon
               name={category.name}
               scope={iconScope}
-              size={32}
+              size={railNeo ? 42 : 32}
               emojiStyle={styles.emoji}
               // La cápsula del tile ya es el pastel CLARO del hue (ambos modos)
               // → el sticker se lee directo, sin placa.
-              onLightSurface
+              onLightSurface={stickerOnLight}
             />
           ),
           accessibilityLabel: t('home:categoryRail.selectAccessibility', {
@@ -309,7 +320,7 @@ export function CategoryHorizontalRail({
           }),
         }
       }),
-    [categories, iconScope, t],
+    [categories, iconScope, t, railNeo, stickerOnLight],
   )
 
   const labelText = warning
@@ -349,10 +360,19 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
   const reduceMotion = useReducedMotion()
   const scale = useSharedValue(1)
   const selectedProgress = useSharedValue(selected ? 1 : 0)
-  // SIEMPRE el pastel CLARO del hue — un solo color de fondo del ícono, igual
-  // en light y dark (los stickers están ilustrados para fondo claro → así se
-  // leen en ambos modos sin placa). El label va en el ink oscuro (AA).
-  const hue = resolveCategoryHueByName(tile.hueName).light
+  // CLASSIC: siempre el pastel CLARO del hue — un solo color de fondo del
+  // ícono, igual en light y dark (los stickers están ilustrados para fondo
+  // claro → así se leen en ambos modos sin placa).
+  //
+  // NEO: el tono de `fijos-category-palette`, el MISMO que pinta los headers
+  // colapsables de la lista. Es lo que hace que una categoría se vea igual
+  // donde se la elige y donde se la lee después, y a diferencia de
+  // `categoryHues` no repite familia entre las 11 del catálogo. Acá sí cambia
+  // con el tema: la superficie oscura va a L=24%, que es donde el matiz
+  // recién se lee (espejar el claro daba cards grises).
+  const hue = neo
+    ? resolveFijosCategoryTone(tile.hueName, theme.isDark)
+    : resolveCategoryHueByName(tile.hueName).light
 
   // Animate the selected state via Reanimated so the border eases in
   // and out — same pattern AmountCard uses for its focus ring.

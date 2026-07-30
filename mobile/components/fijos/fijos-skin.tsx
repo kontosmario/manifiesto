@@ -116,13 +116,6 @@ const STEP2 = {
     healthWarnInk: '#C25B33',
     healthWarnBackground: '#F6DCCB',
     toggleOn: '#2E7C39',
-    // Radial de la celda elegida. `experimental_backgroundImage` no rinde en
-    // react-native-web (GOTCHA del handoff), así que el fill sólido de abajo
-    // es lo que se ve en el preview y el radial es lo que se ve en el device.
-    // El sólido es el color medio del propio radial.
-    selectedGradient: 'radial-gradient(circle at 34% 28%, #63B168, #2E7434 85%)',
-    selectedBackground: '#3F8E48',
-    selectedInk: '#F5F2E1',
   },
   dark: {
     accentGreen: '#A4E3A6',
@@ -140,9 +133,6 @@ const STEP2 = {
     healthWarnInk: '#0F1E14',
     healthWarnBackground: '#F0A47E',
     toggleOn: '#A4E3A6',
-    selectedGradient: 'radial-gradient(circle at 34% 28%, #9FDC9F, #3E7D46 85%)',
-    selectedBackground: '#63A96B',
-    selectedInk: '#0F1E14',
   },
 } as const
 
@@ -409,8 +399,6 @@ export interface FijosAddSkin {
     knobBackground: string
     knobShadow: string
   }
-  /** Celda elegida del calendario: radial verde + número centrado. */
-  calendarSelected: { gradientCss: string; background: string; ink: string; shadow: string }
 }
 
 /** Bloque "SE LLEVA AL AÑO" — fondo, anillo y barra, por estado y tema. */
@@ -638,7 +626,9 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       freqChip: {
         radius: 15,
         padH: 15,
-        padV: 9,
+        // 9 → 10: el ícono pasó de 18 a 26 y el chip necesita el aire para no
+        // quedar con el sticker tocando los bordes.
+        padV: 10,
         fontSize: 12.5,
         activeBackground: ADD[mode].freqBackground,
         activeInk: ADD[mode].freqInk,
@@ -728,12 +718,6 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
         knobInset: 3,
         knobBackground: '#FFFDF6',
         knobShadow: '0 2px 4px rgba(0,0,0,0.25)',
-      },
-      calendarSelected: {
-        gradientCss: STEP2[mode].selectedGradient,
-        background: STEP2[mode].selectedBackground,
-        ink: STEP2[mode].selectedInk,
-        shadow: '0 5px 11px rgba(46,116,52,0.4)',
       },
     },
   }
