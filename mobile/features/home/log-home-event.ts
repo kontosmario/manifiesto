@@ -65,6 +65,18 @@ export type HomeElementId =
   | 'next_fixed_chip'
   | 'forecast_summary'
   | 'contextual_banner'
+  // Home rediseñada (neo, F3 del cableado — plan design/home-final-2026-07/
+  // PLAN-CABLEADO.md §F3 telemetría nueva):
+  //   · hero_projection_link — link "Proyección de cierre en Control ›" del
+  //     medidor (shown + tapped; destino tab insights).
+  //   · hero_event_chip — chip de evento del hero (selector uno-por-vez;
+  //     read-only → solo shown).
+  //   · streak_garden_link — card de racha / link "Jardín ›" (tapped).
+  //   · cycle_view_detail — link "Ver detalle" del RESUMEN DEL CICLO (tapped).
+  | 'hero_projection_link'
+  | 'hero_event_chip'
+  | 'streak_garden_link'
+  | 'cycle_view_detail'
 
 interface LogArgs {
   familyId: string

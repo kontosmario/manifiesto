@@ -32,6 +32,36 @@ const ENTRIES: PreviewEntry[] = [
     statusKey: 'fijos',
   },
   {
+    label: 'GASTOS (rediseño)',
+    detail: 'Hero forest + calendario ⇄ día · dropdown de ciclo · filtro · movimientos · claro/oscuro',
+    route: '/(app)/settings/dev/redesign-gastos',
+    statusKey: 'gastos',
+  },
+  {
+    label: 'HOME neo · datos reales',
+    detail: 'Pantalla live nueva (F3) sobre la orquestación real — pre-swap de ruta',
+    route: '/(app)/settings/dev/neo-home',
+    statusKey: 'home-final',
+  },
+  {
+    label: 'GASTOS neo · datos reales',
+    detail: 'Cableado F0+F1 (ciclo actual read-only: hero + calendario/exceso + filtro) — pre-swap de ruta',
+    route: '/(app)/settings/dev/neo-gastos',
+    statusKey: 'gastos',
+  },
+  {
+    label: 'FIJOS neo · datos reales',
+    detail: 'Cableado F2 (ciclo actual: header + hero E1–E8 sobre datos reales) — Avisos y tabs en curso · pre-swap de ruta',
+    route: '/(app)/settings/dev/neo-fijos',
+    statusKey: 'fijos',
+  },
+  {
+    label: 'HOME final (handoff nuevo)',
+    detail: 'Hero saldo + medidor de cupo · racha Brot · nav FAB N1 · claro/oscuro',
+    route: '/(app)/settings/dev/redesign-home',
+    statusKey: 'home-final',
+  },
+  {
     label: 'Onboarding fácil (Turno 5)',
     detail: 'Flujo interactivo 5a→5f · aprobación por pantalla',
     route: '/(app)/settings/dev/redesign-onboarding-index',

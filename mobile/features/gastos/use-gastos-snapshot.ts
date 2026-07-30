@@ -23,6 +23,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import i18n from '@/lib/i18n'
 import {
+  GASTOS_DAYS_PER_PAGE,
   gastosEndpointKeys,
 } from '@/features/gastos/use-gastos-endpoints'
 import type {
@@ -182,10 +183,36 @@ function seedCaches(
     pages: [normalizedFirstPage],
     pageParams: [null],
   }
-  client.setQueryData(
-    gastosEndpointKeys.paginated(familyId, cycleStartIso, cycleEndIso, todayIso, null),
-    seededInfinite,
+  const paginatedKey = gastosEndpointKeys.paginated(
+    familyId,
+    cycleStartIso,
+    cycleEndIso,
+    todayIso,
+    null,
   )
+  // NO PISAR PAGINACIÓN ACUMULADA.
+  //
+  // Este seed es INCONDICIONAL por naturaleza (`{pages:[page1]}`), pero corre
+  // por caminos que ocurren con Gastos MONTADA Y ENFOCADA, no solo en cold
+  // start: `refetchOnReconnect:true` de este mismo snapshot (un blip de red
+  // mientras el usuario scrollea) y `useWarmTabsSnapshots`, que vive en el
+  // layout de tabs y re-prefetchea cuando el snapshot se pone stale (>60s).
+  // Pisando siempre, el feed COLAPSABA a la primera página con el usuario
+  // mirando — perdiendo los round-trips ya pagados y su posición de scroll.
+  //
+  // Con páginas acumuladas conservamos lo que hay: la data vieja no queda
+  // huérfana (mutaciones + `useGastosRealtime` invalidan `paginatedFamily` y
+  // RQ re-fetchea TODAS las páginas de forma coherente), y `resetPagination`
+  // sigue siendo el único punto que recorta a 1 página, al salir de la tab.
+  //
+  // No mergeamos `[page1Nueva, ...viejas.slice(1)]` a propósito: el cursor de
+  // la página 1 puede haberse movido (un día nuevo con gastos entra arriba) y
+  // el empalme con `pages[1]` abriría un HUECO de días en el feed.
+  const prevPaginated =
+    client.getQueryData<InfiniteData<GastosExpensesPage, string | null>>(paginatedKey)
+  if (!prevPaginated || prevPaginated.pages.length <= 1) {
+    client.setQueryData(paginatedKey, seededInfinite)
+  }
 
   // Streaks: la racha es FAMILIAR (2026-07-08) — keys por familia. El
   // snapshot devuelve la fila de family_streaks + marcas del hogar (≤35).
@@ -212,7 +239,11 @@ export async function fetchGastosSnapshot(
     p_cycle_end: args.cycleEnd.toISOString(),
     p_today: localIsoDate(args.today),
     p_cupo_diario: args.cupoDiario,
-    p_days_per_page: args.daysPerPage ?? 7,
+    // El seed de la 1ª página TIENE que pedir los mismos días que el infinite
+    // query del controller: la queryKey del snapshot no incluye daysPerPage,
+    // así que un mismatch se resuelve por cache-hit y gana el que prefetcheó
+    // primero (el warm de Home) — silencioso. Ver GASTOS_DAYS_PER_PAGE.
+    p_days_per_page: args.daysPerPage ?? GASTOS_DAYS_PER_PAGE,
     p_timezone: DEFAULT_TIMEZONE,
   })
   if (error) throw error

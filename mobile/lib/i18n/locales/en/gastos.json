@@ -6,10 +6,32 @@
   },
   "hero": {
     "totalVisible": "TOTAL SHOWN",
+    "totalEdition": "EDITION TOTAL",
     "totalDay": "DAY TOTAL",
     "dailyAverage": "DAILY AVERAGE",
     "lastDays": "· last {{days}}d",
     "topCategories": "TOP CATEGORIES BY WEIGHT"
+  },
+  "closed": {
+    "currentTag": "CURRENT",
+    "trigger": "{{label}} · closed",
+    "heroChip": "{{count}} mov · closed",
+    "calendarHint": "month summary",
+    "sectionChip": "closed edition",
+    "movementsTitle": "Movements aren't kept",
+    "movementsSub": "We keep each closed edition's summary —the total, the categories and your month— but the movement-by-movement detail isn't archived."
+  },
+  "overdue": {
+    "title": "Your cycle ended on day {{day}}",
+    "subtitle_one": "{{count}} day without confirming your pay — it's outside the cycle",
+    "subtitle_other": "{{count}} days without confirming your pay — they're outside the cycle",
+    "confirmCta": "✓ Confirm",
+    "confirmA11y": "Confirm pay",
+    "previewNoop": "Preview: pay isn't confirmed here",
+    "outCellSub": "OUT",
+    "outBadge": "Outside cycle",
+    "outDaySub": "Outside cycle · moves to the next one once confirmed",
+    "outDayChip": "✕ Day +{{day}} · see all"
   },
   "list": {
     "movementsTitle": "Movements",
@@ -35,7 +57,11 @@
   },
   "smartFilter": {
     "eyebrow": "FILTER BY CATEGORY",
-    "all": "All"
+    "all": "All",
+    "a11yApplied_one": "Filtering by {{name}}: {{count}} movement in the cycle. Total, daily average and calendar updated.",
+    "a11yApplied_other": "Filtering by {{name}}: {{count}} movements in the cycle. Total, daily average and calendar updated.",
+    "a11yCleared_one": "Category filter cleared: {{count}} movement in the cycle. Total, daily average and calendar updated.",
+    "a11yCleared_other": "Category filter cleared: {{count}} movements in the cycle. Total, daily average and calendar updated."
   },
   "filterPill": {
     "a11yWithCount_one": "{{label}}, {{count}} movement",
@@ -107,7 +133,17 @@
     "unmarkNoSpendA11y": "Undo the no-spend mark for this day",
     "fullCycle": "Full cycle",
     "prevDayA11y": "Previous day",
-    "nextDayA11y": "Next day"
+    "nextDayA11y": "Next day",
+    "dayA11y": {
+      "dayPrefix": "Day",
+      "marked": "marked as no spend",
+      "ok": "with expenses",
+      "bad": "over-budget day",
+      "now": "today",
+      "fut": "future day",
+      "fuera": "outside the cycle",
+      "empty": "no expenses logged"
+    }
   },
   "noSpendConfirm": {
     "title": "You already have expenses logged today",
@@ -239,8 +275,11 @@
     "deleteTitle": "Delete expense",
     "deleteMessage": "This action can't be undone.",
     "deleteConfirm": "Delete",
+    "dayFilterChip": "✕ Day {{day}} · see all",
     "visibleMovements_one": "{{count}} visible movement",
-    "visibleMovements_other": "{{count}} visible movements"
+    "visibleMovements_other": "{{count}} visible movements",
+    "cycleMovements_one": "{{count}} expense this cycle",
+    "cycleMovements_other": "{{count}} expenses this cycle"
   },
   "errors": {
     "noSessionCreate": "No active session or household to create expenses.",

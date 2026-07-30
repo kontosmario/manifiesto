@@ -5,6 +5,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useFamily } from '@/features/family/use-family'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { GASTOS_DAYS_PER_PAGE } from '@/features/gastos/use-gastos-endpoints'
 import { prefetchGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { prefetchControlIntelligence } from '@/features/insights/use-control-v2-data'
 import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
@@ -91,7 +92,11 @@ export function useWarmTabsSnapshots(): void {
         cycleEnd: cycle.end,
         today,
         cupoDiario,
-        daysPerPage: 7,
+        // El warm es el que suele ganar la carrera del cache: si prefetchea
+        // más días que los que pide el screen, el screen hace cache-hit sobre
+        // ESE payload y la 1ª página del feed sale con los días del warm (la
+        // queryKey del snapshot no incluye daysPerPage). Constante compartida.
+        daysPerPage: GASTOS_DAYS_PER_PAGE,
       })
       void prefetchControlIntelligence(queryClient, familyId)
     })

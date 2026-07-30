@@ -68,6 +68,9 @@ export async function syncAllAfterMutation(
   if (scopes.length === 0) return
 
   const keys: Array<readonly unknown[]> = []
+  // Keys que se marcan STALE pero NO se re-fetchean acá. Ver el bloque de
+  // `gastos-snapshot` en el cluster de expenses.
+  const staleOnlyKeys: Array<readonly unknown[]> = []
   const has = (s: SyncScope) => scopes.includes(s)
 
   // ── Expenses cluster (también disparado por fixedPayment vía trigger DB)
@@ -83,8 +86,21 @@ export async function syncAllAfterMutation(
     keys.push(gastosEndpointKeys.paginatedFamily(familyId))
     keys.push(gastosEndpointKeys.forDayFamily(familyId))
     // gastos_snapshot tiene una key larga (cycle window, today, cupo, cat);
-    // invalidamos por prefijo de familia para cubrir todas las variantes.
-    keys.push(['gastos-snapshot', familyId])
+    // la marcamos por prefijo de familia para cubrir todas las variantes.
+    //
+    // PERF · va a `staleOnlyKeys` (refetchType 'none'), NO al refetch.
+    // Su payload es EXACTAMENTE {hero, calendar, categories, first_page,
+    // streak_row, streak_marked_days} — las 6 partes ya se invalidan una por
+    // una acá arriba (heroFamily/calendarFamily/categoriesFamily/
+    // paginatedFamily) y abajo (streak/markedDays). Refetchearla además era
+    // un 6º round-trip redundante, pero el problema real es lo que hace al
+    // resolver: su queryFn corre `seedCaches`, o sea `setQueryData` sobre
+    // hero/calendar/categories MIENTRAS los refetches de esas mismas queries
+    // siguen en vuelo → doble commit sobre el hero (partículas + CategoryBars)
+    // y el calendario, en orden NO determinista (gana el que llegue último).
+    // Marcada stale sin refetch, el snapshot se re-pide solo cuando de verdad
+    // hace falta: remount de la pantalla o vencimiento de su staleTime.
+    staleOnlyKeys.push(['gastos-snapshot', familyId])
     // La racha/jardín es FAMILIAR (2026-07-08): keys por familia, sin userId.
     keys.push(streakQueryKey(familyId))
     keys.push(markedDaysQueryKey(familyId))
@@ -112,12 +128,17 @@ export async function syncAllAfterMutation(
     keys.push(notificationQueryKeys.family(familyId))
   }
 
-  // ── Income — incluido también por scope 'expenses' porque ahora el
-  // activity feed (Home + Gastos) muestra ingresos intercalados con
-  // gastos. Al crear/editar/borrar un gasto no movés un ingreso, pero
-  // mantener ambos sincronizados evita inconsistencias si la lista se
-  // refetcha por staleness y la otra no.
-  if (familyId && (has('income') || has('expenses') || has('fixedPayment'))) {
+  // ── Income
+  //
+  // Antes esto también corría con scope 'expenses'/'fixedPayment', "por si
+  // acaso": el activity feed (Home + Gastos) intercala ingresos con gastos, así
+  // que se invalidaba todo junto. Era trabajo puro: crear, editar o borrar un
+  // GASTO no puede mover un income_event — son tablas distintas y ningún
+  // trigger las cruza. El costo sí era real: `incomeEventQueryKeys.list` trae
+  // los últimos 100 ingresos de la familia, y se re-descargaban en CADA gasto
+  // propio y en cada eco de realtime del partner. Los ingresos se refrescan por
+  // su propio scope 'income' (que sí lo pasan sus mutaciones) y por realtime.
+  if (familyId && has('income')) {
     keys.push(incomeEventQueryKeys.list(familyId))
     keys.push(['income-events-cycle-sum', familyId]) // prefix por familia
   }
@@ -232,8 +253,21 @@ export async function syncAllAfterMutation(
     seen.add(sig)
     return true
   })
+  // Los stale-only se deduplican CONTRA los de refetch: si un scope pidió
+  // refetch de la misma key (p.ej. 'income'/'categories' sí necesitan que
+  // gastos_snapshot vuelva a pedirse, porque esos scopes NO invalidan sus 6
+  // partes por separado), gana el refetch. Nunca al revés.
+  const staleOnlyUnique = staleOnlyKeys.filter((k) => {
+    const sig = JSON.stringify(k)
+    if (seen.has(sig)) return false
+    seen.add(sig)
+    return true
+  })
 
-  await Promise.all(
-    unique.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-  )
+  await Promise.all([
+    ...unique.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    ...staleOnlyUnique.map((queryKey) =>
+      queryClient.invalidateQueries({ queryKey, refetchType: 'none' }),
+    ),
+  ])
 }

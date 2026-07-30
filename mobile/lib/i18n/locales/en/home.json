@@ -58,7 +58,9 @@
     "payInDays_one": "Payday in {{count}} day",
     "payInDays_other": "Payday in {{count}} days",
     "confirmPaidHint": "Opens the dialog to confirm you got paid",
-    "confirmAmountHint": "Opens the dialog to confirm the amount you received"
+    "confirmAmountHint": "Opens the dialog to confirm the amount you received",
+    "gotPaidToday": "Paid today ✓",
+    "configureSalary": "Set up your income ›"
   },
   "projectionWait": {
     "label": "Still calculating",
@@ -122,7 +124,9 @@
     "addFirstIncome": "Add income",
     "dynamicSetupA11y": "Log your first income to activate month tracking.",
     "addIncomeAccessibility": "Add an income",
-    "cycleBalance": "Cycle balance"
+    "cycleBalance": "Cycle balance",
+    "balanceLabel": "MONTH BALANCE",
+    "emptyProjectionHint": "Your daily allowance and projection show up with your first income."
   },
   "monthClose": {
     "subtitle": "You closed {{period}} with a positive balance. What do you want to do with that money?",
@@ -204,7 +208,8 @@
   "header": {
     "notifications": "Go to notifications",
     "settingsNoProtection": "Go to settings. Your account has no protection set up.",
-    "settings": "Go to settings"
+    "settings": "Go to settings",
+    "welcome": "welcome!"
   },
   "familyStrip": {
     "membersAccessibility": "Household members: {{members}}.",
@@ -370,5 +375,64 @@
     "partialLabel": "{{remaining}} of {{target}} goal",
     "partialA11y": "You've set aside {{remaining}} of the {{target}} planned for this month.",
     "partialA11y_withPercent": "You've set aside {{remaining}} of the {{target}} planned for this month, {{percent}} percent of your income."
+  },
+  "gauge": {
+    "ok": "You're spending {{amount}}/day · margin ✓",
+    "limit": "Careful, at your limit",
+    "over": "Daily allowance exceeded",
+    "perDay": "PER DAY",
+    "canSpendToday": "YOU CAN SPEND TODAY",
+    "cupoToday": "TODAY'S ALLOWANCE",
+    "spent": "SPENT",
+    "available": "AVAILABLE",
+    "projectionLink": "Close projection in Control ›",
+    "projectionA11y": "Close projection in Control"
+  },
+  "cycleSummary": {
+    "noMovements": "No movements yet",
+    "addFirstFixed": "Add your first bill (rent, utilities…)",
+    "overdue_one": "{{count}} overdue",
+    "overdue_other": "{{count}} overdue"
+  },
+  "streak": {
+    "broken": "Streak broken",
+    "perfectWeek": "Perfect week!",
+    "dontLose": "Don't lose your streak!",
+    "dayZero": "0-day streak",
+    "dayZeroSub": "Log your first expense today and plant a sprout",
+    "count_one": "{{count}}-day streak 🌱",
+    "count_other": "{{count}}-day streak 🌱",
+    "linkGarden": "Garden",
+    "linkView": "View"
+  },
+  "goal": {
+    "amountsOf": "{{current}} of {{target}}",
+    "stillNeed": "{{amount}} to go",
+    "emptyTitle": "No active goal",
+    "emptyRaiseSub": "Set a savings goal",
+    "emptyDashedSub": "Set a goal and your leftover works for you",
+    "createShort": "Create",
+    "createGoal": "Create goal"
+  },
+  "heroChip": {
+    "acumuladoPeriod": "💰 {{amount}} left over from {{period}}",
+    "acumuladoLastMonth": "💰 {{amount}} left over from last month",
+    "added": "📈 You added {{amount}} to the month",
+    "adjusted": "✂️ Adjusted this month",
+    "saving": "💚 {{label}}",
+    "fixedToPay": "🗓️ {{amount}} in bills to pay"
+  },
+  "reserva": {
+    "chip": "🏦 Reserve {{amount}}"
+  },
+  "sections": {
+    "cycleSummary": "CYCLE SUMMARY",
+    "viewDetail": "View detail",
+    "progress": "YOUR PROGRESS"
+  },
+  "activity": {
+    "emptyToday": "You haven't logged anything today",
+    "emptySub": "Your activity will show up here",
+    "addExpense": "+ Add expense"
   }
 }

@@ -29,6 +29,28 @@ interface CardParticlesProps {
   peachColor?: string
   /** Pass-through style if the consumer wants to override absolute fill. */
   style?: StyleProp<ViewStyle>
+  /**
+   * Opt-in pause for the ambient loop. Default `false` = current behavior
+   * (the field never pauses — see `useUnboundedLoopAnimation`). When a
+   * consumer sets `paused` true, the `wave` driver is cancelled so the N
+   * per-particle `useAnimatedStyle` worklets stop recomputing every frame;
+   * flipping it back to false RESUMES IN PLACE (the loop restarts from the
+   * parked value over a span of exactly 1 — see the `start` callback), so
+   * the transition is invisible even with the card on screen.
+   *
+   * ÚNICO caso de uso vigente: el campo queda FUERA DE PANTALLA pero todavía
+   * MONTADO — una tab con `freezeOnBlur:false`, gateada por `useIsFocused()`
+   * (así lo usa el hero de Gastos: `paused={!isFocused}`).
+   *
+   * NO existe pausa por gesto/scroll. Hubo una (el hero de Gastos pausaba
+   * durante el scroll de la lista) y se REVIRTIÓ tras un A/B contra la
+   * pantalla vieja — ver la nota "REVERTIDO (A/B contra la pantalla VIEJA)"
+   * en `mobile/screens/home/neo/neo-gastos-screen.tsx`. No la reintroduzcas
+   * creyendo que es el diseño vigente: no lo es.
+   *
+   * Home call sites omit this → unchanged.
+   */
+  paused?: boolean
 }
 
 interface ParticleSpec {
@@ -130,6 +152,7 @@ export function CardParticles({
   accentColor,
   peachColor = PEACH_GLOW,
   style,
+  paused = false,
 }: CardParticlesProps) {
   const reduced = useReducedMotion()
   const [size, setSize] = useState<{ width: number; height: number } | null>(
@@ -145,15 +168,51 @@ export function CardParticles({
   // not always restarted cleanly — users saw the firefly field
   // "frozen" until app restart. Decorative ambient motion is the
   // exact use-case where `useUnboundedLoopAnimation` exists.
+  //
+  // The OPT-IN `paused` prop is the sole exception (default false =
+  // above behavior, untouched). When true, `start()` bails so the
+  // driver is not (re)started; the hook's own cleanup cancels `wave`
+  // whenever this effect re-runs, so a `false → true` transition parks
+  // the loop and the N particle worklets stop recomputing per frame.
+  // Passing `[paused]` as `deps` re-runs the effect on each transition;
+  // `true → false` restarts the loop. Consumers only pass `paused` when
+  // the field is off-screen but still mounted, so the parked state is
+  // never visible and the resume is unobservable.
   useUnboundedLoopAnimation(
     () => {
+      if (paused) return
+      // Resume IN PLACE: animate `parked → parked + 1`.
+      //
+      // `withRepeat(withTiming(to))` captures the value at start-time as the
+      // loop's origin and snaps back to it on every wrap. Since every motion
+      // formula reads `sin/cos(2π·f·wave + phase)` with INTEGER `f`, a full
+      // span of exactly 1 is periodic: sin(2π·f·(v+1)+φ) ≡ sin(2π·f·v+φ). So
+      // the `v+1 → v` wrap matches in position AND velocity from ANY origin —
+      // not just v=0. That's what makes the un-pause invisible.
+      //
+      // The previous version reset to `wave = 0` before restarting. That is
+      // NOT safe even with the only surviving call site (pause by FOCUS, see
+      // the prop's doc): the parked state is invisible, but the UN-PAUSE is
+      // not — `useIsFocused()` flips at the START of the tab transition, so
+      // the card is already on screen (animating in) when the loop restarts.
+      // A reset would snap all 10 particles from their parked positions to
+      // their wave=0 positions — up to ~2× amplitude — in a single frame, in
+      // full view. Resume-in-place keeps that transition unobservable, so
+      // this math is load-bearing: do not "simplify" it back to a reset.
+      // Mount is unchanged (parked = 0 → 0 → 1), so the Home call sites
+      // (which never pass `paused`) keep the exact previous behavior.
+      const parked = wave.value
       wave.value = withRepeat(
-        withTiming(1, { duration: WAVE_DURATION_MS, easing: Easing.linear }),
+        withTiming(parked + 1, {
+          duration: WAVE_DURATION_MS,
+          easing: Easing.linear,
+        }),
         -1,
         false,
       )
     },
     [wave],
+    [paused],
   )
 
   // Deterministic layout — R2 low-discrepancy sequence (Roberts) for an even

@@ -167,6 +167,12 @@ export interface HomeMonthSummary {
   fixedTotal: number
   fixedPaid: number
   fixedCount: number
+  /**
+   * Fijos VENCIDOS del ciclo (clasificación canónica de `summarizeFijos`,
+   * ventana del ciclo REAL). La Home rediseñada lo usa para el tono
+   * "vencido" de la fila FIJOS (catálogo §6); la vieja no lo consume.
+   */
+  fixedOverdue: number
 }
 
 export interface HomeGoalMetrics {
@@ -429,6 +435,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       fixedTotal,
       fixedPaid,
       fixedCount,
+      fixedOverdue: fijosSummary?.overdueItems.length ?? 0,
     }
 
     // Hide hikes the user already acknowledged at the current price

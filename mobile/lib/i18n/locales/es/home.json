@@ -58,7 +58,9 @@
     "payInDays_one": "Sueldo en {{count}} día",
     "payInDays_other": "Sueldo en {{count}} días",
     "confirmPaidHint": "Abre el diálogo para confirmar que cobraste",
-    "confirmAmountHint": "Abre el diálogo para confirmar el monto que recibiste"
+    "confirmAmountHint": "Abre el diálogo para confirmar el monto que recibiste",
+    "gotPaidToday": "Cobrado hoy ✓",
+    "configureSalary": "Configurá tu sueldo ›"
   },
   "projectionWait": {
     "label": "Aún calculando",
@@ -122,7 +124,9 @@
     "addFirstIncome": "Agregar ingreso",
     "dynamicSetupA11y": "Carga tu primer ingreso para activar el seguimiento del mes.",
     "addIncomeAccessibility": "Agregar un ingreso",
-    "cycleBalance": "Saldo del ciclo"
+    "cycleBalance": "Saldo del ciclo",
+    "balanceLabel": "SALDO DEL MES",
+    "emptyProjectionHint": "El cupo diario y la proyección aparecen con tu primer ingreso."
   },
   "monthClose": {
     "subtitle": "Cerraste {{period}} con un saldo a favor. ¿Qué haces con esa plata?",
@@ -204,7 +208,8 @@
   "header": {
     "notifications": "Ir a notificaciones",
     "settingsNoProtection": "Ir a ajustes. Tu cuenta no tiene protección configurada.",
-    "settings": "Ir a ajustes"
+    "settings": "Ir a ajustes",
+    "welcome": "¡bienvenido!"
   },
   "familyStrip": {
     "membersAccessibility": "Miembros del hogar: {{members}}.",
@@ -370,5 +375,64 @@
     "partialLabel": "{{remaining}} de meta {{target}}",
     "partialA11y": "Llevas apartados {{remaining}} de los {{target}} previstos para este mes.",
     "partialA11y_withPercent": "Llevas apartados {{remaining}} de los {{target}} previstos para este mes, {{percent}} por ciento del ingreso."
+  },
+  "gauge": {
+    "ok": "Gastás {{amount}}/día · margen ✓",
+    "limit": "Cuidado, al límite",
+    "over": "Cupo del día excedido",
+    "perDay": "POR DÍA",
+    "canSpendToday": "PODÉS GASTAR HOY",
+    "cupoToday": "CUPO HOY",
+    "spent": "GASTADO",
+    "available": "DISPONIBLE",
+    "projectionLink": "Proyección de cierre en Control ›",
+    "projectionA11y": "Proyección de cierre en Control"
+  },
+  "cycleSummary": {
+    "noMovements": "Sin movimientos aún",
+    "addFirstFixed": "Agregá tu primer fijo (alquiler, servicios…)",
+    "overdue_one": "{{count}} vencido",
+    "overdue_other": "{{count}} vencidos"
+  },
+  "streak": {
+    "broken": "Racha cortada",
+    "perfectWeek": "¡Semana perfecta!",
+    "dontLose": "¡No pierdas la racha!",
+    "dayZero": "Racha de 0 días",
+    "dayZeroSub": "Registrá tu primer gasto hoy y plantá un brote",
+    "count_one": "Racha de {{count}} día 🌱",
+    "count_other": "Racha de {{count}} días 🌱",
+    "linkGarden": "Jardín",
+    "linkView": "Ver"
+  },
+  "goal": {
+    "amountsOf": "{{current}} de {{target}}",
+    "stillNeed": "falta {{amount}}",
+    "emptyTitle": "Sin meta activa",
+    "emptyRaiseSub": "Definí un objetivo de ahorro",
+    "emptyDashedSub": "Definí un objetivo y el sobrante trabaja para vos",
+    "createShort": "Crear",
+    "createGoal": "Crear meta"
+  },
+  "heroChip": {
+    "acumuladoPeriod": "💰 Sobrante {{amount}} de {{period}}",
+    "acumuladoLastMonth": "💰 Sobrante {{amount}} del mes pasado",
+    "added": "📈 Sumaste {{amount}} al mes",
+    "adjusted": "✂️ Ajustado este mes",
+    "saving": "💚 {{label}}",
+    "fixedToPay": "🗓️ {{amount}} de fijos por pagar"
+  },
+  "reserva": {
+    "chip": "🏦 Reserva {{amount}}"
+  },
+  "sections": {
+    "cycleSummary": "RESUMEN DEL CICLO",
+    "viewDetail": "Ver detalle",
+    "progress": "TU PROGRESO"
+  },
+  "activity": {
+    "emptyToday": "Todavía no cargaste nada hoy",
+    "emptySub": "Tu actividad va a aparecer acá",
+    "addExpense": "+ Cargar gasto"
   }
 }

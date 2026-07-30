@@ -236,7 +236,7 @@
       "streak": "Your streak of days logging expenses. Every day you log at least one expense (or mark a no-spend day) adds a day to your garden. The streak unlocks shields and rewards.",
       "calendar": "The cycle's calendar with your expenses day by day. Each day's color reflects how much you spent. Tap a day to filter the list and see only that date's movements.",
       "filters": "Quick filters by category. Tap a chip and the list below adjusts instantly — handy to see, for example, how much you've spent on groceries or transport.",
-      "list": "Your list of movements this cycle, grouped by day. Tap a row to open the detail, or swipe it left to edit or delete it. The list respects the filter and the day selected above."
+      "list": "Your list of movements this cycle, grouped by day. Swipe a row left to delete it. The list respects the filter and the day selected above."
     },
     "fijos": {
       "hero": "Your fixed expenses this cycle: how many you already paid, how much is left to pay and when each one is due. Rent, subscriptions and utilities go here.",

@@ -236,7 +236,7 @@
       "streak": "Tu racha de días registrando gastos. Cada día que cargas al menos un gasto (o marcas que no gastaste) suma un día a tu jardín. La racha desbloquea escudos y recompensas.",
       "calendar": "El calendario del ciclo con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.",
       "filters": "Filtros rápidos por categoría. Toca un chip y la lista de abajo se ajusta al instante — útil para ver, por ejemplo, cuánto llevas en supermercado o en transporte.",
-      "list": "Tu lista de movimientos del ciclo, agrupados por día. Toca una fila para abrir el detalle, o deslízala hacia la izquierda para editarla o borrarla. La lista respeta el filtro y el día seleccionado arriba."
+      "list": "Tu lista de movimientos del ciclo, agrupados por día. Desliza una fila hacia la izquierda para borrarla. La lista respeta el filtro y el día seleccionado arriba."
     },
     "fijos": {
       "hero": "Tus gastos fijos del ciclo: cuántos ya pagaste, cuánto te queda por pagar y cuándo vence cada uno. Aquí entran rentas o alquileres, suscripciones y servicios.",

@@ -46,6 +46,7 @@ import {
 } from '@/features/income/use-income-events'
 import { useFamilyMembers } from '@/features/family/use-family-members'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
+import { GASTOS_DAYS_PER_PAGE } from '@/features/gastos/use-gastos-endpoints'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
@@ -179,7 +180,11 @@ export function GastosV2Screen({ familyId, userId }: GastosV2ScreenProps) {
     cycleEnd: cycle.end,
     today,
     cupoDiario,
-    daysPerPage: 7,
+    // Pantalla VIEJA (hoy fuera de la tab: expenses.tsx monta la neo). Toma la
+    // misma constante igual: comparte cache/queryKeys con la neo y con el warm
+    // de Home, y un literal distinto acá se cobraría como cache-hit silencioso
+    // en cualquiera de las dos (ver GASTOS_DAYS_PER_PAGE).
+    daysPerPage: GASTOS_DAYS_PER_PAGE,
   })
 
   // Sonda del swap skeleton↔contenido. Un `content→skeleton→content` al
@@ -239,7 +244,11 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
   // bar (cuando no hay paddingBottom propio) y el área visible se
   // achata. Agregamos el padding en el contentContainerStyle del list
   // para que el contenido pueda scrollearse hasta el borde del tab bar.
-  const tabBarBottomPadding = safeAreaInsets.bottom + 96
+  // La barra neo flota con `max(inset, 22)` de anclaje (neo-tab-bar-live) +
+  // ~83 de cuerpo → footprint ~105-117; el `max(inset, 22)` acá matchea ese
+  // anclaje y deja un gap constante (con inset 0 el `+96` sin el max quedaba
+  // corto y tapaba el último movimiento).
+  const tabBarBottomPadding = Math.max(safeAreaInsets.bottom, 22) + 96
 
   // Asistente Financiero deep-links: solo `categoryId` se sigue
   // parseando. El smart filter (priceMin/priceMax/dateRange) fue
@@ -600,8 +609,12 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         groups: controller.groups,
         cycleIncomeEvents,
         selectedDay: controller.selectedDay,
+        // Ingresos de días todavía no paginados: no abren sección propia (si
+        // no, el sueldo del día 1 cae al fondo del feed y abre un hueco de
+        // semanas). Ver buildGastosSections.
+        hasNextPage: controller.hasNextPage,
       }),
-    [controller.groups, controller.selectedDay, cycleIncomeEvents],
+    [controller.groups, controller.selectedDay, cycleIncomeEvents, controller.hasNextPage],
   )
 
   const memberById = useMemo(() => {
@@ -658,6 +671,49 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
     (item: MovementItem) =>
       item.kind === 'expense' ? `e-${item.expense.id}` : `i-${item.income.id}`,
     [],
+  )
+
+  // ── Auto-paginación GATEADA POR GESTO (portado de la neo) ───────────
+  //
+  // Antes acá vivía un `onEndReached={() => void controller.fetchNextPage()}`
+  // pelado con `onEndReachedThreshold={0.5}`. Con la 1ª página en 7 días eso
+  // pasaba inadvertido; con `GASTOS_DAYS_PER_PAGE = 2` el contenido inicial es
+  // más corto que el viewport → `distanceFromEnd` ya es ~0 al montar y
+  // `onEndReached` cascadea solo, trayendo 3 páginas en cold-start sin que el
+  // usuario scrollee. (Esta pantalla no está en la tab hoy — `expenses.tsx`
+  // monta la neo — pero el revert al viejo screen está documentado ahí como
+  // acción esperada, así que no puede quedar sin la mitigación.)
+  //
+  // Mismo contrato que la neo:
+  //  · el flag arranca en false → no carga al montar;
+  //  · lo prende el 1er drag REAL del usuario (`onScrollBeginDrag`);
+  //  · se baja al disparar → como mucho 1 página por gesto (sin cascada);
+  //  · se baja también cuando el contenido ENCOGE, porque RN llama
+  //    `_maybeCallOnEdgeReached()` desde `_onContentSizeChange` (VirtualizedList)
+  //    y un colapso del feed (tocar un día del calendario, filtrar) dispararía
+  //    la paginación sin que nadie esté cerca del fondo. El callback del usuario
+  //    corre ANTES de ese chequeo, así que desarmar acá gana la carrera.
+  // `controller.fetchNextPage` ya guardea contra hasNextPage/isFetchingNextPage.
+  const controllerRef = useRef(controller)
+  controllerRef.current = controller
+  const canPaginateRef = useRef(false)
+  const lastContentHeightRef = useRef(0)
+  const handleScrollBeginDrag = useCallback(() => {
+    canPaginateRef.current = true
+    openLayoutGate()
+  }, [openLayoutGate])
+  const handleEndReached = useCallback(() => {
+    if (!canPaginateRef.current) return
+    canPaginateRef.current = false
+    void controllerRef.current.fetchNextPage()
+  }, [])
+  const handleContentSizeChange = useCallback(
+    (width: number, height: number) => {
+      if (height < lastContentHeightRef.current) canPaginateRef.current = false
+      lastContentHeightRef.current = height
+      onTourContentSizeChange(width, height)
+    },
+    [onTourContentSizeChange],
   )
 
   // Empty state — cuatro variants delegados a `buildGastosEmptyState`.
@@ -925,8 +981,10 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         renderSectionHeader={renderSectionHeader}
         ListHeaderComponent={ListHeader}
         onScroll={onTourScroll}
-        onScrollBeginDrag={openLayoutGate}
-        onContentSizeChange={onTourContentSizeChange}
+        // Abre el gate de layout Y arma la auto-paginación (ver arriba).
+        onScrollBeginDrag={handleScrollBeginDrag}
+        // Tour + desarme del gate de paginación cuando el contenido ENCOGE.
+        onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         ListEmptyComponent={
           emptyState ? (
@@ -1010,13 +1068,16 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
             ) : null}
           </View>
         }
-        // Virtual scroll: dispara la siguiente página cuando el
-        // usuario está al ~50% del último viewport. RN llama una sola
-        // vez por umbral cruzado.
-        onEndReached={() => {
-          void controller.fetchNextPage()
-        }}
-        onEndReachedThreshold={0.5}
+        // Virtual scroll GATEADO por gesto de usuario (ver handleEndReached):
+        // sin el gate, con la 1ª página en 2 días el contenido inicial no llena
+        // el viewport y `onEndReached` cascadea solo al montar.
+        onEndReached={handleEndReached}
+        // 0.1 (era 0.5) · el threshold se mide en VIEWPORTS desde el final
+        // (`distanceFromEnd < threshold * visibleLength`): con 0.5 la carga
+        // arrancaba a MEDIA pantalla del fondo. Con 0.1 dispara recién a ~10%
+        // del viewport del fondo REAL. No se baja a 0: el offset del fondo no
+        // cae exacto en cada gesto (rubber-band iOS, redondeos de fling).
+        onEndReachedThreshold={0.1}
         stickySectionHeadersEnabled={false}
         // Virtualization knobs — tuned for typical mobile lists.
         // `windowSize` 9 = ~9 viewports of buffered content.

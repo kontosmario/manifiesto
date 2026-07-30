@@ -25,11 +25,7 @@ import { useCategories } from '@/features/categories/use-categories'
 import { useDeleteExpense, useRecentExpenses } from '@/features/expenses/use-expenses'
 import { useDeleteIncomeEvent, useIncomeEvents } from '@/features/income/use-income-events'
 import { useIsSolo } from '@/features/family/use-is-solo'
-import {
-  buildCycleStartingBalanceInput,
-  useUpsertFamilyFinance,
-} from '@/features/finance/use-family-finance'
-import { formatLocalDateKey } from '@/utils/pay-cycle'
+import { useCycleConfirmation } from '@/features/home/use-cycle-confirmation'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { useUnreadNotificationsCount } from '@/features/notifications/use-notifications'
@@ -56,7 +52,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
   const router = useRouter()
   const { t } = useTranslation()
   const { theme } = useAppTheme()
-  const [salaryErrorMessage, setSalaryErrorMessage] = useState<string | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   // Register the screen's ScrollView ref so the guided tour can
   // auto-scroll each step into view before highlighting it.
@@ -168,7 +163,11 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
     () => incomeEventsQuery.data ?? [],
     [incomeEventsQuery.data],
   )
-  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId, userId)
+  // Confirmación del ciclo (saldo inicial) — mutation + error state +
+  // hápticos extraídos a useCycleConfirmation (FASE 0 del rediseño).
+  // Mismo shape de props hacia HomeDashboard que antes.
+  const { confirmCycleStartingBalance, salaryErrorMessage, isSavingSalary } =
+    useCycleConfirmation({ dashboard, familyId, userId, t })
   const deleteExpenseMutation = useDeleteExpense(familyId, userId)
   const deleteIncomeMutation = useDeleteIncomeEvent(userId)
   // Numeric count drives the bell's count badge in the header. Re-renders
@@ -245,70 +244,6 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
       : categoriesQuery.isError && recentExpenses.length === 0
         ? categoriesQuery.error
         : undefined
-
-  // Persists the cycle confirmation. `startingBalance: number` =
-  // user's adjusted available cash for THIS cycle (engine override).
-  // `startingBalance: null` = user kept the default monthly_income;
-  // we still anchor the cycle so we don't re-prompt this period.
-  const confirmCycleStartingBalance = useCallback((startingBalance: number | null) => {
-    setSalaryErrorMessage(null)
-    // `cycleAnchorTarget` lands on `payCycle.start` in steady state
-    // and pivots to `currentMonthPayDate` while the salary freeze is
-    // active — see family-dashboard-model. Using it ensures the
-    // prompt clears as soon as the freeze releases post-confirm.
-    const cycleAnchor = formatLocalDateKey(dashboard.cycleAnchorTarget)
-    upsertFamilyFinanceMutation.mutate(
-      buildCycleStartingBalanceInput(
-        {
-          dailyBudgetBufferMode: dashboard.dailyBudgetBufferMode,
-          dailyBudgetBufferValue: dashboard.dailyBudgetBufferValue,
-          dailyBudgetCheckinHour: dashboard.dailyBudgetCheckinHour,
-          dailyBudgetNudgesEnabled: dashboard.dailyBudgetNudgesEnabled,
-          monthlyIncome: dashboard.monthlyIncome,
-          savingsGoal: dashboard.savingsGoal,
-          savingsGoalPercent:
-            dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
-          usdExchangeRate: dashboard.usdExchangeRate,
-          salaryPaymentDay: dashboard.salaryPaymentDay,
-          lastSalaryConfirmedAt:
-            dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
-          currentCycleStartingBalance:
-            dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
-          currentCycleAnchor:
-            dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
-          cycleType: 'monthly',
-          cycleAnchorDate: null,
-          cycleLengthDays: null,
-        },
-        cycleAnchor,
-        startingBalance,
-      ),
-      {
-        onError: (error: unknown) => {
-          setSalaryErrorMessage(getErrorMessage(error, t('states:error.server')))
-          void triggerHaptic('error')
-        },
-        onSuccess: () => {
-          void triggerHaptic('success')
-        },
-      },
-    )
-  }, [
-    dashboard.cycleAnchorTarget,
-    dashboard.dailyBudgetBufferMode,
-    dashboard.dailyBudgetBufferValue,
-    dashboard.dailyBudgetCheckinHour,
-    dashboard.dailyBudgetNudgesEnabled,
-    dashboard.monthlyIncome,
-    dashboard.savingsGoal,
-    dashboard.familyFinanceQuery.data?.savings_goal_percent,
-    dashboard.usdExchangeRate,
-    dashboard.salaryPaymentDay,
-    dashboard.familyFinanceQuery.data?.last_salary_confirmed_at,
-    dashboard.familyFinanceQuery.data?.current_cycle_starting_balance,
-    dashboard.familyFinanceQuery.data?.current_cycle_anchor,
-    upsertFamilyFinanceMutation,
-  ])
 
   const handleDeleteExpense = useCallback((expenseId: string) => {
     void triggerHaptic('warning')
@@ -492,7 +427,7 @@ export function HomeScreen({ userId, familyId }: HomeScreenProps) {
               ? (deleteIncomeMutation.variables?.id ?? null)
               : null
           }
-          isSavingSalary={upsertFamilyFinanceMutation.isPending}
+          isSavingSalary={isSavingSalary}
           salaryErrorMessage={salaryErrorMessage}
         />
         {/* Re-prompt de permiso de push para cuentas que no pasaron por el

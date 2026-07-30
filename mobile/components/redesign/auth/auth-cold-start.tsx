@@ -90,9 +90,13 @@ export function AuthColdStart({
 }) {
   const s = AUTH_SPEC[mode]
 
-  const logoOpacity = useSharedValue(0)
+  // Logo + wordmark visibles DESDE EL PRIMER FRAME (fix QA owner
+  // 2026-07-21): opacity inicial 1 en vez de fade diferido (el wordmark
+  // arrancaba recién a 0.75s). Se conserva el pop de escala del logo y el
+  // slide del wordmark — solo se quita el gate de opacidad.
+  const logoOpacity = useSharedValue(1)
   const logoScale = useSharedValue(0.55)
-  const wordOpacity = useSharedValue(0)
+  const wordOpacity = useSharedValue(1)
   const wordY = useSharedValue(10)
   const overlayOpacity = useSharedValue(1)
   const overlayScale = useSharedValue(1)
@@ -105,9 +109,9 @@ export function AuthColdStart({
   const fireDone = useCallback(() => onDoneRef.current?.(), [])
 
   useEffect(() => {
-    logoOpacity.value = withDelay(T_POP_MS, withTiming(1, { duration: 700, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
+    // Solo la coreografía de ESCALA/slide: las opacidades ya arrancan en 1
+    // (visibles desde el primer frame — ver los useSharedValue arriba).
     logoScale.value = withDelay(T_POP_MS, withTiming(1, { duration: 900, easing: OVERSHOOT })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
-    wordOpacity.value = withDelay(T_WORD_MS, withTiming(1, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
     wordY.value = withDelay(T_WORD_MS, withTiming(0, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
     // Entrada de una sola corrida por mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps

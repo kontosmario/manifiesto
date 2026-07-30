@@ -11,6 +11,11 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // Fundación (nav bar, Brot, partículas) + onboarding + auth: TODO
   // APROBADO por el owner 2026-07-17 ("todo lo anterior que quedó en
   // pendiente está aprobado").
+  // NOTA (F5/F6 2026-07-22): la nav-bar sigue aprobada, pero el visual
+  // CANÓNICO VIVO es `home-final` (NeoTabBarLive) — supersede la réplica
+  // 1b/1c del doc viejo (`NeoTabBar`, ya ELIMINADA por huérfana). El swap
+  // live (`tabBar={renderNeoTabBar}`) monta NeoTabBarLive con surco + FAB
+  // dark invertido crema + itemDots, no la vieja réplica.
   'nav-bar': 'aprobada',
   'brot': 'aprobada',
   'particles': 'aprobada',
@@ -42,6 +47,17 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // Notificaciones (Turno 6 · mockups 7a/7ao lista · 7b/7bo empty state):
   // APROBADO 2026-07-18. Cableado a la pantalla real en curso.
   'notif': 'aprobada',
+  // HOME FINAL (handoff nuevo design/home-final-2026-07, 2026-07-21):
+  // supersede el Inicio 1b/1c del doc viejo. Hero saldo con pozo + medidor
+  // de cupo, resumen ciclo, meta, racha Brot reactivo, actividad y nav
+  // nueva (FAB con surco; oscuro invertido crema). APROBADA 2026-07-21
+  // ("es hora de llevarlo y cablearlo con la HOME real"). Cableado en curso.
+  'home-final': 'aprobada',
+  // GASTOS (rediseño, handoff design/gastos-2026-07, 2026-07-21): réplica
+  // pixel-perfect claro/oscuro + máquina de estados (calendario⇄detalle,
+  // dropdown de ciclo, filtro, vencido, cerrado). APROBADA 2026-07-29
+  // ("GASTOS Y NAV Y HOME APROBADOS"), ya cableada a datos reales.
+  'gastos': 'aprobada',
   // FIJOS (rediseño, handoff design/fijos-2026-07, 2026-07-29): sección
   // completa en tres pantallas — vista principal (hero E1-E8 + componente
   // Avisos A1-A6 + tabs/categorías), detalle expandido del ítem y alta en

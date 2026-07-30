@@ -179,14 +179,20 @@ export function AuthBridge({
   // continuas viven en shared values).
   const [phase, setPhase] = useState<'loading' | 'done' | 'failed'>('loading')
 
-  const pedOpacity = useSharedValue(0)
+  // Opacidades del pedestal + logo + saludo + subtítulo arrancan en 1
+  // (visibles DESDE EL PRIMER FRAME — fix QA owner 2026-07-21). Antes
+  // arrancaban en 0 con fade diferido y el logo (anidado en el pedestal,
+  // su opacity COMPONE) quedaba doblemente gateado: se veía el pozo pero
+  // no el logo/texto hasta cientos de ms después. La coreografía de
+  // ESCALA (pop del pozo + del logo) y el slide del saludo se conservan.
+  const pedOpacity = useSharedValue(1)
   const pedScale = useSharedValue(0.85)
   const pedShakeX = useSharedValue(0)
-  const logoOpacity = useSharedValue(0)
+  const logoOpacity = useSharedValue(1)
   const logoScale = useSharedValue(0.55)
-  const greetOpacity = useSharedValue(0)
+  const greetOpacity = useSharedValue(1)
   const greetY = useSharedValue(10)
-  const subOpacity = useSharedValue(0)
+  const subOpacity = useSharedValue(1)
   const actionsOpacity = useSharedValue(0)
   const actionsY = useSharedValue(8)
   const overlayOpacity = useSharedValue(1)
@@ -206,14 +212,12 @@ export function AuthBridge({
     if (first) {
       // Entrada literal del handoff (una sola corrida — el loop del
       // demo.html se elimina en producción, como manda el README §Notas).
-      pedOpacity.value = withDelay(T_POP_MS, withTiming(1, { duration: 450, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
+      // Solo la coreografía de ESCALA/slide: las opacidades ya arrancan en
+      // 1 (visibles desde el primer frame — ver los useSharedValue arriba).
       pedScale.value = withDelay(T_POP_MS, withTiming(1, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
       const logoDelay = T_POP_MS + LOGO_EXTRA_DELAY_MS
-      logoOpacity.value = withDelay(logoDelay, withTiming(1, { duration: 700, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
       logoScale.value = withDelay(logoDelay, withTiming(1, { duration: 900, easing: OVERSHOOT })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
-      greetOpacity.value = withDelay(T_GREET_MS, withTiming(1, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
       greetY.value = withDelay(T_GREET_MS, withTiming(0, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
-      subOpacity.value = withDelay(T_GREET_MS, withTiming(1, { duration: 600, easing: EASE })) // @motion-allow: timing literal del handoff de arranque (README §timeline)
     }
 
     // En el mount el estado asienta al ritmo del handoff (tras el

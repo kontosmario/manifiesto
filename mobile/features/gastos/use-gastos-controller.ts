@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import i18n from '@/lib/i18n'
 import {
   groupGastosByDay,
@@ -9,20 +10,25 @@ import {
   type GastosGroup,
 } from '@/features/gastos/gastos-aggregates.model'
 import {
+  GASTOS_DAYS_PER_PAGE,
   useGastosCalendarSummary,
   useGastosCategoriesWithCounts,
   useGastosExpensesForDay,
   useGastosExpensesPaginated,
   useGastosHeroSummary,
+  gastosEndpointKeys,
 } from '@/features/gastos/use-gastos-endpoints'
-import type { GastosExpenseRow } from '@/features/gastos/gastos-endpoints.types'
+import type {
+  GastosExpenseRow,
+  GastosExpensesPage,
+} from '@/features/gastos/gastos-endpoints.types'
 import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
 import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
 import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
-import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
+import { useFamilyDashboard, type FamilyDashboard } from '@/hooks/use-family-dashboard'
 import { resolveIncomeMode } from '@/features/finance/family-finance.model'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { financeToCycleConfig } from '@/utils/finance-cycle-config'
@@ -31,6 +37,30 @@ import { formatCycleLabel } from '@/utils/format-cycle-label'
 export interface UseGastosControllerOptions {
   /** Seed initial filter from route params (Asistente deep-links). */
   initialCategoryId?: string | null
+  /**
+   * Dashboard del hogar YA computado por la pantalla. PERF: `useFamilyDashboard`
+   * corre `buildFamilyDashboardSnapshot` en un `useMemo` propio (un `forEach`
+   * sobre TODOS los gastos de la familia). React Query dedupea las QUERIES
+   * subyacentes entre dos llamadas al hook, pero NO el useMemo: montarlo en la
+   * pantalla Y acá pagaba esa agregación DOS veces por render.
+   *
+   * Opcional a propósito (retrocompatible): la pantalla vieja no lo pasa y el
+   * hook sigue montando el suyo, con el comportamiento exacto de siempre.
+   */
+  dashboard?: FamilyDashboard
+  /**
+   * Exponer `isLoading`/`isFetching` consolidados. PERF: RQ v5 trackea qué
+   * propiedades del resultado LEE el consumidor y solo re-renderiza cuando esas
+   * cambian. Tocar `isFetching` de las 5 queries suscribe la pantalla a CADA
+   * transición de fetching de las 5 → ~10 renders extra por ronda de refetch,
+   * cada uno arrastrando el ListHeader y las filas.
+   *
+   * Default `true` = comportamiento histórico (la pantalla vieja los consume).
+   * La neo pasa `false`: solo usa `isFetchingNextPage`, que se lee aparte.
+   * Con `false` ambos campos quedan en `false` — si algún consumidor futuro los
+   * necesita (p.ej. un dim del hero mientras se re-filtra), volver a `true`.
+   */
+  trackFetchingState?: boolean
 }
 
 export interface UseGastosControllerResult {
@@ -56,6 +86,15 @@ export interface UseGastosControllerResult {
   filteredExpenses: Expense[]
   filteredTotal: number
   summaryChip: string
+  /** Cycle-scoped hero outputs — NUNCA se re-escopan al día seleccionado.
+   *  El rediseño mantiene el hero a nivel ciclo aun con un día en foco (el
+   *  day-detail lleva los números del día), así que lee estos en vez de los
+   *  `filtered*` (que sí colapsan al día). La vista vieja ignora estos y
+   *  sigue usando `filteredTotal`/`averageDaily`/`topCategories`. */
+  cycleTotal: number
+  cycleAverageDaily: number
+  cycleTopCategories: CategoryWeightRow[]
+  cycleSummaryChip: string
   // aggregates (server-computed)
   topCategories: CategoryWeightRow[]
   dayMoods: Record<number, GastosDayMood>
@@ -80,6 +119,12 @@ export interface UseGastosControllerResult {
   fetchNextPage: () => Promise<void>
   hasNextPage: boolean
   isFetchingNextPage: boolean
+  /** Recorta el infinite query de movimientos a su PRIMERA página (sin
+   *  refetch: edición del cache precedida de un `cancelQueries` para que ningún
+   *  fetch en vuelo pise el recorte). La pantalla lo llama SOLO al salir a otra
+   *  tab (no al pushear una ruta encima) para que volver a Gastos desde una
+   *  tab hermana arranque en 1 página. Ver la nota larga en el cuerpo del hook. */
+  resetPagination: () => Promise<void>
   // actions
   clearDay: () => void
   clearAll: () => void
@@ -92,7 +137,12 @@ export function useGastosController(
   options: UseGastosControllerOptions = {},
 ): UseGastosControllerResult {
   const { cycle, today } = usePayCycle(familyId)
-  const dashboard = useFamilyDashboard(familyId)
+  const queryClient = useQueryClient()
+  // Fallback: sin `options.dashboard` el hook monta el suyo (pantalla vieja).
+  // Las queries subyacentes están dedupeadas por RQ, así que montar el hook de
+  // más NO cuesta red — cuesta el useMemo de agregación. Ver la nota del prop.
+  const ownDashboard = useFamilyDashboard(options.dashboard ? undefined : familyId)
+  const dashboard = options.dashboard ?? ownDashboard
   const financeQuery = useFamilyFinance(familyId)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
     options.initialCategoryId ?? null,
@@ -182,13 +232,14 @@ export function useGastosController(
     cycleEnd,
     today,
     categoryId: selectedCategoryId,
-    // 7 días = 1 semana ~= viewport típico de una pantalla. Antes era
-    // 2: el SectionList renderizaba contenido tan corto que el
-    // onEndReached (threshold 0.5) disparaba auto-fetchNextPage en
-    // cadena, causando 3 RPC calls en cold-start sin que el usuario
-    // hiciera scroll. Con 7 días la primera página llena el viewport
-    // y la segunda solo se pide cuando el usuario realmente scrollea.
-    daysPerPage: 7,
+    // Días de la PRIMERA página — constante compartida (ver
+    // GASTOS_DAYS_PER_PAGE). Volvió a 2 ("los últimos 2 días", pedido del
+    // owner). El 7 anterior existía para tapar la cascada de `onEndReached`
+    // al montar con contenido corto; eso hoy lo resuelve el gate por GESTO
+    // de las screens (`canPaginateRef`) + threshold al fondo real.
+    // Las páginas SIGUIENTES usan `GASTOS_DAYS_PER_PAGE_NEXT` (default del
+    // hook): 2 en todas amplificaba cada invalidación a ~15 round-trips.
+    daysPerPage: GASTOS_DAYS_PER_PAGE,
   })
 
   // Convert day-of-month → ISO YYYY-MM-DD for the day-detail RPC.
@@ -374,21 +425,40 @@ export function useGastosController(
     categoriesById,
   ])
 
+  // Cycle-scoped chip — igual que `summaryChip` pero SIEMPRE a nivel ciclo
+  // (cuenta del ciclo + label del ciclo), aunque haya un día seleccionado.
+  // El hero del rediseño lo consume para no contradecir el total del ciclo
+  // que muestra mientras el day-detail lleva los números del día.
+  const cycleSummaryChip = useMemo(() => {
+    const cat =
+      selectedCategoryId == null
+        ? i18n.t('gastos:smartFilter.all')
+        : (categoriesById.get(selectedCategoryId)?.name ?? i18n.t('gastos:smartFilter.all'))
+    return i18n.t('gastos:summaryChip.text', { count: cycleCount, period: cycleLabel, cat })
+  }, [cycleCount, cycleLabel, selectedCategoryId, categoriesById])
+
   // ── Filter state derived ────────────────────────────────────────
   const hasAnyFilter = selectedCategoryId != null || selectedDay != null
 
   // ── Loading / error consolidation ───────────────────────────────
-  const isLoading =
-    heroQuery.isLoading ||
-    calendarQuery.isLoading ||
-    categoriesQuery.isLoading ||
-    paginatedQuery.isLoading
-  const isFetching =
-    heroQuery.isFetching ||
-    calendarQuery.isFetching ||
-    categoriesQuery.isFetching ||
-    paginatedQuery.isFetching ||
-    forDayQuery.isFetching
+  // PERF · leer estos campos SUSCRIBE al consumidor a cada transición de
+  // fetching de las 5 queries (RQ v5 trackea propiedades accedidas). Detrás de
+  // `trackFetchingState` para que una pantalla que no los dibuja no pague ~10
+  // re-renders por ronda de refetch. Ver la nota del prop.
+  const trackFetchingState = options.trackFetchingState ?? true
+  const isLoading = trackFetchingState
+    ? heroQuery.isLoading ||
+      calendarQuery.isLoading ||
+      categoriesQuery.isLoading ||
+      paginatedQuery.isLoading
+    : false
+  const isFetching = trackFetchingState
+    ? heroQuery.isFetching ||
+      calendarQuery.isFetching ||
+      categoriesQuery.isFetching ||
+      paginatedQuery.isFetching ||
+      forDayQuery.isFetching
+    : false
   const error =
     heroQuery.error ??
     calendarQuery.error ??
@@ -403,6 +473,76 @@ export function useGastosController(
       await paginatedQuery.fetchNextPage()
     }
   }, [paginatedQuery])
+
+  // `hasNextPage` DERIVADO DE LO QUE SE RENDERIZA, no del `hasNextPage` de RQ.
+  //
+  // POR QUÉ. `InfiniteQueryObserver.createResult` computa
+  // `hasNextPage: hasNextPage(options, state.data)` — el estado CRUDO de la
+  // query, NO el resultado con `placeholderData`. Al tocar un chip del filtro
+  // cambia `categoryId` → queryKey nueva → `state.data` es undefined durante
+  // todo el round-trip, así que `hasNextPage` cae a false mientras
+  // `paginatedQuery.data` (el placeholder de keepPreviousData) SIGUE mostrando
+  // las filas del filtro anterior. Consecuencia visible: el footer del feed
+  // cambiaba a "fin del ciclo" y el botón "Ver días anteriores" DESAPARECÍA en
+  // plena transición — justo lo que keepPreviousData venía a suavizar.
+  //
+  // La fórmula es la MISMA de RQ (`getNextPageParam(lastPage) != null`, o sea
+  // `last.next_cursor != null`), aplicada a la data que la lista está
+  // dibujando. Sin placeholder da idéntico resultado que el de RQ.
+  //
+  // OJO · `fetchNextPage` sigue guardeado por el `hasNextPage` de RQ: durante
+  // la transición el botón se ve pero no dispara (RQ todavía no tiene páginas
+  // sobre las que avanzar). Es un no-op de ~300ms, no un estado mentiroso.
+  const hasNextPage = Boolean(
+    paginatedQuery.data?.pages.at(-1)?.next_cursor != null,
+  )
+
+  // ── Reset de paginación (volver a la 1ª página) ─────────────────
+  //
+  // POR QUÉ EXISTE. `useInfiniteQuery` ACUMULA páginas en `data.pages` y no
+  // las suelta nunca por su cuenta:
+  //   · la tab Gastos se pre-monta (`lazy:false`) y NO se desmonta al cambiar
+  //     de tab (`freezeOnBlur:false`) → el observer del query vive toda la
+  //     sesión y `data.pages` crece monótono;
+  //   · aunque se desmontara, el `gcTime` global es 24h (query-client.ts) y RQ
+  //     v5 restaura `data.pages` ENTERO al re-montar;
+  //   · peor: cualquier invalidación (realtime `paginatedFamily`, mutations,
+  //     pull-to-refresh) hace que RQ v5 re-fetchee TODAS las páginas cargadas
+  //     en secuencia (`infiniteQueryBehavior`: `remainingPages =
+  //     oldPages.length`) → N round-trips por cada gasto que toca alguien.
+  // Resultado: después del primer scroll, "entrar a Gastos" mostraba (y
+  // re-pedía) los ~105 movimientos de una.
+  //
+  // POR QUÉ NO `maxPages`. En RQ v5 `maxPages` recorta con `addToEnd`, que
+  // tira la página del PRINCIPIO (`newItems.slice(1)`) al traer una nueva.
+  // Acá "next" = días MÁS VIEJOS, así que recortaría los días MÁS RECIENTES —
+  // el tope del feed, justo donde está el usuario. Y como esta query no define
+  // `getPreviousPageParam` (es unidireccional), esa cabeza no se puede
+  // recuperar: `hasPreviousPage` es false por contrato. Descartado.
+  //
+  // QUÉ HACE. Edición del cache (sin refetch, sin invalidar) que deja solo la
+  // 1ª página, por PREFIJO de familia → cubre todas las combos cacheadas (cada
+  // categoría del filtro, cada ciclo). `next_cursor` de la página 1 sobrevive
+  // intacto → `hasNextPage` sigue true y tanto la auto-paginación por scroll
+  // como el botón "Ver días anteriores" siguen funcionando exactamente igual.
+  //
+  // CANCELAR ANTES DE ESCRIBIR. `setQueriesData` sin cancelar primero deja una
+  // carrera: un `fetchNextPage` en vuelo capturó `oldPages` al arrancar y, al
+  // resolver, re-escribe el slice COMPLETO (RQ v5 mergea sobre las páginas de
+  // ese arranque) → pisaría este recorte y volvería a inflar `data.pages`.
+  // `cancelQueries` aborta esos fetches y descarta su writeback. Mismo patrón
+  // que las mutations de use-expenses.ts (onMutate cancela paginatedFamily).
+  const resetPagination = useCallback(async () => {
+    const queryKey = gastosEndpointKeys.paginatedFamily(familyId)
+    await queryClient.cancelQueries({ queryKey })
+    queryClient.setQueriesData<InfiniteData<GastosExpensesPage, string | null>>(
+      { queryKey },
+      (data) => {
+        if (!data || data.pages.length <= 1) return data
+        return { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) }
+      },
+    )
+  }, [queryClient, familyId])
 
   // ── Refetch all (pull-to-refresh) ───────────────────────────────
   const refetchAll = useCallback(async () => {
@@ -438,6 +578,10 @@ export function useGastosController(
     filteredExpenses,
     filteredTotal,
     summaryChip,
+    cycleTotal,
+    cycleAverageDaily,
+    cycleTopCategories,
+    cycleSummaryChip,
     topCategories,
     dayMoods,
     dailySpend,
@@ -452,8 +596,9 @@ export function useGastosController(
     cycleLabel,
     incomeMode,
     fetchNextPage,
-    hasNextPage: Boolean(paginatedQuery.hasNextPage),
+    hasNextPage,
     isFetchingNextPage: paginatedQuery.isFetchingNextPage,
+    resetPagination,
     clearDay,
     clearAll,
   }

@@ -7,19 +7,28 @@ import {
 } from '@/screens/dev/redesign/redesign-preview-shared'
 
 /**
- * Preview dev-only de Brot (port Skia de brot.js) — las 18 poses
+ * Preview dev-only de Brot (port Skia de brot.js) — las 21 poses
  * sobre los fondos de ambos temas, como la ficha 2a del design doc.
  * Gate de aprobación del owner contra screens/2a.html y el
  * <brot-mascot> original (abrir el .dc.html en un browser).
  *
  * Las grillas van con animated={false} (como especifica el design doc
- * para las fichas de poses — y 36 mascotas animadas a la vez matan la
+ * para las fichas de poses — y 42 mascotas animadas a la vez matan la
  * perf del preview). La sección "Animación — muestra" de arriba tiene
  * unos pocos especímenes animados para poder aprobar el motion.
  */
 
-/** Poses animadas de muestra (motion aprobable sin 36 loops vivos). */
-const ANIMATED_SPECIMENS: readonly BrotPose[] = ['idle', 'wave', 'cheer']
+/** Poses animadas de muestra (motion aprobable sin 42 loops vivos).
+ *  Incluye las 3 nuevas de home-final-2026-07 (radiant/sprout/sproutA)
+ *  para aprobar su motion. */
+const ANIMATED_SPECIMENS: readonly BrotPose[] = [
+  'idle',
+  'wave',
+  'cheer',
+  'radiant',
+  'sprout',
+  'sproutA',
+]
 
 export function RedesignBrotPreviewScreen() {
   return (
@@ -27,13 +36,13 @@ export function RedesignBrotPreviewScreen() {
       // @i18n-ignore (dev-only: preview gated por __DEV__, copy interno de tooling)
       title="Rediseño · Brot"
       // @i18n-ignore (dev-only)
-      subtitle="18 poses del port a Skia (grillas estáticas) + muestra animada. Compará contra screens/2a.html y el brot.js original."
+      subtitle="21 poses del port a Skia (grillas estáticas) + muestra animada. Compará contra screens/2a.html y el brot.js original."
       canGoBack
     >
       <View style={styles.stack}>
         <PreviewSectionLabel
           title="Animación — muestra"
-          source="brot.js (idle/wave/cheer animados)"
+          source="brot.js (idle/wave/cheer + radiant/sprout/sproutA animados)"
         />
         <PreviewPhoneSection mode="light" minHeight={0}>
           <View style={styles.specimenRow}>
@@ -82,7 +91,9 @@ const styles = StyleSheet.create({
   },
   specimenRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-evenly',
+    rowGap: 18,
     paddingVertical: 22,
     paddingHorizontal: 8,
   },

@@ -6,10 +6,32 @@
   },
   "hero": {
     "totalVisible": "TOTAL VISIBLE",
+    "totalEdition": "TOTAL DE LA EDICIÓN",
     "totalDay": "TOTAL DEL DÍA",
     "dailyAverage": "PROMEDIO DÍA",
     "lastDays": "· últimos {{days}}d",
     "topCategories": "MÁS PESO POR CATEGORÍA"
+  },
+  "closed": {
+    "currentTag": "EN CURSO",
+    "trigger": "{{label}} · cerrada",
+    "heroChip": "{{count}} mov · cerrado",
+    "calendarHint": "resumen del mes",
+    "sectionChip": "edición cerrada",
+    "movementsTitle": "Los movimientos no se conservan",
+    "movementsSub": "Guardamos el resumen de cada edición cerrada —el total, las categorías y tu mes—, pero el detalle movimiento por movimiento no queda archivado."
+  },
+  "overdue": {
+    "title": "Tu ciclo terminó el {{day}}",
+    "subtitle_one": "{{count}} día sin confirmar el cobro — queda fuera del ciclo",
+    "subtitle_other": "{{count}} días sin confirmar el cobro — quedan fuera del ciclo",
+    "confirmCta": "✓ Confirmar",
+    "confirmA11y": "Confirmar cobro",
+    "previewNoop": "Vista previa: el cobro no se confirma acá",
+    "outCellSub": "FUERA",
+    "outBadge": "Fuera de ciclo",
+    "outDaySub": "Fuera de ciclo · pasa al próximo al confirmar",
+    "outDayChip": "✕ Día +{{day}} · ver todo"
   },
   "list": {
     "movementsTitle": "Movimientos",
@@ -35,7 +57,11 @@
   },
   "smartFilter": {
     "eyebrow": "FILTRAR POR CATEGORÍA",
-    "all": "Todas"
+    "all": "Todas",
+    "a11yApplied_one": "Filtrando por {{name}}: {{count}} movimiento en el ciclo. Se actualizaron total, promedio y calendario.",
+    "a11yApplied_other": "Filtrando por {{name}}: {{count}} movimientos en el ciclo. Se actualizaron total, promedio y calendario.",
+    "a11yCleared_one": "Filtro de categoría quitado: {{count}} movimiento en el ciclo. Se actualizaron total, promedio y calendario.",
+    "a11yCleared_other": "Filtro de categoría quitado: {{count}} movimientos en el ciclo. Se actualizaron total, promedio y calendario."
   },
   "filterPill": {
     "a11yWithCount_one": "{{label}}, {{count}} movimiento",
@@ -107,7 +133,17 @@
     "unmarkNoSpendA11y": "Revertir marca de día sin gastos",
     "fullCycle": "Ciclo completo",
     "prevDayA11y": "Día anterior",
-    "nextDayA11y": "Día siguiente"
+    "nextDayA11y": "Día siguiente",
+    "dayA11y": {
+      "dayPrefix": "Día",
+      "marked": "marcado sin gastos",
+      "ok": "con gastos",
+      "bad": "día de exceso",
+      "now": "hoy",
+      "fut": "día futuro",
+      "fuera": "fuera del ciclo",
+      "empty": "sin gastos registrados"
+    }
   },
   "noSpendConfirm": {
     "title": "Hoy ya tienes gastos cargados",
@@ -239,8 +275,11 @@
     "deleteTitle": "Borrar gasto",
     "deleteMessage": "Esta accion no se puede deshacer.",
     "deleteConfirm": "Borrar",
+    "dayFilterChip": "✕ Día {{day}} · ver todo",
     "visibleMovements_one": "{{count}} movimiento visible",
-    "visibleMovements_other": "{{count}} movimientos visibles"
+    "visibleMovements_other": "{{count}} movimientos visibles",
+    "cycleMovements_one": "{{count}} gasto en el ciclo",
+    "cycleMovements_other": "{{count}} gastos en el ciclo"
   },
   "errors": {
     "noSessionCreate": "No hay sesión o familia activa para crear gastos.",

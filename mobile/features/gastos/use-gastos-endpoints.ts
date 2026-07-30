@@ -18,6 +18,63 @@ import type {
 
 const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires'
 
+/**
+ * Días por página del feed de movimientos — ÚNICA fuente de verdad.
+ *
+ * El RPC `gastos_expenses_paginated` pagina POR DÍA (`distinct_days ... limit
+ * p_days_per_page`), no por cantidad de gastos: una página = los N días con
+ * gasto más recientes, con TODOS sus movimientos. `next_cursor` es la FECHA
+ * mínima de la página y la siguiente pide `local_date < cursor` — o sea el
+ * corte es estrictamente por día.
+ *
+ * 2 = "los últimos 2 días" (pedido del owner). Fue 7 durante la ronda en que
+ * `onEndReached` cascadeaba al montar (contenido más corto que el viewport →
+ * auto-fetch en loop). Eso ya lo resuelve el gate por GESTO de la neo-screen
+ * (`canPaginateRef`, se prende recién en `onScrollBeginDrag`), así que la
+ * razón para 7 no aplica más.
+ *
+ * OJO · este número tiene que ser el MISMO en los tres call-sites (infinite
+ * query del controller, `useGastosSnapshot` del screen y el warm-prefetch de
+ * Home). El queryKey del snapshot NO incluye `daysPerPage`: si el warm
+ * prefetchea con 7 y el screen pide 2, el screen hace CACHE HIT sobre el
+ * payload de 7 y la primera página sigue trayendo 7 días — silenciosamente.
+ * Por eso se importa esta constante en vez de escribir el literal.
+ *
+ * Tope duro por CANTIDAD de gastos (p.ej. "máximo 10"): no se puede hacer
+ * client-side sin romper la continuidad — cortar la lista a 10 dejaría
+ * movimientos del último día renderizado fuera de la vista para SIEMPRE,
+ * porque el cursor avanza por día (`< min_date`) y esos gastos no vuelven en
+ * ninguna página siguiente. Requiere cambiar el RPC (paginar por keyset
+ * (created_at, id) con `limit` de filas). No se hace acá.
+ *
+ * OJO · esta constante gobierna SOLO la PRIMERA página (la que seedea el
+ * snapshot). Las siguientes usan `GASTOS_DAYS_PER_PAGE_NEXT` — ver ahí por qué.
+ */
+export const GASTOS_DAYS_PER_PAGE = 2
+
+/**
+ * Días por página de la 2ª página EN ADELANTE.
+ *
+ * POR QUÉ NO ES 2 TAMBIÉN. RQ v5 re-fetchea TODAS las páginas acumuladas, en
+ * secuencia, ante cualquier invalidación de `paginatedFamily` (realtime de la
+ * familia, mutaciones de gasto, pull-to-refresh): `infiniteQueryBehavior` usa
+ * `remainingPages = oldPages.length`. Con 2 días por página en TODAS, recorrer
+ * un ciclo de ~30 días acumula ~15 páginas → cada gasto que carga el partner
+ * cuesta 15 round-trips. Con 2 solo en la primera y 6 en las siguientes, la
+ * MISMA profundidad de scroll acumula ~6 páginas.
+ *
+ * El pedido del owner ("que la primera carga muestre los últimos 2 días") vive
+ * entero en `GASTOS_DAYS_PER_PAGE`: la 1ª página es lo único que se ve al
+ * entrar. Las siguientes son carga explícita ("Ver días anteriores") o scroll
+ * hasta el fondo real, donde traer un bloque más grande es MEJOR (menos
+ * paradas) y encima abarata cada invalidación posterior.
+ *
+ * No se comparte con el snapshot ni con el warm-prefetch a propósito: esos
+ * seedean la PRIMERA página y tienen que pedir exactamente los mismos días que
+ * el infinite query (la queryKey del snapshot no incluye `daysPerPage`).
+ */
+export const GASTOS_DAYS_PER_PAGE_NEXT = 6
+
 /** Format a Date as a local-time `YYYY-MM-DD` string for `p_today`
  *  and other day params. Uses the runtime's local TZ — matches the
  *  behavior of the rest of the controller. */
@@ -120,6 +177,12 @@ export function useGastosHeroSummary(args: UseGastosHeroSummaryArgs) {
     // por prefijo, así que el bump es seguro y evita refetches en
     // tab-switches dentro del mismo uso.
     staleTime: 5 * 60_000,
+    // Al tocar un chip del filtro cambia `categoryId` → queryKey NUEVA, y sin
+    // esto `data` vuelve undefined un instante: el hero colapsaba a $0 y
+    // rebotaba al valor real (dos saltos por filtrada). Con keepPreviousData
+    // los números viejos se quedan en pantalla hasta que llega el RPC nuevo,
+    // así la transición del hero es UNA sola. Mismo patrón que el snapshot.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       if (!args.familyId) return EMPTY_HERO
       const { data, error } = await supabase.rpc('gastos_hero_summary', {
@@ -256,14 +319,18 @@ interface UseGastosExpensesPaginatedArgs {
   cycleEnd: Date
   today: Date
   categoryId?: string | null
+  /** Días de la PRIMERA página (la que seedea el snapshot). */
   daysPerPage?: number
+  /** Días de la 2ª página en adelante (ver GASTOS_DAYS_PER_PAGE_NEXT). */
+  nextDaysPerPage?: number
 }
 
 export function useGastosExpensesPaginated(args: UseGastosExpensesPaginatedArgs) {
   const cycleStartIso = args.cycleStart.toISOString()
   const cycleEndIso = args.cycleEnd.toISOString()
   const todayIso = localIsoDate(args.today)
-  const daysPerPage = args.daysPerPage ?? 2
+  const daysPerPage = args.daysPerPage ?? GASTOS_DAYS_PER_PAGE
+  const nextDaysPerPage = args.nextDaysPerPage ?? GASTOS_DAYS_PER_PAGE_NEXT
 
   return useInfiniteQuery<GastosExpensesPage, Error>({
     queryKey: gastosEndpointKeys.paginated(
@@ -277,6 +344,15 @@ export function useGastosExpensesPaginated(args: UseGastosExpensesPaginatedArgs)
     // 5 min — el seed del snapshot popula la primera página en
     // cold-mount; mutations + realtime invalidan por prefijo.
     staleTime: 5 * 60_000,
+    // Al tocar un chip del filtro cambia `categoryId` → queryKey NUEVA. Sin
+    // esto `data` vuelve undefined un instante → paginatedExpenses [] → sections
+    // [] → la SectionList montaba el ListEmpty ("limpiar filtros") durante TODO
+    // el round-trip del RPC y después las filas aparecían de golpe (mientras el
+    // hero/calendario cruzaban suave, que YA tienen keepPreviousData). Con
+    // keepPreviousData el infinite query CONSERVA las páginas anteriores hasta
+    // que llega la data nueva → la transición de la lista acompaña a las otras
+    // dos surfaces, sin vacío intermedio.
+    placeholderData: keepPreviousData,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor,
     queryFn: async ({ pageParam }) => {
@@ -286,7 +362,14 @@ export function useGastosExpensesPaginated(args: UseGastosExpensesPaginatedArgs)
         p_cycle_start: cycleStartIso,
         p_cycle_end: cycleEndIso,
         p_before_iso_date: pageParam,
-        p_days_per_page: daysPerPage,
+        // 1ª página (cursor null) = el pedido del owner (2 días). Siguientes =
+        // bloque más grande, para no acumular N páginas que RQ re-fetchea
+        // enteras en cada invalidación. Ver GASTOS_DAYS_PER_PAGE_NEXT.
+        //
+        // El refetch de páginas acumuladas RECOMPUTA los pageParams con
+        // `getNextPageParam` (no reusa los guardados), así que este split se
+        // mantiene coherente página a página también al re-fetchear.
+        p_days_per_page: pageParam == null ? daysPerPage : nextDaysPerPage,
         p_today: todayIso,
         p_timezone: DEFAULT_TIMEZONE,
         p_category_id: args.categoryId ?? null,

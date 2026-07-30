@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useFamilyFinance } from '@/features/finance/use-family-finance'
@@ -31,23 +31,36 @@ export function useFamilyDashboard(familyId?: string) {
     [commitments, expenses, familyFinanceQuery.data, monthlyAccounting],
   )
 
-  return {
-    familyFinanceQuery,
-    fixedExpensesQuery,
-    expensesQuery,
-    dashboardError,
-    isLoadingDashboard:
-      familyFinanceQuery.isLoading || fixedExpensesQuery.isLoading || expensesQuery.isLoading,
-    monthlyHistoryIsLoading: expensesQuery.isLoading,
-    refetchAll: async () => {
-      await Promise.all([
-        familyFinanceQuery.refetch(),
-        fixedExpensesQuery.refetch(),
-        expensesQuery.refetch(),
-      ])
-    },
-    ...snapshot,
-  }
+  // PERF · `refetchAll` era una arrow NUEVA en cada render. Como se propaga a
+  // `useGastosController.refetchAll` (que la lleva en sus deps), contaminaba la
+  // identidad de ese callback y, por transitividad, la de cualquier handler que
+  // lo cerrara. Los `.refetch()` de RQ v5 ya son ref-estables por query.
+  const refetchAll = useCallback(async () => {
+    await Promise.all([
+      familyFinanceQuery.refetch(),
+      fixedExpensesQuery.refetch(),
+      expensesQuery.refetch(),
+    ])
+  }, [familyFinanceQuery, fixedExpensesQuery, expensesQuery])
+
+  // PERF · el objeto de retorno también era un literal nuevo por render. Lo
+  // consumen pantallas que lo bajan por props (Home, Gastos) y hooks que lo
+  // toman en deps; con identidad estable esos memos dejan de recomputar por
+  // renders que no movieron ningún dato.
+  return useMemo(
+    () => ({
+      familyFinanceQuery,
+      fixedExpensesQuery,
+      expensesQuery,
+      dashboardError,
+      isLoadingDashboard:
+        familyFinanceQuery.isLoading || fixedExpensesQuery.isLoading || expensesQuery.isLoading,
+      monthlyHistoryIsLoading: expensesQuery.isLoading,
+      refetchAll,
+      ...snapshot,
+    }),
+    [familyFinanceQuery, fixedExpensesQuery, expensesQuery, dashboardError, refetchAll, snapshot],
+  )
 }
 
 export type FamilyDashboard = ReturnType<typeof useFamilyDashboard>

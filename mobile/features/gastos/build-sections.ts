@@ -17,16 +17,42 @@ interface BuildSectionsArgs {
   groups: GastosGroup[]
   cycleIncomeEvents: IncomeEvent[]
   selectedDay: number | null
+  /**
+   * `true` cuando la paginación todavía tiene días MÁS VIEJOS sin cargar.
+   * Con eso, los ingresos de días fuera de la ventana cargada NO abren una
+   * sección propia (ver la nota en el cuerpo). Default `false` = feed
+   * completo, se muestran todos (comportamiento histórico).
+   */
+  hasNextPage?: boolean
 }
 
-// Epoch ms at startOf the local-day for the given ISO. Es la canonical
-// bucketing key + sort key para que los month boundaries no bleedean
+// Epoch ms at startOf the local-day para un instante cualquiera. Es la
+// canonical bucketing key + sort key para que los month boundaries no bleedean
 // (el viejo key era `day` 1–31 — mismo número para May 31 y "Jun 31
 // no existe", y números más bajos en early June sorteaban POR DEBAJO
 // de números altos en late May).
-function dayMsFromIso(iso: string): number {
-  const d = new Date(iso)
+//
+// TODA clave del `byDay` tiene que pasar por acá — gastos E ingresos. Es la
+// invariante que rompía el bug de las secciones duplicadas: los gastos
+// bucketeaban por MEDIANOCHE local y los ingresos por el valor crudo de
+// `incomeHappenedAtMs`, que devuelve MEDIODÍA local (el truco anti off-by-one
+// para fechas 'YYYY-MM-DD', ver gastos-helpers). Las dos claves difieren
+// SIEMPRE en 43.200.000 ms exactos, así que `byDay.get()` no acertaba nunca:
+// cada ingreso abría su propia sección aunque ese día tuviera gastos (y, al
+// sortear desc, quedaba ARRIBA de la sección real del mismo día), y en modo
+// "día tappeado" el filtro por igualdad daba vacío → el ingreso desaparecía.
+//
+// El fix vive acá y NO en `incomeHappenedAtMs`: ese helper también acota el
+// ciclo (`neo-gastos-screen`, filtro de `cycleIncomeEvents`) y ahí el mediodía
+// es lo correcto — aguanta los bordes del ciclo sin depender de la hora.
+function dayMsFromMs(ms: number): number {
+  const d = new Date(ms)
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
+/** Igual que `dayMsFromMs` pero desde un timestamp ISO completo (created_at). */
+function dayMsFromIso(iso: string): number {
+  return dayMsFromMs(new Date(iso).getTime())
 }
 
 /**
@@ -62,6 +88,7 @@ export function buildGastosSections({
   groups,
   cycleIncomeEvents,
   selectedDay,
+  hasNextPage = false,
 }: BuildSectionsArgs): MovimientosSection[] {
   if (selectedDay != null) {
     // Modo "día tappeado": el controller ya filtró expenses a un solo
@@ -88,7 +115,10 @@ export function buildGastosSections({
     const dayIncomes =
       selectedDateMs != null
         ? cycleIncomeEvents.filter(
-            (i) => incomeHappenedAtMs(i) === selectedDateMs,
+            // Normalizado al día local en AMBOS lados (ver `dayMsFromMs`): sin
+            // esto la igualdad era imposible y el día tappeado nunca mostraba
+            // sus ingresos.
+            (i) => dayMsFromMs(incomeHappenedAtMs(i)) === selectedDateMs,
           )
         : []
     if (base.length > 0 && dayIncomes.length > 0) {
@@ -120,16 +150,39 @@ export function buildGastosSections({
       incomes: [],
     })
   }
+  // PISO DE LA VENTANA CARGADA — día más viejo que trajo la paginación.
+  //
+  // `cycleIncomeEvents` viene filtrado por CICLO, no por las páginas cargadas:
+  // sin este piso, un ingreso de un día viejo (típico: el sueldo del día 1)
+  // abría su propia sección y, como el sort final es por fecha desc, aterrizaba
+  // al FONDO del feed — o sea "28 jul, 27 jul, 1 jul": un hueco de 25 días
+  // dentro de lo que el usuario lee como una ventana continua. Con 7 días por
+  // página el salto quedaba mayormente tapado; con 2 es casi seguro.
+  //
+  // Solo aplica a las secciones que el ingreso CREARÍA. Un ingreso que cae en
+  // un día ya cargado se mergea siempre (está dentro de la ventana). Y cuando
+  // ya no quedan páginas (`hasNextPage` false) el feed ES el ciclo entero:
+  // ahí no hay piso y todos los ingresos se muestran.
+  let windowFloorMs: number | null = null
+  if (hasNextPage) {
+    for (const ms of byDay.keys()) {
+      if (ms > 0 && (windowFloorMs == null || ms < windowFloorMs)) windowFloorMs = ms
+    }
+  }
   for (const income of cycleIncomeEvents) {
     // Bucket by event_date (qué día sucedió el income), NO created_at
     // (cuándo se registró el row). Backdated incomes filan bajo el
-    // día correcto.
-    const dateMs = incomeHappenedAtMs(income)
+    // día correcto. Normalizado a medianoche local — MISMA clave que los
+    // gastos, que es lo que permite el merge (ver `dayMsFromMs`).
+    const dateMs = dayMsFromMs(incomeHappenedAtMs(income))
     const d = new Date(dateMs)
     const existing = byDay.get(dateMs)
     if (existing) {
       existing.incomes.push(income)
     } else {
+      // Día sin gastos pero con ingreso, MÁS VIEJO que la ventana cargada →
+      // se omite hasta que la paginación llegue a ese día.
+      if (windowFloorMs != null && dateMs < windowFloorMs) continue
       // Día sin gastos pero con ingreso → sección nueva.
       byDay.set(dateMs, {
         title: formatStandaloneIncomeDay(d),

@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { MotionPreferenceProvider } from '@/features/preferences/motion-preference-provider'
+import { ReducedMotionProvider } from '@/features/preferences/reduced-motion-provider'
 import { LanguageProvider } from '@/features/preferences/language-provider'
 import { TourProvider } from '@/features/tours'
 import { queryClient, queryPersister, queryPersistOptions } from '@/lib/query-client'
@@ -56,6 +57,17 @@ export function AppProviders({ children }: PropsWithChildren) {
                 should run on this device. Placed outside TourProvider
                 so the tour can also respect the same setting. */}
             <MotionPreferenceProvider>
+            {/* ReducedMotionProvider owns the SINGLE app-wide
+                reduced-motion decision + the SINGLE AccessibilityInfo
+                'reduceMotionChanged' subscription, and exposes the
+                resolved boolean via context. Mounted INSIDE
+                MotionPreferenceProvider because it combines the user's
+                motion preference with the OS toggle + hardware class.
+                `useReducedMotion()` is a pure read of this context, so
+                the ~80 call sites (and the pressables they fan out to)
+                no longer each register their own native listener /
+                async bridge round-trip. */}
+            <ReducedMotionProvider>
               <BottomSheetModalProvider>
                 <StatusBarBridge />
                 {/* TourProvider hosts the guided-tour overlay used by
@@ -69,6 +81,7 @@ export function AppProviders({ children }: PropsWithChildren) {
                     of the app's motion vocabulary. */}
                 <TourProvider>{children}</TourProvider>
               </BottomSheetModalProvider>
+            </ReducedMotionProvider>
             </MotionPreferenceProvider>
             </LanguageProvider>
           </AppThemeProvider>

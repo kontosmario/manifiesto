@@ -50,6 +50,8 @@ export const decorativeDurations = {
   bloom:    1400,
   /** Slow pulse half-cycle (asesor halo, hoy-card glow). */
   pulse:    1200,
+  /** Meter/bar fill-in on mount (home cupo diario spent segment). */
+  meterFill: 820,
   /** Extra-slow pulse half-cycle (in/out sin loops). */
   pulseSlow: 2400,
   /** Hero structural fade (logo skeleton, slow paint settle). */

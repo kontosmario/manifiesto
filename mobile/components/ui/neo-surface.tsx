@@ -31,7 +31,7 @@ interface NeoSurfaceProps {
  * de fondo DEBAJO de los children, así que un gradiente absolute-fill
  * taparía la línea de luz `inset 0 1px 0` de hero/raisedXl. Con el
  * background en el propio view, ambas plataformas pintan los inset
- * encima del gradiente, como en CSS (mismo patrón que NeoTabBar).
+ * encima del gradiente, como en CSS (mismo patrón que NeoTabBarLive).
  *
  * El CTA radial verde NO va acá — eso lo cubre el botón dedicado del
  * rediseño.

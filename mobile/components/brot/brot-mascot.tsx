@@ -1,5 +1,7 @@
 // Brot — mascota de Manifiesto, port 1:1 del web component de canvas
-// (design/rediseno-2026-07/brot.js) a React Native Skia.
+// (design/rediseno-2026-07/brot.js, + las poses nuevas de
+// design/home-final-2026-07/brot.js: radiant / sprout / sproutA) a
+// React Native Skia.
 //
 //   <BrotMascot pose="idle" size={120} animated shadow />
 //
@@ -71,6 +73,7 @@ export const BROT_POSES = [
   'idle',
   'wave',
   'cheer',
+  'radiant',
   'coach',
   'sleep',
   'peek',
@@ -85,6 +88,8 @@ export const BROT_POSES = [
   'zen',
   'magic',
   'seed',
+  'sprout',
+  'sproutA',
   'wilted',
   'cool',
 ] as const
@@ -126,11 +131,10 @@ export interface BrotMascotProps {
 //   der     sleep 0.33 (analítico 0.60: el port dibuja la `z` con paths
 //           y el original con fillText, así que acá manda el analítico)
 //   abajo   nada llega a 108 (la sombra del piso muere en ~106)
-// `cool` (mismo método, chequeo analítico vía barrido numérico de la pila
-// de transforms): combina leaves='perk' —ya el peor caso de arriba,
-// cheer 9.67— con un tilt+sway de cuerpo entero que cheer no tiene; aun
-// así da MENOS excursión que cheer, así que no cambia el peor caso ni el
-// presupuesto de PAD_TOP/PAD_X.
+// Poses nuevas de home-final-2026-07 (chequeo analítico, no cambian los
+// peores casos): `radiant` = cheer (perk, ya el peor caso de arriba) +
+// sparkles de magic, cuyo extremo con bounce+respiro queda en y≈-1.1 y
+// x≈76.7; los bebés sprout/sproutA viven en x∈[~17,~69], y∈[~40,~105.1].
 const PAD_TOP = 12
 const PAD_X = 6
 /**
@@ -198,7 +202,13 @@ type MouthType =
   | 'hmm2'
   | 'oo'
 
-type LeavesState = 'normal' | 'perk' | 'droop' | 'wilt'
+type LeavesState = 'normal' | 'perk' | 'small' | 'droop' | 'wilt'
+
+/** Variantes de Brot bebé. El original define 'a'–'d', pero el README
+ *  de home-final-2026-07 solo publica `sprout` (babyV:'b', cabezón
+ *  elegido) y `sproutA` (babyV:'a', chibi alternativa) — solo esas dos
+ *  se portan. */
+type BabyVariant = 'a' | 'b'
 
 type ExtraKind = 'zzz' | 'hearts' | 'bang' | 'sweat' | 'dots' | 'thought' | 'sparkles'
 
@@ -220,6 +230,9 @@ interface PoseSpec {
   dull?: boolean
   noArms?: boolean
   seed?: boolean
+  /** Brot bebé: reemplaza el dibujo completo (dispatch temprano, como
+   *  seed). */
+  babyV?: BabyVariant
   /** Ángulo fijo de brazo (radianes). Los brazos animados en el tiempo
    *  (wave/cheer/coach/magic) se resuelven en armAngles() para mantener
    *  la tabla serializable (sin closures en shared values). */
@@ -234,6 +247,8 @@ const POSES: Record<BrotPose, PoseSpec> = {
   idle: {},
   wave: { tilt: -0.02 }, // aR animado en armAngles
   cheer: { mouth: 'open', bounce: 1, blush: 1, leaves: 'perk' }, // aL/aR animados
+  // = cheer + sparkles (mismos brazos animados en armAngles).
+  radiant: { mouth: 'open', bounce: 1, blush: 1, leaves: 'perk', extras: ['sparkles'] },
   coach: { tilt: -0.035 }, // aL animado
   sleep: { eyes: 'closed', mouth: 'oo', tilt: 0.09, extras: ['zzz'] },
   peek: { eyes: 'scan' },
@@ -272,6 +287,8 @@ const POSES: Record<BrotPose, PoseSpec> = {
   },
   magic: { extras: ['sparkles'] }, // aR animado en armAngles
   seed: { seed: true },
+  sprout: { babyV: 'b' },
+  sproutA: { babyV: 'a' },
   wilted: { eyes: 'sad', mouth: 'frown', leaves: 'wilt', tilt: 0.055, dull: true },
   cool: { eyes: 'closed', mouth: 'smirk', custom: 'cool', tilt: -0.05, leaves: 'perk', sway: true }, // aL/aR animados en armAngles
 }
@@ -300,9 +317,14 @@ interface SkiaObjectCache {
   bodyPaint: SkPaint
   /** Variante dull (pose wilted) del paint del cuerpo. */
   bodyPaintDull: SkPaint
-  /** Paints del gradiente de los lentes de la pose 'cool' (izq/der):
-   *  pose-específicos pero invariantes en el tiempo (cx/gy/sep/w/h son
-   *  constantes), se arman una vez acá. */
+  /** Paints del Brot bebé, también invariantes en el tiempo: el huevo
+   *  chibi de sproutA (gradiente y 58→100) y la bolita de sprout
+   *  (bodyBall 89.5±11.5 → gradiente y 78→101). */
+  babyBodyPaintA: SkPaint
+  babyBodyPaintB: SkPaint
+  /** Paints del gradiente de los lentes de la pose 'cool' (izq/der): mismo
+   *  patrón que baby*Paint — pose-específicos pero invariantes en el
+   *  tiempo (cx/gy/sep/w/h son constantes), se arman una vez acá. */
   coolLensPaintLeft: SkPaint
   coolLensPaintRight: SkPaint
   /** Path scratch: cada figura lo resetea, lo construye y lo dibuja.
@@ -324,6 +346,8 @@ interface Tools {
   /** Paints del cuerpo pre-armados con su gradiente (ver SkiaObjectCache). */
   bodyPaint: SkPaint
   bodyPaintDull: SkPaint
+  babyBodyPaintA: SkPaint
+  babyBodyPaintB: SkPaint
   /** Paints del gradiente de los lentes de 'cool' (ver SkiaObjectCache). */
   coolLensPaintLeft: SkPaint
   coolLensPaintRight: SkPaint
@@ -517,6 +541,10 @@ function drawLeaves(tools: Tools, state: LeavesState, t: number, dull: boolean) 
     tipL = [20, 0]
     tipR = [65, -2]
   }
+  if (state === 'small') {
+    tipL = [29, 11]
+    tipR = [56, 9]
+  }
   if (state === 'droop') {
     tipL = [21, 15]
     tipR = [64, 13]
@@ -580,6 +608,140 @@ function drawSeed(tools: Tools, t: number) {
   canvas.drawPath(sprout, tools.stroke)
   leaf(tools, 0, -20, -8, -25, C.leafL, C.outline, 1)
   leaf(tools, 0, -20.5, 7, -26, C.leafR, C.outline, 1)
+  canvas.restore()
+}
+
+// ─── Brot bebé (_drawBabyV, poses sprout/sproutA) ────────────────────
+//
+// Port de _drawBabyV de design/home-final-2026-07/brot.js. Los closures
+// internos del original (sh/face/bodyBall) se expresan como worklets de
+// módulo. NO se portan: `_drawSprout` (dispatch P.baby, que ninguna pose
+// de la tabla define — quedó como referencia), las variantes 'c'/'d'
+// (fuera de la API pública del README) y el helper `husk` (cascarita),
+// que solo lo usan _drawSprout y esas variantes.
+
+// sh() del original: sombra elíptica del piso del bebé.
+function babyShadow(tools: Tools, rx: number, y: number) {
+  'worklet'
+  if (tools.shadowOn) {
+    fillEllipse(tools, 42, y, rx, 2.6, C.shadow)
+  }
+}
+
+// face() del original: ojos grandes con brillo, rubor y sonrisita.
+// `blink` viene calculado del caller (módulo 3.2, no 3.7 como el adulto).
+function babyFace(tools: Tools, blink: number, y: number, s: number, gap: number) {
+  'worklet'
+  const { canvas } = tools
+  const eyeXs = [42 - gap, 42 + gap]
+  for (const ex of eyeXs) {
+    canvas.save()
+    canvas.translate(ex, y)
+    canvas.scale(1, blink)
+    fillEllipse(tools, 0, 0, 2.6 * s, 3.3 * s, C.face)
+    fillEllipse(tools, 0.9 * s, -1 * s, 0.9 * s, 1.1 * s, '#F4F8EC')
+    canvas.restore()
+  }
+  // rubor: ellipse con rotación ±0.1 (mismo patrón que el blush adulto)
+  canvas.save()
+  rot(canvas, 0.1, 42 - gap - 4.5 * s, y + 5 * s)
+  fillEllipse(tools, 42 - gap - 4.5 * s, y + 5 * s, 2.6 * s, 1.5 * s, C.blushBase, BLUSH_ALPHA)
+  canvas.restore()
+  canvas.save()
+  rot(canvas, -0.1, 42 + gap + 4.5 * s, y + 5 * s)
+  fillEllipse(tools, 42 + gap + 4.5 * s, y + 5 * s, 2.6 * s, 1.5 * s, C.blushBase, BLUSH_ALPHA)
+  canvas.restore()
+  const smile = freshPath(tools)
+  smile.moveTo(42 - 2.4 * s, y + 6 * s)
+  smile.quadTo(42, y + 8 * s, 42 + 2.4 * s, y + 6 * s)
+  setStroke(tools, C.face, 2 * s)
+  canvas.drawPath(smile, tools.stroke)
+}
+
+// bodyBall() del original: bolita con gradiente + contorno + brillo. El
+// gradiente (cy-ry → cy+ry, body→body2) es invariante en el tiempo y
+// viene pre-armado del cache.
+function babyBodyBall(tools: Tools, cy: number, rx: number, ry: number, paint: SkPaint) {
+  'worklet'
+  const { canvas } = tools
+  canvas.drawOval(ovalRect(tools.env, 42, cy, rx, ry), paint)
+  strokeEllipse(tools, 42, cy, rx, ry, C.outline, 2.3)
+  canvas.save()
+  canvas.translate(42 - rx * 0.45, cy - ry * 0.55)
+  rot(canvas, -0.5, 0, 0)
+  fillEllipse(tools, 0, 0, rx * 0.28, rx * 0.15, 'rgba(255,255,255,0.85)')
+  canvas.restore()
+}
+
+// _drawBabyV: reemplaza el dibujo completo (dispatch temprano, como seed).
+function drawBabyV(tools: Tools, t: number, v: BabyVariant) {
+  'worklet'
+  const blink = t % 3.2 < 0.12 ? 0.15 : 1
+  const { canvas } = tools
+
+  if (v === 'a') {
+    // chibi: mini-Brot proporcional
+    babyShadow(tools, 14, 102.5)
+    canvas.save()
+    rot(canvas, Math.sin(t * 1.3) * 0.04, 42, 100)
+    const br = Math.sin(t * 2)
+    canvas.translate(42, 100)
+    canvas.scale(1 - 0.01 * br, 1 + 0.02 * br)
+    canvas.translate(-42, -100)
+    // patitas y bracitos
+    capsule(tools, 36, 96, 36, 99.5, 6.5, C.body, C.outline)
+    capsule(tools, 48, 96, 48, 99.5, 6.5, C.body, C.outline)
+    capsule(tools, 28, 78, 24.5, 83, 6, C.body, C.outline)
+    capsule(tools, 56, 78, 59.5, 83, 6, C.body, C.outline)
+    // huevo chibi (gradiente y 58→100 pre-armado en el cache)
+    const egg = freshPath(tools)
+    egg.moveTo(42, 58)
+    egg.cubicTo(56, 58, 61, 72, 61, 81)
+    egg.cubicTo(61, 92, 53, 99, 42, 99)
+    egg.cubicTo(31, 99, 23, 92, 23, 81)
+    egg.cubicTo(23, 72, 28, 58, 42, 58)
+    egg.close()
+    canvas.drawPath(egg, tools.babyBodyPaintA)
+    setStroke(tools, C.outline, 2.3)
+    canvas.drawPath(egg, tools.stroke)
+    // brillo
+    canvas.save()
+    canvas.translate(33, 66)
+    rot(canvas, -0.5, 0, 0)
+    fillEllipse(tools, 0, 0, 5, 2.5, 'rgba(255,255,255,0.85)')
+    canvas.restore()
+    babyFace(tools, blink, 78, 1, 6.5)
+    // tallito con dos hojitas
+    const stem = freshPath(tools)
+    stem.moveTo(42, 59)
+    stem.quadTo(41.5, 53, 42, 49)
+    setStroke(tools, C.stem, 2.2)
+    canvas.drawPath(stem, tools.stroke)
+    leaf(tools, 42, 50, 32, 43, C.leafL, C.outline, 1)
+    leaf(tools, 42, 49.5, 52.5, 41.5, C.leafR, C.outline, 1)
+    canvas.restore()
+    return
+  }
+
+  // v === 'b' · cabezón: hojas gigantes, cuerpito poroto
+  babyShadow(tools, 11, 102.5)
+  canvas.save()
+  const br = Math.sin(t * 2.1)
+  canvas.translate(42, 100)
+  canvas.scale(1 + 0.02 * br, 1 - 0.025 * br)
+  canvas.translate(-42, -100)
+  const stem = freshPath(tools)
+  stem.moveTo(42, 79)
+  stem.quadTo(42, 72, 42, 68)
+  setStroke(tools, C.stem, 3)
+  canvas.drawPath(stem, tools.stroke)
+  canvas.save()
+  rot(canvas, Math.sin(t * 1.5) * 0.07, 42, 69)
+  leaf(tools, 42, 70, 20, 52, C.leafL, C.outline, 1)
+  leaf(tools, 42, 69, 65, 48, C.leafR, C.outline, 1)
+  canvas.restore()
+  babyBodyBall(tools, 89.5, 12.5, 11.5, tools.babyBodyPaintB)
+  babyFace(tools, blink, 87, 0.9, 5.5)
   canvas.restore()
 }
 
@@ -1012,6 +1174,7 @@ function armAngles(pose: BrotPose, spec: PoseSpec, t: number): { aL: number; aR:
     case 'wave':
       return { aL: hang, aR: 2.45 + Math.sin(t * 4.2) * 0.22 }
     case 'cheer':
+    case 'radiant': // mismas funciones de brazo que cheer en el original
       return { aL: 2.5 + Math.sin(t * 3.1 + 0.4) * 0.12, aR: 2.5 + Math.sin(t * 3.1) * 0.12 }
     case 'coach':
       return { aL: 2.15 + Math.sin(t * 2.2) * 0.06, aR: hang }
@@ -1035,6 +1198,12 @@ function drawBrot(tools: Tools, pose: BrotPose, t: number) {
 
   if (spec.seed === true) {
     drawSeed(tools, t)
+    return
+  }
+  // El original despacha también P.baby → _drawSprout acá; ninguna pose
+  // de la tabla lo define (ver nota en la sección del bebé).
+  if (spec.babyV !== undefined) {
+    drawBabyV(tools, t, spec.babyV)
     return
   }
 
@@ -1226,14 +1395,14 @@ function createSkiaObjectCache(env: SkiaEnv): SkiaObjectCache {
   stroke.setStyle(env.psStroke)
   stroke.setStrokeCap(env.capRound)
   stroke.setStrokeJoin(env.joinRound)
-  const makeBodyPaint = (c1: string, c2: string) => {
+  const makeBodyPaint = (c1: string, c2: string, y1: number, y2: number) => {
     const p = Skia.Paint()
     p.setAntiAlias(true)
     p.setStyle(env.psFill)
     p.setShader(
       Skia.Shader.MakeLinearGradient(
-        { x: 0, y: 26 },
-        { x: 0, y: 98 },
+        { x: 0, y: y1 },
+        { x: 0, y: y2 },
         [Skia.Color(c1), Skia.Color(c2)],
         null,
         env.tileClamp,
@@ -1262,8 +1431,10 @@ function createSkiaObjectCache(env: SkiaEnv): SkiaObjectCache {
   return {
     fill,
     stroke,
-    bodyPaint: makeBodyPaint(C.body, C.body2),
-    bodyPaintDull: makeBodyPaint(C.dull, C.dull2),
+    bodyPaint: makeBodyPaint(C.body, C.body2, 26, 98),
+    bodyPaintDull: makeBodyPaint(C.dull, C.dull2, 26, 98),
+    babyBodyPaintA: makeBodyPaint(C.body, C.body2, 58, 100),
+    babyBodyPaintB: makeBodyPaint(C.body, C.body2, 78, 101),
     coolLensPaintLeft: makeLensPaint(COOL_GLASSES_CL),
     coolLensPaintRight: makeLensPaint(COOL_GLASSES_CR),
     path: Skia.Path.Make(),
@@ -1393,6 +1564,8 @@ export const BrotMascot = memo(function BrotMascot({
       stroke: cache.stroke,
       bodyPaint: cache.bodyPaint,
       bodyPaintDull: cache.bodyPaintDull,
+      babyBodyPaintA: cache.babyBodyPaintA,
+      babyBodyPaintB: cache.babyBodyPaintB,
       coolLensPaintLeft: cache.coolLensPaintLeft,
       coolLensPaintRight: cache.coolLensPaintRight,
       path: cache.path,
