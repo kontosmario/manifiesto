@@ -7,8 +7,8 @@
 //
 // Extraído de `add-fijo-v2-screen.tsx` para mantener el screen como
 // orquestador.
-import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useState } from 'react'
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
@@ -274,6 +274,16 @@ function SelectedDayCellNeo({
 }) {
   const reduceMotion = useReducedMotion()
   const enter = useSharedValue(reduceMotion ? 1 : 0)
+  // El sticker se mide CONTRA LA CELDA, no con un número fijo. La celda es
+  // `1/7` del ancho de la card, así que en un teléfono angosto mide bastante
+  // menos que en el preview: con 34px fijos y `overflow:'hidden'` el watermark
+  // salía recortado en device. 0.78 deja aire para que el redondeo de 11px no
+  // le coma las esquinas.
+  const [cellSize, setCellSize] = useState(0)
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    setCellSize(Math.round(Math.min(e.nativeEvent.layout.width, e.nativeEvent.layout.height)))
+  }, [])
+  const stickerSize = cellSize > 0 ? Math.round(cellSize * 0.78) : 0
 
   useEffect(() => {
     if (reduceMotion) {
@@ -292,6 +302,7 @@ function SelectedDayCellNeo({
   return (
     <AnimatedPressable
       onPress={onPress}
+      onLayout={onLayout}
       accessibilityRole="button"
       accessibilityState={{ selected: true }}
       accessibilityLabel={label}
@@ -315,15 +326,17 @@ function SelectedDayCellNeo({
       {/* El sticker va DETRÁS del número, a tamaño casi de celda y apagado:
           identifica la categoría sin pelear con el dato. `onLightSurface`
           siempre — la placa clara le pondría un recuadro al watermark. */}
-      <Animated.View pointerEvents="none" style={[styles.calendarCellSticker, stickerStyle]}>
-        <CategoryIcon
-          name={categoryName}
-          scope="fixed_expense"
-          size={34}
-          onLightSurface
-          emojiStyle={styles.calendarCellEmoji}
-        />
-      </Animated.View>
+      {stickerSize > 0 ? (
+        <Animated.View pointerEvents="none" style={[styles.calendarCellSticker, stickerStyle]}>
+          <CategoryIcon
+            name={categoryName}
+            scope="fixed_expense"
+            size={stickerSize}
+            onLightSurface
+            emojiStyle={[styles.calendarCellEmoji, { fontSize: Math.round(stickerSize * 0.8) }]}
+          />
+        </Animated.View>
+      ) : null}
       <Text
         allowFontScaling={false}
         style={{

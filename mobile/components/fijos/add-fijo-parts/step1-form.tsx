@@ -4,7 +4,17 @@
 // `useAddFijoForm`.
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { useEffect } from 'react'
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  interpolateColor,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmountCard } from '@/components/home/amount-card'
@@ -18,10 +28,14 @@ import {
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
+import { usePressScale } from '@/hooks/use-press-scale'
+import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 import { Field } from './field'
 import { FreqTile } from './freq-tile'
 import { NameInput } from './name-input'
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 export interface Step1FormProps {
   // Form state
@@ -204,43 +218,60 @@ export function Step1Form(props: Step1FormProps) {
                   : '#DCE8F5',
                 borderColor: theme.isDark ? '#2E4A6E' : '#A8BED4',
               },
+              // El azul con borde de 1px era lo último del alta en piel
+              // classic: un bloque de otro sistema abajo de los chips
+              // neumórficos. Pasa a POZO — es un sub-formulario que se abre
+              // adentro del campo de frecuencia, no una card aparte, y el
+              // pozo es justamente el recurso de "acá elegís algo".
+              neo
+                ? {
+                    borderRadius: neo.add.well.radius,
+                    borderWidth: 0,
+                    backgroundColor: neo.add.well.background,
+                    boxShadow: neo.add.well.shadow,
+                    paddingVertical: 13,
+                    paddingHorizontal: 15,
+                    marginTop: 12,
+                  }
+                : null,
             ]}
           >
-            <Text style={[styles.cuotaEyebrow, { color: theme.colors.textMuted }]}>
+            <Text
+              style={[
+                styles.cuotaEyebrow,
+                { color: theme.colors.textMuted },
+                neo
+                  ? {
+                      fontSize: 10,
+                      fontWeight: '800',
+                      fontFamily: neo.font('800'),
+                      letterSpacing: 1.2,
+                      color: neo.mutedInk,
+                    }
+                  : null,
+              ]}
+            >
               {t('fijos:wizard.step1.howManyInstallments')}
             </Text>
-            <View style={styles.cuotaRow}>
-              {CUOTA_OPTIONS.map((n) => {
-                const on = cuotaTot === n
-                return (
-                  <Pressable
-                    key={n}
-                    onPress={() => onSelectCuotaTot(n)}
-                    style={[
-                      styles.cuotaPill,
-                      {
-                        backgroundColor: on ? theme.colors.primary : 'transparent',
-                        borderColor: on ? theme.colors.primary : theme.colors.line,
-                      },
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={t('fijos:wizard.step1.installmentsA11y', { count: n })}
-                  >
-                    <Text
-                      style={[
-                        styles.cuotaPillText,
-                        { color: on ? theme.colors.textOnPrimary : theme.colors.text },
-                      ]}
-                    >
-                      {n}
-                    </Text>
-                  </Pressable>
-                )
-              })}
+            <View style={[styles.cuotaRow, neo ? styles.cuotaRowNeo : null]}>
+              {CUOTA_OPTIONS.map((n) => (
+                <CuotaPill
+                  key={n}
+                  n={n}
+                  selected={cuotaTot === n}
+                  onPress={() => onSelectCuotaTot(n)}
+                  label={t('fijos:wizard.step1.installmentsA11y', { count: n })}
+                />
+              ))}
             </View>
             {amount > 0 ? (
-              <Text style={[styles.cuotaFootnote, { color: theme.colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.cuotaFootnote,
+                  { color: theme.colors.textMuted },
+                  neo ? { color: neo.mutedInk, fontWeight: '700', fontFamily: neo.font('700') } : null,
+                ]}
+              >
                 {t('fijos:wizard.step1.installmentSummary', {
                   count: cuotaTot,
                   amount: formatMoney(amount),
@@ -253,6 +284,126 @@ export function Step1Form(props: Step1FormProps) {
       </Field>
       </Stagger>
     </Animated.View>
+  )
+}
+
+/**
+ * Píldora de cantidad de cuotas.
+ *
+ * En `neo` es el mismo idioma que los tiles de categoría: ELEVADA en reposo y
+ * HUNDIDA con anillo al elegirla. La elegida no se rellena de verde —el verde
+ * es "confirmado" en el sistema— sino que se hunde, que es el recurso de
+ * "presionado" del neumorfismo. Y como el relleno y la sombra no se
+ * interpolan, las dos superficies se cruzan por opacidad, igual que el chip de
+ * frecuencia.
+ */
+function CuotaPill({
+  n,
+  selected,
+  onPress,
+  label,
+}: {
+  n: number
+  selected: boolean
+  onPress: () => void
+  label: string
+}) {
+  const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
+  const reduceMotion = useReducedMotion()
+  const press = usePressScale({ pressedScale: 0.92 })
+  const progress = useSharedValue(selected ? 1 : 0)
+
+  useEffect(() => {
+    progress.value = reduceMotion
+      ? selected
+        ? 1
+        : 0
+      : withTiming(selected ? 1 : 0, { duration: motionDurations.standard })
+  }, [selected, reduceMotion, progress])
+
+  const idleStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }))
+  const selStyle = useAnimatedStyle(() => ({ opacity: progress.value }))
+  const inkFrom = neo?.mutedInk ?? '#000'
+  const inkTo = neo?.add.tile.selectedRing ?? '#000'
+  const inkStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [inkFrom, inkTo]),
+  }))
+
+  if (!neo) {
+    return (
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.cuotaPill,
+          {
+            backgroundColor: selected ? theme.colors.primary : 'transparent',
+            borderColor: selected ? theme.colors.primary : theme.colors.line,
+          },
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ selected }}
+        accessibilityLabel={label}
+      >
+        <Text
+          style={[
+            styles.cuotaPillText,
+            { color: selected ? theme.colors.textOnPrimary : theme.colors.text },
+          ]}
+        >
+          {n}
+        </Text>
+      </Pressable>
+    )
+  }
+
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
+      style={[styles.cuotaPillNeo, press.animatedStyle]}
+    >
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 13,
+            backgroundColor: neo.add.quickChip.background,
+            experimental_backgroundImage: neo.add.quickChip.gradientCss,
+            boxShadow: neo.add.quickChip.shadow,
+          },
+          idleStyle,
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 13,
+            backgroundColor: neo.add.well.background,
+            boxShadow: `${neo.add.tile.selectedShadow}, 0 0 0 2px ${neo.add.tile.selectedRing}`,
+          },
+          selStyle,
+        ]}
+      />
+      <Animated.Text
+        allowFontScaling={false}
+        style={[
+          styles.cuotaPillTextNeo,
+          { fontFamily: neo.font('900') },
+          inkStyle,
+        ]}
+      >
+        {n}
+      </Animated.Text>
+    </AnimatedPressable>
   )
 }
 
@@ -308,5 +459,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cuotaPillText: { fontSize: 12, fontWeight: '700' },
+  cuotaRowNeo: { gap: 9, marginTop: 9 },
+  cuotaPillNeo: {
+    minWidth: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cuotaPillTextNeo: { fontSize: 13, fontWeight: '900', textAlign: 'center' },
   cuotaFootnote: { fontSize: 11, marginTop: 8 },
 })

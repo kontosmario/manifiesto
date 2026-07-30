@@ -14,6 +14,7 @@ import Animated, {
   useReducedMotion,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
@@ -302,6 +303,9 @@ export function Step2Summary(props: Step2SummaryProps) {
               >
                 {t('fijos:wizard.step2.impactEyebrowNeo')}
               </Text>
+              {/* El chip no se parte: en un teléfono angosto el eyebrow lo
+                  empujaba y "+$100.000" quedaba en dos renglones. El que cede
+                  es el eyebrow (`flexShrink`), que sí puede truncarse. */}
               {nuevoTotal - prevTotal !== 0 ? (
                 // El chip es la cifra que el usuario acaba de decidir: entra
                 // después de la card, no con ella. Sin el retraso aparecía
@@ -322,6 +326,8 @@ export function Step2Summary(props: Step2SummaryProps) {
                       fontFamily: neo.font('900'),
                     },
                   ]}
+                  numberOfLines={1}
+                  allowFontScaling={false}
                 >
                   {t('fijos:wizard.step2.deltaAdded', {
                     amount: formatMoney(nuevoTotal - prevTotal),
@@ -475,29 +481,15 @@ export function Step2Summary(props: Step2SummaryProps) {
             },
             // Handoff: card r18 con fondo verde suave y ANILLO interno de 2px
             // cuando está activo. El borde de 1px se anula — el anillo lo
-            // reemplaza, igual que en el resto del rediseño.
-            neo
-              ? {
-                  borderRadius: 18,
-                  borderWidth: 0,
-                  paddingVertical: 12,
-                  paddingHorizontal: 14,
-                  backgroundColor: notify
-                    ? neo.add.reminderOnBackground
-                    : neo.add.step2Card.background,
-                  experimental_backgroundImage: notify
-                    ? undefined
-                    : neo.add.step2Card.gradientCss,
-                  boxShadow: notify
-                    ? `inset 0 0 0 2px ${neo.add.accentGreen}`
-                    : neo.add.step2Card.shadow,
-                }
-              : null,
+            // reemplaza, igual que en el resto del rediseño. Las superficies
+            // van en capas (ver `ToggleCardSurfaceNeo`).
+            neo ? styles.toggleCardNeo : null,
           ]}
           accessibilityRole="switch"
           accessibilityState={{ checked: notify }}
           accessibilityLabel={t('fijos:wizard.step2.reminderA11y')}
         >
+          {neo ? <ToggleCardSurfaceNeo neo={neo} on={notify} /> : null}
           <View style={[styles.reminderLeft, neo ? { gap: 11 } : null]}>
             <Text
               allowFontScaling={false}
@@ -598,29 +590,14 @@ export function Step2Summary(props: Step2SummaryProps) {
               // El handoff no dibuja esta card (aparece sólo en creación de
               // fijos no-cuota), así que el criterio es la consistencia con
               // su hermana de arriba: mismo material, mismo anillo.
-              neo
-                ? {
-                    borderRadius: 18,
-                    borderWidth: 0,
-                    paddingVertical: 12,
-                    paddingHorizontal: 14,
-                    backgroundColor: alreadyPaidCurrentCuota
-                      ? neo.add.reminderOnBackground
-                      : neo.add.step2Card.background,
-                    experimental_backgroundImage: alreadyPaidCurrentCuota
-                      ? undefined
-                      : neo.add.step2Card.gradientCss,
-                    boxShadow: alreadyPaidCurrentCuota
-                      ? `inset 0 0 0 2px ${neo.add.accentGreen}`
-                      : neo.add.step2Card.shadow,
-                  }
-                : null,
+              neo ? styles.toggleCardNeo : null,
             ]}
             accessibilityRole="switch"
             accessibilityState={{ checked: alreadyPaidCurrentCuota }}
             accessibilityLabel={t('fijos:wizard.step2.alreadyPaidA11y')}
             accessibilityHint={t('fijos:wizard.step2.alreadyPaidHint')}
           >
+            {neo ? <ToggleCardSurfaceNeo neo={neo} on={alreadyPaidCurrentCuota} /> : null}
             <View style={[styles.reminderLeft, neo ? { gap: 11 } : null]}>
               <Text
                 allowFontScaling={false}
@@ -677,6 +654,59 @@ export function Step2Summary(props: Step2SummaryProps) {
         </RiseView>
       ) : null}
     </Animated.View>
+  )
+}
+
+/**
+ * Superficie de las cards de recordatorio y de "ya pagué", en dos capas que se
+ * cruzan por opacidad.
+ *
+ * El estado ON es un ANILLO interno de 2px sobre fondo tintado, y el OFF es la
+ * card elevada del kit. Los dos viven en `boxShadow`, que no se interpola: sin
+ * las capas, prender el toggle hacía aparecer el anillo de un frame al otro
+ * mientras la perilla se deslizaba suave al lado. Mismo recurso que el chip de
+ * frecuencia.
+ */
+function ToggleCardSurfaceNeo({ neo, on }: { neo: FijosNeoSkin; on: boolean }) {
+  const reduceMotion = useReducedMotion()
+  const progress = useSharedValue(on ? 1 : 0)
+  useEffect(() => {
+    progress.value = reduceMotion
+      ? on
+        ? 1
+        : 0
+      : withTiming(on ? 1 : 0, { duration: motionDurations.standard })
+  }, [on, reduceMotion, progress])
+  const offStyle = useAnimatedStyle(() => ({ opacity: 1 - progress.value }))
+  const onStyle = useAnimatedStyle(() => ({ opacity: progress.value }))
+  return (
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 18,
+            backgroundColor: neo.add.step2Card.background,
+            experimental_backgroundImage: neo.add.step2Card.gradientCss,
+            boxShadow: neo.add.step2Card.shadow,
+          },
+          offStyle,
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 18,
+            backgroundColor: neo.add.reminderOnBackground,
+            boxShadow: `inset 0 0 0 2px ${neo.add.accentGreen}`,
+          },
+          onStyle,
+        ]}
+      />
+    </>
   )
 }
 
@@ -957,7 +987,10 @@ const styles = StyleSheet.create({
   },
   // 0.14em sobre 10.5px. RN no acepta em.
   impactEyebrowNeo: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.47, flexShrink: 1 },
-  deltaChip: { fontWeight: '900', overflow: 'hidden' },
+  // `flexShrink: 0` explícito: el que cede en un ancho apretado es el eyebrow,
+  // que puede truncarse sin perder información. El chip es una CIFRA — cortarla
+  // la vuelve mentira.
+  deltaChip: { fontWeight: '900', overflow: 'hidden', flexShrink: 0 },
   librePanel: { marginTop: 14 },
   libreHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   // 0.1em sobre 10px.
@@ -972,4 +1005,12 @@ const styles = StyleSheet.create({
   },
   zoneCaptionLeft: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
   zoneCaptionRight: { fontSize: 9.5, fontWeight: '800' },
+  // Sin fondo ni sombra propios: los pone `ToggleCardSurfaceNeo` en capas.
+  toggleCardNeo: {
+    borderRadius: 18,
+    borderWidth: 0,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: 'transparent',
+  },
 })

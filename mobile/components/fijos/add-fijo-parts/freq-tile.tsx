@@ -2,7 +2,7 @@
 // `NameInput` / `AmountCard`: focus → grow + tint; warning glide sin
 // width change. Extraído de `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
-import { Image, Pressable, StyleSheet, Text } from 'react-native'
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
 import Animated, {
   Easing,
   interpolateColor,
@@ -198,13 +198,23 @@ export function FreqTile({
             />
           </>
         ) : null}
-        {CATEGORY_ICONS[icon] ? (
+        {CATEGORY_ICONS[icon] && neo ? (
+          // La ranura mide SIEMPRE lo mismo y el sticker se centra encima sin
+          // arrastrarla. Si el `Image` corregido midiera el layout, cada chip
+          // tomaría la altura de SU ícono y la fila quedaría con chips de
+          // alturas distintas — que es exactamente lo que pasó al meter la
+          // corrección por ícono.
+          <View style={styles.freqChipIconSlot}>
+            <Image
+              source={CATEGORY_ICONS[icon]}
+              style={{ width: neoIconSize, height: neoIconSize }}
+              resizeMode="contain"
+            />
+          </View>
+        ) : CATEGORY_ICONS[icon] ? (
           <Image
             source={CATEGORY_ICONS[icon]}
-            style={[
-              styles.freqTileImage,
-              neo ? { width: neoIconSize, height: neoIconSize } : null,
-            ]}
+            style={styles.freqTileImage}
             resizeMode="contain"
           />
         ) : (
@@ -263,6 +273,15 @@ const styles = StyleSheet.create({
   // A 18px el sticker era una mancha al lado de un label de 12.5 — a 26 se lee
   // y el chip crece ~6px, que es lo que costaba la decisión.
   freqChipNeo: { width: 'auto', height: 'auto', flexDirection: 'row', gap: 8 },
+  // Ranura de tamaño FIJO. El sticker corregido se centra encima y puede
+  // sobresalir sin clip (`overflow` por defecto es visible): lo que no puede
+  // es medir el layout, o la fila queda con chips de alturas distintas.
+  freqChipIconSlot: {
+    width: FREQ_ICON_BASE,
+    height: FREQ_ICON_BASE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',

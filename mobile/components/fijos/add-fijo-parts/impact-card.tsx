@@ -138,6 +138,13 @@ function ImpactColumn({
             textAlign,
           },
         ]}
+        // Dos columnas de `flex:1` con montos de 7 cifras: en un teléfono
+        // angosto el número wrapeaba y la fila se iba a dos líneas con la
+        // flecha descolgada al medio. Se achica antes de partirse.
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        allowFontScaling={false}
       >
         {value}
       </Text>
