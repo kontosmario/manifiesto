@@ -8,17 +8,24 @@
 // Todo el state machine del form vive en `useAddFijoForm`. Las pure
 // helpers (FREQ_OPTIONS, CUOTA_OPTIONS, QUICK_AMOUNTS, hexAlpha,
 // buildNextDueOn) viven en `add-fijo-helpers.ts`.
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Alert,
   Keyboard,
   Pressable,
+  type ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import Animated, { LinearTransition } from 'react-native-reanimated'
+import Animated, {
+  LinearTransition,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
@@ -43,9 +50,12 @@ import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations } from '@/lib/motion'
 import { getErrorMessage } from '@/utils/error-message'
 import { serializePrice } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 interface AddFijoV2ScreenProps {
   familyId: string
@@ -129,6 +139,44 @@ export function AddFijoV2Screen({
   })
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId)
+
+  // Al cambiar de paso el scroll vuelve arriba. Sin esto, quien llenó el paso 1
+  // hasta el final entra al paso 2 con el scroll heredado y aterriza a mitad
+  // del calendario, sin ver ni el resumen ni el impacto — que son justamente
+  // el punto del paso. `animated: false` porque el contenido se está
+  // reemplazando: un scroll suave sobre un árbol que ya cambió se ve como un
+  // salto, no como un desplazamiento.
+  const scrollRef = useRef<ScrollView>(null)
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false })
+  }, [form.step])
+
+  // El CTA pasa de "faltan datos" a "listo" cambiando de opacidad. Sin
+  // transición eran dos estados sin relación entre sí; con ella el botón se
+  // lee como un indicador de que el formulario se está completando.
+  const reduceMotion = useReducedMotion()
+  const step1Ready = useSharedValue(form.canContinue ? 1 : 0)
+  const step2Ready = useSharedValue(form.canSubmit ? 1 : 0)
+  useEffect(() => {
+    const to = form.canContinue ? 1 : 0
+    step1Ready.value = reduceMotion
+      ? to
+      : withTiming(to, { duration: motionDurations.standard })
+  }, [form.canContinue, reduceMotion, step1Ready])
+  useEffect(() => {
+    const to = form.canSubmit ? 1 : 0
+    step2Ready.value = reduceMotion
+      ? to
+      : withTiming(to, { duration: motionDurations.standard })
+  }, [form.canSubmit, reduceMotion, step2Ready])
+  const ctaStep1Enabled = useAnimatedStyle(() => ({
+    opacity: 0.45 + step1Ready.value * 0.55,
+  }))
+  const ctaStep2Enabled = useAnimatedStyle(() => ({
+    // El `pending` se resta aparte: mientras la mutation corre el botón baja
+    // a 0.7 aunque el formulario esté completo.
+    opacity: (0.45 + step2Ready.value * 0.55) * (pending ? 0.7 : 1),
+  }))
 
   const handleSelectCategory = (id: string) => {
     form.dismissNameKeyboard()
@@ -269,6 +317,7 @@ export function AddFijoV2Screen({
       // columna ocupe al menos el alto disponible y que el stack empuje al
       // footer contra el piso, sin impedir que crezca y scrollee si el
       // contenido es más alto.
+      scrollRef={scrollRef}
       contentContainerStyle={neo ? [styles.screen, styles.screenNeo] : styles.screen}
       bodyStyle={neo ? styles.bodyNeo : undefined}
       showGrabHandle
@@ -361,7 +410,7 @@ export function AddFijoV2Screen({
       >
         {form.step === 1 ? (
           <Animated.View style={ctaStep1Press.animatedStyle}>
-          <Pressable
+          <AnimatedPressable
             // Keep press reachable even when dimmed así un tap routea al
             // "flag missing fields" branch y pinta los unfilled inputs
             // con su warning glide. Mismo patrón que el PrimaryCTA de
@@ -374,6 +423,10 @@ export function AddFijoV2Screen({
               form.canContinue
                 ? { backgroundColor: theme.colors.text }
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
+              // El paso de "faltan datos" a "listo" era un corte de opacidad.
+              // En neo lo glidea, que es lo que convierte el CTA en un
+              // indicador de progreso y no en dos estados sin relación.
+              neo ? ctaStep1Enabled : null,
             neo
               ? {
                   backgroundColor: neo.add.cta.background,
@@ -409,11 +462,11 @@ export function AddFijoV2Screen({
                 ? t('fijos:wizard.cta.seeImpact')
                 : t('fijos:wizard.cta.completeData')}
             </Text>
-          </Pressable>
+          </AnimatedPressable>
           </Animated.View>
         ) : (
           <Animated.View style={ctaStep2Press.animatedStyle}>
-          <Pressable
+          <AnimatedPressable
             onPress={onPrimaryCtaStep2}
             onPressIn={ctaStep2Press.onPressIn}
             onPressOut={ctaStep2Press.onPressOut}
@@ -423,6 +476,7 @@ export function AddFijoV2Screen({
               form.canSubmit
                 ? { backgroundColor: theme.colors.text, opacity: pending ? 0.7 : 1 }
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
+              neo ? ctaStep2Enabled : null,
             // El CTA del paso 2 NO comparte tratamiento con el del paso 1: el
             // verde con gradiente dice "seguí", y acá la acción es confirmar.
             // El handoff lo pinta con el mismo par invertido que el chip de
@@ -472,7 +526,7 @@ export function AddFijoV2Screen({
                   ? t('fijos:wizard.cta.update')
                   : t('fijos:wizard.cta.confirmCreate')}
             </Text>
-          </Pressable>
+          </AnimatedPressable>
           </Animated.View>
         )}
       </StickyFooter>

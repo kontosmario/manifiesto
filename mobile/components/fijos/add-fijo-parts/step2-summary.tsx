@@ -4,7 +4,17 @@
 // installment). Extraído de `add-fijo-v2-screen.tsx`.
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { useEffect } from 'react'
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  interpolateColor,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { BrotMascot } from '@/components/brot/brot-mascot'
@@ -16,7 +26,7 @@ import {
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
-import { motionDurations } from '@/lib/motion'
+import { motionDurations, motionSprings } from '@/lib/motion'
 import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -690,44 +700,55 @@ function ReminderToggle({
   classicKnob: string
   isDark: boolean
 }) {
-  if (!neo) {
+  const reduceMotion = useReducedMotion()
+  const progress = useSharedValue(on ? 1 : 0)
+  const tg = neo?.add.toggle
+  // La perilla VIAJA y la pista tiñe. Antes las dos saltaban de un frame al
+  // otro: el switch se sentía como un checkbox, no como un switch. El spring
+  // es el mismo `press` del resto del kit — un toggle es feedback directo,
+  // no una transición de contenido.
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.value = on ? 1 : 0
+      return
+    }
+    progress.value = withSpring(on ? 1 : 0, motionSprings.press)
+  }, [on, reduceMotion, progress])
+
+  const offTrack = tg?.offBackground ?? classicTrackOff
+  const onTrack = tg?.on ?? (isDark ? '#A6EF8F' : '#297811')
+  const trackStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(progress.value, [0, 1], [offTrack, onTrack]),
+  }))
+  const travelFrom = tg ? tg.knobInset : 2
+  const travelTo = tg ? tg.width - tg.knobSize - tg.knobInset : 18
+  const knobStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: travelFrom + (travelTo - travelFrom) * progress.value }],
+  }))
+
+  if (!tg) {
     return (
-      <View
-        style={[
-          styles.reminderToggle,
-          {
-            backgroundColor: on
-              ? isDark
-                ? '#A6EF8F'  // V1 primary-300
-                : '#297811'  // V1 primary-800 (AA-safe text indicator)
-              : classicTrackOff,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.reminderToggleKnob,
-            { backgroundColor: classicKnob, transform: [{ translateX: on ? 18 : 2 }] },
-          ]}
+      <Animated.View style={[styles.reminderToggle, trackStyle]}>
+        <Animated.View
+          style={[styles.reminderToggleKnob, { backgroundColor: classicKnob }, knobStyle]}
         />
-      </View>
+      </Animated.View>
     )
   }
-  const tg = neo.add.toggle
   return (
-    <View
+    <Animated.View
       style={[
         styles.reminderToggle,
         {
           width: tg.width,
           height: tg.height,
           borderRadius: tg.radius,
-          backgroundColor: on ? tg.on : tg.offBackground,
           boxShadow: tg.shadow,
         },
+        trackStyle,
       ]}
     >
-      <View
+      <Animated.View
         style={[
           styles.reminderToggleKnob,
           {
@@ -736,13 +757,11 @@ function ReminderToggle({
             borderRadius: tg.knobSize / 2,
             backgroundColor: tg.knobBackground,
             boxShadow: tg.knobShadow,
-            transform: [
-              { translateX: on ? tg.width - tg.knobSize - tg.knobInset : tg.knobInset },
-            ],
           },
+          knobStyle,
         ]}
       />
-    </View>
+    </Animated.View>
   )
 }
 

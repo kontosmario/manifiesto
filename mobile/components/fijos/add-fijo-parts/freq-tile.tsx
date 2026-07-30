@@ -13,8 +13,34 @@ import Animated, {
 } from 'react-native-reanimated'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
+/**
+ * Caja del sticker de frecuencia en la piel neo, POR ÍCONO.
+ *
+ * Los siete PNG son 256×256, pero el dibujo ocupa fracciones muy distintas de
+ * su lienzo — medido sobre el canal alfa: quincenal 78%, semestral 76%, anual
+ * 75%, cuotas 72%, mensual 68%, **trimestral 46%, semanal 39%**. Con
+ * `resizeMode: contain` en una caja única, esa diferencia se traslada tal cual
+ * al render: `semanal` salía a menos de la mitad que `semestral` en la misma
+ * caja, y el owner los marcó como "chicos".
+ *
+ * La corrección compensa la ocupación, con tope: sin él, `semanal` necesitaría
+ * una caja de 60 y el chip se iría a 80 de alto. Los dos outliers quedan igual
+ * un poco más chicos que sus hermanos — el arreglo de raíz es re-exportar esos
+ * dos assets con el dibujo al 76% como los demás, pero eso los agranda también
+ * en la pantalla VIVA, que no se toca.
+ */
+const FREQ_ICON_BASE = 30
+const FREQ_ICON_SIZE: Record<string, number> = {
+  'frecuencias/semanal': 40,
+  'frecuencias/trimestral': 40,
+  'frecuencias/mensual': 33,
+}
 
 export interface FreqTileProps {
   icon: string
@@ -38,8 +64,10 @@ export function FreqTile({
   const skin = useFijosSkin()
   const neo = skin.kind === 'neo' ? skin : null
   const reduceMotion = useReducedMotion()
+  const press = usePressScale({ pressedScale: 0.94 })
   const selectedProgress = useSharedValue(selected ? 1 : 0)
   const warningProgress = useSharedValue(warning ? 1 : 0)
+  const neoIconSize = FREQ_ICON_SIZE[icon] ?? FREQ_ICON_BASE
 
   useEffect(() => {
     const target = selected ? 1 : 0
@@ -56,6 +84,18 @@ export function FreqTile({
           easing: Easing.bezier(0.32, 0.72, 0, 1),
         })
   }, [warning, reduceMotion, warningProgress])
+
+  // Las dos superficies del chip, cruzándose por opacidad. Ver el comentario
+  // del JSX: ni el gradiente ni el `boxShadow` se pueden interpolar.
+  const idleLayerStyle = useAnimatedStyle(() => ({ opacity: 1 - selectedProgress.value }))
+  const activeLayerStyle = useAnimatedStyle(() => ({ opacity: selectedProgress.value }))
+  // La tinta del label cruza junto con la superficie: al invertirse el chip,
+  // pasar de la sub apagada a la tinta activa de golpe se leía como parpadeo.
+  const neoInkFrom = neo?.mutedInk ?? '#000'
+  const neoInkTo = neo?.add.freqChip.activeInk ?? '#000'
+  const labelInkStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(selectedProgress.value, [0, 1], [neoInkFrom, neoInkTo]),
+  }))
 
   // Mismo nested-interpolate pattern que los otros shared inputs: width
   // sólo sigue la selected animation así el warning toggle nunca
@@ -83,11 +123,14 @@ export function FreqTile({
   })
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
+      style={neo ? press.animatedStyle : undefined}
     >
       <Animated.View
         style={[
@@ -112,25 +155,56 @@ export function FreqTile({
                 borderWidth: 0,
                 paddingHorizontal: neo.add.freqChip.padH,
                 paddingVertical: neo.add.freqChip.padV,
-                // Activo: RELLENO oscuro con drop shadow. Acá el handoff SÍ
-                // rellena, a diferencia de los tiles de categoría que se hunden.
-                backgroundColor: selected
-                  ? neo.add.freqChip.activeBackground
-                  : neo.add.quickChip.background,
-                experimental_backgroundImage: selected
-                  ? undefined
-                  : neo.add.quickChip.gradientCss,
-                boxShadow: selected
-                  ? neo.add.freqChip.activeShadow
-                  : neo.add.quickChip.shadow,
+                // Sin fondo propio: las DOS superficies viven en capas
+                // absolutas que se cruzan por opacidad (ver abajo).
+                backgroundColor: 'transparent',
               }
             : null,
         ]}
       >
+        {/*
+          La selección CRUZA dos superficies en vez de saltar. Ni el fill ni la
+          sombra son animables por interpolación —una es un gradiente CSS y la
+          otra un string—, así que se pintan como dos capas absolutas y lo que
+          se anima es su opacidad. Es la única forma de que el chip pase de
+          elevado a relleno con transición y no de un frame al otro.
+        */}
+        {neo ? (
+          <>
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: neo.add.freqChip.radius,
+                  backgroundColor: neo.add.quickChip.background,
+                  experimental_backgroundImage: neo.add.quickChip.gradientCss,
+                  boxShadow: neo.add.quickChip.shadow,
+                },
+                idleLayerStyle,
+              ]}
+            />
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: neo.add.freqChip.radius,
+                  backgroundColor: neo.add.freqChip.activeBackground,
+                  boxShadow: neo.add.freqChip.activeShadow,
+                },
+                activeLayerStyle,
+              ]}
+            />
+          </>
+        ) : null}
         {CATEGORY_ICONS[icon] ? (
           <Image
             source={CATEGORY_ICONS[icon]}
-            style={[styles.freqTileImage, neo ? styles.freqChipImageNeo : null]}
+            style={[
+              styles.freqTileImage,
+              neo ? { width: neoIconSize, height: neoIconSize } : null,
+            ]}
             resizeMode="contain"
           />
         ) : (
@@ -138,7 +212,7 @@ export function FreqTile({
             {icon}
           </Text>
         )}
-        <Text
+        <Animated.Text
           style={[
             styles.freqTileLabel,
             { color: theme.colors.text },
@@ -147,21 +221,21 @@ export function FreqTile({
                   fontSize: neo.add.freqChip.fontSize,
                   fontWeight: '800' as const,
                   fontFamily: neo.font('800'),
-                  // Inactivo va en tinta SUB, no en la del título: en oscuro
-                  // los 6 chips apagados gritaban en crema `#F1EEDD` y
-                  // mataban la jerarquía contra el activo.
-                  color: selected ? neo.add.freqChip.activeInk : neo.mutedInk,
                   width: 'auto' as const,
                 }
               : null,
+            // Inactivo va en tinta SUB, no en la del título: en oscuro los 6
+            // chips apagados gritaban en crema `#F1EEDD` y mataban la
+            // jerarquía contra el activo.
+            neo ? labelInkStyle : null,
           ]}
           numberOfLines={1}
           allowFontScaling={false}
         >
           {label}
-        </Text>
+        </Animated.Text>
       </Animated.View>
-    </Pressable>
+    </AnimatedPressable>
   )
 }
 
@@ -189,7 +263,6 @@ const styles = StyleSheet.create({
   // A 18px el sticker era una mancha al lado de un label de 12.5 — a 26 se lee
   // y el chip crece ~6px, que es lo que costaba la decisión.
   freqChipNeo: { width: 'auto', height: 'auto', flexDirection: 'row', gap: 8 },
-  freqChipImageNeo: { width: 26, height: 26 },
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',
