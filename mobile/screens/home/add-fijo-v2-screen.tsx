@@ -396,13 +396,16 @@ export function AddFijoV2Screen({
               form.canSubmit
                 ? { backgroundColor: theme.colors.text, opacity: pending ? 0.7 : 1 }
                 : { backgroundColor: theme.colors.text, opacity: 0.45 },
+            // El CTA del paso 2 NO comparte tratamiento con el del paso 1: el
+            // verde con gradiente dice "seguí", y acá la acción es confirmar.
+            // El handoff lo pinta con el mismo par invertido que el chip de
+            // frecuencia activo — sólido, sin gradiente.
             neo
               ? {
-                  backgroundColor: neo.add.cta.background,
-                  experimental_backgroundImage: neo.add.cta.gradientCss,
+                  backgroundColor: neo.add.ctaStep2.background,
                   borderRadius: neo.add.cta.radius,
                   paddingVertical: neo.add.cta.padV,
-                  boxShadow: neo.add.cta.shadow,
+                  boxShadow: neo.add.ctaStep2.shadow,
                 }
               : null,
             ]}
@@ -424,7 +427,7 @@ export function AddFijoV2Screen({
                 { color: theme.colors.creamCard },
                 neo
                   ? {
-                      color: neo.add.cta.ink,
+                      color: neo.add.ctaStep2.ink,
                       fontSize: neo.add.cta.fontSize,
                       fontWeight: '900',
                       fontFamily: neo.font('900'),

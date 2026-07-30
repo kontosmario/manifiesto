@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
+import { BrotMascot } from '@/components/brot/brot-mascot'
 import { CategoryIcon } from '@/components/category/category-icon'
 import {
   FREQ_OPTIONS,
@@ -15,10 +16,18 @@ import {
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
-import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
+import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { useAppTheme } from '@/theme/theme-provider'
 import { CalendarDropImpact } from './calendar-drop-impact'
-import { HealthBadge, ImpactBar, ImpactRow } from './impact-card'
+import {
+  HealthBadge,
+  ImpactBar,
+  ImpactColumns,
+  ImpactRow,
+  ZoneGauge,
+  zoneForPct,
+} from './impact-card'
 
 export interface Step2SummaryProps {
   name: string
@@ -77,6 +86,20 @@ export function Step2Summary(props: Step2SummaryProps) {
     onToggleAlreadyPaid,
   } = props
 
+  // Zona del handoff (30/50) — sólo la consume la piel neo, donde el medidor
+  // y su caption dicen el veredicto. En neo la frase de tono NO se rendea:
+  // el handoff mueve el veredicto al caption ("zona sana") y repetirlo
+  // arriba estiraba el bloque una línea diciendo dos veces lo mismo.
+  const zone = zoneForPct(pctDespues)
+  // El monto libre usa DOS acentos, no tres: verde en zona sana, terracota
+  // fuera de ella. Es el mismo criterio que el resto de la piel de fijos,
+  // que colapsó los cuatro hues de estado del `computeAccent` viejo en dos.
+  const neoLibreInk = neo
+    ? zone === 'sana'
+      ? neo.add.accentGreen
+      : neo.add.accentClay
+    : undefined
+
   // Color + glow + veredicto del "te queda libre" según la holgura, con el
   // MISMO umbral del HealthBadge (impact-card.tsx): holgado / ajustado /
   // apretado. Convierte el dato frío en un semáforo emocional.
@@ -105,7 +128,7 @@ export function Step2Summary(props: Step2SummaryProps) {
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(140)}
       layout={LinearTransition.duration(260)}
-      style={styles.formStack}
+      style={[styles.formStack, neo ? { gap: 10 } : null]}
     >
       <RiseView>
         <View
@@ -114,9 +137,12 @@ export function Step2Summary(props: Step2SummaryProps) {
             { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
             neo
               ? {
-                  backgroundColor: neo.row.background,
+                  backgroundColor: neo.add.step2Card.background,
+                  experimental_backgroundImage: neo.add.step2Card.gradientCss,
                   borderWidth: 0,
-                  boxShadow: neo.row.shadow,
+                  boxShadow: neo.add.step2Card.shadow,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
                 }
               : null,
 
@@ -133,6 +159,20 @@ export function Step2Summary(props: Step2SummaryProps) {
                   ? hexAlpha(selectedCategory.color, 0.34)
                   : theme.colors.line,
               },
+              // 44×44 sin borde, con el PASTEL de la categoría en los dos
+              // temas. El handoff pide el hue al 14% en oscuro, pero los
+              // stickers están ilustrados para fondo claro y sobre un velo
+              // oscuro se funden — es el mismo desvío ya vivo en el rail de
+              // categorías del paso 1, unificado por decisión del owner.
+              neo && selectedCategory
+                ? {
+                    width: 44,
+                    height: 44,
+                    borderWidth: 0,
+                    backgroundColor: resolveCategoryHueByName(selectedCategory.name).light
+                      .surface,
+                  }
+                : null,
             ]}
           >
             {selectedCategory ? (
@@ -141,8 +181,8 @@ export function Step2Summary(props: Step2SummaryProps) {
               <CategoryIcon
                 name={selectedCategory.name}
                 scope="fixed_expense"
-                size={30}
-                emojiStyle={styles.summaryIconText}
+                size={neo ? 28 : 30}
+                emojiStyle={neo ? styles.summaryIconTextNeo : styles.summaryIconText}
               />
             ) : (
               <Text style={styles.summaryIconText}>
@@ -150,9 +190,33 @@ export function Step2Summary(props: Step2SummaryProps) {
               </Text>
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.summaryName, { color: theme.colors.text }]}>{name}</Text>
-            <Text style={[styles.summaryMeta, { color: theme.colors.textMuted }]}>
+          <View style={neo ? { flex: 1, minWidth: 0 } : { flex: 1 }}>
+            <Text
+              style={[
+                styles.summaryName,
+                { color: theme.colors.text },
+                neo
+                  ? { fontSize: 16, fontWeight: '900', fontFamily: neo.font('900'), color: neo.ink.title }
+                  : null,
+              ]}
+            >
+              {name}
+            </Text>
+            <Text
+              style={[
+                styles.summaryMeta,
+                { color: theme.colors.textMuted },
+                neo
+                  ? {
+                      fontSize: 11.5,
+                      fontWeight: '700',
+                      fontFamily: neo.font('700'),
+                      color: neo.mutedInk,
+                      marginTop: 0,
+                    }
+                  : null,
+              ]}
+            >
               {selectedCategory?.displayName ?? t('fijos:wizard.step2.noCategory')} ·{' '}
               {(() => {
                 const freqKey = FREQ_OPTIONS.find((f) => f.id === freqChoice)?.labelKey
@@ -163,11 +227,31 @@ export function Step2Summary(props: Step2SummaryProps) {
             </Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={[styles.summaryAmount, { color: theme.colors.text }]}>
+            <Text
+              style={[
+                styles.summaryAmount,
+                { color: theme.colors.text },
+                neo
+                  ? {
+                      fontSize: 20,
+                      fontWeight: '900',
+                      fontFamily: neo.font('900'),
+                      color: neo.ink.title,
+                      letterSpacing: 0,
+                    }
+                  : null,
+              ]}
+            >
               {formatMoney(amount)}
             </Text>
             {isInstallment ? (
-              <Text style={[styles.summaryCuotaMeta, { color: theme.colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.summaryCuotaMeta,
+                  { color: theme.colors.textMuted },
+                  neo ? { color: neo.mutedInk, fontFamily: neo.font('700'), fontWeight: '700' } : null,
+                ]}
+              >
                 {t('fijos:wizard.step2.installmentMeta', {
                   count: cuotaTot,
                   total: formatMoney(totalCuotas),
@@ -178,6 +262,82 @@ export function Step2Summary(props: Step2SummaryProps) {
         </View>
       </RiseView>
 
+      {neo ? (
+        <RiseView delay={80}>
+          {/* El eyebrow vive DENTRO de la card, en la misma fila que el chip
+              del delta: el handoff los lee como un par (qué mido / cuánto
+              sumo), no como un título suelto arriba del bloque. */}
+          <View
+            style={[
+              styles.impactCardNeo,
+              {
+                backgroundColor: neo.add.step2Card.background,
+                experimental_backgroundImage: neo.add.step2Card.gradientCss,
+                boxShadow: neo.add.step2Card.shadow,
+              },
+            ]}
+          >
+            <View style={styles.impactHead}>
+              <Text
+                style={[
+                  styles.impactEyebrowNeo,
+                  { color: neo.mutedInk, fontFamily: neo.font('800') },
+                ]}
+              >
+                {t('fijos:wizard.step2.impactEyebrowNeo')}
+              </Text>
+              {nuevoTotal - prevTotal !== 0 ? (
+                <Text
+                  style={[
+                    styles.deltaChip,
+                    {
+                      borderRadius: neo.add.deltaChip.radius,
+                      paddingHorizontal: neo.add.deltaChip.padH,
+                      paddingVertical: neo.add.deltaChip.padV,
+                      fontSize: neo.add.deltaChip.fontSize,
+                      color: neo.add.deltaChip.ink,
+                      backgroundColor: neo.add.deltaChip.background,
+                      fontFamily: neo.font('900'),
+                    },
+                  ]}
+                >
+                  {t('fijos:wizard.step2.deltaAdded', {
+                    amount: formatMoney(nuevoTotal - prevTotal),
+                  })}
+                </Text>
+              ) : null}
+            </View>
+
+            <ImpactColumns
+              beforeLabel={t('fijos:wizard.step2.beforeShort')}
+              afterLabel={t('fijos:wizard.step2.afterShort')}
+              beforeValue={formatMoney(prevTotal)}
+              afterValue={formatMoney(nuevoTotal)}
+              beforePctText={
+                monthlyIncome > 0
+                  ? t('fijos:wizard.step2.pctOfSalary', { pct: pctAntes })
+                  : undefined
+              }
+              afterPctText={monthlyIncome > 0 ? `${pctDespues}%` : undefined}
+              deltaPctText={
+                monthlyIncome > 0 && deltaPct !== 0
+                  ? `${deltaPct > 0 ? '+' : ''}${deltaPct}pp`
+                  : undefined
+              }
+            />
+
+            {monthlyIncome > 0 ? (
+              <LibreBlockNeo
+                neo={neo}
+                libreDespues={libreDespues}
+                pctDespues={pctDespues}
+                zone={zone}
+                ink={neoLibreInk ?? neo.add.accentGreen}
+              />
+            ) : null}
+          </View>
+        </RiseView>
+      ) : (
       <RiseView delay={80}>
         <View>
           <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 8 }]}>
@@ -187,14 +347,6 @@ export function Step2Summary(props: Step2SummaryProps) {
             style={[
               styles.impactCard,
               { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-            neo
-              ? {
-                  backgroundColor: neo.row.background,
-                  borderWidth: 0,
-                  boxShadow: neo.row.shadow,
-                }
-              : null,
-
             ]}
           >
             <ImpactRow
@@ -227,15 +379,6 @@ export function Step2Summary(props: Step2SummaryProps) {
                 style={[
                   styles.libreRow,
                   { backgroundColor: theme.colors.pageBg, borderColor: theme.colors.line },
-                  // Bloque de datos: POZO, no card. Mismo recurso que los
-                  // campos del paso 1.
-                  neo
-                    ? {
-                        backgroundColor: neo.add.well.background,
-                        borderWidth: 0,
-                        boxShadow: neo.add.well.shadow,
-                      }
-                    : null,
                 ]}
               >
                 <View style={{ flex: 1 }}>
@@ -261,12 +404,25 @@ export function Step2Summary(props: Step2SummaryProps) {
           </View>
         </View>
       </RiseView>
+      )}
 
       {selectedCategory ? (
         <RiseView delay={160}>
           <View>
-            <Text style={[styles.eyebrow, { color: theme.colors.textMuted, marginBottom: 8 }]}>
-              {t('fijos:wizard.step2.scheduledOn')}
+            {/* El día elegido viaja al eyebrow: el handoff no dibuja el pie
+                de la card, dice "SE AGENDARÁ EN · DÍA 16" arriba. */}
+            <Text
+              style={[
+                styles.eyebrow,
+                { color: theme.colors.textMuted, marginBottom: 8 },
+                neo
+                  ? { ...neo.detail.sectionLabel, color: neo.mutedInk }
+                  : null,
+              ]}
+            >
+              {neo && day != null
+                ? t('fijos:wizard.step2.scheduledOnDay', { day })
+                : t('fijos:wizard.step2.scheduledOn')}
             </Text>
             <CalendarDropImpact
               day={day}
@@ -304,11 +460,14 @@ export function Step2Summary(props: Step2SummaryProps) {
                   paddingVertical: 12,
                   paddingHorizontal: 14,
                   backgroundColor: notify
-                    ? neo.accent('paid').chipBackground
-                    : neo.row.background,
+                    ? neo.add.reminderOnBackground
+                    : neo.add.step2Card.background,
+                  experimental_backgroundImage: notify
+                    ? undefined
+                    : neo.add.step2Card.gradientCss,
                   boxShadow: notify
-                    ? `inset 0 0 0 2px ${neo.detail.ctaEditInk}`
-                    : neo.row.shadow,
+                    ? `inset 0 0 0 2px ${neo.add.accentGreen}`
+                    : neo.add.step2Card.shadow,
                 }
               : null,
           ]}
@@ -316,8 +475,11 @@ export function Step2Summary(props: Step2SummaryProps) {
           accessibilityState={{ checked: notify }}
           accessibilityLabel={t('fijos:wizard.step2.reminderA11y')}
         >
-          <View style={styles.reminderLeft}>
-            <Text allowFontScaling={false} style={styles.reminderEmoji}>
+          <View style={[styles.reminderLeft, neo ? { gap: 11 } : null]}>
+            <Text
+              allowFontScaling={false}
+              style={[styles.reminderEmoji, neo ? { fontSize: 19 } : null]}
+            >
               {notify ? '🔔' : '🔕'}
             </Text>
             <View style={{ flex: 1 }}>
@@ -325,40 +487,49 @@ export function Step2Summary(props: Step2SummaryProps) {
                 style={[
                   styles.eyebrow,
                   { color: theme.colors.textMuted },
-                  neo ? { ...neo.add.sectionLabel, color: neo.add.sectionLabelInk } : null,
+                  // La card del recordatorio usa un eyebrow más chico que el
+                  // de sección (10 vs 11, ls 1.2 vs 1.98): es una etiqueta
+                  // dentro de una card, no un título de bloque.
+                  neo
+                    ? {
+                        fontSize: 10,
+                        fontWeight: '800',
+                        fontFamily: neo.font('800'),
+                        letterSpacing: 1.2,
+                        color: neo.mutedInk,
+                      }
+                    : null,
                 ]}
               >
                 {t('fijos:wizard.step2.reminderEyebrow')}
               </Text>
-              <Text style={[styles.reminderText, { color: theme.colors.text }]}>
+              <Text
+                style={[
+                  styles.reminderText,
+                  { color: theme.colors.text },
+                  neo
+                    ? {
+                        fontWeight: '900',
+                        fontFamily: neo.font('900'),
+                        color: neo.ink.title,
+                        marginTop: 1,
+                      }
+                    : null,
+                ]}
+              >
                 {notify
                   ? t('fijos:wizard.step2.reminderOn')
                   : t('fijos:wizard.step2.reminderOff')}
               </Text>
             </View>
           </View>
-          <View
-            style={[
-              styles.reminderToggle,
-              {
-                backgroundColor: notify
-                  ? theme.isDark
-                    ? '#A6EF8F'  // V1 primary-300
-                    : '#297811'  // V1 primary-800 (AA-safe text indicator)
-                  : theme.colors.line,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.reminderToggleKnob,
-                {
-                  backgroundColor: neo ? neo.row.background : theme.colors.creamCard,
-                  transform: [{ translateX: notify ? 18 : 2 }],
-                },
-              ]}
-            />
-          </View>
+          <ReminderToggle
+            neo={neo}
+            on={notify}
+            classicTrackOff={theme.colors.line}
+            classicKnob={theme.colors.creamCard}
+            isDark={theme.isDark}
+          />
         </Pressable>
       </RiseView>
 
@@ -401,14 +572,37 @@ export function Step2Summary(props: Step2SummaryProps) {
                     : '#49D61F'
                   : theme.colors.line,
               },
+              // El handoff no dibuja esta card (aparece sólo en creación de
+              // fijos no-cuota), así que el criterio es la consistencia con
+              // su hermana de arriba: mismo material, mismo anillo.
+              neo
+                ? {
+                    borderRadius: 18,
+                    borderWidth: 0,
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    backgroundColor: alreadyPaidCurrentCuota
+                      ? neo.add.reminderOnBackground
+                      : neo.add.step2Card.background,
+                    experimental_backgroundImage: alreadyPaidCurrentCuota
+                      ? undefined
+                      : neo.add.step2Card.gradientCss,
+                    boxShadow: alreadyPaidCurrentCuota
+                      ? `inset 0 0 0 2px ${neo.add.accentGreen}`
+                      : neo.add.step2Card.shadow,
+                  }
+                : null,
             ]}
             accessibilityRole="switch"
             accessibilityState={{ checked: alreadyPaidCurrentCuota }}
             accessibilityLabel={t('fijos:wizard.step2.alreadyPaidA11y')}
             accessibilityHint={t('fijos:wizard.step2.alreadyPaidHint')}
           >
-            <View style={styles.reminderLeft}>
-              <Text allowFontScaling={false} style={styles.reminderEmoji}>
+            <View style={[styles.reminderLeft, neo ? { gap: 11 } : null]}>
+              <Text
+                allowFontScaling={false}
+                style={[styles.reminderEmoji, neo ? { fontSize: 19 } : null]}
+              >
                 {alreadyPaidCurrentCuota ? '✅' : '⏳'}
               </Text>
               <View style={{ flex: 1 }}>
@@ -416,46 +610,224 @@ export function Step2Summary(props: Step2SummaryProps) {
                 style={[
                   styles.eyebrow,
                   { color: theme.colors.textMuted },
-                  neo ? { ...neo.add.sectionLabel, color: neo.add.sectionLabelInk } : null,
+                  neo
+                    ? {
+                        fontSize: 10,
+                        fontWeight: '800',
+                        fontFamily: neo.font('800'),
+                        letterSpacing: 1.2,
+                        color: neo.mutedInk,
+                      }
+                    : null,
                 ]}
               >
                   {t('fijos:wizard.step2.currentStateEyebrow')}
                 </Text>
-                <Text style={[styles.reminderText, { color: theme.colors.text }]}>
+                <Text
+                  style={[
+                    styles.reminderText,
+                    { color: theme.colors.text },
+                    neo
+                      ? {
+                          fontWeight: '900',
+                          fontFamily: neo.font('900'),
+                          color: neo.ink.title,
+                          marginTop: 1,
+                        }
+                      : null,
+                  ]}
+                >
                   {alreadyPaidCurrentCuota
                     ? t('fijos:wizard.step2.alreadyPaidOn')
                     : t('fijos:wizard.step2.alreadyPaidOff')}
                 </Text>
               </View>
             </View>
-            <View
-              style={[
-                styles.reminderToggle,
-                {
-                  backgroundColor: alreadyPaidCurrentCuota
-                    ? theme.isDark
-                      ? '#A6EF8F'
-                      : '#297811'
-                    : theme.colors.line,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.reminderToggleKnob,
-                  {
-                    backgroundColor: neo ? neo.row.background : theme.colors.creamCard,
-                    transform: [
-                      { translateX: alreadyPaidCurrentCuota ? 18 : 2 },
-                    ],
-                  },
-                ]}
-              />
-            </View>
+            <ReminderToggle
+              neo={neo}
+              on={alreadyPaidCurrentCuota}
+              classicTrackOff={theme.colors.line}
+              classicKnob={theme.colors.creamCard}
+              isDark={theme.isDark}
+            />
           </Pressable>
         </RiseView>
       ) : null}
     </Animated.View>
+  )
+}
+
+/**
+ * Toggle de las cards de recordatorio y de "ya pagué". La rama `classic` es
+ * LITERAL la de siempre; la `neo` es la pista de 44×26 del handoff, con la
+ * perilla en `#FFFDF6` — el único color del rediseño que NO cambia con el
+ * tema. El desplazamiento sale de la geometría (`ancho − perilla − inset`),
+ * no de una constante: la pista y la perilla ya viven en el skin.
+ */
+function ReminderToggle({
+  neo,
+  on,
+  classicTrackOff,
+  classicKnob,
+  isDark,
+}: {
+  neo: FijosNeoSkin | null
+  on: boolean
+  classicTrackOff: string
+  classicKnob: string
+  isDark: boolean
+}) {
+  if (!neo) {
+    return (
+      <View
+        style={[
+          styles.reminderToggle,
+          {
+            backgroundColor: on
+              ? isDark
+                ? '#A6EF8F'  // V1 primary-300
+                : '#297811'  // V1 primary-800 (AA-safe text indicator)
+              : classicTrackOff,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.reminderToggleKnob,
+            { backgroundColor: classicKnob, transform: [{ translateX: on ? 18 : 2 }] },
+          ]}
+        />
+      </View>
+    )
+  }
+  const tg = neo.add.toggle
+  return (
+    <View
+      style={[
+        styles.reminderToggle,
+        {
+          width: tg.width,
+          height: tg.height,
+          borderRadius: tg.radius,
+          backgroundColor: on ? tg.on : tg.offBackground,
+          boxShadow: tg.shadow,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.reminderToggleKnob,
+          {
+            width: tg.knobSize,
+            height: tg.knobSize,
+            borderRadius: tg.knobSize / 2,
+            backgroundColor: tg.knobBackground,
+            boxShadow: tg.knobShadow,
+            transform: [
+              { translateX: on ? tg.width - tg.knobSize - tg.knobInset : tg.knobInset },
+            ],
+          },
+        ]}
+      />
+    </View>
+  )
+}
+
+/**
+ * "TE QUEDA LIBRE" en la piel neo. Es el único bloque del wizard que NO se
+ * hunde: los campos son pozos porque ahí se escribe, y éste es la conclusión
+ * de todo lo anterior — panel plano tintado con anillo, apoyado sobre la card.
+ *
+ * Adentro van, en este orden: Brot festejando, el monto, la badge de zona, el
+ * medidor de zonas y el caption que nombra la zona. El veredicto se dice UNA
+ * vez, en el caption.
+ */
+function LibreBlockNeo({
+  neo,
+  libreDespues,
+  pctDespues,
+  zone,
+  ink,
+}: {
+  neo: FijosNeoSkin
+  libreDespues: number
+  pctDespues: number
+  zone: 'sana' | 'media' | 'alta'
+  ink: string
+}) {
+  const { t } = useTranslation()
+  const lp = neo.add.librePanel
+  const zoneLabel =
+    zone === 'alta'
+      ? t('fijos:wizard.step2.zoneRisk')
+      : zone === 'media'
+        ? t('fijos:wizard.step2.zoneTight')
+        : t('fijos:wizard.step2.zoneHealthy')
+  return (
+    <View
+      style={[
+        styles.librePanel,
+        {
+          borderRadius: lp.radius,
+          paddingVertical: lp.padV,
+          paddingHorizontal: lp.padH,
+          backgroundColor: lp.background,
+          borderColor: lp.borderColor,
+          borderWidth: lp.borderWidth,
+        },
+      ]}
+    >
+      <View style={styles.libreHead}>
+        <BrotMascot pose="cheer" size={42} shadow={false} />
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              styles.libreEyebrowNeo,
+              { color: ink, fontFamily: neo.font('800') },
+            ]}
+          >
+            {t('fijos:wizard.step2.freeLeftEyebrow')}
+          </Text>
+          <CountUpText
+            value={libreDespues}
+            format={formatMoney}
+            unit="money"
+            flourish
+            duration={900}
+            glowColor={ink}
+            style={[styles.libreValueNeo, { color: ink, fontFamily: neo.font('900') }]}
+          />
+        </View>
+        <HealthBadge pct={pctDespues} zone={zone} />
+      </View>
+
+      <ZoneGauge pct={pctDespues} />
+
+      <View style={styles.zoneCaption}>
+        {/* Nunito son faces estáticas por peso: el <Text> anidado que sube a
+            900 tiene que pedir también la familia, o rendea con la del padre. */}
+        <Text
+          style={[
+            styles.zoneCaptionLeft,
+            { color: neo.ink.title, fontFamily: neo.font('800') },
+          ]}
+        >
+          {t('fijos:wizard.step2.pctOfSalary', { pct: pctDespues })}
+          {' · '}
+          <Text style={{ color: ink, fontWeight: '900', fontFamily: neo.font('900') }}>
+            {zoneLabel}
+          </Text>
+        </Text>
+        <Text
+          style={[
+            styles.zoneCaptionRight,
+            { color: neo.faintInk, fontFamily: neo.font('800') },
+          ]}
+        >
+          {t('fijos:wizard.step2.zoneLimit')}
+        </Text>
+      </View>
+    </View>
   )
 }
 
@@ -480,6 +852,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   summaryIconText: { fontSize: 22 },
+  summaryIconTextNeo: { fontSize: 21 },
   summaryName: { fontSize: 15, fontWeight: '800' },
   summaryMeta: { fontSize: 11, marginTop: 2 },
   summaryAmount: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
@@ -537,4 +910,29 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 999,
   },
+  // ── neo ────────────────────────────────────────────────────────────────
+  impactCardNeo: { borderRadius: 22, paddingVertical: 15, paddingHorizontal: 16 },
+  impactHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  // 0.14em sobre 10.5px. RN no acepta em.
+  impactEyebrowNeo: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.47, flexShrink: 1 },
+  deltaChip: { fontWeight: '900', overflow: 'hidden' },
+  librePanel: { marginTop: 14 },
+  libreHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  // 0.1em sobre 10px.
+  libreEyebrowNeo: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  libreValueNeo: { fontSize: 22, fontWeight: '900', marginTop: 1 },
+  zoneCaption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 8,
+  },
+  zoneCaptionLeft: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
+  zoneCaptionRight: { fontSize: 9.5, fontWeight: '800' },
 })
