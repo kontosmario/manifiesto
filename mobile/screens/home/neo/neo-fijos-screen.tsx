@@ -50,11 +50,13 @@ import {
   fijosHeaderHeroSpacing,
   fijosHeroAvisosSpacing,
 } from '@/components/redesign/fijos/fijos-screen'
+import type { FijosCategoryKey } from '@/components/redesign/fijos/fijos-screen'
 import { FIJOS_RADII, FIJOS_SPEC, type FijosMode } from '@/components/redesign/fijos/fijos-spec'
 import { ErrorState } from '@/components/ui/error-state'
 import { Screen } from '@/components/ui/screen'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
-import { groupFijosByCategory } from '@/features/fijos/fijos-aggregates.model'
+import { groupFijosByCategory, type FijoItem } from '@/features/fijos/fijos-aggregates.model'
+import { NeoFijosPaySheet } from '@/screens/home/neo/neo-fijos-pay-sheet'
 import { useFijosController } from '@/features/fijos/use-fijos-controller'
 import { useDismissedHikes } from '@/features/fijos/use-hike-dismiss-store'
 import {
@@ -68,6 +70,7 @@ import {
   buildTickerItems,
   computeDaysIntoCycle,
   filterDueSoon,
+  mapCategoryToBucket,
   selectAvisosVariant,
   selectHeroVariant,
 } from '@/features/fijos/neo-fijos-view-model'
@@ -110,6 +113,9 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const mode = useThemeMode().resolvedMode as FijosMode
   const s = FIJOS_SPEC[mode]
   const isFocused = useIsFocused()
+
+  /** Bucket cuyo sheet de pago DEV está abierto (`null` = cerrado). */
+  const [paySheetBucket, setPaySheetBucket] = useState<FijosCategoryKey | null>(null)
 
   // ── Datos ───────────────────────────────────────────────────────────────
   // Casi todo es CACHE-HIT del cluster que ya arma el controller (mismos
@@ -392,6 +398,27 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     [controller.tab, categoryBuckets.buckets, overdueCount, paidCount, pendingCount],
   )
 
+  /**
+   * Mapa bucket → ítems, para el sheet de pago. Se deriva con el MISMO mapper
+   * puro que usó `buildCategoryBuckets`, así que un fijo cae siempre en el
+   * mismo bucket en los dos lados; si divergieran, el sheet listaría fijos que
+   * no son de la fila que tocaste.
+   */
+  const itemsByBucket = useMemo(() => {
+    const map = new Map<FijosCategoryKey, FijoItem[]>()
+    for (const group of allCycleGroups) {
+      const bucket = mapCategoryToBucket(group.rawLabel)
+      const prev = map.get(bucket) ?? []
+      prev.push(...group.items)
+      map.set(bucket, prev)
+    }
+    return map
+  }, [allCycleGroups])
+
+  const paySheetItems = paySheetBucket ? (itemsByBucket.get(paySheetBucket) ?? []) : []
+  const paySheetName =
+    categoryBuckets.buckets.find((b) => b.category === paySheetBucket)?.name ?? ''
+
   const cycleHeaderLabel = buildCycleHeaderLabel(controller.cycleLabel, daysIntoCycle)
 
   // ── Handlers ────────────────────────────────────────────────────────────
@@ -405,8 +432,18 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     toast.info('Alta en 2 pasos: Fase 3')
   }, [])
 
-  const handlePressCategory = useCallback(() => {
-    toast.info('Detalle de categoría: Fase 2')
+  /**
+   * Abre el sheet de pago DEV del bucket tocado. El kit entrega la LLAVE del
+   * bucket (`FijosCategoryKey`), no los ítems, así que el mapa llave→ítems se
+   * rearma con el mismo `mapCategoryToBucket` puro que usó el colapso — sin
+   * duplicar la regla de mapeo.
+   */
+  const handlePressCategory = useCallback((category: FijosCategoryKey) => {
+    setPaySheetBucket(category)
+  }, [])
+
+  const closePaySheet = useCallback(() => {
+    setPaySheetBucket(null)
   }, [])
 
   /** El alta VIEJA existe y funciona. Transitorio: la Fase 3 la reemplaza por
@@ -522,14 +559,23 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           onSelectTab={controller.setTab}
         />
       </View>
+      {/* Sheet de pago DEV: el kit no tiene ninguna superficie que reciba un
+          `fixedExpenseId` (sus filas son por CATEGORÍA), así que marcar
+          pagado / revertir vive en UI propia fuera del kit — justo donde va a
+          ir el detalle expandido de la Fase 2. ESCRITURAS REALES. */}
+      <NeoFijosPaySheet
+        bucketName={paySheetName}
+        familyId={familyId}
+        items={paySheetItems}
+        mode={mode}
+        onClose={closePaySheet}
+        userId={userId}
+        visible={paySheetBucket != null}
+      />
       {/* TODO (fase posterior): el tour de Fijos, gateado con
           `enabled: !preview`. Omitido a propósito — con `preview` siempre true
           desde la ruta dev nunca correría, así que montarlo ahora sería riesgo
           sin beneficio. Hace falta antes del swap, no antes de mirar. */}
-      {/* TODO (Fase 2): sheet de pago por fijo. El kit NO tiene ninguna
-          superficie que reciba un `fixedExpenseId` (sus filas son por
-          CATEGORÍA), así que marcar-pagado/revertir necesita UI propia fuera
-          del kit — que es justo donde va a vivir el detalle de la Fase 2. */}
     </Screen>
   )
 }
@@ -573,8 +619,8 @@ function NeoFijosDevBanner(props: {
       (c) => `bucket ${c.bucket} ← ${c.realLabels.join(', ')}`,
     ),
     'las tabs NO filtran las filas: las filas listan todo el ciclo (es el mockup literal)',
-    'sin superficie por-fijo en el kit → no se puede marcar pagado desde acá (Fase 2)',
-    'detalle de categoría y alta en 2 pasos: fases posteriores, los botones avisan',
+    'tocá una fila de categoría → sheet de pago DEV (el kit no tiene superficie por-fijo; el detalle real es Fase 2). ESCRITURAS REALES, reversibles',
+    'calendario del header → Fase 3 (alta en 2 pasos). "+ Agregar fijo" va al alta VIEJA, que sí funciona',
   ].filter(Boolean) as string[]
 
   return (
