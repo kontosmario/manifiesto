@@ -89,6 +89,63 @@ const ADD_TILE_D = '4px 4px 9px rgba(0,0,0,0.45), -3px -3px 8px rgba(101,152,113
 const ADD_TILE_SEL_L = 'inset 2px 2px 6px rgba(90,110,70,0.2)'
 const ADD_TILE_SEL_D = 'inset 2px 2px 6px rgba(0,0,0,0.4)'
 
+// ── Paso 2 del alta ──────────────────────────────────────────────────────
+// Las dos cards del paso 2 usan el escalón CHICO de profundidad (5/5/12), no
+// el 8/8/18 de las cards de la lista: son bloques de lectura dentro de un
+// wizard, no superficies de primer nivel. Los valores ya viven arriba como
+// TILE_RAISE_L/D; acá solo se exponen.
+//
+// El track del medidor de zonas usa inset 0.4 en claro — NO el 0.38 de
+// CHIP_INSET_L. Es 2 centésimas de diferencia y es literal del handoff: los
+// dos insets conviven en la misma pantalla (el 0.38 es el de las celdas del
+// calendario y el del toggle). No unificarlos en un token.
+const GAUGE_INSET_L = 'inset 3px 3px 7px rgba(151,160,136,0.4), inset -3px -3px 7px rgba(255,255,255,0.92)'
+const GAUGE_INSET_D = 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.1)'
+
+const STEP2 = {
+  light: {
+    accentGreen: '#2E7C39',
+    accentClay: '#C25B33',
+    deltaChipBackground: '#F6DCCB',
+    librePanelBackground: 'rgba(219,235,215,0.6)',
+    librePanelBorder: 'rgba(46,116,52,0.22)',
+    gaugeZones: ['#BFDDB7', '#ECD6A2', '#E6AB92'],
+    gaugeKnobBackground: '#F7F4E4',
+    healthOkInk: '#2E7C39',
+    healthOkBackground: '#DCEBD8',
+    healthWarnInk: '#C25B33',
+    healthWarnBackground: '#F6DCCB',
+    toggleOn: '#2E7C39',
+    // Radial de la celda elegida. `experimental_backgroundImage` no rinde en
+    // react-native-web (GOTCHA del handoff), así que el fill sólido de abajo
+    // es lo que se ve en el preview y el radial es lo que se ve en el device.
+    // El sólido es el color medio del propio radial.
+    selectedGradient: 'radial-gradient(circle at 34% 28%, #63B168, #2E7434 85%)',
+    selectedBackground: '#3F8E48',
+    selectedInk: '#F5F2E1',
+  },
+  dark: {
+    accentGreen: '#A4E3A6',
+    accentClay: '#F0A47E',
+    deltaChipBackground: 'rgba(240,164,126,0.16)',
+    librePanelBackground: 'rgba(164,227,166,0.08)',
+    librePanelBorder: 'rgba(164,227,166,0.2)',
+    gaugeZones: ['rgba(164,227,166,0.34)', 'rgba(226,178,96,0.32)', 'rgba(217,115,85,0.36)'],
+    gaugeKnobBackground: '#F1EEDD',
+    // El handoff INVIERTE la badge en oscuro: tinta profunda sobre el verde
+    // sólido, no verde sobre un tinte. La rama de aviso espeja ese criterio
+    // con el terracota del sistema.
+    healthOkInk: '#0F1E14',
+    healthOkBackground: '#A4E3A6',
+    healthWarnInk: '#0F1E14',
+    healthWarnBackground: '#F0A47E',
+    toggleOn: '#A4E3A6',
+    selectedGradient: 'radial-gradient(circle at 34% 28%, #9FDC9F, #3E7D46 85%)',
+    selectedBackground: '#63A96B',
+    selectedInk: '#0F1E14',
+  },
+} as const
+
 /** CTA del panel. Editar es RELLENO tintado; revertir es OUTLINE. */
 const DETAIL_CTA = {
   light: { editInk: '#2E7C39', editBackground: 'rgba(219,235,215,0.6)', revertInk: '#C25B33' },
@@ -294,6 +351,66 @@ export interface FijosAddSkin {
     background: string
     shadow: string
   }
+  /** CTA del paso 2. NO es el del paso 1: el handoff lo pinta con el mismo par
+   *  invertido que el chip de frecuencia activo (sólido oscuro sobre claro,
+   *  crema sobre oscuro), sin gradiente. El verde queda para "seguir"; el
+   *  paso 2 es "confirmar". */
+  ctaStep2: { ink: string; background: string; shadow: string }
+  /** Material de las dos cards del paso 2 — escalón CHICO de profundidad. */
+  step2Card: { background: string; gradientCss: string | undefined; shadow: string }
+  /** Verde y terracota del paso 2, ya resueltos por tema. */
+  accentGreen: string
+  accentClay: string
+  /** Chip del delta (`+$12.900`), a la derecha del eyebrow de impacto. */
+  deltaChip: { radius: number; padH: number; padV: number; ink: string; background: string; fontSize: number }
+  /** "TE QUEDA LIBRE" es un panel PLANO tintado con anillo, no un pozo: es el
+   *  único bloque del wizard que NO se hunde, porque es la conclusión. */
+  librePanel: { radius: number; padV: number; padH: number; background: string; borderColor: string; borderWidth: number }
+  /** Medidor de zonas (30/20/50) con perilla. */
+  gauge: {
+    height: number
+    radius: number
+    shadow: string
+    /** Anchos 30/20/50 en el orden sana → media → alta. */
+    zones: readonly string[]
+    tickWidth: number
+    /** Los ticks se pintan con el fondo de la PANTALLA, no de la card: son
+     *  cortes en el track, no marcas encima. */
+    tickColor: string
+    tickOpacity: number
+    knob: { width: number; height: number; radius: number; background: string; shadow: string }
+  }
+  /** Badge de salud del bloque libre. */
+  healthBadge: {
+    radius: number
+    padH: number
+    padV: number
+    fontSize: number
+    okInk: string
+    okBackground: string
+    warnInk: string
+    warnBackground: string
+  }
+  /** Fondo de la card del recordatorio ENCENDIDA. No es el `chipBackground`
+   *  del acento verde: el handoff la pinta un punto más tenue porque abajo
+   *  ya lleva el anillo de 2px, que es lo que comunica el "on". */
+  reminderOnBackground: string
+  /** Toggle del recordatorio. La perilla es `#FFFDF6` en AMBOS temas — es la
+   *  única pieza del rediseño que no cambia de color con el tema. */
+  toggle: {
+    width: number
+    height: number
+    radius: number
+    on: string
+    offBackground: string
+    shadow: string
+    knobSize: number
+    knobInset: number
+    knobBackground: string
+    knobShadow: string
+  }
+  /** Celda elegida del calendario: radial verde + número centrado. */
+  calendarSelected: { gradientCss: string; background: string; ink: string; shadow: string }
 }
 
 /** Bloque "SE LLEVA AL AÑO" — fondo, anillo y barra, por estado y tema. */
@@ -538,6 +655,85 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
         background: ADD[mode].ctaBackground,
         ink: ADD[mode].ctaInk,
         shadow: ADD[mode].ctaShadow,
+      },
+      ctaStep2: {
+        ink: ADD[mode].freqInk,
+        background: ADD[mode].freqBackground,
+        shadow:
+          mode === 'light'
+            ? '0 8px 18px rgba(36,56,42,0.35)'
+            : '0 0 18px rgba(241,238,221,0.2)',
+      },
+      step2Card: {
+        background: s.rowBackground,
+        gradientCss: s.rowGradientCss,
+        shadow: mode === 'light' ? TILE_RAISE_L : TILE_RAISE_D,
+      },
+      accentGreen: STEP2[mode].accentGreen,
+      accentClay: STEP2[mode].accentClay,
+      deltaChip: {
+        radius: 10,
+        padH: 9,
+        padV: 3,
+        ink: STEP2[mode].accentClay,
+        background: STEP2[mode].deltaChipBackground,
+        fontSize: 11,
+      },
+      librePanel: {
+        radius: 18,
+        padV: 12,
+        padH: 14,
+        background: STEP2[mode].librePanelBackground,
+        borderColor: STEP2[mode].librePanelBorder,
+        borderWidth: 1.5,
+      },
+      gauge: {
+        height: 9,
+        radius: 6,
+        shadow: mode === 'light' ? GAUGE_INSET_L : GAUGE_INSET_D,
+        zones: STEP2[mode].gaugeZones,
+        tickWidth: 1.5,
+        tickColor: s.bg,
+        tickOpacity: 0.5,
+        knob: {
+          width: 5,
+          height: 17,
+          radius: 3,
+          background: STEP2[mode].gaugeKnobBackground,
+          shadow: `0 0 0 2px ${STEP2[mode].accentGreen}, 0 2px 5px rgba(10,30,15,0.4)`,
+        },
+      },
+      healthBadge: {
+        radius: 11,
+        padH: 11,
+        padV: 5,
+        fontSize: 11,
+        okInk: STEP2[mode].healthOkInk,
+        okBackground: STEP2[mode].healthOkBackground,
+        warnInk: STEP2[mode].healthWarnInk,
+        warnBackground: STEP2[mode].healthWarnBackground,
+      },
+      reminderOnBackground: mode === 'light' ? '#E4F0E0' : 'rgba(164,227,166,0.12)',
+      toggle: {
+        width: 44,
+        height: 26,
+        radius: 13,
+        on: STEP2[mode].toggleOn,
+        // El mock solo dibuja el estado ON. El OFF es el pozo VACÍO: mismo
+        // inset, fondo del pozo — el recurso que el resto del wizard ya usa
+        // para "acá no hay nada todavía".
+        offBackground: ADD[mode].wellBackground,
+        shadow: mode === 'light' ? CHIP_INSET_L : CHIP_INSET_D,
+        knobSize: 20,
+        knobInset: 3,
+        knobBackground: '#FFFDF6',
+        knobShadow: '0 2px 4px rgba(0,0,0,0.25)',
+      },
+      calendarSelected: {
+        gradientCss: STEP2[mode].selectedGradient,
+        background: STEP2[mode].selectedBackground,
+        ink: STEP2[mode].selectedInk,
+        shadow: '0 5px 11px rgba(46,116,52,0.4)',
       },
     },
   }
