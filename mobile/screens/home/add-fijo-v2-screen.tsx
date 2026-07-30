@@ -22,6 +22,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
+import { OnbNumpad } from '@/components/redesign/onboarding/onb-numpad'
 import { StickyFooter } from '@/components/ui/sticky-footer'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { Step1Form } from '@/components/fijos/add-fijo-parts/step1-form'
@@ -43,6 +44,7 @@ import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
+import { serializePrice } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface AddFijoV2ScreenProps {
@@ -475,12 +477,31 @@ export function AddFijoV2Screen({
         )}
       </StickyFooter>
 
-      <InAppNumpad
-        visible={form.isNumpadVisible}
-        rawValue={form.rawAmount}
-        onChangeRawValue={form.setRawAmount}
-        onDismiss={() => form.setIsNumpadVisible(false)}
-      />
+      {/*
+        En la piel neo va el teclado del rediseño (`OnbNumpad`, el del
+        onboarding): teclas extruidas, "Listo" arriba y hoja al ras del borde
+        inferior. Su modelo es un ENTERO de pesos (`value*10 + dígito`), no el
+        string crudo del form, así que se traduce en el borde: `form.amount` ya
+        viene parseado y `serializePrice` lo devuelve al formato del form.
+        Los montos de fijos son enteros, así que no se pierde nada por el
+        camino — la tecla de coma del propio numpad es inerte por lo mismo.
+      */}
+      {neo ? (
+        <OnbNumpad
+          mode={theme.isDark ? 'dark' : 'light'}
+          visible={form.isNumpadVisible}
+          value={form.amount}
+          onChange={(next) => form.setRawAmount(serializePrice(next))}
+          onDone={() => form.setIsNumpadVisible(false)}
+        />
+      ) : (
+        <InAppNumpad
+          visible={form.isNumpadVisible}
+          rawValue={form.rawAmount}
+          onChangeRawValue={form.setRawAmount}
+          onDismiss={() => form.setIsNumpadVisible(false)}
+        />
+      )}
     </Screen>
   )
 }
