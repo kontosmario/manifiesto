@@ -13,6 +13,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { resolveCategoryHueByName } from '@/theme/category-hues'
+import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { InlinePayButton } from './fijo-row-parts/inline-pay-button'
@@ -196,14 +197,20 @@ function FijoRowReal({
   // translúcido del mismo hue — el tratamiento del kit de Gastos ya aprobado.
   // La placa clara era lo que más rompía la paleta oscura: un bloque pastel
   // brillante por fila compitiendo con el monto y con el pill de Pagar.
+  // En `neo` el tile sale de `fijos-category-palette` — la MISMA paleta que
+  // pinta la card de categoría que contiene a esta fila. Antes salía del
+  // `categoryColor` de la base, que es un tercer sistema: quedaba un tile azul
+  // adentro de una card teal (Seguros) y uno casi negro adentro de una azul
+  // (Servicios), porque el color de la base no tiene nada que ver con el tono.
+  //
+  // Se usa la variante CLARA en los DOS temas a propósito. Con la oscura el
+  // tile se funde en la fila (`#1A2D21`), y además el sticker está ilustrado
+  // para fondo claro: así se apoya en su propio hue y no necesita placa, que
+  // es lo que evita el "cuadradito adentro del cuadrado".
   const iconTileBg = useMemo(
     () =>
       skin.kind === 'neo'
-        ? // CLARO: pastel OPACO de la categoría. OSCURO: mismo hue al 14%.
-          // Literal del handoff — no es el mismo alpha en los dos temas.
-          skin.tile.opaqueInLight
-          ? resolveCategoryHueByName(iconName).light.surface
-          : hexAlpha(categoryColor, skin.tile.alpha)
+        ? resolveFijosCategoryTone(iconName, false).surface
         : theme.isDark
           ? resolveCategoryHueByName(iconName).light.surface
           : hexAlpha(categoryColor, 0.14),

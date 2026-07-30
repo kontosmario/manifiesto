@@ -19,6 +19,15 @@ interface CategoryIconProps {
   /** El caller ya pone el ícono sobre una superficie CLARA (ej. la cápsula del
    *  picker) → el sticker no necesita placa en dark. */
   onLightSurface?: boolean
+  /**
+   * Color de la placa del sticker en dark. Por defecto sale de `categoryHues`,
+   * que es la paleta de badges de gastos. Cuando el caller pinta la superficie
+   * con OTRA paleta —los fijos usan `fijos-category-palette`— tiene que pasar
+   * su propio color: si no, queda una placa amarilla adentro de un tile
+   * violeta, porque los dos sistemas mapean la misma categoría a hues
+   * distintos (`Impuestos` → servicios/amarillo en uno, violeta en el otro).
+   */
+  plateColor?: string
 }
 
 /**
@@ -32,6 +41,7 @@ export function CategoryIcon({
   size = 28,
   emojiStyle,
   onLightSurface = false,
+  plateColor,
 }: CategoryIconProps) {
   const key = resolveCategoryIconKey(name, scope)
   const source = key ? CATEGORY_ICONS[key] : undefined
@@ -44,7 +54,7 @@ export function CategoryIcon({
       <CategorySticker
         source={source}
         size={size}
-        plateColor={resolveCategoryHueByName(name).light.surface}
+        plateColor={plateColor ?? resolveCategoryHueByName(name).light.surface}
         onLightSurface={onLightSurface}
       />
     )

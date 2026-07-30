@@ -185,8 +185,14 @@ export function Step2Summary(props: Step2SummaryProps) {
                 size={neo ? 32 : 30}
                 emojiStyle={neo ? styles.summaryIconTextNeo : styles.summaryIconText}
                 // En claro el tono ya es pastel; en oscuro es una superficie
-                // oscura y el sticker necesita su placa.
+                // oscura y el sticker necesita su placa — y esa placa es la
+                // variante CLARA del mismo tono, no la de `categoryHues`.
                 onLightSurface={neo ? !theme.isDark : false}
+                plateColor={
+                  neo
+                    ? resolveFijosCategoryTone(selectedCategory.name, false).surface
+                    : undefined
+                }
               />
             ) : (
               <Text style={styles.summaryIconText}>

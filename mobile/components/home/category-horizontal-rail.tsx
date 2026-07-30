@@ -313,6 +313,13 @@ export function CategoryHorizontalRail({
               // La cápsula del tile ya es el pastel CLARO del hue (ambos modos)
               // → el sticker se lee directo, sin placa.
               onLightSurface={stickerOnLight}
+              // En oscuro la placa es la variante CLARA del MISMO tono que
+              // pinta el tile. Sin esto sale la de `categoryHues`, que mapea
+              // varias categorías a otro hue: placa azul adentro de un tile
+              // mostaza, placa amarilla adentro de uno violeta.
+              plateColor={
+                railNeo ? resolveFijosCategoryTone(category.name, false).surface : undefined
+              }
             />
           ),
           accessibilityLabel: t('home:categoryRail.selectAccessibility', {
