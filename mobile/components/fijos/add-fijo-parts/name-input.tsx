@@ -14,6 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { motionDurations } from '@/lib/motion'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface NameInputProps {
@@ -38,6 +39,8 @@ export function NameInput({
   warning = false,
 }: NameInputProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const focusProgress = useSharedValue(isFocused ? 1 : 0)
@@ -94,6 +97,17 @@ export function NameInput({
         // Match AmountCard's `theme.colors.surface` así light mode lee un
         // solo bg tone (white) en ambos inputs.
         { backgroundColor: theme.colors.surface },
+        // El handoff dibuja el campo como POZO (inset), no como card elevada:
+        // comunica "acá se escribe". El borde animado se anula — el foco lo
+        // sigue marcando el color del texto y el cursor.
+        neo
+          ? {
+              backgroundColor: neo.add.well.background,
+              borderRadius: neo.add.well.radius,
+              borderWidth: 0,
+              boxShadow: neo.add.well.shadow,
+            }
+          : null,
         borderStyle,
       ]}
     >

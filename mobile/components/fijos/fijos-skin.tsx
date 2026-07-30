@@ -78,10 +78,52 @@ const STATS_BLOCK = {
   },
 } as const
 
+// ── Alta de fijo (`Agregar Fijo Manifiesto.dc.html`) ─────────────────────
+// El campo de nombre y la card de monto son POZOS (inset), no cards elevadas:
+// comunican "acá se escribe". Los tiles de categoría, al revés, están
+// elevados, y el SELECCIONADO se hunde con un anillo verde.
+const ADD_WELL_L = 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)'
+const ADD_WELL_D = 'inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.1)'
+const ADD_TILE_L = '4px 4px 9px rgba(151,160,136,0.32), -4px -4px 9px rgba(255,255,255,0.8)'
+const ADD_TILE_D = '4px 4px 9px rgba(0,0,0,0.45), -3px -3px 8px rgba(101,152,113,0.1)'
+const ADD_TILE_SEL_L = 'inset 2px 2px 6px rgba(90,110,70,0.2)'
+const ADD_TILE_SEL_D = 'inset 2px 2px 6px rgba(0,0,0,0.4)'
+
 /** CTA del panel. Editar es RELLENO tintado; revertir es OUTLINE. */
 const DETAIL_CTA = {
   light: { editInk: '#2E7C39', editBackground: 'rgba(219,235,215,0.6)', revertInk: '#C25B33' },
   dark: { editInk: '#A4E3A6', editBackground: 'rgba(164,227,166,0.1)', revertInk: '#F0A47E' },
+} as const
+
+const ADD = {
+  light: {
+    wellBackground: '#F4F5EE',
+    quickBackground: '#E9EBE0',
+    quickGradient: undefined as string | undefined,
+    quickInk: '#C25B33',
+    tileIdle: undefined as string | undefined,
+    ring: '#2E7C39',
+    freqBackground: '#24382A',
+    freqInk: '#F5F2E1',
+    freqShadow: '0 5px 11px rgba(36,56,42,0.3)',
+    ctaGradient: 'linear-gradient(180deg,#6DBC71,#327E39)',
+    ctaBackground: '#4E9E52',
+    ctaInk: '#F5F2E1',
+  },
+  dark: {
+    wellBackground: '#20372A',
+    quickBackground: '#1D3426',
+    quickGradient: 'linear-gradient(145deg, #1D3426, #132318)' as string | undefined,
+    quickInk: '#F0A47E',
+    tileIdle: 'rgba(255,255,255,0.06)' as string | undefined,
+    ring: '#A4E3A6',
+    freqBackground: '#F1EEDD',
+    freqInk: '#16271C',
+    freqShadow: '0 0 12px rgba(241,238,221,0.2)',
+    ctaGradient: 'linear-gradient(180deg,#7ED083,#35793E)',
+    ctaBackground: '#5AA45F',
+    ctaInk: '#0F1E14',
+  },
 } as const
 
 /** Tinta + fondo de un acento de estado, ya resueltos. */
@@ -162,6 +204,51 @@ export interface FijosNeoSkin {
   accent: (status: FijoSkinStatus) => FijosAccent
   /** Panel expandido, transcrito de `Detalle Fijo Manifiesto.dc.html`. */
   detail: FijosDetailSkin
+  /** Wizard de alta, transcrito de `Agregar Fijo Manifiesto.dc.html`. */
+  add: FijosAddSkin
+}
+
+export interface FijosAddSkin {
+  /** Eyebrow de sección (NOMBRE / MONTO / CATEGORÍA / FRECUENCIA). */
+  sectionLabel: TextTokens
+  sectionLabelInk: string
+  /** Campo de nombre y card de monto: son POZOS, no cards elevadas. */
+  well: { radius: number; background: string; shadow: string }
+  /** Chip de monto rápido (+$5k …). */
+  quickChip: {
+    radius: number
+    padH: number
+    padV: number
+    background: string
+    gradientCss: string | undefined
+    shadow: string
+    ink: string
+    fontSize: number
+  }
+  /** Tile de categoría. Seleccionado = HUNDIDO con anillo, no relleno: es el
+   *  recurso de "presionado" del neumorfismo, no un fill de selección. */
+  tile: {
+    radius: number
+    padTop: number
+    padH: number
+    padBottom: number
+    idleBackground: string | undefined
+    idleShadow: string
+    selectedShadow: string
+    selectedRing: string
+  }
+  /** Chip de frecuencia. */
+  freqChip: {
+    radius: number
+    padH: number
+    padV: number
+    fontSize: number
+    activeBackground: string
+    activeInk: string
+    activeShadow: string
+  }
+  /** CTA primario ("Continuar ›" / "Confirmar y crear ✓"). */
+  cta: { radius: number; padV: number; fontSize: number; gradientCss: string; ink: string; background: string }
 }
 
 /** Bloque "SE LLEVA AL AÑO" — fondo, anillo y barra, por estado y tema. */
@@ -334,6 +421,63 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       ctaRevertInk: DETAIL_CTA[mode].revertInk,
       stats: (status) =>
         STATS_BLOCK[mode][status === 'paid' ? 'ok' : 'urgent'],
+    },
+    add: {
+      sectionLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        fontFamily: nunitoFamily('800'),
+        // 0.18em sobre 11px. RN no acepta em.
+        letterSpacing: 1.98,
+      },
+      sectionLabelInk: s.sub,
+      well: {
+        radius: 18,
+        background: ADD[mode].wellBackground,
+        shadow: mode === 'light' ? ADD_WELL_L : ADD_WELL_D,
+      },
+      quickChip: {
+        radius: 13,
+        padH: 13,
+        padV: 7,
+        background: ADD[mode].quickBackground,
+        gradientCss: ADD[mode].quickGradient,
+        shadow: mode === 'light' ? TILE_RAISE_L : TILE_RAISE_D,
+        ink: ADD[mode].quickInk,
+        fontSize: 12,
+      },
+      tile: {
+        radius: 16,
+        padTop: 10,
+        padH: 4,
+        padBottom: 8,
+        // En claro el tile usa el pastel de SU categoría (lo pone el consumidor,
+        // que es quien conoce el hue); en oscuro, un velo blanco parejo.
+        idleBackground: ADD[mode].tileIdle,
+        idleShadow: mode === 'light' ? ADD_TILE_L : ADD_TILE_D,
+        selectedShadow: mode === 'light' ? ADD_TILE_SEL_L : ADD_TILE_SEL_D,
+        selectedRing: ADD[mode].ring,
+      },
+      freqChip: {
+        radius: 15,
+        padH: 15,
+        padV: 9,
+        fontSize: 12.5,
+        activeBackground: ADD[mode].freqBackground,
+        activeInk: ADD[mode].freqInk,
+        activeShadow: ADD[mode].freqShadow,
+      },
+      cta: {
+        radius: 20,
+        padV: 16,
+        fontSize: 16,
+        gradientCss: ADD[mode].ctaGradient,
+        // Fallback sólido: el gradiente NO renderiza en react-native-web, así
+        // que sin esto el CTA quedaba transparente en el preview. Es el color
+        // medio del propio gradiente.
+        background: ADD[mode].ctaBackground,
+        ink: ADD[mode].ctaInk,
+      },
     },
   }
 }

@@ -15,6 +15,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface AmountCardProps {
@@ -45,6 +46,11 @@ export function AmountCard({
   warning = false,
 }: AmountCardProps) {
   const { theme } = useAppTheme()
+  // COMPARTIDO con add-gasto y add-ingreso: el skin solo resuelve a `neo`
+  // dentro del wizard de fijos, que es el único que monta el provider. Las
+  // otras dos pantallas siguen recibiendo `classic` y no cambian.
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const reduceMotion = useReducedMotion()
   const resolvedLabel = label ?? t('home:amountCard.label')
@@ -140,8 +146,17 @@ export function AmountCard({
         <Animated.View
           style={[
             size === 'compact' ? styles.cardCompact : styles.card,
-            borderStyle,
+            neo ? null : borderStyle,
             { backgroundColor: theme.colors.surface },
+            // Handoff: POZO, no card elevada.
+            neo
+              ? {
+                  backgroundColor: neo.add.well.background,
+                  borderRadius: neo.add.well.radius,
+                  borderWidth: 0,
+                  boxShadow: neo.add.well.shadow,
+                }
+              : null,
           ]}
         >
           <View style={styles.topRow}>

@@ -12,6 +12,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 
@@ -34,6 +35,8 @@ export function FreqTile({
   warning = false,
 }: FreqTileProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const reduceMotion = useReducedMotion()
   const selectedProgress = useSharedValue(selected ? 1 : 0)
   const warningProgress = useSharedValue(warning ? 1 : 0)
@@ -93,7 +96,22 @@ export function FreqTile({
           // ambos rails comparten el mismo light-mode tone en vez de
           // mezclar white categories con cream-tinted frequency tiles.
           { backgroundColor: theme.colors.surface },
-          borderStyle,
+          // `neo` reemplaza el borde animado por el idioma del handoff:
+          // ELEVADO en reposo y HUNDIDO con anillo al seleccionar. El
+          // seleccionado no se rellena — se hunde, que es el recurso de
+          // "presionado" del neumorfismo. El borde se anula (`borderWidth: 0`)
+          // para que no conviva con el anillo.
+          neo ? null : borderStyle,
+          neo
+            ? {
+                borderRadius: neo.add.tile.radius,
+                borderWidth: 0,
+                backgroundColor: neo.add.tile.idleBackground ?? theme.colors.surface,
+                boxShadow: selected
+                  ? `${neo.add.tile.selectedShadow}, 0 0 0 2.5px ${neo.add.tile.selectedRing}`
+                  : neo.add.tile.idleShadow,
+              }
+            : null,
         ]}
       >
         {CATEGORY_ICONS[icon] ? (
