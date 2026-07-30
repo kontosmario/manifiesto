@@ -5,6 +5,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { AmountCard } from '@/components/home/amount-card'
 import { CategoryHorizontalRail } from '@/components/home/category-horizontal-rail'
 import { SuggestedAmountStrip } from '@/components/home/suggested-amount-strip'
@@ -54,6 +55,8 @@ export interface Step1FormProps {
 export function Step1Form(props: Step1FormProps) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const {
     name,
     onChangeName,
@@ -151,7 +154,7 @@ export function Step1Form(props: Step1FormProps) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.freqRow}
+          contentContainerStyle={[styles.freqRow, neo ? styles.freqRowNeo : null]}
           decelerationRate="fast"
           snapToInterval={72 + 8}
           snapToAlignment="start"
@@ -245,6 +248,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 4,
   },
+  // Aire para que el ScrollView no corte la sombra de los chips.
+  freqRowNeo: { paddingHorizontal: 10, paddingVertical: 13 },
   cuotaCard: {
     marginTop: 10,
     paddingHorizontal: 14,

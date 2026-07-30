@@ -160,10 +160,28 @@ export function AmountCard({
           ]}
         >
           <View style={styles.topRow}>
-            <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>{resolvedLabel}</Text>
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: theme.colors.textMuted },
+                // `textMuted` es verde NEÓN en oscuro (#A6EF8F). El handoff
+                // pide la sub apagada del sistema.
+                neo ? { ...neo.add.sectionLabel, color: neo.mutedInk } : null,
+              ]}
+            >
+              {resolvedLabel}
+            </Text>
             <Animated.Text
               pointerEvents="none"
-              style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
+              style={[
+                typography.caption,
+                hintStyle,
+                { color: theme.colors.textSoft },
+                // `textSoft` en oscuro es #77E755, más neón todavía.
+                neo
+                  ? { color: neo.faintInk, fontSize: 11, fontWeight: '800', fontFamily: neo.font('800') }
+                  : null,
+              ]}
             >
               {t('home:amountCard.tapToEdit')}
             </Animated.Text>

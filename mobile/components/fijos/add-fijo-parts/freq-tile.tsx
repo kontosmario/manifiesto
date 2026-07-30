@@ -146,6 +146,7 @@ export function FreqTile({
               ? {
                   fontSize: neo.add.freqChip.fontSize,
                   fontWeight: '800' as const,
+                  fontFamily: neo.font('800'),
                   color: selected ? neo.add.freqChip.activeInk : neo.ink.title,
                   width: 'auto' as const,
                 }

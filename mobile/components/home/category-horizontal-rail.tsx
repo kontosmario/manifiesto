@@ -188,7 +188,9 @@ export function TileRail({
             typography.eyebrow,
             { paddingHorizontal: 4 },
             labelAnimatedStyle,
-            neoRail ? neoRail.add.sectionLabel : null,
+            // Único eyebrow del paso 1 que no pasa por `Field`. La tinta va
+            // del skin: `theme.colors.textMuted` es verde NEÓN en oscuro.
+            neoRail ? { ...neoRail.add.sectionLabel, color: neoRail.mutedInk } : null,
           ]}
         >
           {labelText}
@@ -225,7 +227,7 @@ export function TileRail({
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, neoRail ? styles.scrollContentNeo : null]}
           decelerationRate="fast"
           snapToInterval={tileWidth + TILE_GAP}
           snapToAlignment="start"
@@ -473,6 +475,9 @@ const styles = StyleSheet.create({
     gap: TILE_GAP,
     paddingVertical: 4,
   },
+  // Ver el comentario de `rowNeo` en suggested-amount-strip: el ScrollView
+  // corta la sombra en vertical si no se le deja el aire que ocupa.
+  scrollContentNeo: { paddingHorizontal: 10, paddingVertical: 13 },
   staticContent: {
     paddingHorizontal: 4,
     paddingVertical: 4,

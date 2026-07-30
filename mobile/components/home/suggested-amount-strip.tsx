@@ -27,7 +27,7 @@ export function SuggestedAmountStrip({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.row}
+      contentContainerStyle={[styles.row, neo ? styles.rowNeo : null]}
       keyboardShouldPersistTaps="handled"
     >
       {amounts.map((v) => (
@@ -58,7 +58,14 @@ export function SuggestedAmountStrip({
             style={[
               styles.chipText,
               { color: theme.colors.text },
-              neo ? { color: neo.add.quickChip.ink, fontSize: neo.add.quickChip.fontSize } : null,
+              neo
+                ? {
+                    color: neo.add.quickChip.ink,
+                    fontSize: neo.add.quickChip.fontSize,
+                    fontWeight: '800',
+                    fontFamily: neo.font('800'),
+                  }
+                : null,
             ]}
           >
             +${v / 1000}k
@@ -72,7 +79,13 @@ export function SuggestedAmountStrip({
           accessibilityLabel={t('home:suggestedAmount.clearAccessibility')}
           style={[styles.chipDashed, { borderColor: theme.colors.line }]}
         >
-          <Text style={[styles.chipText, { color: theme.colors.textMuted }]}>
+          <Text
+            style={[
+              styles.chipText,
+              { color: theme.colors.textMuted },
+              neo ? { color: neo.mutedInk } : null,
+            ]}
+          >
             {t('home:suggestedAmount.clear')}
           </Text>
         </Pressable>
@@ -86,6 +99,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingRight: 4,
   },
+  // El ScrollView clipea en vertical (`overflow: auto hidden`), así que sin
+  // este aire la sombra neumórfica —que se extiende 17px: offset 5 + blur 12—
+  // se ve CORTADA arriba y abajo. Mismo aire a los lados para que el primer
+  // y el último chip no pierdan la suya.
+  rowNeo: { gap: 8, paddingVertical: 13, paddingHorizontal: 8 },
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,

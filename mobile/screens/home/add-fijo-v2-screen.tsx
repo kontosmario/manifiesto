@@ -255,7 +255,14 @@ export function AddFijoV2Screen({
   }
 
   return (
-    <Screen showGrabHandle contentContainerStyle={styles.screen}>
+    <Screen
+      // El wizard no pasaba fondo, así que usaba el de la app
+      // (`#F4F2ED`/`#12211A`) en vez del del rediseño. Sin esto el relieve del
+      // botón de volver no se lee y la banda del footer queda de otro color.
+      backgroundColor={neo ? neo.screenBackground : undefined}
+      contentContainerStyle={styles.screen}
+      showGrabHandle
+    >
       <Pressable style={styles.stack} onPress={Keyboard.dismiss}>
         <Animated.View layout={LinearTransition.duration(260)}>
           <StepHeader
@@ -346,6 +353,7 @@ export function AddFijoV2Screen({
                   experimental_backgroundImage: neo.add.cta.gradientCss,
                   borderRadius: neo.add.cta.radius,
                   paddingVertical: neo.add.cta.padV,
+                  boxShadow: neo.add.cta.shadow,
                 }
               : null,
             ]}
@@ -360,7 +368,14 @@ export function AddFijoV2Screen({
               style={[
                 styles.primaryCtaText,
                 { color: theme.colors.creamCard },
-                neo ? { color: neo.add.cta.ink, fontSize: neo.add.cta.fontSize } : null,
+                neo
+                  ? {
+                      color: neo.add.cta.ink,
+                      fontSize: neo.add.cta.fontSize,
+                      fontWeight: '900',
+                      fontFamily: neo.font('900'),
+                    }
+                  : null,
               ]}
             >
               {form.canContinue
@@ -387,6 +402,7 @@ export function AddFijoV2Screen({
                   experimental_backgroundImage: neo.add.cta.gradientCss,
                   borderRadius: neo.add.cta.radius,
                   paddingVertical: neo.add.cta.padV,
+                  boxShadow: neo.add.cta.shadow,
                 }
               : null,
             ]}
@@ -406,7 +422,14 @@ export function AddFijoV2Screen({
                 // del Pressable, NO un fg de bajo contraste. Antes textMuted
                 // (verde-claro) sobre el fill crema daba 1.14:1 en dark (ilegible).
                 { color: theme.colors.creamCard },
-                neo ? { color: neo.add.cta.ink, fontSize: neo.add.cta.fontSize } : null,
+                neo
+                  ? {
+                      color: neo.add.cta.ink,
+                      fontSize: neo.add.cta.fontSize,
+                      fontWeight: '900',
+                      fontFamily: neo.font('900'),
+                    }
+                  : null,
               ]}
             >
               {!form.canSubmit

@@ -109,6 +109,7 @@ const ADD = {
     ctaGradient: 'linear-gradient(180deg,#6DBC71,#327E39)',
     ctaBackground: '#4E9E52',
     ctaInk: '#F5F2E1',
+    ctaShadow: '0 8px 18px rgba(46,116,52,0.4)',
     backBackground: '#E9EBE0',
     backGradient: undefined as string | undefined,
     progressDone: '#2E7C39',
@@ -127,6 +128,7 @@ const ADD = {
     ctaGradient: 'linear-gradient(180deg,#7ED083,#35793E)',
     ctaBackground: '#5AA45F',
     ctaInk: '#0F1E14',
+    ctaShadow: '0 0 18px rgba(140,225,150,0.3)',
     backBackground: '#1D3426',
     backGradient: 'linear-gradient(145deg, #1D3426, #132318)' as string | undefined,
     progressDone: '#A4E3A6',
@@ -216,6 +218,18 @@ export interface FijosNeoSkin {
   add: FijosAddSkin
   /** Header del wizard: botón circular, título y barra de progreso. */
   header: FijosHeaderSkin
+  /** Fondo de pantalla del rediseño (`#E9EBE0` / `#16271C`). */
+  screenBackground: string
+  /**
+   * Tintas apagadas del rediseño. NO usar `theme.colors.textMuted` en la piel
+   * neo: en OSCURO ese token es `#A6EF8F` (primary-300, verde NEÓN) y
+   * `textSoft` es `#77E755`. Sobre las superficies del handoff cantan.
+   */
+  mutedInk: string
+  faintInk: string
+  /** Family de Nunito por peso. Sin esto, un `fontWeight` 800/900 suelto cae
+   *  a la face del sistema: Nunito se carga como faces ESTÁTICAS por peso. */
+  font: (weight: '700' | '800' | '900') => string
 }
 
 export interface FijosHeaderSkin {
@@ -271,7 +285,15 @@ export interface FijosAddSkin {
     activeShadow: string
   }
   /** CTA primario ("Continuar ›" / "Confirmar y crear ✓"). */
-  cta: { radius: number; padV: number; fontSize: number; gradientCss: string; ink: string; background: string }
+  cta: {
+    radius: number
+    padV: number
+    fontSize: number
+    gradientCss: string
+    ink: string
+    background: string
+    shadow: string
+  }
 }
 
 /** Bloque "SE LLEVA AL AÑO" — fondo, anillo y barra, por estado y tema. */
@@ -406,6 +428,10 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       // `future` — ni urgente ni cerrado: neutro sobre el verde suave.
       return { ink: s.rowMetaNeutralInk, chipBackground: s.tagUpcomingBackground }
     },
+    screenBackground: s.bg,
+    mutedInk: s.sub,
+    faintInk: s.faint,
+    font: (weight) => nunitoFamily(weight),
     header: {
       backSize: 44,
       backBackground: ADD[mode].backBackground,
@@ -511,6 +537,7 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
         // medio del propio gradiente.
         background: ADD[mode].ctaBackground,
         ink: ADD[mode].ctaInk,
+        shadow: ADD[mode].ctaShadow,
       },
     },
   }

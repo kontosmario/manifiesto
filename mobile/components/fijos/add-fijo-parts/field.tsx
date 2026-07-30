@@ -39,14 +39,20 @@ export function Field({
           <Text
             style={[
               styles.hintPill,
-              { color: neo.detail.ctaEditInk, backgroundColor: neo.accent('paid').chipBackground },
+              {
+                color: neo.detail.ctaEditInk,
+                backgroundColor: neo.accent('paid').chipBackground,
+                fontFamily: neo.font('800'),
+              },
             ]}
           >
             {hint}
           </Text>
         ) : null}
         {trailing && neo ? (
-          <Text style={[styles.trailing, { color: neo.ink.meta }]}>{trailing}</Text>
+          <Text style={[styles.trailing, { color: neo.faintInk, fontFamily: neo.font('800') }]}>
+            {trailing}
+          </Text>
         ) : null}
       </View>
       {children}
