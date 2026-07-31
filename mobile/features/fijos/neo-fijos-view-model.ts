@@ -14,20 +14,18 @@
  * §6 — este archivo es la implementación literal de esas tres secciones.
  */
 import { formatMoney } from '@/utils/money'
+import i18n from '@/lib/i18n'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 import { DAY_MS } from '@/utils/time'
 import type {
   FijoItem,
   FijoHikeAlert,
-  FijoCategoryGroup,
 } from '@/features/fijos/fijos-aggregates.model'
 import type {
   FijosHeroVariant,
   FijosAvisosVariant,
   FijosTabKey,
-  FijosCategoryKey,
   FijosCategoryGroup,
-  FijosRowTone,
   FijosTickerItem,
   FijosTickerTone,
   FijosHikeRow,
@@ -58,8 +56,10 @@ export function plural(n: number, singular: string, pluralWord: string): string 
 export function joinNamesEs(names: string[]): string {
   if (names.length === 0) return ''
   if (names.length === 1) return names[0]
-  if (names.length === 2) return `${names[0]} y ${names[1]}`
-  return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`
+  // La conjunción sale de i18n: " y " en ES, " and " en EN.
+  const and = i18n.t('fijos:neo.namesJoin')
+  if (names.length === 2) return `${names[0]}${and}${names[1]}`
+  return `${names.slice(0, -1).join(', ')}${and}${names[names.length - 1]}`
 }
 
 // ---------------------------------------------------------------------------
@@ -149,35 +149,7 @@ export function computeDaysIntoCycle(input: { today: Date; cycleStart: Date }): 
  *  rolling, así que un día-del-mes-calendario acá produce "Semana del 6 jul
  *  → 12 jul · día 22". */
 export function buildCycleHeaderLabel(cycleLabel: string, daysIntoCycle: number): string {
-  return `${cycleLabel} · día ${daysIntoCycle}`
-}
-
-// ---------------------------------------------------------------------------
-// 6.11 — mapCategoryToBucket
-// ---------------------------------------------------------------------------
-
-function normalizeCategoryLabel(raw: string): string {
-  return raw
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim()
-}
-
-const HOUSING_RAW_LABELS = new Set(['vivienda', 'impuestos'])
-const SUBSCRIPTIONS_RAW_LABELS = new Set(['suscripciones', 'educacion', 'deporte'])
-
-/** Colapsa las ~11 categorías reales de `category_templates` (scope
- *  `fixed_expense`) a las 3 llaves que el kit soporta hoy (D4/C7 — el kit no
- *  se toca). `services` es el fallback: cualquier categoría custom de la
- *  familia, `'sin-categoria'`, o una de las 6 nombradas ahí caen acá — mismo
- *  criterio que `categoryTileBackground` (`fijos-screen.tsx:1939-1943`), que
- *  ya trata "no housing, no subscriptions" como su propio default. */
-export function mapCategoryToBucket(rawLabel: string): FijosCategoryKey {
-  const normalized = normalizeCategoryLabel(rawLabel)
-  if (HOUSING_RAW_LABELS.has(normalized)) return 'housing'
-  if (SUBSCRIPTIONS_RAW_LABELS.has(normalized)) return 'subscriptions'
-  return 'services'
+  return i18n.t('fijos:neo.cycleHeader', { cycle: cycleLabel, day: daysIntoCycle })
 }
 
 // ---------------------------------------------------------------------------
@@ -207,20 +179,34 @@ export function buildStatusChip(input: StatusChipInput): StatusChip {
   const { overdueCount, pendingCount, paidCount, cycleActiveCount, daysIntoCycle } = input
   if (overdueCount > 0 && pendingCount > 0) {
     return {
-      label: `⚠ ${pendingCount + overdueCount} fijos por pagar · ${plural(overdueCount, 'vencida', 'vencidas')}`,
+      label: i18n.t('fijos:neo.status.pendingWithOverdue', {
+        total: pendingCount + overdueCount,
+        overdue: i18n.t('fijos:neo.overdueF', { count: overdueCount }),
+      }),
       tone: 'alert',
     }
   }
   if (overdueCount > 0 && pendingCount === 0) {
-    return { label: `⚠ ${plural(overdueCount, 'vencida', 'vencidas')}`, tone: 'alert' }
+    return {
+      label: i18n.t('fijos:neo.status.overdueOnly', {
+        overdue: i18n.t('fijos:neo.overdueF', { count: overdueCount }),
+      }),
+      tone: 'alert',
+    }
   }
   if (overdueCount === 0 && pendingCount > 0 && daysIntoCycle === 1) {
-    return { label: `${cycleActiveCount} fijos este mes · recién cobraste`, tone: 'neutral' }
+    return {
+      label: i18n.t('fijos:neo.status.justPaid', { count: cycleActiveCount }),
+      tone: 'neutral',
+    }
   }
   if (overdueCount === 0 && pendingCount > 0) {
-    return { label: `${pendingCount} por venir · nada vencido`, tone: 'neutral' }
+    return { label: i18n.t('fijos:neo.status.upcoming', { count: pendingCount }), tone: 'neutral' }
   }
-  return { label: `✓ Cerró completo · ${paidCount} de ${cycleActiveCount}`, tone: 'success' }
+  return {
+    label: i18n.t('fijos:neo.status.closed', { paid: paidCount, total: cycleActiveCount }),
+    tone: 'success',
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -553,10 +539,10 @@ export function buildReminder(input: BuildReminderInput): ReminderContent {
     const n = Math.min(overdue.length, REMINDER_NAME_CAP)
     const named = overdue.slice(0, n)
     return {
-      label: `${n} fijo${n > 1 ? 's' : ''} ya venci${n > 1 ? 'eron' : 'ó'}`,
-      rest: `${joinNamesEs(named.map((i) => i.name))} suman`,
+      label: i18n.t('fijos:neo.reminder.overdue', { count: n }),
+      rest: i18n.t('fijos:neo.namesSum', { names: joinNamesEs(named.map((i) => i.name)) }),
       amount: formatMoney(named.reduce((s, i) => s + Number(i.amount ?? 0), 0)),
-      suffix: '— pagalos para no acumular',
+      suffix: i18n.t('fijos:neo.reminder.overdueSuffix'),
     }
   }
 
@@ -565,8 +551,8 @@ export function buildReminder(input: BuildReminderInput): ReminderContent {
     const n = Math.min(sorted.length, REMINDER_NAME_CAP)
     const named = sorted.slice(0, n)
     return {
-      label: `${n} pago${n > 1 ? 's' : ''} fijo${n > 1 ? 's' : ''} vence${n > 1 ? 'n' : ''} en ${DUE_SOON_DAYS} días`,
-      rest: `${joinNamesEs(named.map((i) => i.name))} suman`,
+      label: i18n.t('fijos:neo.reminder.dueSoon', { count: n, days: DUE_SOON_DAYS }),
+      rest: i18n.t('fijos:neo.namesSum', { names: joinNamesEs(named.map((i) => i.name)) }),
       amount: formatMoney(named.reduce((s, i) => s + Number(i.amount ?? 0), 0)),
       suffix: '',
     }
@@ -579,8 +565,8 @@ export function buildReminder(input: BuildReminderInput): ReminderContent {
   const activeHikes = filterActiveHikes(hikes, dismissed)
   const n = activeHikes.length
   return {
-    label: `${n} aumento${n === 1 ? '' : 's'} este mes`,
-    rest: `${joinNamesEs(activeHikes.map((h) => h.name))} suman`,
+    label: i18n.t('fijos:neo.reminder.hikes', { count: n }),
+    rest: i18n.t('fijos:neo.namesSum', { names: joinNamesEs(activeHikes.map((h) => h.name)) }),
     amount: formatMoney(activeHikes.reduce((s, h) => s + Number(h.currentPrice ?? 0), 0)),
     suffix: '',
   }
@@ -677,52 +663,58 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
   })
 
   const eyebrow =
-    variant === 'E8' ? 'FIJOS · CICLO TERMINADO' : `FIJOS DE ${monthUpperEs(cycleLastDay)}`
+    variant === 'E8'
+      ? i18n.t('fijos:neo.hero.eyebrowClosed')
+      : i18n.t('fijos:neo.hero.eyebrowMonth', { month: monthUpperEs(cycleLastDay) })
 
   let topChipLabel: string
   switch (variant) {
     case 'E1':
-      topChipLabel = '✓ AL DÍA'
+      topChipLabel = i18n.t('fijos:neo.hero.chipUpToDate')
       break
     case 'E2':
     case 'E3':
     case 'E5':
-      topChipLabel = `HOY · DÍA ${daysIntoCycle}`
+      topChipLabel = i18n.t('fijos:neo.hero.chipToday', { day: daysIntoCycle })
       break
     case 'E4':
-      topChipLabel = `DÍA ${daysIntoCycle}`
+      topChipLabel = i18n.t('fijos:neo.hero.chipDay', { day: daysIntoCycle })
       break
     case 'E6':
-      topChipLabel = isEmptyNoFijos ? 'NUEVO' : 'SIN CUOTAS'
+      topChipLabel = i18n.t(
+        isEmptyNoFijos ? 'fijos:neo.hero.chipNew' : 'fijos:neo.hero.chipNoInstallments',
+      )
       break
     case 'E7':
-      topChipLabel = '📁 SOLO LECTURA'
+      topChipLabel = i18n.t('fijos:neo.hero.chipReadOnly')
       break
     case 'E8':
-      topChipLabel = `DÍA ${salaryPaymentDay}+`
+      topChipLabel = i18n.t('fijos:neo.hero.chipDayPlus', { day: salaryPaymentDay })
       break
   }
 
   const availableAmount = hasIncome ? formatSignedMoneyFijos(availableRaw) : '—'
-  const availableOfLabel = hasIncome ? `de ${formatMoney(monthlyIncome)}` : ''
+  const availableOfLabel = hasIncome
+    ? i18n.t('fijos:neo.hero.availableOf', { amount: formatMoney(monthlyIncome) })
+    : ''
   const availableNote = !hasIncome
-    ? 'sin sueldo fijo'
+    ? i18n.t('fijos:neo.hero.noteNoIncome')
     : availableRaw < 0
-      ? '⚠ te pasás este mes'
-      : `${pctOfIncome}% va a fijos`
+      ? i18n.t('fijos:neo.hero.noteOver')
+      : i18n.t('fijos:neo.hero.notePct', { pct: pctOfIncome })
   const availableWarning = hasIncome && availableRaw < 0
 
   return {
     eyebrow,
     topChipLabel,
-    wellLabel: 'Te falta pagar',
+    wellLabel: i18n.t('fijos:neo.hero.wellLabel'),
     amount: formatMoney(pendingAmount + overdueAmount),
     statusChipLabel: statusChip.label,
     statusChipTone: statusChip.tone,
-    paidOfLabel: `${paidCount} de ${cycleActiveCount}`,
+    paidOfLabel: i18n.t('fijos:neo.hero.paidOf', { paid: paidCount, total: cycleActiveCount }),
     pctLabel: `${paidPct}%`,
-    paidAmountLabel: `${formatMoney(paidAmount)} pagado`,
-    totalAmountLabel: `de ${formatMoney(total)} total`,
+    paidAmountLabel: i18n.t('fijos:neo.hero.paidAmount', { amount: formatMoney(paidAmount) }),
+    totalAmountLabel: i18n.t('fijos:neo.hero.totalAmount', { amount: formatMoney(total) }),
     segmentsPaid: paidCount,
     segmentToday,
     // El `max(1, …)` es obligatorio (R-1): con `cycleActiveCount === 0` el
@@ -733,22 +725,33 @@ export function buildHeroContent(input: HeroContentInput): FijosHeroContent {
     availableOfLabel,
     availableNote,
     availableWarning,
-    zeroBadgeLabel: `✓ ${paidCount} DE ${cycleActiveCount} · SIN VENCIDOS`,
-    zeroTitle: 'Cero pendientes',
-    zeroSub: 'A disfrutar lo que queda del mes',
-    emptyTitle: isEmptyNoFijos ? 'Todavía no cargaste fijos' : 'Nada que pagar este ciclo',
-    emptySub: isEmptyNoFijos
-      ? 'Sumá alquiler, servicios y suscripciones — te avisamos antes de cada vencimiento para que no se te pase ninguno.'
-      : 'Tus fijos vencen en ciclos posteriores — cuando llegue el suyo aparecen acá.',
-    emptyCtaLabel: isEmptyNoFijos ? '+ Agregar tu primer fijo' : '+ Agregar otro fijo',
-    outOfCycleTitle: `Tu ciclo terminó el ${salaryPaymentDay}`,
+    zeroBadgeLabel: i18n.t('fijos:neo.hero.zeroBadge', {
+      paid: paidCount,
+      total: cycleActiveCount,
+    }),
+    zeroTitle: i18n.t('fijos:neo.hero.zeroTitle'),
+    zeroSub: i18n.t('fijos:neo.hero.zeroSub'),
+    emptyTitle: i18n.t(
+      isEmptyNoFijos ? 'fijos:neo.hero.emptyTitleNoFijos' : 'fijos:neo.hero.emptyTitleNothing',
+    ),
+    emptySub: i18n.t(
+      isEmptyNoFijos ? 'fijos:neo.hero.emptySubNoFijos' : 'fijos:neo.hero.emptySubNothing',
+    ),
+    emptyCtaLabel: i18n.t(
+      isEmptyNoFijos ? 'fijos:neo.hero.emptyCtaFirst' : 'fijos:neo.hero.emptyCtaAnother',
+    ),
+    outOfCycleTitle: i18n.t('fijos:neo.hero.outOfCycleTitle', { day: salaryPaymentDay }),
     // Mes del ciclo CERRADO (día anterior a `cycleStart`), no del ciclo vivo
     // — ver el docblock de `cycleStart` en `HeroContentInput`.
-    outOfCycleSub: `Confirmá tu cobro para cerrar ${monthLowerEs(previousCalendarDay(cycleStart))} y abrir el próximo ciclo.`,
+    outOfCycleSub: i18n.t('fijos:neo.hero.outOfCycleSub', {
+      month: monthLowerEs(previousCalendarDay(cycleStart)),
+    }),
     outOfCycleSummaryLabel:
-      overdueCount === 0 ? 'No quedó nada sin pagar' : `Quedaron ${overdueCount} sin pagar`,
+      overdueCount === 0
+        ? i18n.t('fijos:neo.hero.outOfCycleNoneLeft')
+        : i18n.t('fijos:neo.hero.outOfCycleLeft', { count: overdueCount }),
     outOfCycleSummaryAmount: formatMoney(overdueAmount),
-    outOfCycleCtaLabel: '✓ Confirmar cobro',
+    outOfCycleCtaLabel: i18n.t('fijos:neo.hero.outOfCycleCta'),
   }
 }
 
@@ -787,118 +790,34 @@ export function buildAvisosContent(input: AvisosContentInput): FijosAvisosConten
     brotPose: BROT_POSE_BY_AVISOS_VARIANT[variant],
     cardUrgent: variant === 'A5',
     tickerItems,
-    staticMessage: '✓ Nada vence en los próximos días',
+    staticMessage: i18n.t('fijos:neo.avisos.staticMessage'),
     hikeRows,
     reminderLabel: reminder.label,
     reminderRest: reminder.rest,
     reminderAmount: reminder.amount,
     reminderSuffix: reminder.suffix,
-    calmMessage: 'Sin cambios de precio este mes',
-    calmTitle: variant === 'A4' ? 'Todo tranquilo por acá' : '',
-    calmSub:
-      variant === 'A4'
-        ? 'No hay vencimientos próximos ni cambios de precio esta semana. Te avisamos si algo cambia.'
-        : '',
+    calmMessage: i18n.t('fijos:neo.avisos.calmMessage'),
+    calmTitle: variant === 'A4' ? i18n.t('fijos:neo.avisos.calmTitle') : '',
+    calmSub: variant === 'A4' ? i18n.t('fijos:neo.avisos.calmSub') : '',
     emptyTitle:
-      variant === 'A6' ? (isEmptyNoFijos ? 'Todavía no cargaste fijos' : 'Nada que pagar este ciclo') : '',
+      variant === 'A6'
+        ? i18n.t(
+            isEmptyNoFijos ? 'fijos:neo.hero.emptyTitleNoFijos' : 'fijos:neo.hero.emptyTitleNothing',
+          )
+        : '',
     emptySub:
       variant === 'A6'
-        ? isEmptyNoFijos
-          ? 'Cuando agregues alquiler, servicios o suscripciones, acá te vamos a avisar de vencimientos y aumentos.'
-          : 'Cuando llegue el ciclo de tus fijos, te avisamos de vencimientos y aumentos.'
+        ? i18n.t(
+            isEmptyNoFijos
+              ? 'fijos:neo.avisos.emptySubNoFijos'
+              : 'fijos:neo.avisos.emptySubNothing',
+          )
         : '',
     emptyCtaLabel:
-      variant === 'A6' ? (isEmptyNoFijos ? '+ Agregar tu primer fijo' : '+ Agregar otro fijo') : '',
+      variant === 'A6'
+        ? i18n.t(isEmptyNoFijos ? 'fijos:neo.hero.emptyCtaFirst' : 'fijos:neo.hero.emptyCtaAnother')
+        : '',
   }
-}
-
-// ---------------------------------------------------------------------------
-// 6.12 — buildCategoryBuckets
-// ---------------------------------------------------------------------------
-
-export interface CategoryBucketsResult {
-  buckets: FijosCategoryGroup[]
-  collapsed: Array<{ bucket: FijosCategoryKey; realLabels: string[] }>
-}
-
-const CATEGORY_BUCKET_META: Record<FijosCategoryKey, { icon: string; name: string }> = {
-  housing: { icon: '🏠', name: 'Vivienda' },
-  subscriptions: { icon: '📺', name: 'Suscripciones' },
-  services: { icon: '💡', name: 'Servicios' },
-}
-
-/**
- * §3.5.2. Colapsa los grupos reales (`groupFijosByCategory`, hasta ~11
- * categorías) a ≤3 buckets — obligatorio porque `FijosCategories` mapea con
- * `key={group.category}` (C7): N grupos con la misma llave son keys
- * duplicadas de React. Orden = primera aparición en `groups` (que ya viene
- * ordenado por vencimiento más próximo). `collapsed` reporta, por bucket,
- * los labels reales que cayeron ahí (D4 — la pérdida de granularidad es el
- * hallazgo, no un bug a esconder).
- */
-export function buildCategoryBuckets(input: { groups: FijoCategoryGroup[] }): CategoryBucketsResult {
-  const { groups } = input
-
-  const order: FijosCategoryKey[] = []
-  const totalByBucket = new Map<FijosCategoryKey, number>()
-  const itemsByBucket = new Map<FijosCategoryKey, FijoItem[]>()
-  const labelsByBucket = new Map<FijosCategoryKey, string[]>()
-
-  for (const group of groups) {
-    const bucket = mapCategoryToBucket(group.rawLabel)
-    if (!order.includes(bucket)) order.push(bucket)
-    totalByBucket.set(bucket, (totalByBucket.get(bucket) ?? 0) + group.total)
-    const items = itemsByBucket.get(bucket) ?? []
-    items.push(...group.items)
-    itemsByBucket.set(bucket, items)
-    const labels = labelsByBucket.get(bucket) ?? []
-    labels.push(group.label)
-    labelsByBucket.set(bucket, labels)
-  }
-
-  const buckets: FijosCategoryGroup[] = order.map((bucket) => {
-    const items = itemsByBucket.get(bucket) ?? []
-    const n = items.length
-    const overdue = items.filter((i) => i.computedStatus === 'overdue').length
-    const pending = items.filter((i) => i.computedStatus === 'pending').length
-    const paid = items.filter((i) => i.computedStatus === 'paid').length
-
-    let meta: string
-    let metaTone: FijosRowTone
-    if (overdue > 0) {
-      meta = `${n} ítems · ${plural(overdue, 'vencido', 'vencidos')}`
-      metaTone = 'overdue'
-    } else if (pending === 0) {
-      meta = `${n} ítems · al día ✓`
-      metaTone = 'ok'
-    } else {
-      meta = `${n} ítems · ${paid} pagados`
-      metaTone = 'neutral'
-    }
-
-    return {
-      category: bucket,
-      icon: CATEGORY_BUCKET_META[bucket].icon,
-      name: CATEGORY_BUCKET_META[bucket].name,
-      meta,
-      metaTone,
-      amount: formatMoney(totalByBucket.get(bucket) ?? 0),
-    }
-  })
-
-  // `collapsed` reporta SOLO donde hubo pérdida de granularidad: dos o más
-  // categorías reales en el mismo bucket, o una sola cuyo nombre el kit
-  // renombra ("Salud" → "Servicios"). El caso identidad ("services ←
-  // Servicios") se omite: listarlo hacía ilegible el hallazgo de D4 en el
-  // banner de dev, que es justamente el instrumento del gate del owner.
-  const collapsed = order
-    .map((bucket) => ({ bucket, realLabels: labelsByBucket.get(bucket) ?? [] }))
-    .filter(
-      ({ bucket, realLabels }) =>
-        realLabels.length > 1 || realLabels[0] !== CATEGORY_BUCKET_META[bucket].name,
-    )
-
-  return { buckets, collapsed }
 }
 
 // ---------------------------------------------------------------------------

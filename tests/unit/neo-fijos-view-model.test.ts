@@ -7,7 +7,6 @@ import {
   monthLowerEs,
   buildCycleHeaderLabel,
   computeDaysIntoCycle,
-  mapCategoryToBucket,
   buildStatusChip,
   selectHeroVariant,
   selectAvisosVariant,
@@ -19,7 +18,6 @@ import {
   buildReminder,
   buildHeroContent,
   buildAvisosContent,
-  buildCategoryBuckets,
   buildCategoriesContent,
   type HeroVariantInput,
   type AvisosVariantInput,
@@ -288,46 +286,6 @@ describe('computeDaysIntoCycle', () => {
 // mapCategoryToBucket
 // ---------------------------------------------------------------------------
 
-describe('mapCategoryToBucket', () => {
-  it.each([
-    ['Vivienda', 'housing'],
-    ['Impuestos', 'housing'],
-    ['Suscripciones', 'subscriptions'],
-    ['Educación', 'subscriptions'],
-    ['Deporte', 'subscriptions'],
-    ['Servicios', 'services'],
-    ['Salud', 'services'],
-    ['Seguros', 'services'],
-    ['Cuotas y deudas', 'services'],
-    ['Inversiones', 'services'],
-    ['Otros', 'services'],
-  ] as const)('%s → %s', (raw, expected) => {
-    expect(mapCategoryToBucket(raw)).toBe(expected)
-  })
-
-  it('sin acentos y en minúscula matchea igual', () => {
-    expect(mapCategoryToBucket('educacion')).toBe('subscriptions')
-  })
-
-  it('categoría custom cae a services (fallback)', () => {
-    expect(mapCategoryToBucket('Peluquería')).toBe('services')
-  })
-
-  it("'' cae a services", () => {
-    expect(mapCategoryToBucket('')).toBe('services')
-  })
-
-  it("'sin-categoria' cae a services", () => {
-    expect(mapCategoryToBucket('sin-categoria')).toBe('services')
-  })
-
-  it("'Sin categoría' — el label REAL de un grupo sin categoría — cae a services", () => {
-    // `groupFijosByCategory` pone `rawLabel = cat?.rawName ?? label` con
-    // `label = i18n.t('fijos:groups.noCategory')` (el string traducido), no la
-    // llave `'sin-categoria'` del Map.
-    expect(mapCategoryToBucket('Sin categoría')).toBe('services')
-  })
-})
 
 // ---------------------------------------------------------------------------
 // buildStatusChip
@@ -1490,138 +1448,6 @@ describe('buildCategoriesContent', () => {
 // buildCategoryBuckets
 // ---------------------------------------------------------------------------
 
-describe('buildCategoryBuckets', () => {
-  it('2 grupos reales que colapsan a la misma llave → 1 bucket con amount sumado', () => {
-    const overdueItem = makeFijoItem({ id: 'i1', computedStatus: 'overdue' })
-    const pendingItem = makeFijoItem({ id: 'i2', computedStatus: 'pending' })
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({ rawLabel: 'Vivienda', label: 'Vivienda', total: 1000, items: [overdueItem] }),
-      makeCategoryGroup({ rawLabel: 'Impuestos', label: 'Impuestos', total: 500, items: [pendingItem] }),
-    ]
-    const { buckets, collapsed } = buildCategoryBuckets({ groups })
-    expect(buckets).toHaveLength(1)
-    expect(buckets[0]!.category).toBe('housing')
-    expect(buckets[0]!.amount).toBe('$1.500')
-    expect(collapsed).toEqual([{ bucket: 'housing', realLabels: ['Vivienda', 'Impuestos'] }])
-  })
-
-  it('sin duplicados de category (guardián de C7)', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({ rawLabel: 'Vivienda' }),
-      makeCategoryGroup({ rawLabel: 'Impuestos' }),
-      makeCategoryGroup({ rawLabel: 'Salud' }),
-      makeCategoryGroup({ rawLabel: 'Seguros' }),
-      makeCategoryGroup({ rawLabel: 'Suscripciones' }),
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    const categories = buckets.map((b) => b.category)
-    expect(new Set(categories).size).toBe(categories.length)
-    expect(categories.length).toBeLessThanOrEqual(3)
-  })
-
-  it('orden = primera aparición en el array de entrada', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({ rawLabel: 'Otros' }), // services
-      makeCategoryGroup({ rawLabel: 'Vivienda' }), // housing
-      makeCategoryGroup({ rawLabel: 'Suscripciones' }), // subscriptions
-      makeCategoryGroup({ rawLabel: 'Salud' }), // services (ya visto)
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    expect(buckets.map((b) => b.category)).toEqual(['services', 'housing', 'subscriptions'])
-  })
-
-  it('bucket sin ítems se omite (input vacío → salida vacía)', () => {
-    expect(buildCategoryBuckets({ groups: [] })).toEqual({ buckets: [], collapsed: [] })
-  })
-
-  it('collapsed reporta el label DISPLAY (no el rawLabel), que es lo que lee un humano en el banner', () => {
-    // Fixture con los dos campos DISTINTOS: con `label === rawLabel` la
-    // aserción pasaba igual usando el crudo, así que la decisión quedaba sin
-    // pinear (Underspec #2 del reporte de implementación).
-    const { collapsed } = buildCategoryBuckets({
-      groups: [
-        makeCategoryGroup({ rawLabel: 'Vivienda', label: 'Alquiler y casa' }),
-        makeCategoryGroup({ rawLabel: 'Impuestos', label: 'Tasas municipales' }),
-      ],
-    })
-    expect(collapsed).toEqual([
-      { bucket: 'housing', realLabels: ['Alquiler y casa', 'Tasas municipales'] },
-    ])
-  })
-
-  it('collapsed OMITE el caso identidad y REPORTA el rename de un solo label', () => {
-    // "services ← Servicios" no es pérdida de granularidad; "services ← Salud"
-    // sí (el kit lo renombra a "Servicios").
-    const identity = buildCategoryBuckets({
-      groups: [makeCategoryGroup({ rawLabel: 'Servicios', label: 'Servicios' })],
-    })
-    expect(identity.collapsed).toEqual([])
-    const renamed = buildCategoryBuckets({
-      groups: [makeCategoryGroup({ rawLabel: 'Salud', label: 'Salud' })],
-    })
-    expect(renamed.collapsed).toEqual([{ bucket: 'services', realLabels: ['Salud'] }])
-  })
-
-  it('meta: overdue>0 → tone overdue', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({
-        rawLabel: 'Vivienda',
-        items: [makeFijoItem({ computedStatus: 'overdue' }), makeFijoItem({ computedStatus: 'paid' })],
-      }),
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    expect(buckets[0]!.meta).toBe('2 ítems · 1 vencido')
-    expect(buckets[0]!.metaTone).toBe('overdue')
-  })
-
-  it('meta: pending===0 (y overdue===0) → tone ok, "al día"', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({
-        rawLabel: 'Vivienda',
-        items: [
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-        ],
-      }),
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    expect(buckets[0]!.meta).toBe('5 ítems · al día ✓')
-    expect(buckets[0]!.metaTone).toBe('ok')
-  })
-
-  it('meta: overdue===0, pending>0 → tone neutral, "N pagados"', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({
-        rawLabel: 'Vivienda',
-        items: [
-          makeFijoItem({ computedStatus: 'pending' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-          makeFijoItem({ computedStatus: 'paid' }),
-        ],
-      }),
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    expect(buckets[0]!.meta).toBe('4 ítems · 3 pagados')
-    expect(buckets[0]!.metaTone).toBe('neutral')
-  })
-
-  it('name/icon son los literales fijos por bucket', () => {
-    const groups: FijoCategoryGroup[] = [
-      makeCategoryGroup({ rawLabel: 'Vivienda' }),
-      makeCategoryGroup({ rawLabel: 'Suscripciones' }),
-      makeCategoryGroup({ rawLabel: 'Otros' }),
-    ]
-    const { buckets } = buildCategoryBuckets({ groups })
-    const byCat = Object.fromEntries(buckets.map((b) => [b.category, b]))
-    expect(byCat.housing).toMatchObject({ icon: '🏠', name: 'Vivienda' })
-    expect(byCat.subscriptions).toMatchObject({ icon: '📺', name: 'Suscripciones' })
-    expect(byCat.services).toMatchObject({ icon: '💡', name: 'Servicios' })
-  })
-})
 
 // ---------------------------------------------------------------------------
 // 6.1 — El drift de cycleDays (D8): weekly/biweekly/custom divergen,

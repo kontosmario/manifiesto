@@ -1,5 +1,6 @@
 // @i18n-ignore-file — kit de rediseño bajo gate; copy literal, i18n en el pase posterior.
 import { useEffect, useState } from 'react'
+import i18n from '@/lib/i18n'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
@@ -180,7 +181,7 @@ export function FijosHeader({ mode, cycleLabel, onToggleDropdown, onPressCalenda
   return (
     <View style={styles.headerRow}>
       <View style={styles.headerLeft}>
-        <Text style={[styles.title, { color: s.text }]}>Fijos</Text>
+        <Text style={[styles.title, { color: s.text }]}>{i18n.t('fijos:neo.screenTitle')}</Text>
         {onToggleDropdown ? (
           <Pressable
             accessibilityRole="button"
@@ -716,7 +717,9 @@ function HeroAvailableCard({
   return (
     <View style={[styles.availableCard, { backgroundColor: s.availableCardBackground, boxShadow: s.availableCardShadow }]}>
       <View>
-        <Text style={[styles.availableLabel, { color: s.availableLabelInk }]}>TE QUEDA DISPONIBLE</Text>
+        <Text style={[styles.availableLabel, { color: s.availableLabelInk }]}>
+          {i18n.t('fijos:neo.availableLabel')}
+        </Text>
         <Text
           style={[
             styles.availableValue,
@@ -1614,7 +1617,9 @@ function AvisosDefaultBody({ s, c, paused }: { s: FijosSpec; c: FijosAvisosConte
       )}
 
       <View style={styles.aumentosHeaderRow}>
-        <Text style={[styles.avisosEyebrowText, { color: s.sectionEyebrowInk }]}>AUMENTOS Y RECORDATORIOS</Text>
+        <Text style={[styles.avisosEyebrowText, { color: s.sectionEyebrowInk }]}>
+          {i18n.t('fijos:neo.avisos.sectionHikes')}
+        </Text>
         <View style={[styles.aumentosDividerLine, { backgroundColor: s.aumentoDivider }]} />
       </View>
       {hasHikes ? (
@@ -1720,7 +1725,9 @@ export function FijosAvisos(props: FijosAvisosProps) {
     >
       <View style={styles.avisosHeaderRow}>
         <View style={styles.avisosTitleRow}>
-          <Text style={[styles.avisosTitle, { color: s.avisosTitleInk }]}>Avisos</Text>
+          <Text style={[styles.avisosTitle, { color: s.avisosTitleInk }]}>
+            {i18n.t('fijos:neo.avisos.title')}
+          </Text>
           <View style={[styles.avisosBadge, { backgroundColor: badgeBackground }]}>
             <Text style={[styles.avisosBadgeText, { color: badgeInk }]}>{c.badgeCount}</Text>
           </View>
@@ -1864,21 +1871,21 @@ export function FijosTabs({
     <View style={styles.tabsRow}>
       <FijosTab
         s={s}
-        label="Vencidos"
+        label={i18n.t('fijos:neo.tabs.overdue')}
         count={vencidosCount}
         active={activeTab === 'vencidos'}
         onPress={onSelectTab ? () => onSelectTab('vencidos') : undefined}
       />
       <FijosTab
         s={s}
-        label="Pendientes"
+        label={i18n.t('fijos:neo.tabs.pending')}
         count={pendientesCount}
         active={activeTab === 'pendientes'}
         onPress={onSelectTab ? () => onSelectTab('pendientes') : undefined}
       />
       <FijosTab
         s={s}
-        label="Pagados"
+        label={i18n.t('fijos:neo.tabs.paid')}
         count={pagadosCount}
         active={activeTab === 'pagados'}
         onPress={onSelectTab ? () => onSelectTab('pagados') : undefined}
@@ -2106,7 +2113,9 @@ export function FijosCategories(props: FijosCategoriesProps) {
   return (
     <>
       <View style={styles.categoriesHeaderRow}>
-        <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>TODOS TUS FIJOS</Text>
+        <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>
+          {i18n.t('fijos:neo.allFijos')}
+        </Text>
         {onPressAddFijo ? (
           <Pressable
             accessibilityRole="button"

@@ -317,5 +317,95 @@
     "dayOfMonthInvalid": "The day of the month must be between 1 and 31.",
     "installmentsTotalRequired": "Set the total number of installments.",
     "debtBalanceRequired": "Set a valid outstanding balance for the debt."
+  },
+  "neo": {
+    "cycleHeader": "{{cycle}} · day {{day}}",
+    "namesJoin": " and ",
+    "namesSum": "{{names}} add up to",
+    "overdueF_one": "{{count}} overdue",
+    "overdueF_other": "{{count}} overdue",
+    "overdueM_one": "{{count}} overdue",
+    "overdueM_other": "{{count}} overdue",
+    "status": {
+      "pendingWithOverdue": "⚠ {{total}} fixed expenses to pay · {{overdue}}",
+      "overdueOnly": "⚠ {{overdue}}",
+      "justPaid": "{{count}} fixed expenses this month · just got paid",
+      "upcoming": "{{count}} coming up · nothing overdue",
+      "closed": "✓ Closed in full · {{paid}} of {{total}}"
+    },
+    "hero": {
+      "eyebrowClosed": "FIXED · CYCLE ENDED",
+      "eyebrowMonth": "{{month}} FIXED",
+      "chipUpToDate": "✓ UP TO DATE",
+      "chipToday": "TODAY · DAY {{day}}",
+      "chipDay": "DAY {{day}}",
+      "chipNew": "NEW",
+      "chipNoInstallments": "NO INSTALLMENTS",
+      "chipReadOnly": "📁 READ ONLY",
+      "chipDayPlus": "DAY {{day}}+",
+      "wellLabel": "Left to pay",
+      "availableOf": "of {{amount}}",
+      "noteNoIncome": "no fixed salary",
+      "noteOver": "⚠ you're going over this month",
+      "notePct": "{{pct}}% goes to fixed",
+      "paidOf": "{{paid}} of {{total}}",
+      "paidAmount": "{{amount}} paid",
+      "totalAmount": "of {{amount}} total",
+      "zeroBadge": "✓ {{paid}} OF {{total}} · NONE OVERDUE",
+      "zeroTitle": "Nothing pending",
+      "zeroSub": "Enjoy the rest of the month",
+      "emptyTitleNoFijos": "You haven't added any fixed expenses yet",
+      "emptyTitleNothing": "Nothing to pay this cycle",
+      "emptySubNoFijos": "Add rent, utilities and subscriptions — we'll remind you before each due date so none slips by.",
+      "emptySubNothing": "Your fixed expenses fall in later cycles — they'll show up when their cycle arrives.",
+      "emptyCtaFirst": "+ Add your first fixed expense",
+      "emptyCtaAnother": "+ Add another fixed expense",
+      "outOfCycleTitle": "Your cycle ended on the {{day}}",
+      "outOfCycleSub": "Confirm your paycheck to close {{month}} and open the next cycle.",
+      "outOfCycleNoneLeft": "Nothing was left unpaid",
+      "outOfCycleLeft": "{{count}} left unpaid",
+      "outOfCycleCta": "✓ Confirm paycheck"
+    },
+    "avisos": {
+      "title": "Alerts",
+      "sectionHikes": "INCREASES AND REMINDERS",
+      "staticMessage": "✓ Nothing due in the next few days",
+      "calmMessage": "No price changes this month",
+      "calmTitle": "All quiet here",
+      "calmSub": "No upcoming due dates or price changes this week. We'll let you know if anything changes.",
+      "emptySubNoFijos": "Once you add rent, utilities or subscriptions, we'll warn you here about due dates and increases.",
+      "emptySubNothing": "When your fixed expenses' cycle arrives, we'll warn you about due dates and increases."
+    },
+    "reminder": {
+      "overdue_one": "{{count}} fixed expense is overdue",
+      "overdue_other": "{{count}} fixed expenses are overdue",
+      "overdueSuffix": "— pay them so they don't pile up",
+      "dueSoon_one": "{{count}} fixed payment is due in {{days}} days",
+      "dueSoon_other": "{{count}} fixed payments are due in {{days}} days",
+      "hikes_one": "{{count}} increase this month",
+      "hikes_other": "{{count}} increases this month"
+    },
+    "screenTitle": "Fixed",
+    "availableLabel": "YOU HAVE AVAILABLE",
+    "allFijos": "ALL YOUR FIXED EXPENSES",
+    "tabs": {
+      "overdue": "Overdue",
+      "pending": "Pending",
+      "paid": "Paid"
+    },
+    "toast": {
+      "markedPaid": "{{name}} marked as paid",
+      "stillSaving": "The fixed expense is still saving — try again in a second",
+      "paymentSyncing": "The payment is still syncing — try again in a second",
+      "reverted": "Payment reverted"
+    },
+    "alert": {
+      "payFailed": "Couldn't record the payment",
+      "revertFailed": "Couldn't revert"
+    },
+    "confirmCobro": {
+      "title": "Confirm paycheck",
+      "message": "We'll close the current cycle and open the next one with your balance up to date. This can't be undone from here."
+    }
   }
 }

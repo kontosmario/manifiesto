@@ -1,4 +1,3 @@
-// @i18n-ignore-file
 /**
  * FIJOS neo — el kit del rediseño (design/fijos-2026-07) cableado a DATOS
  * REALES, con TODOS sus componentes montados: header, hero (E1-E8), Avisos
@@ -511,13 +510,13 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           onError: (error: unknown) => {
             void triggerHaptic('error')
             Alert.alert(
-              'No se pudo registrar el pago',
+              t('fijos:neo.alert.payFailed'),
               getErrorMessage(error, t('states:error.server')),
             )
           },
           onSuccess: () => {
             void triggerHaptic('success')
-            toast.success(`${item.name} marcado como pagado`)
+            toast.success(t('fijos:neo.toast.markedPaid', { name: item.name }))
           },
         },
       )
@@ -542,7 +541,7 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
       // Guarda de id: un `temp-…` (fijo recién creado, todavía optimista) no
       // existe server-side y tira `FixedExpenseNotPersistedError` sincrónico.
       if (!isPersistedFixedExpenseId(item.id)) {
-        toast.error('El fijo todavía se está guardando — probá en un segundo')
+        toast.error(t('fijos:neo.toast.stillSaving'))
         return
       }
       void triggerHaptic('light')
@@ -552,7 +551,7 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
       }
       setConfirmFor(item)
     },
-    [controller.allItems, runRecord],
+    [controller.allItems, runRecord, t],
   )
 
   const handleRevertPaid = useCallback(
@@ -561,18 +560,18 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
       // componente de la lista solo dispara con un id real, pero la guarda
       // queda porque mandar un optimista a la RPC da 22P02.
       if (!paymentId || paymentId.startsWith('optimistic-')) {
-        toast.error('El pago todavía se está sincronizando — probá en un segundo')
+        toast.error(t('fijos:neo.toast.paymentSyncing'))
         return
       }
       void triggerHaptic('warning')
       revertRef.current.mutate(paymentId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
-          Alert.alert('No se pudo revertir', getErrorMessage(error, t('states:error.server')))
+          Alert.alert(t('fijos:neo.alert.revertFailed'), getErrorMessage(error, t('states:error.server')))
         },
         onSuccess: () => {
           void triggerHaptic('success')
-          toast.info('Pago revertido')
+          toast.info(t('fijos:neo.toast.reverted'))
         },
       })
     },
@@ -660,18 +659,18 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
    */
   const handleConfirmCobro = useCallback(() => {
     Alert.alert(
-      'Confirmar cobro',
-      'Esto confirma el cobro del ciclo en la base REAL: ancla el ciclo nuevo y descongela el saldo de Inicio. No se puede revertir desde esta pantalla.',
+      t('fijos:neo.confirmCobro.title'),
+      t('fijos:neo.confirmCobro.message'),
       [
-        { style: 'cancel', text: 'Cancelar' },
+        { style: 'cancel', text: t('common:actions.cancel') },
         {
           onPress: () => confirmCycleStartingBalance(null),
           style: 'destructive',
-          text: 'Confirmar',
+          text: t('common:actions.confirm'),
         },
       ],
     )
-  }, [confirmCycleStartingBalance])
+  }, [confirmCycleStartingBalance, t])
 
   // ── Gate ────────────────────────────────────────────────────────────────
   // `isLoading` y NO `isFetched`: `useFixedExpensePayments` está `enabled` solo
@@ -711,21 +710,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
       scrollRef={scrollRef}
       scrollable
     >
-      <NeoFijosDevBanner
-        activeFixedCount={activeFixedCount}
-        avisosReason={avisosSelection.reason}
-        avisosVariant={avisosSelection.variant}
-        cycleActiveCount={cycleActiveCount}
-        futureCount={summary.futureItems.length}
-        hasIncome={hasIncome}
-        heroReason={heroSelection.reason}
-        heroVariant={heroSelection.variant}
-        incomeMode={controller.incomeMode}
-        overdueCount={overdueCount}
-        paidCount={paidCount}
-        pendingCount={pendingCount}
-        tickerDropped={ticker.dropped}
-      />
       <FijosHeader
         cycleLabel={cycleHeaderLabel}
         mode={mode}
@@ -827,61 +811,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   )
 }
 
-/**
- * Banner de dev — es un DELIVERABLE, no decoración: el objetivo declarado de
- * esta pantalla es "simular y ver qué falta", y esto es lo que lo hace
- * visible. Se compila fuera del bundle de release por el guard de `__DEV__`.
- */
-function NeoFijosDevBanner(props: {
-  activeFixedCount: number
-  avisosReason: string
-  avisosVariant: string
-  cycleActiveCount: number
-  futureCount: number
-  hasIncome: boolean
-  heroReason: string
-  heroVariant: string
-  incomeMode: 'fixed' | 'dynamic'
-  overdueCount: number
-  paidCount: number
-  pendingCount: number
-  tickerDropped: number
-}) {
-  const [open, setOpen] = useState(false)
-  if (!__DEV__) return null
-
-  const lines = [
-    `hero ${props.heroVariant} — ${props.heroReason}`,
-    `avisos ${props.avisosVariant} — ${props.avisosReason}`,
-    `activos/pausados ${props.activeFixedCount} · este ciclo ${props.cycleActiveCount} (pagados ${props.paidCount} · pendientes ${props.pendingCount} · vencidos ${props.overdueCount})`,
-    `ingreso ${props.incomeMode}${props.hasIncome ? '' : ' → sin sueldo fijo: E5 y "disponible" quedan gateados'}`,
-    props.futureCount > 0
-      ? `${props.futureCount} fijo(s) de ciclos futuros NO se cuentan en el hero ni en las tabs`
-      : null,
-    props.tickerDropped > 0
-      ? `ticker: ${props.tickerDropped} ítem(s) fuera por el cap de ${TICKER_CAP} (la duración es fija, sin cap la velocidad escalaría)`
-      : null,
-    'lista de fijos: componente COLAPSABLE de la pantalla viva, no las filas del kit (el kit no expande ni tiene acción por-fijo). Por eso las ~11 categorías reales van con su nombre e ícono, sin colapsar a 3',
-    'las tabs SÍ filtran la lista (controller.groups está sobre filteredItems)',
-    'pagar / revertir desde cada fijo: ESCRITURAS REALES contra producción, reversibles entre sí',
-    'calendario del header y "+ Agregar fijo" hacen lo mismo: van al alta VIEJA. La Fase 3 la reemplaza por el alta en 2 pasos',
-  ].filter(Boolean) as string[]
-
-  return (
-    <View style={styles.banner}>
-      <Text onPress={() => setOpen((v) => !v)} style={styles.bannerTitle}>
-        {`DEV · ${props.heroVariant}/${props.avisosVariant} · ${open ? 'ocultar' : `${lines.length} notas`}`}
-      </Text>
-      {open
-        ? lines.map((l) => (
-            <Text key={l} style={styles.bannerLine}>
-              {`· ${l}`}
-            </Text>
-          ))
-        : null}
-    </View>
-  )
-}
 
 /**
  * Placeholder de carga. Deliberadamente NO usa ni un componente del kit: el kit
@@ -934,27 +863,6 @@ function NeoFijosSkeleton({ mode }: { mode: FijosMode }) {
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    backgroundColor: 'rgba(217,115,85,0.12)',
-    borderColor: '#D97355',
-    borderRadius: 10,
-    borderWidth: 1,
-    marginBottom: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  bannerLine: {
-    color: '#D97355',
-    fontFamily: nunitoFamily('700'),
-    fontSize: 10.5,
-    lineHeight: 15,
-  },
-  bannerTitle: {
-    color: '#D97355',
-    fontFamily: nunitoFamily('900'),
-    fontSize: 11,
-    letterSpacing: 0.4,
-  },
   // Transcrito del markup, igual que el preview aprobado.
   body: { paddingHorizontal: 20, paddingTop: 10 },
   // Métricas copiadas del kit (`categoriesHeaderRow`/`categoriesLabel`/

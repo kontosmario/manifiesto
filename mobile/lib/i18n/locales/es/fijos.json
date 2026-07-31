@@ -317,5 +317,95 @@
     "dayOfMonthInvalid": "El día del mes debe estar entre 1 y 31.",
     "installmentsTotalRequired": "Defini la cantidad total de cuotas.",
     "debtBalanceRequired": "Defini un saldo pendiente valido para la deuda."
+  },
+  "neo": {
+    "cycleHeader": "{{cycle}} · día {{day}}",
+    "namesJoin": " y ",
+    "namesSum": "{{names}} suman",
+    "overdueF_one": "{{count}} vencida",
+    "overdueF_other": "{{count}} vencidas",
+    "overdueM_one": "{{count}} vencido",
+    "overdueM_other": "{{count}} vencidos",
+    "status": {
+      "pendingWithOverdue": "⚠ {{total}} fijos por pagar · {{overdue}}",
+      "overdueOnly": "⚠ {{overdue}}",
+      "justPaid": "{{count}} fijos este mes · recién cobraste",
+      "upcoming": "{{count}} por venir · nada vencido",
+      "closed": "✓ Cerró completo · {{paid}} de {{total}}"
+    },
+    "hero": {
+      "eyebrowClosed": "FIJOS · CICLO TERMINADO",
+      "eyebrowMonth": "FIJOS DE {{month}}",
+      "chipUpToDate": "✓ AL DÍA",
+      "chipToday": "HOY · DÍA {{day}}",
+      "chipDay": "DÍA {{day}}",
+      "chipNew": "NUEVO",
+      "chipNoInstallments": "SIN CUOTAS",
+      "chipReadOnly": "📁 SOLO LECTURA",
+      "chipDayPlus": "DÍA {{day}}+",
+      "wellLabel": "Te falta pagar",
+      "availableOf": "de {{amount}}",
+      "noteNoIncome": "sin sueldo fijo",
+      "noteOver": "⚠ te pasás este mes",
+      "notePct": "{{pct}}% va a fijos",
+      "paidOf": "{{paid}} de {{total}}",
+      "paidAmount": "{{amount}} pagado",
+      "totalAmount": "de {{amount}} total",
+      "zeroBadge": "✓ {{paid}} DE {{total}} · SIN VENCIDOS",
+      "zeroTitle": "Cero pendientes",
+      "zeroSub": "A disfrutar lo que queda del mes",
+      "emptyTitleNoFijos": "Todavía no cargaste fijos",
+      "emptyTitleNothing": "Nada que pagar este ciclo",
+      "emptySubNoFijos": "Sumá alquiler, servicios y suscripciones — te avisamos antes de cada vencimiento para que no se te pase ninguno.",
+      "emptySubNothing": "Tus fijos vencen en ciclos posteriores — cuando llegue el suyo aparecen acá.",
+      "emptyCtaFirst": "+ Agregar tu primer fijo",
+      "emptyCtaAnother": "+ Agregar otro fijo",
+      "outOfCycleTitle": "Tu ciclo terminó el {{day}}",
+      "outOfCycleSub": "Confirmá tu cobro para cerrar {{month}} y abrir el próximo ciclo.",
+      "outOfCycleNoneLeft": "No quedó nada sin pagar",
+      "outOfCycleLeft": "Quedaron {{count}} sin pagar",
+      "outOfCycleCta": "✓ Confirmar cobro"
+    },
+    "avisos": {
+      "title": "Avisos",
+      "sectionHikes": "AUMENTOS Y RECORDATORIOS",
+      "staticMessage": "✓ Nada vence en los próximos días",
+      "calmMessage": "Sin cambios de precio este mes",
+      "calmTitle": "Todo tranquilo por acá",
+      "calmSub": "No hay vencimientos próximos ni cambios de precio esta semana. Te avisamos si algo cambia.",
+      "emptySubNoFijos": "Cuando agregues alquiler, servicios o suscripciones, acá te vamos a avisar de vencimientos y aumentos.",
+      "emptySubNothing": "Cuando llegue el ciclo de tus fijos, te avisamos de vencimientos y aumentos."
+    },
+    "reminder": {
+      "overdue_one": "{{count}} fijo ya venció",
+      "overdue_other": "{{count}} fijos ya vencieron",
+      "overdueSuffix": "— pagalos para no acumular",
+      "dueSoon_one": "{{count}} pago fijo vence en {{days}} días",
+      "dueSoon_other": "{{count}} pagos fijos vencen en {{days}} días",
+      "hikes_one": "{{count}} aumento este mes",
+      "hikes_other": "{{count}} aumentos este mes"
+    },
+    "screenTitle": "Fijos",
+    "availableLabel": "TE QUEDA DISPONIBLE",
+    "allFijos": "TODOS TUS FIJOS",
+    "tabs": {
+      "overdue": "Vencidos",
+      "pending": "Pendientes",
+      "paid": "Pagados"
+    },
+    "toast": {
+      "markedPaid": "{{name}} marcado como pagado",
+      "stillSaving": "El fijo todavía se está guardando — probá en un segundo",
+      "paymentSyncing": "El pago todavía se está sincronizando — probá en un segundo",
+      "reverted": "Pago revertido"
+    },
+    "alert": {
+      "payFailed": "No se pudo registrar el pago",
+      "revertFailed": "No se pudo revertir"
+    },
+    "confirmCobro": {
+      "title": "Confirmar cobro",
+      "message": "Cerramos el ciclo actual y abrimos el próximo con tu saldo al día. Desde acá no se puede deshacer."
+    }
   }
 }
