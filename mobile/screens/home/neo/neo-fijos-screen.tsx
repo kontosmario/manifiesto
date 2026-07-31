@@ -37,6 +37,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -46,10 +47,19 @@ import {
   type ScrollView,
 } from 'react-native'
 import Animated, { LinearTransition } from 'react-native-reanimated'
+import { useQueryClient } from '@tanstack/react-query'
 import { useIsFocused } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { router } from 'expo-router'
 
+import {
+  FIJOS_TOUR,
+  FIJOS_TOUR_STEPS,
+  TourTarget,
+  useRegisterTourScrollView,
+  useScreenTour,
+  useTourTargetRef,
+} from '@/features/tours'
 import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
 // La lista de "Todos tus fijos" reusa el componente COLAPSABLE de la pantalla
 // viva, no las filas del kit. El kit dibuja UNA fila por categoría, sin
@@ -77,6 +87,7 @@ import { Screen } from '@/components/ui/screen'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
+import { isOptimisticPaymentId } from '@/features/fixed-expenses/fixed-expense-payment.model'
 import {
   useDeleteFixedExpense,
   useRecordFixedExpensePayment,
@@ -111,6 +122,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { motionDurations, motionEasings } from '@/lib/motion'
 import { toast } from '@/lib/toast-bus'
+import { brand } from '@/theme/palette'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeMode } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -148,12 +160,12 @@ interface NeoFijosScreenProps {
   preview?: boolean
 }
 
-// `preview` no se desestructura: el único side-effect global que Fijos tiene es
-// el tour, y esta pantalla no lo monta (ver el TODO al final del render).
-// Realtime y telemetría NO EXISTEN en el cluster de Fijos — verificado, ningún
-// `channel()` en sus hooks. El prop queda en la interfaz porque es el contrato
-// que la ruta ya pasa y que el swap va a dejar de pasar.
-export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
+// `preview` apaga el único side-effect GLOBAL de esta pantalla: el registro del
+// tour. En la ruta dev la Fijos vieja sigue montada (`freezeOnBlur:false` → sus
+// efectos siguen vivos) y dos registros del mismo tour se pisan. Realtime y
+// telemetría no existen en el cluster de Fijos — verificado, ningún `channel()`
+// en sus hooks. La ruta viva NO pasa el prop (default `false`) y el tour corre.
+export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosScreenProps) {
   const { t } = useTranslation()
   const mode = useThemeMode().resolvedMode as FijosMode
   const s = FIJOS_SPEC[mode]
@@ -169,6 +181,18 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   // el TÍTULO, no la primera fila, para que la sección se lea completa desde
   // su encabezado.
   const scrollRef = useRef<ScrollView>(null)
+  // El tour de Fijos, portado de la pantalla viva: 4 pasos (hero, avisos,
+  // lista y el botón de agregar). `preview` lo apaga porque en la ruta dev la
+  // Fijos vieja sigue montada y los dos registros del mismo tour colisionan.
+  useScreenTour(FIJOS_TOUR, { enabled: !preview })
+  const { onScroll: onTourScroll, onContentSizeChange: onTourContentSizeChange } =
+    useRegisterTourScrollView(FIJOS_TOUR, scrollRef)
+  // El botón de agregar vive adentro del header del kit; se apunta por ref
+  // para no tener que meterle el tour al componente.
+  const addButtonTourRef = useTourTargetRef(FIJOS_TOUR, FIJOS_TOUR_STEPS.addButton.order, {
+    highlight: { borderRadius: 28, padding: 6, pulse: true },
+    text: FIJOS_TOUR_STEPS.addButton.text,
+  })
   const sectionRef = useRef<View>(null)
   /**
    * Offset Y de la sección, cacheado por `onLayout`. Es solo el FALLBACK: el
@@ -188,9 +212,18 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
 
   /** Offset de scroll vivo — lo necesita el cálculo del delta de abajo. */
   const scrollYRef = useRef(0)
-  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scrollYRef.current = e.nativeEvent.contentOffset.y
-  }, [])
+  /**
+   * Un solo `onScroll` para dos consumidores: la Y que usa el auto-scroll de
+   * "TODOS TUS FIJOS" y la que el tour necesita para ubicar sus highlights.
+   * `Screen` expone un solo handler, así que se encadenan acá.
+   */
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollYRef.current = e.nativeEvent.contentOffset.y
+      onTourScroll(e)
+    },
+    [onTourScroll],
+  )
 
   /**
    * Lleva "TODOS TUS FIJOS" al tope del área visible.
@@ -242,7 +275,20 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const payCycle = usePayCycle(familyId, { freeze: false })
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const dismissedHikes = useDismissedHikes()
+  const queryClient = useQueryClient()
   const snapshot = useHomeSnapshot(userId)
+
+  // Pull-to-refresh, portado de la pantalla viva: el snapshot trae en un solo
+  // round-trip todo lo que esta pantalla lee (fijos, pagos, ciclo, ingreso).
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    try {
+      await snapshot.refetch()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [snapshot])
   const dashboard = useFamilyDashboard(familyId)
 
   const { confirmCycleStartingBalance, isSavingSalary } = useCycleConfirmation({
@@ -502,6 +548,83 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const revertRef = useRef(revertPaymentMutation)
   revertRef.current = revertPaymentMutation
 
+  /**
+   * Payment id REAL más reciente de un fijo, leído del cache de RQ. Lo necesita
+   * el "Deshacer" del toast: el `record` optimista todavía no tiene id de
+   * servidor, y mandar un `optimistic-…` a la RPC devuelve 22P02.
+   */
+  const findLatestRealPaymentId = useCallback(
+    (fixedExpenseId: string): string | null => {
+      const caches = queryClient.getQueriesData<
+        Array<{ id: string; fixedExpenseId: string; paidAt: string }>
+      >({ queryKey: ['fixed-expense-payments'] })
+      let latest: { id: string; paidAt: string } | null = null
+      for (const [, list] of caches) {
+        if (!Array.isArray(list)) continue
+        for (const payment of list) {
+          if (payment.fixedExpenseId !== fixedExpenseId) continue
+          if (isOptimisticPaymentId(payment.id)) continue
+          if (
+            !latest ||
+            new Date(payment.paidAt).getTime() > new Date(latest.paidAt).getTime()
+          ) {
+            latest = { id: payment.id, paidAt: payment.paidAt }
+          }
+        }
+      }
+      return latest?.id ?? null
+    },
+    [queryClient],
+  )
+
+  const handleRevertPaid = useCallback(
+    (paymentId: string) => {
+      // `paidPaymentId` ya viene null cuando el payment es `optimistic-…`; el
+      // componente de la lista solo dispara con un id real, pero la guarda
+      // queda porque mandar un optimista a la RPC da 22P02.
+      if (!paymentId || paymentId.startsWith('optimistic-')) {
+        toast.error(t('fijos:neo.toast.paymentSyncing'))
+        return
+      }
+      void triggerHaptic('warning')
+      revertRef.current.mutate(paymentId, {
+        onError: (error: unknown) => {
+          void triggerHaptic('error')
+          Alert.alert(t('fijos:neo.alert.revertFailed'), getErrorMessage(error, t('states:error.server')))
+        },
+        onSuccess: () => {
+          void triggerHaptic('success')
+          toast.info(t('fijos:neo.toast.reverted'))
+        },
+      })
+    },
+    [t],
+  )
+
+  /**
+   * Snackbar "Pago registrado · Deshacer" (5s), portado de la pantalla viva.
+   * Era la única acción de la viva que la neo no tenía: un pago mal marcado
+   * obligaba a expandir la fila y buscar "Revertir pago". Si el refetch todavía
+   * no trajo el id real, se avisa en vez de mandar un optimista a la RPC.
+   */
+  const showPaySuccessToast = useCallback(
+    (fixedExpenseId: string, fijoName: string) => {
+      toast.success(t('fijos:toast.paymentRecorded', { name: fijoName }), {
+        actionLabel: t('fijos:toast.undo'),
+        durationMs: 5000,
+        onAction: () => {
+          const paymentId = findLatestRealPaymentId(fixedExpenseId)
+          if (!paymentId) {
+            toast.error(t('fijos:toast.undoNotReadyYet'))
+            return
+          }
+          handleRevertPaid(paymentId)
+        },
+      })
+    },
+    [findLatestRealPaymentId, handleRevertPaid, t],
+  )
+
   const runRecord = useCallback(
     (item: FijoItem, amountOverride?: number) => {
       recordRef.current.mutate(
@@ -516,12 +639,12 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           },
           onSuccess: () => {
             void triggerHaptic('success')
-            toast.success(t('fijos:neo.toast.markedPaid', { name: item.name }))
+            showPaySuccessToast(item.id, item.name)
           },
         },
       )
     },
-    [t],
+    [showPaySuccessToast, t],
   )
 
   /**
@@ -554,30 +677,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     [controller.allItems, runRecord, t],
   )
 
-  const handleRevertPaid = useCallback(
-    (paymentId: string) => {
-      // `paidPaymentId` ya viene null cuando el payment es `optimistic-…`; el
-      // componente de la lista solo dispara con un id real, pero la guarda
-      // queda porque mandar un optimista a la RPC da 22P02.
-      if (!paymentId || paymentId.startsWith('optimistic-')) {
-        toast.error(t('fijos:neo.toast.paymentSyncing'))
-        return
-      }
-      void triggerHaptic('warning')
-      revertRef.current.mutate(paymentId, {
-        onError: (error: unknown) => {
-          void triggerHaptic('error')
-          Alert.alert(t('fijos:neo.alert.revertFailed'), getErrorMessage(error, t('states:error.server')))
-        },
-        onSuccess: () => {
-          void triggerHaptic('success')
-          toast.info(t('fijos:neo.toast.reverted'))
-        },
-      })
-    },
-    [t],
-  )
-
   const handleConfirmSame = useCallback(() => {
     if (!confirmFor) return
     const item = confirmFor
@@ -598,11 +697,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
   const cycleHeaderLabel = buildCycleHeaderLabel(controller.cycleLabel, daysIntoCycle)
 
   // ── Handlers ────────────────────────────────────────────────────────────
-  // No-op CON NOTA VISIBLE, no silencioso: un botón muerto se lee como bug, un
-  // toast que nombra la fase es información.
-  const handleToggleDropdown = useCallback(() => {
-    toast.info('Selector de ciclos: fase posterior')
-  }, [])
 
   /** El alta VIEJA existe y funciona. Es también la acción del botón de
    *  calendario del header (fallo del owner 2026-07-30: el calendario con el
@@ -705,20 +799,40 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
     <Screen
       backgroundColor={s.bg}
       contentContainerStyle={styles.body}
+      onContentSizeChange={onTourContentSizeChange}
       onScroll={handleScroll}
-      scrollEventThrottle={32}
+      // 16ms = un evento por frame a 60fps. La matemática de auto-scroll del
+      // tour lee la Y trackeada para ubicar cada paso; con un throttle más
+      // grueso la Y se atrasa y el highlight cae fuera del target.
+      scrollEventThrottle={16}
+      refreshControl={
+        <RefreshControl
+          colors={[brand.deep]}
+          onRefresh={handleRefresh}
+          refreshing={isRefreshing}
+          tintColor={brand.bright}
+        />
+      }
       scrollRef={scrollRef}
       scrollable
     >
       <FijosHeader
+        // El tour apunta al botón por ref: el header del kit no sabe del tour.
+        calendarButtonRef={addButtonTourRef}
         cycleLabel={cycleHeaderLabel}
         mode={mode}
-        // El botón de calendario con el `+` hace lo mismo que "+ Agregar fijo"
-        // (fallo del owner 2026-07-30). La Fase 3 lo reemplaza por el alta en
-        // 2 pasos, que es el destino final.
+        // El botón de calendario con el `+` es la acción de "+ Agregar fijo"
+        // (fallo del owner 2026-07-30).
         onPressCalendar={handleAddFijo}
-        onToggleDropdown={handleToggleDropdown}
       />
+      <TourTarget
+        // El hero del kit tiene radio 28; el highlight lo cubre con aire para
+        // hilar el borde, igual que hace la viva con su `FijosHeroCard`.
+        highlight={{ borderRadius: 32, padding: 6 }}
+        order={FIJOS_TOUR_STEPS.hero.order}
+        text={FIJOS_TOUR_STEPS.hero.text}
+        tour={FIJOS_TOUR}
+      >
       <View style={fijosHeaderHeroSpacing}>
         <FijosHero
           {...heroContent}
@@ -732,6 +846,15 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           variant={heroSelection.variant}
         />
       </View>
+      </TourTarget>
+      <TourTarget
+        // El paso `calendar` del tour habla de "lo que se viene": en la viva lo
+        // anclaba `FijosProximosCard`, que acá es el bloque de Avisos.
+        highlight={{ borderRadius: 26, padding: 6 }}
+        order={FIJOS_TOUR_STEPS.calendar.order}
+        text={FIJOS_TOUR_STEPS.calendar.text}
+        tour={FIJOS_TOUR}
+      >
       <View style={fijosHeroAvisosSpacing}>
         <FijosAvisos
           {...avisosContent}
@@ -745,10 +868,17 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           variant={avisosSelection.variant}
         />
       </View>
+      </TourTarget>
       {/* "Todos tus fijos": el header y las tabs son del kit; la LISTA es el
           componente colapsable de la pantalla viva. El kit dibuja una fila por
           categoría, sin expansión y sin acción por-fijo, así que no puede
           mostrar los fijos adentro de su categoría con su botón "Pagar". */}
+      <TourTarget
+        highlight={{ borderRadius: 26, padding: 6 }}
+        order={FIJOS_TOUR_STEPS.list.order}
+        text={FIJOS_TOUR_STEPS.list.text}
+        tour={FIJOS_TOUR}
+      >
       <View
         onLayout={handleSectionLayout}
         ref={sectionRef}
@@ -760,7 +890,7 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
             compitiendo con el título de la sección. */}
         <View style={styles.categoriesHeaderRow}>
           <Text style={[styles.categoriesLabel, { color: s.sectionLabelInk }]}>
-            TODOS TUS FIJOS
+            {t('fijos:neo.allFijos')}
           </Text>
         </View>
         <FijosTabs
@@ -792,6 +922,7 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
           </FijosSkinProvider>
         </Animated.View>
       </View>
+      </TourTarget>
       {/* Confirmación de precio para el 2do+ pago — mismo sheet que la viva. */}
       <ConfirmFixedPaymentSheet
         fixedExpenseName={confirmFor?.name ?? ''}
@@ -803,10 +934,6 @@ export function NeoFijosScreen({ userId, familyId }: NeoFijosScreenProps) {
         visible={confirmFor != null}
         wasOverdue={confirmFor?.computedStatus === 'overdue'}
       />
-      {/* TODO (fase posterior): el tour de Fijos, gateado con
-          `enabled: !preview`. Omitido a propósito — con `preview` siempre true
-          desde la ruta dev nunca correría, así que montarlo ahora sería riesgo
-          sin beneficio. Hace falta antes del swap, no antes de mirar. */}
     </Screen>
   )
 }

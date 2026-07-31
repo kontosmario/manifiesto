@@ -406,6 +406,8 @@
     "confirmCobro": {
       "title": "Confirm paycheck",
       "message": "We'll close the current cycle and open the next one with your balance up to date. This can't be undone from here."
-    }
+    },
+    "addFijoA11y": "Add fixed expense",
+    "changeCycleA11y": "Change cycle: {{cycle}}"
   }
 }

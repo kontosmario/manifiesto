@@ -1,6 +1,7 @@
 // @i18n-ignore-file — kit de rediseño bajo gate; copy literal, i18n en el pase posterior.
 import { useEffect, useState } from 'react'
 import i18n from '@/lib/i18n'
+import { type Ref } from 'react'
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
@@ -143,12 +144,22 @@ export interface FijosHeaderProps {
   /** "Ciclo 20 jun → 19 jul · día 18". */
   cycleLabel: string
   onToggleDropdown?: () => void
-  /** A dónde navega el botón de calendario TODAVÍA no está definido (ver
-   *  docblock del módulo) — el preview lo deja en no-op. */
+  /** El botón de calendario es la acción de "agregar fijo" (decisión del
+   *  owner 2026-07-30). */
   onPressCalendar?: () => void
+  /** Ref del botón de calendario, para que el tour pueda apuntarle sin que el
+   *  header tenga que saber del tour. Mismo patrón que el `addButtonRef` del
+   *  `FijosHeader` de la pantalla viva. */
+  calendarButtonRef?: Ref<View>
 }
 
-export function FijosHeader({ mode, cycleLabel, onToggleDropdown, onPressCalendar }: FijosHeaderProps) {
+export function FijosHeader({
+  mode,
+  cycleLabel,
+  onToggleDropdown,
+  onPressCalendar,
+  calendarButtonRef,
+}: FijosHeaderProps) {
   const s = FIJOS_SPEC[mode]
   const calendarPress = usePressScale({ pressedScale: 0.9 })
 
@@ -185,7 +196,7 @@ export function FijosHeader({ mode, cycleLabel, onToggleDropdown, onPressCalenda
         {onToggleDropdown ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Cambiar de ciclo: ${cycleLabel}`}
+            accessibilityLabel={i18n.t('fijos:neo.changeCycleA11y', { cycle: cycleLabel })}
             // La fila del trigger mide ~18px (label 13 + margin). Mismo
             // cálculo que GastosHeader: 14 la lleva a ~46, el mínimo a11y;
             // arriba solo el título (no accionable), abajo aire hasta el
@@ -203,9 +214,10 @@ export function FijosHeader({ mode, cycleLabel, onToggleDropdown, onPressCalenda
       {onPressCalendar ? (
         <AnimatedPressable
           accessibilityRole="button"
-          accessibilityLabel="Abrir calendario"
+          accessibilityLabel={i18n.t('fijos:neo.addFijoA11y')}
           hitSlop={6}
           onPress={onPressCalendar}
+          ref={calendarButtonRef}
           onPressIn={calendarPress.onPressIn}
           onPressOut={calendarPress.onPressOut}
           style={calendarPress.animatedStyle}
