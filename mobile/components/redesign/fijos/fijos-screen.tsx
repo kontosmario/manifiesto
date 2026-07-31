@@ -1617,7 +1617,9 @@ function AvisosDefaultBody({ s, c, paused }: { s: FijosSpec; c: FijosAvisosConte
   return (
     <>
       <View style={styles.avisosEyebrowRow}>
-        <Text style={[styles.avisosEyebrowText, { color: s.sectionEyebrowInk }]}>POR PAGAR · ESTE MES</Text>
+        <Text style={[styles.avisosEyebrowText, { color: s.sectionEyebrowInk }]}>
+          {i18n.t('fijos:neo.tickerEyebrow')}
+        </Text>
         {hasTicker ? <LiveDot s={s} paused={paused} /> : null}
       </View>
       {hasTicker ? (
@@ -2131,7 +2133,7 @@ export function FijosCategories(props: FijosCategoriesProps) {
         {onPressAddFijo ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Agregar fijo"
+            accessibilityLabel={i18n.t('fijos:neo.addFijoA11y')}
             hitSlop={8}
             onPress={onPressAddFijo}
             style={({ pressed }) => (pressed ? styles.pressedDim : null)}

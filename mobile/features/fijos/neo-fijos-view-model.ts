@@ -415,7 +415,7 @@ export function buildTickerItems(input: BuildTickerItemsInput): BuildTickerItems
     id: item.id,
     name: item.name,
     amount: formatMoney(item.amount),
-    tagLabel: 'VENCIDO',
+    tagLabel: i18n.t('fijos:neo.overdueTag'),
     tone: 'overdue' as FijosTickerTone,
   }))
 

@@ -60,6 +60,7 @@ import {
   useScreenTour,
   useTourTargetRef,
 } from '@/features/tours'
+import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
 // La lista de "Todos tus fijos" reusa el componente COLAPSABLE de la pantalla
 // viva, no las filas del kit. El kit dibuja UNA fila por categoría, sin
@@ -798,6 +799,10 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   return (
     <Screen
       backgroundColor={s.bg}
+      // Detrás del ScrollView, no adentro: las auroras cubren el viewport
+      // completo y no scrollean con el contenido. Mismo tratamiento que la
+      // pantalla viva.
+      backgroundSlot={<AmbientBlobs tone={mode === 'dark' ? 'calm' : 'aurora'} />}
       contentContainerStyle={styles.body}
       onContentSizeChange={onTourContentSizeChange}
       onScroll={handleScroll}

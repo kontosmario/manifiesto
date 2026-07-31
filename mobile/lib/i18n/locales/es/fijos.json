@@ -408,6 +408,8 @@
       "message": "Cerramos el ciclo actual y abrimos el próximo con tu saldo al día. Desde acá no se puede deshacer."
     },
     "addFijoA11y": "Agregar fijo",
-    "changeCycleA11y": "Cambiar de ciclo: {{cycle}}"
+    "changeCycleA11y": "Cambiar de ciclo: {{cycle}}",
+    "tickerEyebrow": "POR PAGAR · ESTE MES",
+    "overdueTag": "VENCIDO"
   }
 }

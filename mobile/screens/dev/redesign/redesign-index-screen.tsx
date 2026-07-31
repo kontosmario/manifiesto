@@ -50,18 +50,6 @@ const ENTRIES: PreviewEntry[] = [
     statusKey: 'gastos',
   },
   {
-    label: 'FIJOS neo · datos reales',
-    detail: 'Cableado F2 completo: hero E1–E8 + Avisos + listado con la piel neumórfica (card de categoría con color, detalle expandido, acciones) · pre-swap de ruta',
-    route: '/(app)/settings/dev/neo-fijos',
-    statusKey: 'fijos',
-  },
-  {
-    label: 'FIJOS neo · alta (2 pasos)',
-    detail: 'El wizard de alta que ya corre en producción, con la piel del rediseño. Escribe DE VERDAD al confirmar · pre-swap de ruta',
-    route: '/(app)/settings/dev/neo-add-fijo',
-    statusKey: 'fijos',
-  },
-  {
     label: 'HOME final (handoff nuevo)',
     detail: 'Hero saldo + medidor de cupo · racha Brot · nav FAB N1 · claro/oscuro',
     route: '/(app)/settings/dev/redesign-home',
