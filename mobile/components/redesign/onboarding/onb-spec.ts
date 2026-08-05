@@ -51,7 +51,7 @@ const PARTICLES = ['#C9F3C6', '#FBD9BC', '#EFF6E2'] as const
 
 export const ONB_SPEC: Record<OnbMode, OnbSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     text: '#24382A',
     helper: '#8FA089',
     counter: '#3E5A44',
@@ -81,7 +81,7 @@ export const ONB_SPEC: Record<OnbMode, OnbSpec> = {
     particleColors: PARTICLES,
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     text: '#F1EEDD',
     helper: '#7C917A',
     counter: '#B9CCB2',

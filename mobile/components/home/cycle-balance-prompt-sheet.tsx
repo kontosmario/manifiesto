@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import { LinearGradient } from 'expo-linear-gradient'
 import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
 import { useBorderGlow } from '@/hooks/use-border-glow'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -15,8 +14,10 @@ import {
   parsePrice,
   serializePrice,
 } from '@/utils/money'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Two distinct, never-overlapping flows live in this file:
@@ -164,7 +165,8 @@ function CycleBalancePromptSheetBase({
   onKeepDefault,
   copy,
 }: BaseProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const [draft, setDraft] = useState(() => serializePrice(monthlyIncome))
 
@@ -209,9 +211,9 @@ function CycleBalancePromptSheetBase({
               quedaba clampeado a 1 — confundía al user con un falso
               countdown ("1 día restante") en vez de explicar que es el
               momento de confirmar el nuevo cobro. */}
-          <Text style={[styles.contextLine, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.contextLine, { color: neo.textMuted }]}>
             {copy.contextPrefixLabel}{' '}
-            <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+            <Text style={[styles.contextAmount, { color: neo.text }]}>
               {currencyFormatter.format(monthlyIncome)}
             </Text>
           </Text>
@@ -257,12 +259,30 @@ interface QuickConfirmCtaProps {
 
 /**
  * CTA primaria del sheet de cobro ("tengo el sueldo completo" / confirmar el
- * saldo). Mismo lenguaje que la StartingBalanceCta del Home: gradiente forest
- * (heroGradient) + texto crema (heroText) + acento lime (heroAccent) + BORDER
- * GLOW (useBorderGlow) — el borde lime respira en lugar de un scale-pulse (que
- * recortaba los bordes). El gradiente se redondea a sí mismo para que el borde
- * no quede seamed en las esquinas. Jerarquía: eyebrow lime chico, monto crema
- * grande (la decisión del user es el monto), sublabel muted. Press scale 0.97.
+ * saldo). Rediseño neo: es el MISMO material que `NeoButton variant="primary"`
+ * — radial `circle at 32% 28%` sobre `neo.ctaGradient` + `neo.shadows.cta` —
+ * pero con el layout de tarjeta (ícono · monto · flecha) que este sheet ya
+ * tenía, porque acá el CTA es una decisión con monto, no un botón de una
+ * palabra.
+ *
+ * El gradiente va en el MISMO view que la sombra (vía `cssGradient`, no un
+ * `LinearGradient` absolute-fill): en Android los inset del `boxShadow` se
+ * dibujan en el drawable de fondo, DEBAJO de los children, así que una capa
+ * de gradiente encima taparía la línea de luz de `shadows.cta` (mismo
+ * razonamiento que el docblock de `NeoSurface`).
+ *
+ * El BORDER GLOW (`useBorderGlow`) sobrevive a la migración: Reanimated no
+ * interpola strings de `boxShadow`, así que la única forma de conservar la
+ * respiración del CTA es seguir animando `borderColor` — por eso este view
+ * mantiene un `borderWidth` aunque el vocabulario neo separe por relieve.
+ *
+ * Jerarquía de tinta: todo el texto va en `neo.ctaText` (que YA codifica la
+ * inversión del tema: crema en claro, tinta oscura en oscuro, porque el CTA
+ * neo en oscuro es CLARO). La jerarquía la da la escala/tracking, no un
+ * acento saturado ni alfas bajas: sobre un fill verde de luminancia media
+ * bajar la opacidad del texto chico (eyebrow 10px) lo tira por debajo de AA.
+ * Los dos íconos sí llevan `neo.heroGreen` porque se apoyan en tiles
+ * hundidos oscuros. Press scale 0.97 (sin cambios).
  */
 function QuickConfirmCta({
   label,
@@ -272,9 +292,33 @@ function QuickConfirmCta({
   a11yLabel,
   onPress,
 }: QuickConfirmCtaProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const press = usePressScale({ pressedScale: 0.97 })
   const glowBorderStyle = useBorderGlow(!disabled)
+
+  const ctaSurface = useMemo<ViewStyle>(
+    () => ({
+      ...cssGradient(
+        `radial-gradient(circle at 32% 28%, ${neo.ctaGradient[0]}, ${neo.ctaGradient[1]} 85%)`,
+        neo.ctaGradient[1],
+      ),
+      boxShadow: neo.shadows.cta,
+    }),
+    [neo],
+  )
+
+  // Tile hundido dentro del CTA. NO necesita el fallback de
+  // `SUPPORTS_INSET_SHADOW`: el disco tiene fill propio (greenDeep al 28%
+  // sobre el fill verde del botón), así que en Android < API 29 pierde el
+  // bisel pero sigue siendo un disco visible.
+  const ctaTile = useMemo<ViewStyle>(
+    () => ({
+      backgroundColor: withAlpha(neo.greenDeep, 0.28),
+      boxShadow: neo.shadows.insetSm,
+    }),
+    [neo],
+  )
 
   return (
     <Animated.View style={press.animatedStyle}>
@@ -288,41 +332,27 @@ function QuickConfirmCta({
         onPressOut={press.onPressOut}
         style={{ opacity: disabled ? 0.6 : 1 }}
       >
-        <Animated.View style={[styles.ctaCard, glowBorderStyle]}>
-          <LinearGradient
-            colors={
-              [...theme.colors.heroGradient] as unknown as readonly [
-                string,
-                string,
-                ...string[],
-              ]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            // Gradiente redondeado a sí mismo (sin overflow:hidden) → el borde
-            // glow no queda seamed/cropeado en las esquinas.
-            style={[StyleSheet.absoluteFillObject, styles.ctaGradient]}
-          />
+        <Animated.View style={[styles.ctaCard, ctaSurface, glowBorderStyle]}>
           <View style={styles.ctaInner}>
-            <View style={styles.ctaIcon}>
-              <MaterialIcons name="check-circle" size={22} color={theme.colors.heroAccent} />
+            <View style={[styles.ctaIcon, ctaTile]}>
+              <MaterialIcons name="check-circle" size={22} color={neo.heroGreen} />
             </View>
             <View style={styles.ctaTextWrap}>
-              <Text style={[styles.ctaEyebrow, { color: theme.colors.heroAccent }]}>
+              <Text style={[styles.ctaEyebrow, { color: neo.ctaText }]}>
                 {label.toUpperCase()}
               </Text>
               <Text
-                style={[styles.ctaAmount, { color: theme.colors.heroText }]}
+                style={[styles.ctaAmount, { color: neo.ctaText }]}
                 numberOfLines={1}
               >
                 {amount}
               </Text>
-              <Text style={[styles.ctaSublabel, { color: theme.colors.heroMuted }]}>
+              <Text style={[styles.ctaSublabel, { color: neo.ctaText }]}>
                 {sublabel}
               </Text>
             </View>
-            <View style={styles.ctaArrow}>
-              <MaterialIcons name="arrow-forward" size={18} color={theme.colors.heroAccent} />
+            <View style={[styles.ctaArrow, ctaTile]}>
+              <MaterialIcons name="arrow-forward" size={18} color={neo.heroGreen} />
             </View>
           </View>
         </Animated.View>
@@ -331,6 +361,8 @@ function QuickConfirmCta({
   )
 }
 
+// El `fontFamily` viaja SIEMPRE con el peso: cada peso de Nunito es un face
+// estático propio, así que un `fontWeight` suelto no cambia la face.
 const styles = StyleSheet.create({
   headerStack: {
     gap: 12,
@@ -338,14 +370,18 @@ const styles = StyleSheet.create({
   contextLine: {
     fontSize: 13,
     lineHeight: 18,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
-  // Card de la CTA: gradiente forest + border glow lime (useBorderGlow).
+  contextAmount: {
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+  },
+  // Card de la CTA: fill radial `ctaGradient` + `shadows.cta` (los pinta el
+  // componente, que necesita el tema) + border glow (useBorderGlow).
   ctaCard: {
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.card,
     borderWidth: 1.5,
-  },
-  ctaGradient: {
-    borderRadius: radii.lg,
   },
   ctaInner: {
     flexDirection: 'row',
@@ -355,14 +391,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     minHeight: 76,
   },
+  // Los dos tiles (ícono y flecha) son pozos del sistema: el fill y la
+  // sombra inset los pone el componente vía `ctaTile` (dependen del tema).
   ctaIcon: {
     width: 40,
     height: 40,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    // Tile forest oscuro tenue → el ícono lime (heroAccent) resalta.
-    backgroundColor: 'rgba(15,46,31,0.25)',
   },
   ctaTextWrap: {
     flex: 1,
@@ -371,11 +407,13 @@ const styles = StyleSheet.create({
   ctaEyebrow: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
   },
   ctaAmount: {
     fontSize: 20,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
     fontVariant: ['tabular-nums'],
     marginTop: 2,
@@ -383,7 +421,8 @@ const styles = StyleSheet.create({
   },
   ctaSublabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   ctaArrow: {
     width: 36,
@@ -391,37 +430,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(15,46,31,0.25)',
-  },
-  // ────────── Legacy chip styles (kept for back-compat if otros call-sites
-  // todavía referencian; no se usan en el rediseño actual) ──────────
-  quickConfirm: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-  },
-  quickConfirmIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  quickConfirmText: {
-    flex: 1,
-    gap: 2,
-  },
-  quickConfirmTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  quickConfirmSub: {
-    fontSize: 11,
-    fontWeight: '500',
   },
 })

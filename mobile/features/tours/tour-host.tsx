@@ -21,6 +21,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import SvgRaw, { Path } from 'react-native-svg'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { neoTokens } from '@/theme/neo-tokens'
 
 // react-native-svg's typings are strict on children/style. Cast to
 // `React.FC` so we can pass the animated children we need without
@@ -36,6 +37,19 @@ import {
   getTourScrollEntry,
   type MeasuredRect,
 } from './tour-scroll-registry'
+
+/**
+ * Tinta del overlay del tour, anclada a la rama OSCURA de la paleta neo en
+ * los dos temas — igual que `tour-tooltip.tsx`, y por el mismo motivo: el
+ * scrim del tour es oscuro en claro y en oscuro (`tour-provider.tsx` L16-17,
+ * '#06120C' al 0.78), así que todo lo que se dibuja ENCIMA se calibra contra
+ * ese casi-negro y no contra el tema del sistema. Con `neoTokens(mode)` el
+ * pulso en claro sería `green` = '#2E7C39' (un verde profundo) sobre el
+ * scrim: el halo dejaría de leerse justo en el gesto que existe para llamar
+ * la atención. La rama oscura da '#A4E3A6', el equivalente en paleta neo del
+ * neón V1 que reemplaza.
+ */
+const overlayNeo = neoTokens('dark')
 
 /**
  * Top-level overlay for the guided tour. Mounted once at the
@@ -447,7 +461,7 @@ export function TourHost() {
   }))
 
   // Pulse halo — expands outward and fades cyclically.
-  const pulseColor = stepConfig?.highlight?.pulseColor ?? '#A6EF8F'
+  const pulseColor = stepConfig?.highlight?.pulseColor ?? overlayNeo.green
   const pulseWidth = stepConfig?.highlight?.pulseWidth ?? 3
   const pulseEnabled = stepPulseEnabled
   const pulseStyle = useAnimatedStyle(() => {

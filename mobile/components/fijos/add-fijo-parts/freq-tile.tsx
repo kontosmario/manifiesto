@@ -7,12 +7,16 @@ import Animated, {
   Easing,
   interpolateColor,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+// El hook PROPIO, nunca el de reanimated: el de la librería abre una
+// suscripción a `AccessibilityInfo` por call site (el import trap del jank de
+// Android gama baja) e ignora el override de Motion de Ajustes.
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -91,8 +95,11 @@ export function FreqTile({
   const activeLayerStyle = useAnimatedStyle(() => ({ opacity: selectedProgress.value }))
   // La tinta del label cruza junto con la superficie: al invertirse el chip,
   // pasar de la sub apagada a la tinta activa de golpe se leía como parpadeo.
-  const neoInkFrom = neo?.mutedInk ?? '#000'
-  const neoInkTo = neo?.add.freqChip.activeInk ?? '#000'
+  // El fallback NO es `#000` (no existe en ninguna de las dos paletas): sin
+  // skin este estilo ni se aplica, así que apunta a las tintas de la rama
+  // classic para que un futuro consumidor no se coma un negro puro.
+  const neoInkFrom = neo?.mutedInk ?? theme.colors.textMuted
+  const neoInkTo = neo?.add.freqChip.activeInk ?? theme.colors.text
   const labelInkStyle = useAnimatedStyle(() => ({
     color: interpolateColor(selectedProgress.value, [0, 1], [neoInkFrom, neoInkTo]),
   }))
@@ -100,8 +107,14 @@ export function FreqTile({
   // Mismo nested-interpolate pattern que los otros shared inputs: width
   // sólo sigue la selected animation así el warning toggle nunca
   // resiza el tile.
+  //
+  // En `neo` el estilo NO se aplica (el chip se hunde, no se bordea), así que
+  // el worklet corta antes de interpolar: si no, tres tokens V1 se
+  // interpolarían por frame para un resultado que nadie consume.
+  const isNeo = neo != null
   const borderStyle = useAnimatedStyle(() => {
     'worklet'
+    if (isNeo) return { borderColor: 'transparent', borderWidth: 0 }
     const normalColor = interpolateColor(
       selectedProgress.value,
       [0, 1],
@@ -121,6 +134,20 @@ export function FreqTile({
       borderWidth: 1 + selectedProgress.value,
     }
   })
+
+  // Anillo de aviso de la piel `neo`. La migración anterior apagó el
+  // `borderStyle` sin reponer nada, así que el estado de recovery ("elegí una
+  // frecuencia") quedaba MUDO: el usuario tocaba el CTA atenuado y ningún chip
+  // cambiaba. Un `boxShadow` es un string y Reanimated no lo interpola, así
+  // que el cue va en una capa propia cuya OPACIDAD sí se anima — mismo recurso
+  // que el `warnRing` de `AmountCard`, y sin mover el layout.
+  //
+  // Se apaga cuando el chip está seleccionado: el flag `warning` describe "no
+  // elegiste ninguna", y marcar el elegido contradiría el mensaje (es la misma
+  // regla que ya tenía la rama classic vía el nested-interpolate).
+  const warnRingStyle = useAnimatedStyle(() => ({
+    opacity: warningProgress.value * (1 - selectedProgress.value),
+  }))
 
   return (
     <AnimatedPressable
@@ -142,7 +169,9 @@ export function FreqTile({
           // Match el category rail tile bg (`theme.colors.surface`) así
           // ambos rails comparten el mismo light-mode tone en vez de
           // mezclar white categories con cream-tinted frequency tiles.
-          { backgroundColor: theme.colors.surface },
+          // Sólo en classic: en neo lo pisa el `transparent` de abajo y dejaba
+          // un token V1 vivo en el árbol del rediseño.
+          neo ? null : { backgroundColor: theme.colors.surface },
           // `neo` reemplaza el borde animado por el idioma del handoff:
           // ELEVADO en reposo y HUNDIDO con anillo al seleccionar. El
           // seleccionado no se rellena — se hunde, que es el recurso de
@@ -196,6 +225,21 @@ export function FreqTile({
                 activeLayerStyle,
               ]}
             />
+            {/* Anillo de aviso. `accentClay` es la tinta de bordes/anillos del
+                sistema (le alcanza 3:1) y ya viene resuelta por tema.
+                Android < API 29 descarta el inset EN SILENCIO: ahí el anillo
+                se dibuja como borde real, que es lo mismo geométricamente. */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                { borderRadius: neo.add.freqChip.radius },
+                SUPPORTS_INSET_SHADOW
+                  ? { boxShadow: `inset 0 0 0 1.5px ${neo.add.accentClay}` }
+                  : { borderWidth: 1.5, borderColor: neo.add.accentClay },
+                warnRingStyle,
+              ]}
+            />
           </>
         ) : null}
         {CATEGORY_ICONS[icon] && neo ? (
@@ -225,7 +269,9 @@ export function FreqTile({
         <Animated.Text
           style={[
             styles.freqTileLabel,
-            { color: theme.colors.text },
+            // Sólo en classic: en neo lo pisa `labelInkStyle` (que cruza de la
+            // tinta sub a la activa) y dejaba un token V1 en el árbol neo.
+            neo ? null : { color: theme.colors.text },
             neo
               ? {
                   fontSize: neo.add.freqChip.fontSize,

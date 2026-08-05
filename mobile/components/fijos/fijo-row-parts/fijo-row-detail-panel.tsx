@@ -6,6 +6,7 @@ import { FijoTrendSpark } from '@/components/fijos/fijo-trend-spark'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { formatMoney } from '@/utils/money'
+import { withAlpha } from '@/theme/color-utils'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { InfoLine } from './info-line'
@@ -81,6 +82,23 @@ export function FijoRowDetailPanel({
    */
   const trend = trendState(fijo.priceHistory, fijo.trendDeltaPct)
 
+  /**
+   * Tinta de "Eliminar" en la piel neo. Era el ÚNICO texto de la card abierta
+   * sin rama neo: seguía en `#F18C8C`/`#A8211B`, dos hex que no existen en la
+   * paleta del rediseño.
+   *
+   * Sale de `add.accentClayInk` y no de `neo.danger` a propósito: el rojo del
+   * sistema (`#C25B33` en claro) está calibrado para bordes, anillos y fills
+   * —les alcanza 3:1— y como TINTA de 13.5px sobre la card (`#E9EBE0`) se
+   * queda en 3.60:1, abajo del 4.5 que pide AA. `accentClayInk` es el mismo
+   * terracota ya oscurecido y auditado para texto chico: 5.49:1 en claro y
+   * 5.7:1 en oscuro sobre esa misma card.
+   *
+   * Lo CORRECTO sería un campo propio (`ctaDeleteInk`) en `FijosDetailSkin`,
+   * pero `fijos-skin.tsx` está fuera del alcance de este cambio.
+   */
+  const deleteInk = neo?.add.accentClayInk
+
   return (
     <Animated.View
       entering={FadeIn.duration(200)}
@@ -88,7 +106,23 @@ export function FijoRowDetailPanel({
       // borderTopColor tintado por status — el divider que separa
       // el row collapsed del expand panel anuncia visualmente el
       // estado del fijo apenas se abre.
-      style={[styles.detailBlock, { borderTopColor: accent.border }]}
+      //
+      // En `neo` el tinte sale de la barra del bloque de stats (los DOS
+      // acentos del handoff) y no de `computeAccent()`, que es la paleta V1
+      // de estado —incluye un azul `#9DC4DE`/`#3F7CA3` que el rediseño no
+      // tiene. De paso el punteado pasa a línea sólida y tenue: el handoff
+      // separa bloques por relieve, no con vocabulario de formulario, y un
+      // dashed saturado era lo más V1 que quedaba en la card abierta.
+      style={[
+        styles.detailBlock,
+        { borderTopColor: accent.border },
+        neo
+          ? {
+              borderStyle: 'solid',
+              borderTopColor: withAlpha(neo.detail.stats(status).stripe, 0.35),
+            }
+          : null,
+      ]}
     >
       {/*
         Stats hero. Para recurring/periodic: "SE LLEVA AL AÑO".
@@ -204,6 +238,11 @@ export function FijoRowDetailPanel({
               neo
                 ? {
                     borderRadius: neo.detail.trendWell.radius,
+                    // El pozo necesita fondo PROPIO: un inset sin fill se
+                    // dibuja sobre el material de la card padre y en oscuro el
+                    // hundido casi no se lee (en claro apenas se nota). Es el
+                    // mismo well que ya usan los campos del alta.
+                    backgroundColor: neo.add.well.background,
                     boxShadow: neo.detail.trendWell.shadow,
                     paddingVertical: neo.detail.trendWell.padV,
                     paddingHorizontal: neo.detail.trendWell.padH,
@@ -453,12 +492,13 @@ export function FijoRowDetailPanel({
             <MaterialIcons
               name="delete-outline"
               size={15}
-              color={theme.isDark ? '#F18C8C' : '#A8211B'}
+              color={neo ? deleteInk : theme.isDark ? '#F18C8C' : '#A8211B'}
             />
             <Text
               style={[
                 styles.actionSecondaryText,
                 { color: theme.isDark ? '#F18C8C' : '#A8211B' },
+                neo ? { ...neo.detail.cta, color: deleteInk } : null,
               ]}
             >
               {t('fijos:detailPanel.deleteFijo')}

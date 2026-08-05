@@ -62,6 +62,17 @@ export const decorativeDurations = {
   tickerLoop: 30000,
   /** Fijos Avisos "live" dot breath, full cycle (source markup: `@keyframes fijosLive` — opacity 0.4→1→0.4, scale 0.85→1.15→0.85, 1.6s ease-in-out infinite). Half this per withTiming leg. */
   liveDotPulse: 1600,
+  // ── Familia Control (source markup: Control Manifiesto.dc.html) ──
+  /** Control `@keyframes ctlDot` — glow del dot de eyebrow/ciclo, full cycle (2.4s ease-in-out infinite). Half per withTiming leg. */
+  ctlDotPulse: 2400,
+  /** Control `@keyframes ctlKnob` — glow de la perilla HOY del timeline, full cycle (2s ease-in-out infinite). Half per withTiming leg. */
+  ctlKnobPulse: 2000,
+  /** Control `@keyframes ctlRing` — el anillo del score se dibuja (stroke-dashoffset, 1.1s, one-shot). */
+  scoreRingDraw: 1100,
+  /** Control `@keyframes ctlGrowX/Y` — barras que crecen desde su origen (.6–.8s cubic-bezier(0.22,0.9,0.3,1) = motionEasings.standard). Los tres pasos del markup. */
+  growBarFast: 600,
+  growBar: 700,
+  growBarSlow: 800,
 } as const
 
 export type DecorativeDurationKey = keyof typeof decorativeDurations

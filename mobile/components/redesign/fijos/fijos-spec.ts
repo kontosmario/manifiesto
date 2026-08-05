@@ -34,7 +34,11 @@
  *      (= dayExcesoBackground de gastos-spec, = neoCalendar.dark.excess).
  *      El ticker del teléfono oscuro dibuja 0.26 (confirmado 2 veces). Se
  *      transcribió 0.26.
- *  [D] `heroGradientCss`: el README lo describe como "idéntico al resto
+ *  [D] `heroGradientCss`: RESUELTO 2026-08-04 — el owner pidió unificar
+ *      el hero de Fijos/Control con el de Home/Gastos, así que acá ya va
+ *      el "Home forest" (`home-spec.heroGradientCss`) y NO el del markup
+ *      de Fijos. Lo que sigue describe la discrepancia original:
+ *      el README lo describe como "idéntico al resto
  *      del sistema", pero NO coincide con el forest de Home/Gastos
  *      (`#244235→#1F590D→#297811`, ambos temas). El markup de Fijos dibuja
  *      su propio forest, más claro/saturado: `#2E6B33→#3F8746→#57A05C`
@@ -371,7 +375,7 @@ const INS_SOFT_D = 'inset 3px 3px 6px rgba(0,0,0,0.45), inset -3px -3px 6px rgba
 
 export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     cardGradientCss: undefined,
     cardBackground: '#E9EBE0',
     text: '#24382A',
@@ -397,7 +401,7 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     cycTrigDot: '#2E7C39',
     cycTrigDotGlow: 'rgba(120,220,130,0.7)',
 
-    heroGradientCss: 'linear-gradient(155deg, #2E6B33 0%, #3F8746 55%, #57A05C 100%)',
+    heroGradientCss: 'linear-gradient(155deg, #244235 0%, #1F590D 33%, #297811 67%, #297811 100%)',
     heroShadow: '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)',
     heroDot: '#C9F3C6',
     heroDotGlow: 'rgba(201,243,198,0.7)',
@@ -527,7 +531,7 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     homeIndicatorOpacity: 0.75,
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     cardGradientCss: 'linear-gradient(145deg, #1D3426, #132318)',
     cardBackground: '#1A2D21',
     text: '#F1EEDD',
@@ -554,7 +558,7 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     cycTrigDotGlow: 'rgba(120,220,130,0.7)',
 
     // [D] mismo forest propio de Fijos que en claro (theme-invariant).
-    heroGradientCss: 'linear-gradient(155deg, #2E6B33 0%, #3F8746 55%, #57A05C 100%)',
+    heroGradientCss: 'linear-gradient(155deg, #244235 0%, #1F590D 33%, #297811 67%, #297811 100%)',
     heroShadow: '14px 14px 30px rgba(0,0,0,0.5), -6px -6px 16px rgba(101,152,113,0.14), inset 0 1px 0 rgba(164,227,166,0.18)',
     heroDot: '#C9F3C6',
     heroDotGlow: 'rgba(201,243,198,0.7)',

@@ -94,6 +94,21 @@ export interface CreateExpenseInput {
    * the DB default `now()` applies — normal flow.
    */
   createdAt?: string | null
+  /**
+   * Suprime el toast de "Reintentar" del `onError` de `useCreateExpense`.
+   *
+   * Ese toast reintenta por un camino PROPIO (`ref.current.mutate(input)`) que
+   * no pasa por el guard de doble submit de quien llamó ni cierra su pantalla.
+   * En el wizard de alta eso permitía: falla por red → el usuario reintenta
+   * desde el toast (se guarda, se manda el push) → la hoja sigue abierta en el
+   * paso 2 diciendo que falló → toca "Confirmar" → DOS gastos con el mismo
+   * monto y la misma descripción. Los flujos que manejan el error con su
+   * propio reintento (el CTA del paso 2) pasan `true`.
+   *
+   * Espejo de `CreateIncomeEventInput.skipRetryToast` — el mismo agujero se
+   * cerró primero en el alta de ingreso.
+   */
+  skipRetryToast?: boolean
 }
 
 export interface UpdateExpenseInput {

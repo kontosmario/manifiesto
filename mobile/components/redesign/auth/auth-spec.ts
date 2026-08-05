@@ -121,7 +121,7 @@ export interface AuthSpec {
 
 export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     welcomeBg: '#E9EBE0',
     text: '#24382A',
     helper: '#6C7B67',
@@ -194,7 +194,7 @@ export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
     fernPalette: 'dark',
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     welcomeBg: '#0F1E14',
     text: '#F1EEDD',
     helper: '#93A78F',

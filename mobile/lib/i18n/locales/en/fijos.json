@@ -220,8 +220,7 @@
       "installmentSummary": "{{count}} installments of {{amount}} · Total {{total}}",
       "howManyInstallments": "HOW MANY INSTALLMENTS?",
       "installmentsA11y": "{{count}} installments",
-      "nameEditHint": "edit",
-      "categorySuggested": "suggested by name"
+      "nameEditHint": "edit"
     },
     "step2": {
       "noCategory": "No category",

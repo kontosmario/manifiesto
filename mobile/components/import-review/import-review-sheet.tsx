@@ -10,7 +10,9 @@ import Animated, {
   FadeOutUp,
 } from 'react-native-reanimated'
 import { ModalCard } from '@/components/ui/modal-card'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { useCategories } from '@/features/categories/use-categories'
 import { toast } from '@/lib/toast-bus'
 import { confetti } from '@/lib/confetti-bus'
@@ -66,7 +68,8 @@ export function ImportReviewSheet({
   onClose,
   previewMode = false,
 }: Props) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const controller = useImportReviewController(initialState ?? undefined)
   const categoriesQuery = useCategories(familyId, 'expense')
@@ -350,8 +353,12 @@ export function ImportReviewSheet({
       />
     ) : undefined
 
+  // La carcasa ya es la del rediseño; las piezas del wizard
+  // (`import-review-header/-step-indicator/-row/-summary/-footer/-empty`)
+  // todavía están en V1 y viajan en su propia tanda de migración.
   return (
     <ModalCard
+      skin="neo"
       visible={visible}
       onClose={busy ? () => {} : onClose}
       title=""
@@ -422,7 +429,7 @@ export function ImportReviewSheet({
           </View>
 
           {controller.state.unmatched > 0 && !isSummary ? (
-            <Text style={[styles.unmatched, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.unmatched, { color: neo.textMuted }]}>
               {t('gastos:import.unmatched', { count: controller.state.unmatched })}
             </Text>
           ) : null}
@@ -435,9 +442,12 @@ export function ImportReviewSheet({
 const styles = StyleSheet.create({
   wrapper: { gap: 8, paddingBottom: 4 },
   stepHost: { marginTop: 0 },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 700 se renderiza como regular.
   unmatched: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     marginTop: 6,
   },

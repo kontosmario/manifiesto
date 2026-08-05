@@ -39,6 +39,17 @@ export interface CreateIncomeEventInput {
    *  push consolidado al cerrar el wizard (anti-spam) en vez de uno por
    *  ingreso. El feed in-app (trigger DB) no se ve afectado. */
   skipPush?: boolean
+  /**
+   * Suprime el toast de "Reintentar" del `onError`.
+   *
+   * Ese toast reintenta por un camino PROPIO (`ref.current.mutate(input)`) que
+   * no pasa por el guard de doble submit de quien llamó ni cierra su pantalla.
+   * En el wizard de alta eso permitía: falla por red → el usuario reintenta
+   * desde el toast (se guarda, se manda el push) → la hoja sigue abierta sin
+   * ninguna señal → toca "Confirmar" → DOS filas y DOS pushes. Los flujos que
+   * manejan el error con su propio reintento pasan `true`.
+   */
+  skipRetryToast?: boolean
 }
 
 const ROW_COLUMNS =
@@ -216,6 +227,7 @@ export function useCreateIncomeEvent(userId?: string) {
           ctx.previous,
         )
       }
+      if (input.skipRetryToast) return
       toast.error(i18n.t('gastos:income.errors.saveFailed'), {
         actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),

@@ -163,14 +163,6 @@ export function Step1Form(props: Step1FormProps) {
       <Stagger neo={neo != null} delay={160}>
       <CategoryHorizontalRail
         categories={categories}
-        // El handoff muestra la píldora sólo cuando la categoría se dedujo
-        // del nombre; acá se muestra cuando hay nombre escrito y todavía no
-        // se eligió a mano, que es el mismo momento.
-        hint={
-          name.trim().length > 0 && categoryId == null
-            ? t('fijos:wizard.step1.categorySuggested')
-            : undefined
-        }
         selectedCategoryId={categoryId ?? ''}
         onSelect={onSelectCategory}
         rows={2}

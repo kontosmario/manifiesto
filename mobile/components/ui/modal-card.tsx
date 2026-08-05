@@ -37,8 +37,10 @@ import {
   publishModalOpen,
 } from '@/lib/modal-visibility'
 import { useNumpadOffset } from '@/lib/numpad-visibility'
+import { withAlpha } from '@/theme/color-utils'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface ModalCardProps extends PropsWithChildren {
@@ -68,10 +70,38 @@ interface ModalCardProps extends PropsWithChildren {
    * body is. When omitted, the sheet is body-only (backward compatible).
    */
   footer?: ReactNode
+  /**
+   * Piel visual de la hoja. `'classic'` (default) mantiene el material
+   * V1 — superficie plana + hairline + radio 24 — para los ~15 sheets
+   * de Ajustes, Suscripción, Auth y Logros que todavía no pasaron por
+   * el gate de aprobación del rediseño.
+   *
+   * `'neo'` transcribe la carcasa del handoff (`screens/3c.html` L31-33
+   * claro / L87-89 oscuro): hoja `neo.sheet` con las esquinas
+   * superiores en `neoRadii.sheet`, sombra HACIA ARRIBA
+   * (`neo.shadows.sheet`), sin borde, píldora de arrastre 44×5 en
+   * `neo.sheetHandle` y scrim del tema en vez del `overlay` V1.
+   *
+   * Es opt-in y no un swap global a propósito: `ModalCard` la montan 34
+   * archivos y sólo 13 viven dentro de las 4 vistas rediseñadas. Pasar
+   * el default a neo restilaría Ajustes y Suscripción sin que el owner
+   * las haya aprobado.
+   */
+  skin?: 'classic' | 'neo'
 }
 
 const DISMISS_DISTANCE = 120
 const DISMISS_VELOCITY = 800
+
+/**
+ * El handoff dibuja el scrim como un sólido (`#B9BEAC` claro /
+ * `#0A130D` oscuro) porque en la maqueta el fondo ya viene lavado y
+ * desenfocado detrás de la hoja. En el dispositivo hay una pantalla
+ * real atrás, así que el sólido a opacidad plena la borraría: se aplica
+ * el MISMO tono con alfa, que es lo que produce ese lavado. Misma
+ * decisión (y rango) que el scrim de los tours: 0.78-0.85.
+ */
+const NEO_SCRIM_ALPHA = 0.84
 
 /**
  * Bottom-sheet modal that mirrors the `InAppNumpad` skeleton for visual
@@ -92,9 +122,12 @@ export function ModalCard({
   onClose,
   inline = false,
   footer,
+  skin = 'classic',
   children,
 }: ModalCardProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+  const isNeo = skin === 'neo'
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
@@ -270,7 +303,14 @@ export function ModalCard({
           accessibilityLabel={t('common:actions.close')}
           accessibilityRole="button"
           onPress={handleDismiss}
-          style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
+          style={[
+            styles.backdrop,
+            {
+              backgroundColor: isNeo
+                ? withAlpha(neo.scrim, NEO_SCRIM_ALPHA)
+                : theme.colors.overlay,
+            },
+          ]}
         />
       </Animated.View>
 
@@ -281,28 +321,58 @@ export function ModalCard({
           style={[
             styles.sheet,
             sheetAnimatedStyle,
+            isNeo
+              ? {
+                  backgroundColor: neo.sheet,
+                  borderTopLeftRadius: neoRadii.sheet,
+                  borderTopRightRadius: neoRadii.sheet,
+                  // El neumorfismo separa superficies con sombra, nunca
+                  // con hairline: el borde V1 se anula explícitamente
+                  // porque `styles.sheet` lo trae en la base.
+                  borderTopWidth: 0,
+                  boxShadow: neo.shadows.sheet,
+                }
+              : {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
             {
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.border,
               paddingBottom: bottomInset,
               maxHeight: screenHeight * 0.92,
             },
           ]}
         >
-          <View style={styles.handleArea}>
+          <View style={isNeo ? styles.neoHandleArea : styles.handleArea}>
             <View
-              style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]}
+              style={[
+                isNeo ? styles.neoHandle : styles.handle,
+                {
+                  backgroundColor: isNeo
+                    ? neo.sheetHandle
+                    : theme.colors.borderStrong,
+                },
+              ]}
             />
           </View>
           {title !== '' || subtitle !== '' ? (
-            <View style={styles.headerBlock}>
+            <View style={isNeo ? styles.neoHeaderBlock : styles.headerBlock}>
               {title !== '' ? (
-                <Text style={[styles.title, { color: theme.colors.text }]}>
+                <Text
+                  style={[
+                    isNeo ? styles.neoTitle : styles.title,
+                    { color: isNeo ? neo.text : theme.colors.text },
+                  ]}
+                >
                   {title}
                 </Text>
               ) : null}
               {subtitle !== '' ? (
-                <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+                <Text
+                  style={[
+                    isNeo ? styles.neoSubtitle : styles.subtitle,
+                    { color: isNeo ? neo.textMuted : theme.colors.textMuted },
+                  ]}
+                >
                   {subtitle}
                 </Text>
               ) : null}
@@ -310,7 +380,7 @@ export function ModalCard({
           ) : null}
           <ScrollView
             style={styles.scroll}
-            contentContainerStyle={styles.content}
+            contentContainerStyle={isNeo ? styles.neoContent : styles.content}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -320,8 +390,8 @@ export function ModalCard({
           {footer ? (
             <View
               style={[
-                styles.footerBlock,
-                { borderTopColor: theme.colors.line },
+                isNeo ? styles.neoFooterBlock : styles.footerBlock,
+                isNeo ? null : { borderTopColor: theme.colors.line },
               ]}
             >
               {footer}
@@ -418,5 +488,51 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+
+  // ─── Piel neo (valores literales de `screens/3c.html`) ─────────────
+  // El padding de la hoja del handoff es `12px 22px 10px`. Acá se
+  // reparte: el 12 de arriba vive en `neoHandleArea`, el 22 lateral en
+  // cada bloque y el 10 de abajo lo absorbe `bottomInset`, que ya suma
+  // safe-area / teclado / numpad.
+  neoHandleArea: {
+    paddingTop: 12,
+    paddingBottom: 0,
+    alignItems: 'center',
+  },
+  neoHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+  },
+  neoHeaderBlock: {
+    paddingHorizontal: 22,
+    paddingTop: 14,
+    paddingBottom: 4,
+    gap: 4,
+  },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 900 se renderiza como regular.
+  neoTitle: {
+    fontSize: 27,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.4,
+  },
+  neoSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 19,
+  },
+  neoContent: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    paddingBottom: 16,
+    gap: 14,
+  },
+  neoFooterBlock: {
+    paddingHorizontal: 22,
+    paddingTop: 12,
   },
 })

@@ -17,6 +17,12 @@ import { useAppTheme } from '@/theme/theme-provider'
 interface ControlV2AnchorProps extends PropsWithChildren {
   section: ControlSectionAnchor
   style?: ViewStyle
+  /** false = solo el pulso, sin registrar offset. El y de onLayout es
+   *  RELATIVO AL PADRE: anidado dentro de un TourTarget mide ~0 y
+   *  rompería el scroll-to-section — la pantalla neo registra el offset
+   *  en su wrapper de sección (hijo directo del stack) y apaga este
+   *  registro. Default true = comportamiento histórico. */
+  register?: boolean
 }
 
 /**
@@ -33,6 +39,7 @@ export function ControlV2Anchor({
   section,
   style,
   children,
+  register = true,
 }: ControlV2AnchorProps) {
   const { registerOffset, pulsingSection } = useControlAnchors()
   const { theme } = useAppTheme()
@@ -70,7 +77,7 @@ export function ControlV2Anchor({
     // `y` here is relative to the parent — the screen passes down a
     // ScrollView whose root View shares coords, so this is the offset
     // the ScrollView can seek to.
-    registerOffset(section, event.nativeEvent.layout.y)
+    if (register) registerOffset(section, event.nativeEvent.layout.y)
   }
 
   // Pulse glow theme-aware. Antes hardcoded `#A6EF8F` (lime) — en dark

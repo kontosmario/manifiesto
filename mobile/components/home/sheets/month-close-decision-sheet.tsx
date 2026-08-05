@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ComponentProps } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { useAppTheme } from '@/theme/theme-provider'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { triggerHaptic } from '@/lib/haptics'
 import { formatMoney } from '@/utils/money'
 import type {
@@ -38,7 +42,8 @@ export function MonthCloseDecisionSheet({
   onClose,
   isApplying,
 }: Props) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const [selected, setSelected] = useState<OptionId | null>(null)
 
@@ -83,6 +88,7 @@ export function MonthCloseDecisionSheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={subtitle}
       title={t('home:monthClose.title', { amount: formatMoney(pending.sobrante) })}
@@ -104,7 +110,6 @@ export function MonthCloseDecisionSheet({
           selected={selected === 'meta'}
           disabled={!activeGoal}
           onPress={() => activeGoal && handlePickOption('meta')}
-          accent={theme.colors.primary}
         />
         <OptionCard
           icon="trending-up"
@@ -112,7 +117,6 @@ export function MonthCloseDecisionSheet({
           subtitle={t('home:monthClose.accumulateSubtitle')}
           selected={selected === 'acumular'}
           onPress={() => handlePickOption('acumular')}
-          accent={theme.colors.primary}
         />
         <OptionCard
           icon="savings"
@@ -120,12 +124,17 @@ export function MonthCloseDecisionSheet({
           subtitle={t('home:monthClose.reserveSubtitle')}
           selected={selected === 'reserva'}
           onPress={() => handlePickOption('reserva')}
-          accent={theme.colors.primary}
         />
-        <AppButton
+        {/* `NeoButton` dispara el háptico 'selection' antes de `onPress`,
+            igual que hacía el `AppButton` primario. `style` sólo conserva
+            la altura de 52px del botón V1 (el neo mide por padding). */}
+        <NeoButton
+          variant="primary"
+          block
+          style={styles.confirmBtn}
           label={t('home:monthClose.confirm')}
           disabled={!canConfirm}
-          loading={isApplying}
+          busy={isApplying}
           onPress={() => void handleConfirm()}
         />
         <Pressable
@@ -133,7 +142,7 @@ export function MonthCloseDecisionSheet({
           accessibilityRole="button"
           style={({ pressed }) => [styles.skipBtn, pressed && { opacity: 0.5 }]}
         >
-          <Text style={[styles.skipText, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.skipText, { color: neo.textMuted }]}>
             {t('home:monthClose.decideLater')}
           </Text>
         </Pressable>
@@ -142,6 +151,18 @@ export function MonthCloseDecisionSheet({
   )
 }
 
+/**
+ * Opción del cierre de mes. En neo el estado seleccionado NO es un borde de
+ * acento: es relieve — `ringSelected` (inset + anillo verde 2.5px) sobre el
+ * tinte canónico `selectedTint`, contra el material `raisedMd` de las no
+ * seleccionadas. El `accent` que recibía por prop desapareció: las tres
+ * opciones usaban el MISMO color, y en el rediseño ese color es el verde de
+ * acción del sistema (`neo.green`), que el componente ya resuelve solo.
+ *
+ * El `Pressable` queda por FUERA de la superficie a propósito: la opacidad de
+ * press/disabled tiene que atenuar también el relieve de la card, y un
+ * `opacity` aplicado al hijo dejaría el fondo y la sombra a pleno.
+ */
 function OptionCard({
   icon,
   title,
@@ -149,7 +170,6 @@ function OptionCard({
   selected,
   disabled = false,
   onPress,
-  accent,
 }: {
   icon: ComponentProps<typeof MaterialIcons>['name']
   title: string
@@ -157,71 +177,112 @@ function OptionCard({
   selected: boolean
   disabled?: boolean
   onPress: () => void
-  accent: string
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+
+  // Android < API 28/29 descarta el `boxShadow` EN SILENCIO. Sin él la card
+  // pierde el anillo que marca la selección y el pozo del ícono queda en
+  // `neo.well` sobre el gradiente raised (~1.05:1, invisible). En ese piso
+  // ambos caen a un contorno: verde en la opción elegida, divisor en el resto.
+  // (El radio de la derecha ya da la señal redundante de selección.)
+  const cardFallback = useMemo<ViewStyle | null>(
+    () =>
+      SUPPORTS_INSET_SHADOW
+        ? null
+        : { borderWidth: 1.5, borderColor: selected ? neo.green : neo.sheetDivider },
+    [neo, selected],
+  )
+  const wellFallback = useMemo<ViewStyle | null>(
+    () =>
+      SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: neo.sheetDivider },
+    [neo],
+  )
+
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityState={{ selected, disabled }}
-      style={({ pressed }) => [
-        styles.option,
-        {
-          borderColor: selected ? accent : theme.colors.line,
-          backgroundColor: selected ? `${accent}1A` : theme.colors.creamSoft,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
-        },
-      ]}
+      style={({ pressed }) => ({
+        opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+      })}
     >
-      <View
-        style={[
-          styles.optionIcon,
-          { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-        ]}
+      <NeoSurface
+        variant={selected ? 'ringSelected' : 'raisedMd'}
+        radius={neoRadii.tile}
+        // Sin `backgroundColor` la variante `raisedMd` pinta el gradiente
+        // 145deg del tema; la seleccionada lleva el tinte del sistema.
+        backgroundColor={selected ? neo.selectedTint : undefined}
+        style={[styles.option, cardFallback]}
       >
-        <MaterialIcons name={icon} size={20} color={accent} />
-      </View>
-      <View style={styles.optionText}>
-        <Text style={[styles.optionTitle, { color: theme.colors.text }]}>{title}</Text>
-        <Text
-          style={[styles.optionSubtitle, { color: theme.colors.textMuted }]}
-          numberOfLines={2}
+        <NeoSurface
+          variant="insetSm"
+          radius={neoRadii.chip}
+          backgroundColor={neo.well}
+          style={[styles.optionIcon, wellFallback]}
         >
-          {subtitle}
-        </Text>
-      </View>
-      <MaterialIcons
-        name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
-        size={20}
-        color={selected ? accent : theme.colors.textMuted}
-      />
+          <MaterialIcons name={icon} size={20} color={neo.green} />
+        </NeoSurface>
+        <View style={styles.optionText}>
+          <Text style={[styles.optionTitle, { color: neo.text }]}>{title}</Text>
+          <Text
+            style={[styles.optionSubtitle, { color: neo.textMuted }]}
+            numberOfLines={2}
+          >
+            {subtitle}
+          </Text>
+        </View>
+        {/* El radio apagado se queda en `textMuted` y NO baja a
+            `textTertiary`: es un control, no texto decorativo, y en el tema
+            claro el terciario (#9AA694) sobre el material raised da 2.25:1
+            — por debajo del 3:1 que WCAG pide para componentes de UI.
+            `textMuted` da 3.98:1 en claro y 5.2:1 en oscuro. */}
+        <MaterialIcons
+          name={selected ? 'radio-button-checked' : 'radio-button-unchecked'}
+          size={20}
+          color={selected ? neo.green : neo.textMuted}
+        />
+      </NeoSurface>
     </Pressable>
   )
 }
 
+// El `fontFamily` viaja SIEMPRE con el peso: cada peso de Nunito es un face
+// estático propio, así que un `fontWeight` suelto no cambia la face.
 const styles = StyleSheet.create({
   stack: { gap: 12 },
+  // Radio y relieve los pone `NeoSurface`; acá queda sólo la caja.
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
     gap: 12,
   },
   optionIcon: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   optionText: { flex: 1 },
-  optionTitle: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
-  optionSubtitle: { fontSize: 12 },
+  optionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    marginBottom: 2,
+  },
+  optionSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+  },
+  confirmBtn: { height: 52, paddingVertical: 0 },
   skipBtn: { alignSelf: 'center', padding: 8 },
-  skipText: { fontSize: 13, fontWeight: '600' },
+  skipText: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+  },
 })

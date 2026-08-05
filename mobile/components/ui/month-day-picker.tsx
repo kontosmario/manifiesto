@@ -1,10 +1,12 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
-import { withAlpha } from '@/theme/color-utils'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoCalendar, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface MonthDayPickerProps {
   /** Currently selected day (1..31). */
@@ -12,9 +14,12 @@ interface MonthDayPickerProps {
   /** Called with the new day when the user taps a cell. */
   onChange: (day: number) => void
   /**
-   * Optional accent color for the selected cell. Defaults to the
-   * theme primary; pass a category color to keep visual continuity
-   * with surfaces like add-fijo.
+   * Optional accent color for the selected cell. Defaults to the redesign
+   * green (`neo.green`); pass a color FROM THE NEO PALETTE (p. ej. un tono
+   * de categoría del rediseño) para mantener continuidad visual. La tinta
+   * del número la resuelve `neoCalendar[mode].today.text`, que está
+   * verificada contra el verde del sistema en ambos temas — un accent
+   * arbitrario fuera de paleta puede romper ese contraste.
    */
   accent?: string
   /** Footer copy slot — pass a custom string to override the default. */
@@ -33,6 +38,10 @@ interface MonthDayPickerProps {
  * header from the fixed-expense preview is intentionally omitted:
  * "día 12 de cada mes" has no weekday semantic, so showing L/M/M/J/V/S/D
  * would be misleading.
+ *
+ * Rediseño 2026-07: la card es una superficie `raisedLg` sin borde y cada
+ * día es un POZO (`neo.well` + `insetSm`); el elegido SALE del pozo con
+ * `raisedSm` y el par de tinta de `neoCalendar[mode].today`.
  */
 export function MonthDayPicker({
   value,
@@ -41,15 +50,16 @@ export function MonthDayPicker({
   footer,
   disabled = false,
 }: MonthDayPickerProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const cal = neoCalendar[theme.mode]
   const { t } = useTranslation()
-  const accentColor = accent ?? theme.colors.primary
-  // Selected-cell number color flips with theme: in light mode the
-  // accent gradient is `brand.deep` (very dark green) so the number
-  // needs to be light to read. In dark mode the gradient is
-  // `brand.bright` (luminous green) so the number stays near-black.
-  // Same pattern fijos-header uses for its add button glyph.
-  const selectedNumColor = theme.isDark ? '#0A1410' : '#F6FBEF'
+  const accentColor = accent ?? neo.green
+  // La tinta del día elegido se invierte con el tema igual que el fill:
+  // en claro el verde es profundo (#2E7C39) y el número va crema; en
+  // oscuro el verde es luminoso (#A4E3A6) y el número va casi negro.
+  // Ese par ya viene resuelto —y verificado— en `neoCalendar.today`.
+  const selectedNumColor = cal.today.text
   const safeValue = Math.min(31, Math.max(1, Math.floor(value)))
 
   const handlePick = (day: number) => {
@@ -59,12 +69,7 @@ export function MonthDayPicker({
   }
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-      ]}
-    >
+    <NeoSurface variant="raisedLg" radius={neoRadii.card} style={styles.card}>
       <View style={styles.grid}>
         {Array.from({ length: 31 }).map((_, idx) => {
           const day = idx + 1
@@ -83,20 +88,15 @@ export function MonthDayPicker({
               >
                 <Animated.View
                   entering={FadeIn.duration(220)}
-                  style={[styles.cellInner, styles.cellSelected]}
+                  style={[
+                    styles.cellInner,
+                    styles.cellSelected,
+                    {
+                      backgroundColor: accentColor,
+                      boxShadow: neo.shadows.raisedSm,
+                    },
+                  ]}
                 >
-                  <LinearGradient
-                    colors={[accentColor, withAlpha(accentColor, 0.85)] as unknown as readonly [string, string, ...string[]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      StyleSheet.absoluteFill,
-                      {
-                        borderRadius: 8,
-                        boxShadow: `0px 6px 12px -4px ${withAlpha(accentColor, 0.5)}`,
-                      } as unknown as object,
-                    ]}
-                  />
                   <Text style={[styles.cellNumSelected, { color: selectedNumColor }]}>
                     {day}
                   </Text>
@@ -121,37 +121,41 @@ export function MonthDayPicker({
               <View
                 style={[
                   styles.cellInner,
-                  { backgroundColor: theme.colors.creamSoft },
+                  {
+                    backgroundColor: neo.well,
+                    boxShadow: neo.shadows.insetSm,
+                    // El pozo y la card comparten familia de tono: sin el
+                    // relieve inset (Android < 29) las 31 celdas se
+                    // aplanarían contra la card y no habría dónde tocar.
+                    borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+                    borderColor: neo.sheetDivider,
+                  },
                 ]}
               >
-                <Text style={[styles.cellNum, { color: theme.colors.textMuted }]}>
-                  {day}
-                </Text>
+                <Text style={[styles.cellNum, { color: neo.text }]}>{day}</Text>
               </View>
             </Pressable>
           )
         })}
       </View>
-      <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.footer, { color: neo.textMuted }]}>
         {footer ?? (
           <>
             {t('states:monthDayPicker.footerPrefix')}
-            <Text style={{ color: theme.colors.text, fontWeight: '800' }}>
+            <Text style={[styles.footerStrong, { color: neo.text }]}>
               {t('states:monthDayPicker.footerDay', { day: safeValue })}
             </Text>
             {t('states:monthDayPicker.footerSuffix')}
           </>
         )}
       </Text>
-    </View>
+    </NeoSurface>
   )
 }
 
 const styles = StyleSheet.create({
   card: {
     padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
   },
   grid: {
     flexDirection: 'row',
@@ -171,27 +175,35 @@ const styles = StyleSheet.create({
   },
   cellInner: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: neoRadii.calendarCell,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  // `visible` para que el relieve `raisedSm` del día elegido no se recorte.
   cellSelected: {
     overflow: 'visible',
   },
   cellNum: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   cellNumSelected: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     // color is set inline based on theme — see selectedNumColor.
   },
   footer: {
     marginTop: 12,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
+  },
+  footerStrong: {
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

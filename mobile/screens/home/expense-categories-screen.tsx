@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { BrandedPanel } from '@/components/ui/branded-panel'
-import { EmptyState } from '@/components/ui/empty-state'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { Screen } from '@/components/ui/screen'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { CategoryEditorModal } from '@/components/settings/category-editor-modal'
 import {
   type Category,
@@ -23,22 +22,54 @@ import {
 import { useExpenseHistoryFilters } from '@/features/expenses/expense-history-filters.store'
 import { useExpenses } from '@/features/expenses/use-expenses'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { neoConfirm } from '@/lib/confirm-bus'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
-import { buildScreenHeaderPalette } from '@/theme/screen-header'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
-import { withAlpha } from '@/theme/color-utils'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import {
+  neoCategoryPastels,
+  neoRadii,
+  neoTokens,
+  pastelDarkSolid,
+} from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface ExpenseCategoriesScreenProps {
   familyId: string
 }
 
+const PASTELS = Object.values(neoCategoryPastels)
+
+/**
+ * Pastel de categoría DETERMINISTA. El catálogo no expone un slug que
+ * mapee 1:1 contra las 12 claves de `neoCategoryPastels`, así que el
+ * puente es un hash estable del nombre CRUDO: la misma categoría cae
+ * siempre en el mismo pastel y `category.color` (colores saturados del
+ * catálogo V1, que el owner rechaza) deja de pintarse.
+ */
+function categoryPastel(seed: string): string {
+  let hash = 0
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) | 0
+  }
+  return PASTELS[Math.abs(hash) % PASTELS.length]
+}
+
 export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenProps) {
   const { t } = useTranslation()
-  const { theme } = useAppTheme()
-  const headerPalette = buildScreenHeaderPalette(theme)
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const isDark = theme.mode === 'dark'
+  // `neo.green` es el verde de MATERIAL. Como TINTA a 11-15pt sobre el pozo
+  // claro da 4.29:1 y sobre el tile seleccionado 3.97:1 — los dos bajo AA;
+  // `greenDeep` ahí da 7.4:1 / 6.8:1. En oscuro el verde claro ya cumple y
+  // `greenDeep` sería ilegible, así que la tinta es mode-aware.
+  const accentInk = isDark ? neo.green : neo.greenDeep
+  // Alerta blanda: `neo.warm` (#C96F3F) sobre el pozo claro da 2.99:1 a 12pt.
+  // Se usa el rojo-tierra de exceso del propio rediseño (4.72:1).
+  const warnInk = isDark ? neo.warm : '#A84A2F'
   const categoriesQuery = useCategories(familyId)
   const expensesQuery = useExpenses(familyId)
   // userId via sesión activa — habilita la invalidación de home_snapshot
@@ -92,141 +123,179 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
     renameCategoryMutation.isPending ||
     deleteCategoryMutation.isPending
 
+  // Android < API 28/29 descarta el `boxShadow` EN SILENCIO. Sin él el tile
+  // de categoría pierde el anillo que marca la selección y los sub-relieves
+  // quedan del mismo material que la card. Contorno de 1px como piso.
+  const flatFallback = useMemo<ViewStyle | null>(
+    () => (SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: neo.sheetDivider }),
+    [neo],
+  )
+
+  // El `Alert.alert` de UN botón es el toast del rediseño (host global, que
+  // sobrevive al unmount de la pantalla igual que sobrevivía el diálogo del
+  // sistema).
   const showError = (error: unknown, fallbackMessage: string) => {
-    Alert.alert(t('gastos:errors.somethingWrong'), getErrorMessage(error, fallbackMessage))
+    toast.error(getErrorMessage(error, fallbackMessage))
   }
 
   return (
     <>
       <Screen
+        backgroundColor={neo.bg}
         canGoBack
         contentContainerStyle={styles.screenContent}
+        // `expense-categories` se registra con `presentation: 'modal'`
+        // (`app-stack-shell.tsx`): en iOS es una hoja que arranca debajo de la
+        // isla, así que el inset superior del DISPOSITIVO no le corresponde.
+        // En Android la ruta es `card` y el flag se ignora. Ver el docblock de
+        // `presentedAsSheet`.
+        presentedAsSheet
         subtitle={t('gastos:categoriesScreen.subtitle')}
         title={t('gastos:categoriesScreen.title')}
-        titleColor={headerPalette.titleColor}
+        titleColor={neo.text}
       >
         <View style={styles.sectionStack}>
-          {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
-
           {categoriesQuery.isError && categories.length === 0 ? (
-            <ErrorState
+            <NeoStateBlock
+              actionLabel={t('states:errorState.action')}
               description={getErrorMessage(
                 categoriesQuery.error,
                 t('gastos:categoriesScreen.loadErrorDescription'),
               )}
-              title={t('gastos:categoriesScreen.loadErrorTitle')}
+              icon="error-outline"
               onAction={() => {
                 void Promise.all([categoriesQuery.refetch(), expensesQuery.refetch()])
               }}
+              title={t('gastos:categoriesScreen.loadErrorTitle')}
+              tone="error"
             />
           ) : (
             <>
-              <BrandedPanel style={styles.formCard}>
+              <NeoSurface radius={neoRadii.card} style={styles.formCard} variant="raisedLg">
                 <View style={styles.sectionIntro}>
-                  <Text style={[styles.sectionEyebrow, { color: theme.colors.primaryStrong }]}>
+                  <Text style={[styles.sectionEyebrow, { color: accentInk }]}>
                     {t('gastos:categoriesScreen.catalogEyebrow')}
                   </Text>
-                  <Text style={[styles.sectionTitle, theme.typography.sectionTitle, { color: theme.colors.text }]}>
+                  <Text style={[styles.sectionTitle, { color: neo.text }]}>
                     {t('gastos:categoriesScreen.catalogTitle')}
                   </Text>
                 </View>
 
-                <View
-                  style={[
-                    styles.selectionSummary,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
+                <NeoSurface
+                  backgroundColor={neo.well}
+                  radius={neoRadii.tile}
+                  style={[styles.selectionSummary, flatFallback]}
+                  variant="insetMd"
                 >
-                  <Text style={[styles.selectionLabel, { color: theme.colors.primaryStrong }]}>
+                  <Text style={[styles.selectionLabel, { color: accentInk }]}>
                     {t('gastos:categoriesScreen.selectedLabel')}
                   </Text>
-                  <Text style={[styles.selectionValue, { color: theme.colors.text }]}>
+                  <Text style={[styles.selectionValue, { color: neo.text }]}>
                     {managedCategory?.displayName ?? t('gastos:categoriesScreen.pickToManage')}
                   </Text>
-                  <Text style={[styles.selectionMeta, theme.typography.bodySmall, { color: theme.colors.textMuted }]}>
+                  <Text style={[styles.selectionMeta, { color: neo.textMuted }]}>
                     {managedCategory
                       ? `${t('gastos:categoriesScreen.associatedExpenses', { count: selectedCount })}${selectedCategoryId === managedCategory.id ? t('gastos:categoriesScreen.usedInFilterSuffix') : ''}`
                       : t('gastos:categoriesScreen.tapRowHint')}
                   </Text>
                   {managedCategory && selectedCount > 0 ? (
-                    <Text style={[styles.selectionWarning, { color: theme.colors.warning }]}>
+                    <Text style={[styles.selectionWarning, { color: warnInk }]}>
                       {t('gastos:categoriesScreen.cannotDeleteWarning')}
                     </Text>
                   ) : null}
-                </View>
+                </NeoSurface>
 
                 {categories.length === 0 ? (
-                  <EmptyState icon="category" stateKey="categories" />
+                  <NeoStateBlock
+                    description={t('states:empty.categories.description')}
+                    icon="category"
+                    title={t('states:empty.categories.title')}
+                  />
                 ) : (
                   <View style={styles.categoryList}>
-                    {categories.map((category) => (
-                      <Pressable
-                        accessibilityLabel={t('gastos:categoriesScreen.manageCategoryA11y', { name: category.displayName })}
-                        accessibilityRole="button"
-                        android_ripple={{
-                          color: withAlpha(theme.colors.primary, 0.12),
-                          borderless: false,
-                        }}
-                        key={category.id}
-                        onPress={() => {
-                          void triggerHaptic('selection')
-                          setCategoryManagementSelection(category.id)
-                        }}
-                        style={({ pressed }) => [
-                          styles.categoryItem,
-                          {
-                            backgroundColor:
-                              managedCategory?.id === category.id
-                                ? theme.colors.primarySurface
-                                : theme.colors.surfaceMuted,
-                            borderColor:
-                              managedCategory?.id === category.id
-                                ? theme.colors.primary
-                                : theme.colors.border,
-                            opacity: pressed ? 0.92 : 1,
-                          },
-                        ]}
-                      >
-                        <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
-                        <View style={styles.categoryCopy}>
-                          <Text style={[styles.categoryName, { color: theme.colors.text }]}>
-                            {category.displayName}
-                          </Text>
-                          <Text style={[styles.categoryMeta, { color: theme.colors.textMuted }]}>
-                            {t('gastos:categoriesScreen.categoryMeta', {
-                              count: categoryExpenseCountById.get(category.id) ?? 0,
-                              date: new Date(category.created_at).toLocaleDateString(getIntlLocale()),
-                            })}
-                          </Text>
-                        </View>
-                        {selectedCategoryId === category.id ? (
-                          <Text style={[styles.categoryBadge, { color: theme.colors.primaryStrong }]}>
-                            {t('gastos:categoriesScreen.filterBadge')}
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    ))}
+                    {categories.map((category) => {
+                      const isManaged = managedCategory?.id === category.id
+                      const pastel = categoryPastel(category.name)
+                      return (
+                        <Pressable
+                          accessibilityLabel={t('gastos:categoriesScreen.manageCategoryA11y', { name: category.displayName })}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected: isManaged }}
+                          key={category.id}
+                          onPress={() => {
+                            void triggerHaptic('selection')
+                            setCategoryManagementSelection(category.id)
+                          }}
+                          // El `Pressable` queda por FUERA de la superficie a
+                          // propósito: la opacidad de press tiene que atenuar
+                          // también el relieve, y un `opacity` en el hijo
+                          // dejaría el fondo y la sombra a pleno.
+                          style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
+                        >
+                          <NeoSurface
+                            // En neo la selección NO es un borde de acento:
+                            // es relieve — pozo + anillo verde 2.5px sobre el
+                            // tinte del sistema, contra el tile extruido de
+                            // las no seleccionadas.
+                            backgroundColor={isManaged ? neo.selectedTint : undefined}
+                            radius={neoRadii.tile}
+                            style={[
+                              styles.categoryItem,
+                              SUPPORTS_INSET_SHADOW
+                                ? null
+                                : {
+                                    borderWidth: 1.5,
+                                    borderColor: isManaged ? neo.green : neo.sheetDivider,
+                                  },
+                            ]}
+                            variant={isManaged ? 'ringSelected' : 'raisedMd'}
+                          >
+                            <View
+                              style={[
+                                styles.categoryDot,
+                                { backgroundColor: isDark ? pastelDarkSolid(pastel) : pastel },
+                              ]}
+                            />
+                            <View style={styles.categoryCopy}>
+                              <Text style={[styles.categoryName, { color: neo.text }]}>
+                                {category.displayName}
+                              </Text>
+                              <Text style={[styles.categoryMeta, { color: neo.textMuted }]}>
+                                {t('gastos:categoriesScreen.categoryMeta', {
+                                  count: categoryExpenseCountById.get(category.id) ?? 0,
+                                  date: new Date(category.created_at).toLocaleDateString(getIntlLocale()),
+                                })}
+                              </Text>
+                            </View>
+                            {selectedCategoryId === category.id ? (
+                              <Text style={[styles.categoryBadge, { color: accentInk }]}>
+                                {t('gastos:categoriesScreen.filterBadge')}
+                              </Text>
+                            ) : null}
+                          </NeoSurface>
+                        </Pressable>
+                      )
+                    })}
                   </View>
                 )}
-              </BrandedPanel>
+              </NeoSurface>
 
               <View style={styles.actions}>
-                <AppButton
+                <NeoButton
+                  block
+                  busy={createCategoryMutation.isPending}
                   label={t('gastos:categoriesScreen.newCategory')}
-                  loading={createCategoryMutation.isPending}
                   onPress={() => {
                     setEditingCategory(null)
                     setCategoryEditorMode('create')
                   }}
-                  variant="secondary"
+                  variant="primary"
                 />
-                <AppButton
+                <NeoButton
+                  block
+                  busy={renameCategoryMutation.isPending}
                   disabled={!canRenameManagedCategory}
                   label={t('gastos:categoriesScreen.renameSelected')}
-                  loading={renameCategoryMutation.isPending}
                   onPress={() => {
                     if (!managedCategory || !canRenameManagedCategory) {
                       return
@@ -237,41 +306,46 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
                   }}
                   variant="ghost"
                 />
-                <AppButton
+                <NeoButton
+                  block
+                  busy={deleteCategoryMutation.isPending}
                   disabled={!canDeleteManagedCategory}
                   label={t('gastos:categoriesScreen.deleteSelected')}
-                  loading={deleteCategoryMutation.isPending}
                   onPress={() => {
                     if (!managedCategory || !canDeleteManagedCategory) {
                       return
                     }
 
-                    Alert.alert(
-                      t('gastos:categoriesScreen.deleteAlertTitle'),
-                      t('gastos:categoriesScreen.deleteAlertMessage', { name: managedCategory.name }),
-                      [
-                        { style: 'cancel', text: t('common:actions.cancel') },
+                    void (async () => {
+                      // Reemplazo del `Alert.alert` de dos botones: misma
+                      // salida segura (cancelar / scrim / back de Android
+                      // resuelven `false`).
+                      const confirmed = await neoConfirm(
+                        t('gastos:categoriesScreen.deleteAlertTitle'),
                         {
-                          style: 'destructive',
-                          text: t('gastos:history.deleteConfirm'),
-                          onPress: () => {
-                            deleteCategoryMutation.mutate(managedCategory.id, {
-                              onError: (error: unknown) => {
-                                showError(error, t('gastos:categoriesScreen.deleteFailed'))
-                              },
-                              onSuccess: () => {
-                                if (selectedCategoryId === managedCategory.id) {
-                                  filters.setCategorySelection(ALL_CATEGORIES_KEY)
-                                }
-                                setCategoryManagementSelection((current) =>
-                                  current === managedCategory.id ? '' : current,
-                                )
-                              },
-                            })
-                          },
+                          message: t('gastos:categoriesScreen.deleteAlertMessage', {
+                            name: managedCategory.name,
+                          }),
+                          confirmLabel: t('gastos:history.deleteConfirm'),
+                          tone: 'destructive',
                         },
-                      ],
-                    )
+                      )
+                      if (!confirmed) return
+
+                      deleteCategoryMutation.mutate(managedCategory.id, {
+                        onError: (error: unknown) => {
+                          showError(error, t('gastos:categoriesScreen.deleteFailed'))
+                        },
+                        onSuccess: () => {
+                          if (selectedCategoryId === managedCategory.id) {
+                            filters.setCategorySelection(ALL_CATEGORIES_KEY)
+                          }
+                          setCategoryManagementSelection((current) =>
+                            current === managedCategory.id ? '' : current,
+                          )
+                        },
+                      })
+                    })()
                   }}
                   variant="danger"
                 />
@@ -333,14 +407,16 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   )
 }
 
+// El `fontFamily` viaja SIEMPRE con el peso: cada peso de Nunito es un face
+// estático propio, así que un `fontWeight` suelto no cambia la face.
 const styles = StyleSheet.create({
   screenContent: {
     paddingTop: 4,
   },
   sectionStack: {
     gap: 18,
-    position: 'relative',
   },
+  // Radio y relieve los pone `NeoSurface`; acá queda sólo la caja.
   formCard: {
     gap: 18,
     paddingHorizontal: 18,
@@ -352,33 +428,45 @@ const styles = StyleSheet.create({
   sectionEyebrow: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
-  sectionTitle: {},
+  sectionTitle: {
+    fontSize: 19,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.3,
+  },
   selectionSummary: {
     gap: 6,
-    borderRadius: radii.xl,
-    borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
   selectionLabel: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   selectionValue: {
     fontSize: 18,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.3,
   },
-  selectionMeta: {},
+  selectionMeta: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 18,
+  },
   selectionWarning: {
     fontSize: 12,
     lineHeight: 17,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   categoryList: {
     gap: 14,
@@ -387,16 +475,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    overflow: 'hidden',
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
   categoryDot: {
     width: 12,
     height: 12,
-    borderRadius: radii.pill,
+    borderRadius: 6,
   },
   categoryCopy: {
     flex: 1,
@@ -405,14 +490,18 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   categoryMeta: {
     fontSize: 12,
     lineHeight: 17,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   categoryBadge: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.7,
     textTransform: 'uppercase',
   },

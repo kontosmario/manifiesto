@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react'
-import { Alert } from 'react-native'
+import { useMemo } from 'react'
 import {
   type CategoryTemplate,
   useCategoryTemplates,
@@ -8,12 +7,10 @@ import { type Category, useCategories } from '@/features/categories/use-categori
 import { localizeQuickDescriptions } from '@/features/categories/localize-category-name'
 import { filterVariableExpenseCategories } from '@/features/expenses/variable-expense-categories'
 import { type Expense, useCreateExpense, useExpenses } from '@/features/expenses/use-expenses'
-import { rankCategoriesByUsage, pickTopCategoryDescriptions } from '@/features/expenses/category-ranking'
-import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-import { triggerHaptic } from '@/lib/haptics'
-import i18n from '@/lib/i18n'
-import { getErrorMessage } from '@/utils/error-message'
-import { parsePrice, serializePrice } from '@/utils/money'
+import {
+  rankCategoriesByUsage,
+  pickTopCategoryDescriptions,
+} from '@/features/expenses/category-ranking'
 
 const EMPTY_CATEGORIES: Category[] = []
 const EMPTY_CATEGORY_TEMPLATES: CategoryTemplate[] = []
@@ -32,80 +29,71 @@ function normalizeSuggestionLabel(value: string) {
     .replace(/\p{Diacritic}/gu, '')
 }
 
-interface UseAddExpenseControllerParams {
-  familyId: string
-  onCreated: () => void
-  userId: string
-  /**
-   * When set, the new expense is stamped with this date instead of
-   * `now()`. Used by the Gastos calendar's "registrar gasto olvidado"
-   * flow so a user can back-date a movement to a past day of the
-   * cycle they forgot to log.
-   */
-  forDate?: Date | null
-}
-
-export function useAddExpenseController({
-  familyId,
-  onCreated,
-  userId,
-  forDate,
-}: UseAddExpenseControllerParams) {
-  const dashboard = useFamilyDashboard(familyId)
+/**
+ * Categorías VARIABLES del hogar (las de gasto del día a día).
+ *
+ * Existe suelto —y no sólo adentro del controller— porque el wizard necesita
+ * el catálogo ANTES de tener una categoría elegida: el gate del paso 1 valida
+ * que el id todavía resuelva, y ese validador se le pasa a
+ * `useAddExpenseForm`, cuyo `categoryId` es a su vez lo que el controller
+ * necesita para sugerir descripciones. Sin este corte los dos hooks se
+ * necesitan mutuamente. Llamarlo dos veces en el mismo árbol no cuesta una
+ * request de más: es la misma query key que resuelve el controller.
+ */
+export function useVariableExpenseCategories(familyId: string) {
   const categoriesQuery = useCategories(familyId)
-  const categoryTemplatesQuery = useCategoryTemplates()
-  const expensesQuery = useExpenses(familyId)
-  const createExpenseMutation = useCreateExpense(familyId, userId)
-  // Hide the fixed-only categories (Alquiler, Servicios, Suscripciones)
-  // from the variable-expense picker. The data layer keeps them at
-  // scope='expense' so the fijos add flow can still surface the full
-  // catalog; the filter is local to this controller.
+  // Oculta las categorías sólo-fijas (Alquiler, Servicios, Suscripciones) del
+  // picker de gastos variables. La capa de datos las deja en scope='expense'
+  // para que el alta de fijos siga viendo el catálogo completo; el filtro es
+  // local a este flujo.
   const categories = useMemo(
     () => filterVariableExpenseCategories(categoriesQuery.data ?? EMPTY_CATEGORIES),
     [categoriesQuery.data],
   )
+  return { categoriesQuery, categories }
+}
+
+interface UseAddExpenseControllerParams {
+  familyId: string
+  userId: string
+  /**
+   * Categoría elegida en el formulario. Entra por parámetro —y no como estado
+   * propio de este hook— porque el ESTADO del alta vive entero en
+   * `useAddExpenseForm`: dos copias del mismo campo (una para los gates, otra
+   * para las sugerencias) se desincronizan en cuanto alguien escribe un
+   * `setState` de más. Acá sólo se deriva.
+   */
+  selectedCategoryId: string
+}
+
+/**
+ * Datos y mutación del alta de gasto: catálogo de categorías variables,
+ * ranking por uso, sugerencias de descripción y `createExpenseMutation`.
+ *
+ * NO tiene estado de formulario. Monto, descripción, notas, fecha, paso y
+ * campos faltantes viven en `useAddExpenseForm`; el submit lo dispara la
+ * pantalla con los valores de ese hook. Este es el borde de datos.
+ */
+export function useAddExpenseController({
+  familyId,
+  userId,
+  selectedCategoryId,
+}: UseAddExpenseControllerParams) {
+  const { categoriesQuery, categories } = useVariableExpenseCategories(familyId)
+  const categoryTemplatesQuery = useCategoryTemplates()
+  const expensesQuery = useExpenses(familyId)
+  const createExpenseMutation = useCreateExpense(familyId, userId)
   const categoryTemplates = categoryTemplatesQuery.data ?? EMPTY_CATEGORY_TEMPLATES
-  // Suggestions and category ranking should only learn from MANUAL
-  // gastos (the user's own typing patterns). Commitment payments are
-  // auto-generated when a fijo is marked paid — they'd skew both the
-  // descriptions and the most-used categories toward the fixed-bills
-  // category nobody types into.
+  // Las sugerencias y el ranking sólo aprenden de gastos MANUALES (los
+  // patrones que el usuario tipea). Los pagos de fijos se generan solos al
+  // marcarlos pagados: sesgarían tanto las descripciones como las categorías
+  // más usadas hacia la categoría de fijos, en la que nadie escribe.
   const expenses = useMemo(
     () => (expensesQuery.data ?? EMPTY_EXPENSES).filter((e) => !e.commitment_id),
     [expensesQuery.data],
   )
-  const [categorySelection, setCategorySelection] = useState('')
-  const [description, setDescription] = useState('')
-  // Notes: free-form optional context. Empty string when absent (we
-  // never carry null in UI state to keep TextInput controlled). The
-  // submit path passes it as-is and the repository normalizes via
-  // `normalizeExpenseNotes` (empty → null, with-text → trim + cap).
-  const [notes, setNotes] = useState('')
-  const [rawPrice, setRawPrice] = useState('')
-  const [isNumpadVisible, setNumpadVisible] = useState(true)
-  // Increments each time the dashboard CTA is tapped while required
-  // fields are missing. The dashboard reads this against its initial
-  // value to flip into "flagged" mode and paint warning hues on the
-  // specific unfilled inputs. Same pattern as the import-review wizard.
-  const [highlightToken, setHighlightToken] = useState(0)
-
-  // Stay null/empty until the user actually picks a category. The
-  // earlier "fall back to categories[0].id" was silently nominating
-  // the first item as the user's choice, which let them submit
-  // miscategorized expenses without realizing — same data-integrity
-  // hole we closed on the import-review wizard.
-  const selectedCategoryId = useMemo(() => {
-    if (categories.length === 0) return ''
-    return categories.some((c) => c.id === categorySelection)
-      ? categorySelection
-      : ''
-  }, [categories, categorySelection])
 
   const selectedCategory = categories.find((c) => c.id === selectedCategoryId) ?? null
-
-  const parsedAmount = parsePrice(rawPrice)
-  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0
-  const amount = hasValidAmount ? parsedAmount : 0
 
   const quickDescriptionSuggestions = useMemo(() => {
     if (!selectedCategory) return []
@@ -118,7 +106,11 @@ export function useAddExpenseController({
     // El `name` del template es el default ES (key estable). Este flujo
     // es siempre de categorías variables → scope 'expense'.
     const templateDescriptions = matchedTemplate
-      ? localizeQuickDescriptions('expense', matchedTemplate.name, matchedTemplate.quickDescriptions)
+      ? localizeQuickDescriptions(
+          'expense',
+          matchedTemplate.name,
+          matchedTemplate.quickDescriptions,
+        )
       : []
     const fromHistory = pickTopCategoryDescriptions(expenses, selectedCategory.id, 6)
     const merged = [...fromHistory, ...templateDescriptions]
@@ -140,94 +132,16 @@ export function useAddExpenseController({
     [expenses, categories],
   )
 
-  const showError = (error: unknown, fallback: string) => {
-    void triggerHaptic('error')
-    Alert.alert(i18n.t('gastos:errors.somethingWrong'), getErrorMessage(error, fallback))
-  }
-
-  // Human-readable list of required fields the user still has to
-  // fill. `submitExpense` and the dashboard's primary CTA both gate on
-  // `missingFields.length === 0`; the dashboard renders the list under
-  // a disabled-looking Guardar button via formatMissingFields.
-  const missingFields = useMemo<string[]>(() => {
-    const missing: string[] = []
-    if (!hasValidAmount) missing.push(i18n.t('gastos:import.field.amount'))
-    if (description.trim().length === 0) missing.push(i18n.t('gastos:import.field.description'))
-    if (!selectedCategoryId) missing.push(i18n.t('gastos:import.field.category'))
-    return missing
-  }, [hasValidAmount, description, selectedCategoryId])
-
-  const submitExpense = () => {
-    if (missingFields.length > 0) return
-    createExpenseMutation.mutate(
-      {
-        categoryId: selectedCategoryId,
-        description: description.trim(),
-        // Pass `notes` raw — the repository's `normalizeExpenseNotes`
-        // handles trim + empty→null + max-length check.
-        notes,
-        price: amount,
-        // Back-date the movement to the target day at noon local
-        // time (avoids DST edge cases + keeps it visible on the
-        // intended calendar day even across timezones).
-        createdAt: forDate
-          ? new Date(
-              forDate.getFullYear(),
-              forDate.getMonth(),
-              forDate.getDate(),
-              12,
-              0,
-              0,
-              0,
-            ).toISOString()
-          : undefined,
-      },
-      {
-        onError: (error: unknown) => {
-          showError(error, i18n.t('gastos:errors.createFailed'))
-        },
-        onSuccess: () => {
-          void triggerHaptic('success')
-          setDescription('')
-          setNotes('')
-          setRawPrice('')
-          onCreated()
-        },
-      },
-    )
-  }
-
   return {
-    amount,
     categories,
-    rankedCategories,
     categoriesQuery,
     createExpenseMutation,
-    dashboard,
-    description,
-    notes,
+    /** Gastos VARIABLES del hogar (sin pagos de fijos). */
+    expenses,
     expensesQuery,
-    hasValidAmount,
-    isNumpadVisible,
-    missingFields,
-    highlightToken,
-    normalizeSuggestionLabel,
-    rawPrice,
     quickDescriptionSuggestions,
-    selectedCategoryId,
-    submitExpense,
+    rankedCategories,
+    selectedCategory,
     suggestedAmounts,
-    forDate,
-    actions: {
-      selectCategory: setCategorySelection,
-      setDescription,
-      setNotes,
-      setRawPrice,
-      setNumpadVisible,
-      addQuickAmount: (delta: number) => setRawPrice(serializePrice(amount + delta)),
-      clearAmount: () => setRawPrice(''),
-      useQuickDescription: setDescription,
-      flagMissingFields: () => setHighlightToken((t) => t + 1),
-    },
   }
 }

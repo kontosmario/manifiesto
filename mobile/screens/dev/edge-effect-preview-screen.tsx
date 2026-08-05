@@ -1,0 +1,521 @@
+// @i18n-ignore-file — tooling dev-only gateado por __DEV__.
+import { useCallback, useMemo, useState } from 'react'
+import {
+  PixelRatio,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import {
+  SafeAreaFrameContext,
+  SafeAreaInsetsContext,
+  type EdgeInsets,
+  type Metrics,
+} from 'react-native-safe-area-context'
+import { Screen } from '@/components/ui/screen'
+import {
+  buildEdgeLayers,
+  buildEdgeVeil,
+  EDGE_CURVE,
+  LEGACY_BLUR_LAYERS,
+  LEGACY_VEIL,
+  SCROLL_EDGE_THRESHOLD,
+  ScreenEdgeEffect,
+  type EdgeLayer,
+} from '@/components/ui/screen-edge-effect'
+import { withAlpha } from '@/theme/color-utils'
+import { useAppTheme, useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
+
+/**
+ * Banco de pruebas del EDGE-TO-EDGE + SCROLL EDGE EFFECT.
+ *
+ * El efecto solo existe cuando el device reporta un inset superior, así
+ * que en web (inset 0) y en cualquier simulador sin notch no se puede
+ * juzgar. Este preview inyecta métricas FALSAS —las de un iPhone con
+ * isla dinámica— para poder verlo funcionar en el navegador: el
+ * contenido pasa por debajo de la franja y el material aparece al
+ * scrollear.
+ *
+ * Se proveen los CONTEXTOS directamente en vez de `SafeAreaProvider
+ * initialMetrics`: `initialMetrics` es solo el valor de arranque y el
+ * provider lo pisa apenas mide el layout real (en web, 0) — con lo cual
+ * el banco de pruebas no probaba nada.
+ *
+ * ── QUÉ SE JUZGA ACÁ (2026-08-04) ──────────────────────────────────
+ * El owner reportó ESCALINATAS horizontales dentro de la franja: los
+ * bordes inferiores de las capas de blur, que se cortan duro. El banco
+ * está armado para poder VERIFICARLO y para cerrar el tuning en una
+ * sola sesión en device:
+ *
+ *  ▸ A/B lado a lado: mitad izquierda con la tabla VIEJA (4 capas,
+ *    orden de pintado alto→bajo) y mitad derecha con la NUEVA, sobre
+ *    el MISMO contenido y en el MISMO instante. Una sola captura
+ *    alcanza para comparar.
+ *  ▸ Lupa: multiplica el inset falso (59 → 118 → 177) para separar los
+ *    bordes. Ampliar la franja REAL es mejor que ampliar el JPG.
+ *  ▸ Fondos de peor caso: los escalones se ven sobre TONOS PLANOS y
+ *    bordes nítidos, no sobre cards. Sin el fondo plano y el de alto
+ *    contraste el banco puede dar un falso "quedó perfecto".
+ *  ▸ Aislamiento: "sin velo" / "solo velo" separan las dos causas
+ *    posibles (escalón de blur vs banding de 8 bits del gradiente);
+ *    "orden viejo" muestra cuánto aporta por sí solo invertir el orden
+ *    de pintado; "reglas" dibuja una línea en el y exacto del borde de
+ *    cada capa para confirmar si una línea que se cree ver es un borde
+ *    real o una banda de Mach.
+ *  ▸ Steppers N/K/p: recalculan la curva en vivo con la misma fórmula
+ *    que producción (`buildEdgeLayers`). El valor elegido se transcribe
+ *    tal cual a `EDGE_CURVE`.
+ *
+ * Ojo: es un banco de pruebas del COMPORTAMIENTO (aparece/desaparece,
+ * el contenido atraviesa la franja). El MATERIAL en sí sigue siendo
+ * fiel solo EN DEVICE: en iOS es un UIVisualEffectView y en web
+ * expo-blur cae a un backdrop-filter aproximado. En particular, que
+ * las capas altas suavicen los bordes de las cortas (el efecto del
+ * orden de pintado) NO se reproduce igual fuera de iOS.
+ */
+
+/** Métricas de un iPhone 17 Pro (isla dinámica). */
+const FAKE_FRAME: Metrics['frame'] = { x: 0, y: 0, width: 393, height: 852 }
+const BASE_TOP_INSET = 59
+const BASE_BOTTOM_INSET = 34
+
+type BackdropKind = 'filas' | 'plano' | 'rampa' | 'contraste'
+
+const BACKDROPS: readonly BackdropKind[] = ['filas', 'plano', 'rampa', 'contraste']
+const ZOOMS = [1, 2, 3] as const
+
+function Pill({
+  label,
+  active,
+  onPress,
+}: {
+  label: string
+  active: boolean
+  onPress: () => void
+}) {
+  const theme = useThemeTokens()
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.pill,
+        {
+          backgroundColor: active ? theme.colors.primary : 'transparent',
+          borderColor: active ? theme.colors.primary : theme.colors.border,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.pillText,
+          { color: active ? theme.colors.textOnPrimary : theme.colors.textMuted },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
+}
+
+function Stepper({
+  label,
+  value,
+  onStep,
+}: {
+  label: string
+  value: string
+  onStep: (direction: -1 | 1) => void
+}) {
+  const theme = useThemeTokens()
+  return (
+    <View style={styles.stepper}>
+      <Pressable
+        onPress={() => onStep(-1)}
+        style={[styles.stepperButton, { borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.pillText, { color: theme.colors.textMuted }]}>−</Text>
+      </Pressable>
+      <Text style={[styles.stepperLabel, { color: theme.colors.text }]}>
+        {label} {value}
+      </Text>
+      <Pressable
+        onPress={() => onStep(1)}
+        style={[styles.stepperButton, { borderColor: theme.colors.border }]}
+      >
+        <Text style={[styles.pillText, { color: theme.colors.textMuted }]}>+</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+/**
+ * Fondos de peor caso. La franja se juzga sobre lo que pasa POR
+ * DEBAJO: sobre cards con bordes redondeados cualquier escalón se
+ * disimula, sobre un tono plano que cruza los 393pt de ancho no.
+ */
+function Backdrop({ kind }: { kind: BackdropKind }) {
+  const theme = useThemeTokens()
+
+  // Un ÚNICO wrapper con gap 0: los hijos directos del Screen llevan
+  // `gap: 22`, y esa separación cortaría los tonos planos en bandas
+  // (justo lo que este fondo tiene que evitar).
+  if (kind === 'plano') {
+    // Tonos planos full-bleed: el caso donde una banda de Mach se lee
+    // mejor (no hay detalle que la esconda).
+    return (
+      <View style={styles.backdropGroup}>
+        {['#FFFFFF', '#B9B9B9', '#7A7A7A', '#3A3A3A', '#000000', '#EDE7DA'].map((tone) => (
+          <View key={tone} style={[styles.bleedBlock, { backgroundColor: tone }]} />
+        ))}
+      </View>
+    )
+  }
+
+  if (kind === 'rampa') {
+    // Degradé vertical continuo: si aparece una línea acá es del
+    // efecto, porque el fondo no tiene ninguna.
+    return (
+      <View style={styles.backdropGroup}>
+        <LinearGradient
+          colors={['#FFFFFF', '#8C8C8C', '#101010']}
+          style={styles.rampBlock}
+        />
+        <LinearGradient
+          colors={['#101010', '#8C8C8C', '#FFFFFF']}
+          style={styles.rampBlock}
+        />
+      </View>
+    )
+  }
+
+  if (kind === 'contraste') {
+    // Bordes nítidos + texto invertido: el peor caso para el blur.
+    return (
+      <View style={styles.backdropGroup}>
+        {Array.from({ length: 6 }, (_, index) => (
+          <View key={index} style={styles.backdropGroup}>
+            <View style={[styles.bleedRow, { backgroundColor: '#FFFFFF' }]}>
+              <Text style={[styles.contrastText, { color: '#000000' }]}>
+                Texto negro sobre blanco · {index + 1}
+              </Text>
+            </View>
+            <View style={[styles.bleedRow, { backgroundColor: '#000000' }]}>
+              <Text style={[styles.contrastText, { color: '#FFFFFF' }]}>
+                Texto blanco sobre negro · {index + 1}
+              </Text>
+            </View>
+            <View style={styles.stripes}>
+              {Array.from({ length: 14 }, (_, stripe) => (
+                <View
+                  key={stripe}
+                  style={[
+                    styles.stripe,
+                    { backgroundColor: stripe % 2 === 0 ? '#000000' : '#FFFFFF' },
+                  ]}
+                />
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.rowGroup}>
+      {Array.from({ length: 24 }, (_, index) => (
+        <View
+          key={index}
+          style={[
+            styles.row,
+            {
+              backgroundColor:
+                index % 2 === 0 ? theme.colors.surfaceMuted : theme.colors.creamCard,
+            },
+          ]}
+        >
+          <Text style={[styles.rowText, { color: theme.colors.text }]}>
+            Fila {index + 1} · scrolleá y mirá la franja de arriba
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+export function EdgeEffectPreviewScreen() {
+  const { theme } = useAppTheme()
+
+  const [zoom, setZoom] = useState<(typeof ZOOMS)[number]>(1)
+  const [backdrop, setBackdrop] = useState<BackdropKind>('filas')
+  const [split, setSplit] = useState(true)
+  const [frozen, setFrozen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [showVeil, setShowVeil] = useState(true)
+  const [showBlur, setShowBlur] = useState(true)
+  const [legacyOrder, setLegacyOrder] = useState(false)
+  const [rulers, setRulers] = useState(false)
+  const [count, setCount] = useState(EDGE_CURVE.count)
+  const [density, setDensity] = useState(EDGE_CURVE.density)
+  const [falloff, setFalloff] = useState(EDGE_CURVE.falloff)
+
+  const topInset = BASE_TOP_INSET * zoom
+  const insets = useMemo<EdgeInsets>(
+    () => ({ top: topInset, left: 0, right: 0, bottom: BASE_BOTTOM_INSET }),
+    [topInset],
+  )
+  const fadeHeight = Math.round(topInset * 1.35)
+
+  const curve = useMemo(() => ({ count, density, falloff }), [count, density, falloff])
+  const nextLayers = useMemo(() => buildEdgeLayers(curve), [curve])
+  const nextVeil = useMemo(() => buildEdgeVeil(curve), [curve])
+
+  // `buildEdgeLayers` devuelve las capas de la más CORTA a la más ALTA
+  // (ese orden ES parte del arreglo: las altas repintan encima y
+  // difuminan los bordes de las cortas). El toggle las invierte para
+  // que se vea cuánto aporta el orden por sí solo.
+  const paintedLayers = useMemo<readonly EdgeLayer[]>(
+    () => (showBlur ? (legacyOrder ? [...nextLayers].reverse() : nextLayers) : []),
+    [showBlur, legacyOrder, nextLayers],
+  )
+  const legacyLayers = useMemo<readonly EdgeLayer[]>(
+    () => (showBlur ? LEGACY_BLUR_LAYERS : []),
+    [showBlur],
+  )
+
+  const active = frozen || scrolled
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y
+    setScrolled((prev) => {
+      const next = y > SCROLL_EDGE_THRESHOLD
+      return prev === next ? prev : next
+    })
+  }, [])
+
+  const tableText = nextLayers
+    .map((layer) => `${Math.round(layer.heightRatio * 100)}%·${layer.intensity}`)
+    .join('  ')
+
+  const edgeProps = {
+    active,
+    backgroundColor: theme.colors.background,
+    height: topInset,
+    veil: showVeil ? nextVeil : null,
+  }
+
+  return (
+    <SafeAreaFrameContext.Provider value={FAKE_FRAME}>
+      <SafeAreaInsetsContext.Provider value={insets}>
+        <View style={[styles.host, { backgroundColor: theme.colors.background }]}>
+          <Screen
+            backgroundColor={theme.colors.background}
+            // El panel de controles es un overlay fijo abajo: hay que
+            // reservarle el alto para que el final del contenido siga
+            // siendo alcanzable.
+            contentContainerStyle={styles.scrollContent}
+            disableEdgeEffect
+            onScroll={handleScroll}
+            scrollable
+          >
+            <Text style={[styles.title, { color: theme.colors.text }]}>Scroll edge effect</Text>
+            <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+              Inset simulado: top {topInset} · franja {fadeHeight}pt. Arriba del todo es
+              transparente; al scrollear aparece el material. El veredicto sale del iPhone: en web
+              el blur es una aproximación.
+            </Text>
+            <Backdrop kind={backdrop} />
+          </Screen>
+
+          {/* Overlay del efecto. Va FUERA del Screen (que monta con
+              `disableEdgeEffect`) para poder recortarlo a media
+              pantalla: la franja es uniforme en horizontal, así que
+              media franja se ve idéntica a la entera. */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {split ? (
+              <>
+                <View style={[styles.half, styles.halfLeft]}>
+                  <ScreenEdgeEffect
+                    {...edgeProps}
+                    layers={legacyLayers}
+                    veil={showVeil ? LEGACY_VEIL : null}
+                  />
+                </View>
+                <View style={[styles.half, styles.halfRight]}>
+                  <ScreenEdgeEffect {...edgeProps} layers={paintedLayers} />
+                </View>
+                <View
+                  style={[
+                    styles.splitSeam,
+                    { backgroundColor: withAlpha(theme.colors.text, 0.35), height: fadeHeight },
+                  ]}
+                />
+                <View style={[styles.splitLabels, { top: fadeHeight + 4 }]}>
+                  <Text style={[styles.splitLabel, { color: theme.colors.textMuted }]}>
+                    ← anterior ({LEGACY_BLUR_LAYERS.length} capas)
+                  </Text>
+                  <Text style={[styles.splitLabel, { color: theme.colors.textMuted }]}>
+                    nueva ({nextLayers.length} capas) →
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <ScreenEdgeEffect {...edgeProps} layers={paintedLayers} />
+            )}
+
+            {rulers
+              ? nextLayers.map((layer) => (
+                  <View
+                    key={layer.heightRatio}
+                    style={[
+                      styles.ruler,
+                      {
+                        backgroundColor: withAlpha(theme.colors.text, 0.5),
+                        top: PixelRatio.roundToNearestPixel(fadeHeight * layer.heightRatio),
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.rulerLabel, { color: theme.colors.text }]}>
+                      {layer.intensity}
+                    </Text>
+                  </View>
+                ))
+              : null}
+          </View>
+
+          <View
+            style={[
+              styles.panel,
+              { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.border },
+            ]}
+          >
+            <View style={styles.pillRow}>
+              <Pill active={split} label="A/B" onPress={() => setSplit((v) => !v)} />
+              <Pill active={frozen} label="congelar" onPress={() => setFrozen((v) => !v)} />
+              <Pill active={rulers} label="reglas" onPress={() => setRulers((v) => !v)} />
+              <Pill active={!showVeil} label="sin velo" onPress={() => setShowVeil((v) => !v)} />
+              <Pill active={!showBlur} label="solo velo" onPress={() => setShowBlur((v) => !v)} />
+              <Pill
+                active={legacyOrder}
+                label="orden viejo"
+                onPress={() => setLegacyOrder((v) => !v)}
+              />
+            </View>
+            <View style={styles.pillRow}>
+              {BACKDROPS.map((kind) => (
+                <Pill
+                  active={backdrop === kind}
+                  key={kind}
+                  label={kind}
+                  onPress={() => setBackdrop(kind)}
+                />
+              ))}
+              {ZOOMS.map((value) => (
+                <Pill
+                  active={zoom === value}
+                  key={value}
+                  label={`${value}×`}
+                  onPress={() => setZoom(value)}
+                />
+              ))}
+            </View>
+            <View style={styles.pillRow}>
+              <Stepper
+                label="N"
+                onStep={(direction) =>
+                  setCount((v) => Math.min(10, Math.max(4, v + direction)))
+                }
+                value={`${count}`}
+              />
+              <Stepper
+                label="K"
+                onStep={(direction) =>
+                  setDensity((v) => Math.min(40, Math.max(20, v + direction * 2)))
+                }
+                value={`${density}`}
+              />
+              <Stepper
+                label="p"
+                onStep={(direction) =>
+                  setFalloff((v) =>
+                    Math.min(3, Math.max(1.5, Math.round((v + direction * 0.25) * 100) / 100)),
+                  )
+                }
+                value={falloff.toFixed(2)}
+              />
+            </View>
+            <Text style={[styles.tableText, { color: theme.colors.textMuted }]}>{tableText}</Text>
+          </View>
+        </View>
+      </SafeAreaInsetsContext.Provider>
+    </SafeAreaFrameContext.Provider>
+  )
+}
+
+const styles = StyleSheet.create({
+  host: { flex: 1 },
+  scrollContent: { paddingBottom: 240 },
+  title: { fontFamily: nunitoFamily('900'), fontSize: 24, fontWeight: '900' },
+  body: { fontFamily: nunitoFamily('600'), fontSize: 13, lineHeight: 19 },
+  row: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 18 },
+  rowText: { fontFamily: nunitoFamily('700'), fontSize: 14, fontWeight: '700' },
+  // El contenido del Screen lleva 20pt de padding horizontal; los
+  // fondos de peor caso lo cancelan para cruzar TODO el ancho, que es
+  // donde un escalón se lee peor.
+  backdropGroup: { gap: 0 },
+  rowGroup: { gap: 12 },
+  bleedBlock: { height: 200, marginHorizontal: -20 },
+  rampBlock: { height: 480, marginHorizontal: -20 },
+  bleedRow: { marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 14 },
+  contrastText: { fontFamily: nunitoFamily('800'), fontSize: 18, fontWeight: '800' },
+  stripes: { flexDirection: 'row', height: 56, marginHorizontal: -20 },
+  stripe: { flex: 1 },
+  half: { bottom: 0, overflow: 'hidden', position: 'absolute', top: 0, width: '50%' },
+  halfLeft: { left: 0 },
+  halfRight: { right: 0 },
+  splitSeam: { left: '50%', position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
+  splitLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    left: 0,
+    paddingHorizontal: 12,
+    position: 'absolute',
+    right: 0,
+  },
+  splitLabel: { fontFamily: nunitoFamily('700'), fontSize: 11, fontWeight: '700' },
+  ruler: {
+    alignItems: 'flex-end',
+    height: StyleSheet.hairlineWidth,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  rulerLabel: { fontFamily: nunitoFamily('700'), fontSize: 9, fontWeight: '700', marginRight: 4 },
+  panel: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    bottom: 0,
+    gap: 8,
+    left: 0,
+    paddingBottom: 28,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    position: 'absolute',
+    right: 0,
+  },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  pill: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },
+  pillText: { fontFamily: nunitoFamily('800'), fontSize: 11, fontWeight: '800' },
+  stepper: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  stepperButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  stepperLabel: { fontFamily: nunitoFamily('800'), fontSize: 12, fontWeight: '800' },
+  tableText: { fontFamily: nunitoFamily('600'), fontSize: 10, lineHeight: 14 },
+})

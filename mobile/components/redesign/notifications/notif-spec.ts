@@ -60,7 +60,7 @@ export interface NotifSpec {
 
 export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     chrome: '#24382A',
     backGradientCss: undefined,
     backBackground: '#E9EBE0',
@@ -95,7 +95,7 @@ export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
     emptyChipDot: '#2E7C39',
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     chrome: '#F1EEDD',
     backGradientCss: 'linear-gradient(145deg, #1F3527, #14241A)',
     backBackground: '#1A2D21',

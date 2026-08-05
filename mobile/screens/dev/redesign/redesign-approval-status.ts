@@ -64,4 +64,15 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // 2 pasos sin scroll. Se integra por fases, cada una con su gate propio:
   // réplica en preview → aprobación del owner → cableado. PENDIENTE.
   'fijos': 'pendiente',
+  // CONTROL (handoff design_handoff_control, 2026-08-03): el owner pidió
+  // la integración completa de punta a punta SIN pasar por el gate de
+  // réplica ("realiza de punta a punta la integración completa de la
+  // nueva vista de control ... procede", 2026-08-03) — el swap en la tab
+  // insights es directo; este entry existe para que el índice dev liste
+  // el preview con datos reales.
+  'control': 'aprobada',
+  // EDGE-TO-EDGE + scroll edge effect (2026-08-04): no es una vista del
+  // rediseño sino un banco de tuning. Queda en 'pendiente' porque el
+  // veredicto del degradé sale del iPhone y todavía no se miró en device.
+  'edge-effect': 'pendiente',
 }

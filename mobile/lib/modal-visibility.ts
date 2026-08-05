@@ -40,6 +40,29 @@ export function publishModalClose(): void {
   if (wasOpen && openCount === 0) emit()
 }
 
+/**
+ * Publica open/close siguiendo un booleano de visibilidad. Lo usan las
+ * superficies que montan su PROPIO `<Modal>` nativo en vez de pasar por
+ * `ModalCard` (numpad, hoja de monto, sheet del FAB, wrapped, wizard de
+ * meta, racha).
+ *
+ * No es sólo para el keyboard-avoidance que motivó este módulo: el
+ * `ToastHost` lee la misma señal para decidir si necesita su propia
+ * ventana nativa y así quedar POR ENCIMA de la hoja abierta. Una
+ * superficie que no publica deja los avisos de error tapados debajo de
+ * ella — que era exactamente el agujero que dejó reemplazar
+ * `Alert.alert` (del SO, siempre visible) por toasts.
+ */
+export function useModalVisibilityBeacon(visible: boolean): void {
+  useEffect(() => {
+    if (!visible) return
+    publishModalOpen()
+    return () => {
+      publishModalClose()
+    }
+  }, [visible])
+}
+
 export function useIsAnyModalOpen(): boolean {
   const [open, setOpen] = useState(() => openCount > 0)
   useEffect(() => {

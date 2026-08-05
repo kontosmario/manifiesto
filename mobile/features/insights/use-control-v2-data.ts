@@ -302,14 +302,27 @@ export function useControlV2Data(
   const limitsData = intelligenceQuery.data?.limits
   const limitsBase = useMemo(() => limitsData ?? [], [limitsData])
   const velocity = intelligenceQuery.data?.velocity ?? null
-  const notificationsBase: NotificationLite[] = (notificationsQuery.data ?? []).map(
-    (n) => ({
-      id: n.id,
-      kind: n.kind,
-      severity: n.severity,
-      created_at: n.created_at,
-      metadata: n.metadata as Record<string, unknown>,
-    }),
+  // MEMOIZADO como el resto de los inputs del motor. Mapeado en el cuerpo del
+  // render devolvía un array nuevo por render → `notifications` cambiaba de
+  // identidad → el `useMemo` de `computedSignals` (que lo tiene en deps) se
+  // recomputaba → `memoizedBuildSignals` recibía un literal nuevo, su LRU(1)
+  // comparaba con `Object.is` y fallaba, y `buildControlSignals` corría ENTERO
+  // sobre expenses + fijos + summaries + limits + velocity + snapshots. El
+  // wizard de gasto monta este hook y su árbol se re-renderiza con cada tecla
+  // de la descripción, del numpad y de la nota: el motor del asesor corría una
+  // vez por pulsación, en el hilo JS. Lo aprovechan también Home, Gastos,
+  // Control y el badge del tab.
+  const notificationsData = notificationsQuery.data
+  const notificationsBase = useMemo<NotificationLite[]>(
+    () =>
+      (notificationsData ?? []).map((n) => ({
+        id: n.id,
+        kind: n.kind,
+        severity: n.severity,
+        created_at: n.created_at,
+        metadata: n.metadata as Record<string, unknown>,
+      })),
+    [notificationsData],
   )
 
   // ─── control_snapshot merger ───────────────────────────────────────
@@ -385,10 +398,9 @@ export function useControlV2Data(
   // el snapshot (Sistema A) se retiró 2026-06-23: el check-in de uso
   // (buildSubUsageCheckin) reemplaza al zombi por ausencia-de-pago y se
   // alimenta de `subscriptionCheckins`, no de notifications sintéticas.
-  const notifications = useMemo<NotificationLite[]>(
-    () => notificationsBase,
-    [notificationsBase],
-  )
+  // Sin re-envolver: `notificationsBase` YA está memoizado sobre el data de la
+  // query, y el `useMemo` de acá sólo re-propagaba esa identidad.
+  const notifications = notificationsBase
 
   const { usingMock, noConfig } = classifyControlMode({
     finance,

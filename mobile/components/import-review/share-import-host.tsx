@@ -13,13 +13,17 @@ import Animated, {
   FadeOut,
 } from 'react-native-reanimated'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { openImportFromUri } from '@/features/import-review/open-import-flow'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import { useShareImportGate } from '@/features/share-import/use-share-import-gate'
 import type { ReviewState } from '@/features/import-review/types'
 import { toast } from '@/lib/toast-bus'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Host del flujo share-to-import. Vive en el layout de tabs (solo
@@ -32,8 +36,17 @@ import { useAppTheme } from '@/theme/theme-provider'
  */
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
+/**
+ * El handoff pinta el scrim como un sólido porque en la maqueta el
+ * fondo ya viene lavado. Acá hay una pantalla real atrás, así que se
+ * aplica el MISMO tono con alfa — misma decisión (y mismo valor) que
+ * la carcasa neo de `ModalCard`.
+ */
+const NEO_SCRIM_ALPHA = 0.84
+
 export function ShareImportHost() {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const reduced = useReducedMotion()
   const { familyId, userId, makeMapContext } = useImportWizardContext()
@@ -79,27 +92,30 @@ export function ShareImportHost() {
         <Animated.View
           entering={reduced ? undefined : FadeIn.duration(180).easing(EASE_IOS)}
           exiting={reduced ? undefined : FadeOut.duration(160).easing(EASE_IOS)}
-          style={[styles.overlay, { backgroundColor: theme.colors.overlay }]}
+          style={[
+            styles.overlay,
+            { backgroundColor: withAlpha(neo.scrim, NEO_SCRIM_ALPHA) },
+          ]}
           pointerEvents="auto"
         >
           <Animated.View
             entering={
               reduced ? undefined : FadeInDown.duration(220).easing(EASE_IOS)
             }
-            style={[
-              styles.card,
-              {
-                backgroundColor: theme.isDark
-                  ? theme.colors.surfaceMuted
-                  : theme.colors.creamCard,
-                borderColor: theme.colors.border,
-              },
-            ]}
           >
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.label, { color: theme.colors.text }]}>
-              {t('gastos:shareImport.reading')}
-            </Text>
+            {/* La card tiene fill propio (gradiente `raised` del tema),
+                así que sobrevive a un Android < API 28 que descarta el
+                boxShadow outset: pierde el relieve, no la lectura. */}
+            <NeoSurface
+              variant="raisedLg"
+              radius={neoRadii.cardSm}
+              style={styles.card}
+            >
+              <ActivityIndicator color={neo.green} />
+              <Text style={[styles.label, { color: neo.text }]}>
+                {t('gastos:shareImport.reading')}
+              </Text>
+            </NeoSurface>
           </Animated.View>
         </Animated.View>
       ) : null}
@@ -128,11 +144,12 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1,
   },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 800 se renderiza como regular.
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

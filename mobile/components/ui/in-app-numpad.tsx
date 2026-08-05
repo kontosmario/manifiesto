@@ -3,7 +3,6 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   type LayoutChangeEvent,
@@ -13,7 +12,6 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  useReducedMotion,
   runOnJS,
 } from 'react-native-reanimated'
 import {
@@ -23,19 +21,17 @@ import {
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AppSymbol } from './app-symbol'
-import { AppButton } from './button'
-import { appendComma, appendDigit, backspace, clearAll } from './in-app-numpad-model'
-import { triggerHaptic } from '@/lib/haptics'
+import { NumpadGrid } from './numpad-grid'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import {
   publishNumpadClose,
   publishNumpadHeight,
   publishNumpadOpen,
 } from '@/lib/numpad-visibility'
-import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { useModalVisibilityBeacon } from '@/lib/modal-visibility'
 
 interface InAppNumpadProps {
   visible: boolean
@@ -50,13 +46,6 @@ interface InAppNumpadProps {
   /** Render como overlay NO-modal: permite scrollear el contenido detrás. */
   embedded?: boolean
 }
-
-const ROWS: readonly (readonly (string | 'backspace')[])[] = [
-  ['1', '2', '3'],
-  ['4', '5', '6'],
-  ['7', '8', '9'],
-  [',', '0', 'backspace'],
-]
 
 const DISMISS_DISTANCE = 100
 const DISMISS_VELOCITY = 650
@@ -73,8 +62,8 @@ export function InAppNumpad({
   embedded = false,
 }: InAppNumpadProps) {
   const { t } = useTranslation()
-  const resolvedDoneLabel = doneLabel ?? t('common:actions.done')
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
   const reduceMotion = useReducedMotion()
@@ -84,6 +73,9 @@ export function InAppNumpad({
   // `visible=false` on the Modal hides the sheet instantly and the
   // slide-down timing never paints.
   const [mounted, setMounted] = useState(false)
+  // Avisa al resto de la app que hay una ventana nativa arriba (el
+  // ToastHost la necesita para no quedar tapado). Ver `modal-visibility`.
+  useModalVisibilityBeacon(mounted)
   // Unmount-safe: si el numpad se desmonta estando abierto (ej: una navegación
   // que cierra la pantalla mientras está visible), el close se publica desde el
   // callback de la animación que NUNCA corre tras el unmount → el offset global
@@ -178,60 +170,6 @@ export function InAppNumpad({
     transform: [{ translateY: translateY.value }],
   }))
 
-  const handleDigit = useCallback(
-    (digit: string) => {
-      void triggerHaptic('selection')
-      if (integerOnly) {
-        // Código/OTP: append simple, sin coma ni decimales, y SÍ permite el
-        // cero inicial (un código puede empezar con 0, a diferencia de un monto
-        // donde `appendDigit` lo descarta).
-        onChangeRawValue(
-          rawValue.length >= maxIntegerDigits ? rawValue : rawValue + digit,
-        )
-        return
-      }
-      onChangeRawValue(
-        appendDigit(rawValue, digit, { maxIntegerDigits, maxDecimalDigits }),
-      )
-    },
-    [integerOnly, onChangeRawValue, rawValue, maxIntegerDigits, maxDecimalDigits],
-  )
-
-  const handleComma = useCallback(() => {
-    void triggerHaptic('selection')
-    onChangeRawValue(appendComma(rawValue))
-  }, [onChangeRawValue, rawValue])
-
-  const handleBackspace = useCallback(() => {
-    void triggerHaptic('light')
-    onChangeRawValue(backspace(rawValue))
-  }, [onChangeRawValue, rawValue])
-
-  const handleClearAll = useCallback(() => {
-    void triggerHaptic('warning')
-    onChangeRawValue(clearAll())
-  }, [onChangeRawValue])
-
-  const handleDone = useCallback(() => {
-    void triggerHaptic('selection')
-    onDismiss()
-  }, [onDismiss])
-
-  const handleKeyPress = useCallback(
-    (key: string | 'backspace') => {
-      if (key === 'backspace') {
-        handleBackspace()
-        return
-      }
-      if (key === ',') {
-        handleComma()
-        return
-      }
-      handleDigit(key)
-    },
-    [handleBackspace, handleComma, handleDigit],
-  )
-
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
       'worklet'
@@ -256,61 +194,38 @@ export function InAppNumpad({
 
   const sheet = (
     <GestureDetector gesture={panGesture}>
-          <Animated.View
-            onLayout={handleSheetLayout}
-            style={[
-              styles.sheet,
-              sheetAnimatedStyle,
-              {
-                backgroundColor: theme.colors.surface,
-                paddingBottom: insets.bottom + 16,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <View style={styles.handleArea}>
-              <View style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]} />
-            </View>
-            <View style={styles.content}>
-              <AppButton variant="primary" label={resolvedDoneLabel} onPress={handleDone} />
-              <View style={styles.grid}>
-                {ROWS.map((row, rowIndex) => (
-                  <View key={rowIndex} style={styles.row}>
-                    {row.map((key) => {
-                      // En modo código no hay coma: dejamos el slot vacío para
-                      // mantener la grilla de 3 columnas alineada.
-                      if (key === ',' && integerOnly) {
-                        return <View key={key} style={styles.keyWrap} />
-                      }
-                      return (
-                      <NumpadKey
-                        key={key}
-                        label={key === 'backspace' ? undefined : key}
-                        icon={key === 'backspace' ? 'delete.backward.fill' : undefined}
-                        iconFallback={key === 'backspace' ? 'backspace' : undefined}
-                        accessibilityLabel={
-                          key === 'backspace'
-                            ? t('states:numpad.backspaceLabel')
-                            : key === ','
-                              ? t('states:numpad.commaLabel')
-                              : key
-                        }
-                        accessibilityHint={
-                          key === 'backspace'
-                            ? t('states:numpad.backspaceHint')
-                            : undefined
-                        }
-                        onPress={() => handleKeyPress(key)}
-                        onLongPress={key === 'backspace' ? handleClearAll : undefined}
-                      />
-                      )
-                    })}
-                  </View>
-                ))}
-              </View>
-            </View>
-          </Animated.View>
-        </GestureDetector>
+      <Animated.View
+        onLayout={handleSheetLayout}
+        style={[
+          styles.sheet,
+          sheetAnimatedStyle,
+          {
+            // Carcasa de hoja del rediseño: sólido `neo.sheet`, esquinas
+            // superiores en `neoRadii.sheet` y la sombra HACIA ARRIBA que
+            // la despega del contenido. Sin hairline: en neo el límite lo
+            // da el relieve.
+            backgroundColor: neo.sheet,
+            boxShadow: neo.shadows.sheet,
+            paddingBottom: insets.bottom + 16,
+          },
+        ]}
+      >
+        <View style={styles.handleArea}>
+          <View style={[styles.handle, { backgroundColor: neo.sheetHandle }]} />
+        </View>
+        <NumpadGrid
+          rawValue={rawValue}
+          onChangeRawValue={onChangeRawValue}
+          // El háptico del "Listo" lo dispara `NeoButton`; duplicarlo acá
+          // sonaba como un doble buzz en el mismo frame.
+          onDone={onDismiss}
+          doneLabel={doneLabel}
+          maxIntegerDigits={maxIntegerDigits}
+          maxDecimalDigits={maxDecimalDigits}
+          integerOnly={integerOnly}
+        />
+      </Animated.View>
+    </GestureDetector>
   )
 
   // Modo embedded: sin Modal, como overlay absoluto dentro del árbol del screen.
@@ -335,7 +250,10 @@ export function InAppNumpad({
       onRequestClose={onDismiss}
     >
       <GestureHandlerRootView style={styles.root}>
-        {/* Tap-to-dismiss transparente; el sheet subiendo es el cue de foco. */}
+        {/* Tap-to-dismiss transparente; el sheet subiendo es el cue de foco.
+            SIN scrim a propósito: lo que hay detrás es la card del monto que
+            se está editando, y taparla dejaría al usuario tecleando a ciegas.
+            El handoff toma la misma decisión en `onb-numpad`. */}
         <Pressable
           accessibilityLabel={t('states:numpad.closeLabel')}
           accessibilityRole="button"
@@ -348,77 +266,6 @@ export function InAppNumpad({
   )
 }
 
-interface NumpadKeyProps {
-  label?: string
-  icon?: string
-  iconFallback?: string
-  onPress: () => void
-  onLongPress?: () => void
-  accessibilityLabel?: string
-  accessibilityHint?: string
-}
-
-function NumpadKey({
-  label,
-  icon,
-  iconFallback,
-  onPress,
-  onLongPress,
-  accessibilityLabel,
-  accessibilityHint,
-}: NumpadKeyProps) {
-  const { theme } = useAppTheme()
-  const reduceMotion = useReducedMotion()
-  const scale = useSharedValue(1)
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: reduceMotion ? 1 : scale.value }],
-  }))
-
-  return (
-    <Animated.View style={[styles.keyWrap, animatedStyle]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? label ?? ''}
-        accessibilityHint={accessibilityHint}
-        onPressIn={() => {
-          if (reduceMotion) return
-           
-          scale.value = withSpring(0.92, motionSprings.press)
-        }}
-        onPressOut={() => {
-           
-          scale.value = withSpring(1, motionSprings.press)
-        }}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        delayLongPress={450}
-        style={({ pressed }) => [
-          styles.key,
-          {
-            backgroundColor: theme.colors.surfaceMuted,
-            borderColor: theme.colors.border,
-            opacity: pressed ? 0.85 : 1,
-          },
-        ]}
-      >
-        {label ? (
-          <Text style={[typography.titleMedium, styles.keyLabel, { color: theme.colors.text }]}>
-            {label}
-          </Text>
-        ) : icon ? (
-          <AppSymbol
-            name={icon}
-            fallback={(iconFallback ?? 'backspace') as never}
-            size={22}
-            color={theme.colors.textMuted}
-          />
-        ) : null}
-      </Pressable>
-    </Animated.View>
-  )
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -428,48 +275,19 @@ const styles = StyleSheet.create({
   embeddedRoot: {
     justifyContent: 'flex-end',
   },
-  backdrop: {
-    flex: 1,
-  },
   sheet: {
-    borderTopLeftRadius: radii['2xl'],
-    borderTopRightRadius: radii['2xl'],
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopLeftRadius: neoRadii.sheet,
+    borderTopRightRadius: neoRadii.sheet,
     paddingTop: 0,
   },
   handleArea: {
-    paddingTop: 10,
-    paddingBottom: 12,
+    paddingTop: 12,
+    paddingBottom: 14,
     alignItems: 'center',
   },
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radii.pill,
-  },
-  content: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  grid: {
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  keyWrap: {
-    flex: 1,
-  },
-  key: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.md,
-    paddingVertical: 18,
-    minHeight: 56,
-  },
-  keyLabel: {
-    fontSize: 24,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
 })

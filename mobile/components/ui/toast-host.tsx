@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useState } from 'react'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated'
+import { useIsAnyModalOpen } from '@/lib/modal-visibility'
 import { subscribeToast, type ToastPayload } from '@/lib/toast-bus'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Toast global mostrado en la parte inferior, encima de tab bar. Una
@@ -12,9 +15,16 @@ import { useAppTheme } from '@/theme/theme-provider'
  * Auto-dismiss según `durationMs` del payload (default 3-6s).
  */
 export function ToastHost() {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const insets = useSafeAreaInsets()
   const [current, setCurrent] = useState<ToastPayload | null>(null)
+  // Un `<Modal>` nativo se presenta en su propia ventana, ARRIBA de todo
+  // el árbol React de la app: mientras hay una hoja abierta, un toast
+  // dibujado en la raíz queda tapado. Desde que los avisos de error
+  // dejaron de ser `Alert.alert` (que era del SO y siempre se veía),
+  // esto pasó de cosmético a "el error no existe para el usuario".
+  const anyModalOpen = useIsAnyModalOpen()
 
   useEffect(() => {
     const unsub = subscribeToast((next) => {
@@ -33,37 +43,51 @@ export function ToastHost() {
     }
   }, [current])
 
+  const dismiss = useCallback(() => {
+    setCurrent(null)
+  }, [])
+
   if (!current) return null
 
-  const tone =
+  // En neo el tono NO es el fondo: la superficie es siempre la hoja del
+  // tema y el estado lo comunica el acento del ícono y de la acción. Un
+  // relleno saturado a todo el ancho (lo que hacía la piel V1) es
+  // justamente el vocabulario que el rediseño saca de la app.
+  const accent =
     current.kind === 'error'
-      ? {
-          bg: theme.colors.danger,
-          fg: theme.colors.textOnPrimary,
-          icon: 'error-outline' as const,
-        }
+      ? neo.danger
       : current.kind === 'success'
-        ? {
-            bg: theme.colors.success,
-            fg: theme.colors.textOnPrimary,
-            icon: 'check-circle' as const,
-          }
-        : {
-            bg: theme.colors.text,
-            fg: theme.colors.background,
-            icon: 'info-outline' as const,
-          }
+        ? neo.green
+        : neo.textMuted
+  const icon =
+    current.kind === 'error'
+      ? ('error-outline' as const)
+      : current.kind === 'success'
+        ? ('check-circle' as const)
+        : ('info-outline' as const)
 
-  return (
+  const layer = (
     <Animated.View
       entering={FadeInDown.duration(200)}
       exiting={FadeOutDown.duration(180)}
       pointerEvents="box-none"
       style={[styles.wrap, { bottom: insets.bottom + 80 }]}
     >
-      <View style={[styles.toast, { backgroundColor: tone.bg }]}>
-        <MaterialIcons name={tone.icon} size={18} color={tone.fg} />
-        <Text style={[styles.message, { color: tone.fg }]} numberOfLines={2}>
+      <View
+        style={[
+          styles.toast,
+          {
+            backgroundColor: neo.sheet,
+            // `raisedXl` y no `sheet`: la sombra de hoja apunta hacia
+            // arriba porque asume una superficie pegada al borde
+            // inferior. El toast flota en el medio, así que necesita el
+            // relieve completo para despegarse del contenido de atrás.
+            boxShadow: neo.shadows.raisedXl,
+          },
+        ]}
+      >
+        <MaterialIcons name={icon} size={18} color={accent} />
+        <Text style={[styles.message, { color: neo.text }]} numberOfLines={2}>
           {current.message}
         </Text>
         {current.actionLabel && current.onAction ? (
@@ -75,13 +99,42 @@ export function ToastHost() {
             hitSlop={8}
             accessibilityRole="button"
           >
-            <Text style={[styles.action, { color: tone.fg }]}>
+            <Text style={[styles.action, { color: neo.green }]}>
               {current.actionLabel}
             </Text>
           </Pressable>
         ) : null}
       </View>
     </Animated.View>
+  )
+
+  // Camino común (no hay hoja abierta): capa absoluta en la raíz. No
+  // roba un solo toque — `wrap` es `box-none` y sólo el botón de acción
+  // es interactivo.
+  if (!anyModalOpen) return layer
+
+  // Con una hoja abierta hace falta una ventana nativa para quedar por
+  // encima de ella. El costo es que esa ventana captura los toques
+  // mientras vive, así que el fondo es un `Pressable` que descarta el
+  // toast: en el peor caso el usuario gasta UN toque para recuperar la
+  // hoja, en vez de perderse el mensaje. El botón de acción gana el
+  // hit-test por ser hijo, así que "Deshacer" sigue funcionando.
+  return (
+    <Modal
+      animationType="none"
+      onRequestClose={dismiss}
+      statusBarTranslucent
+      transparent
+      visible
+    >
+      <Pressable
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        onPress={dismiss}
+        style={StyleSheet.absoluteFill}
+      />
+      {layer}
+    </Modal>
   )
 }
 
@@ -97,21 +150,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: neoRadii.tile,
     maxWidth: '100%',
   },
   message: {
     flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 17,
+    fontSize: 13.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    lineHeight: 18,
   },
   action: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.2,
-    textDecorationLine: 'underline',
   },
 })

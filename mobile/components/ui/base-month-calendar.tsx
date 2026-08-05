@@ -2,17 +2,19 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
-import { withAlpha } from '@/theme/color-utils'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoCalendar, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Calendar-month grid para pickear una fecha específica.
  *
- * Chrome alineado con `MonthDayPicker` (cream-card container, misma
- * cell math, mismo selected-cell gradient + shadow) para que el picker
+ * Chrome alineado con `MonthDayPicker` (misma card `raisedLg`, misma
+ * cell math, mismo par fill/tinta para el día elegido) para que el picker
  * se sienta consistente cuando el user switchea entre tipos de ciclo
  * en `CycleConfigSection`.
  *
@@ -22,6 +24,11 @@ import { useAppTheme } from '@/theme/theme-provider'
  *     weekday importa.
  *   - Chevrons prev/next para navegar entre meses.
  *   - Devuelve ISO date strings via `onSelectDay`.
+ *
+ * Rediseño 2026-07: cada día es un POZO (`neo.well` + `insetSm`); el
+ * elegido SALE del pozo (`raisedSm`) y "hoy" se marca con INVERSIÓN de
+ * fill (`neoCalendar.today`), no con outline. Los días no seleccionables
+ * pierden el fill y quedan en `neoCalendar.future`.
  */
 export interface BaseMonthCalendarDay {
   isoDate: string
@@ -39,6 +46,11 @@ export interface BaseMonthCalendarProps {
   allowedRange?: { startIso: string; endIso: string }
   renderDayDecorator?: (day: BaseMonthCalendarDay) => React.ReactNode
   onSelectDay: (isoDate: string) => void
+  /**
+   * Fill del día elegido. Default: `neo.green`. Pasar SIEMPRE un color de
+   * la paleta neo — la tinta del número sale de `neoCalendar.today.text`,
+   * verificada contra el verde del sistema en ambos temas.
+   */
   accent?: string
 }
 
@@ -52,12 +64,18 @@ export function BaseMonthCalendar({
   onSelectDay,
   accent,
 }: BaseMonthCalendarProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const cal = neoCalendar[theme.mode]
   const { t } = useTranslation()
   const weekdays = t('states:calendar.weekdays', { returnObjects: true }) as string[]
   const monthNames = t('states:calendar.months', { returnObjects: true }) as string[]
-  const accentColor = accent ?? theme.colors.primary
-  const selectedNumColor = theme.isDark ? '#0A1410' : '#F6FBEF'
+  const accentColor = accent ?? neo.green
+  const selectedNumColor = cal.today.text
+  // Los chips de navegación son superficies elevadas: sin el boxShadow
+  // (Android < 28/29) su fill queda casi al ras de la card, así que ahí
+  // —y sólo ahí— cae a un hairline. Mismo patrón que `NeoButton` ghost.
+  const reliefFallbackBorder = SUPPORTS_INSET_SHADOW ? 0 : 1
 
   const [{ year, month }, setView] = useState({
     year: initialYear,
@@ -90,24 +108,30 @@ export function BaseMonthCalendar({
     )
   }
 
+  const chevronSkin = {
+    backgroundColor: neo.surface,
+    boxShadow: neo.shadows.raisedSm,
+    borderWidth: reliefFallbackBorder,
+    borderColor: neo.sheetDivider,
+  }
+
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.line },
-      ]}
-    >
+    <NeoSurface variant="raisedLg" radius={neoRadii.card} style={styles.card}>
       <View style={styles.header}>
         <Pressable
           onPress={goPrev}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={t('states:calendar.prevMonth')}
-          style={({ pressed }) => [styles.chevron, pressed && styles.chevronPressed]}
+          style={({ pressed }) => [
+            styles.chevron,
+            chevronSkin,
+            pressed && styles.chevronPressed,
+          ]}
         >
-          <MaterialIcons name="chevron-left" size={22} color={theme.colors.text} />
+          <MaterialIcons name="chevron-left" size={22} color={neo.text} />
         </Pressable>
-        <Text style={[styles.monthLabel, { color: theme.colors.text }]}>
+        <Text style={[styles.monthLabel, { color: neo.text }]}>
           {monthNames[month]} {year}
         </Text>
         <Pressable
@@ -115,16 +139,20 @@ export function BaseMonthCalendar({
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel={t('states:calendar.nextMonth')}
-          style={({ pressed }) => [styles.chevron, pressed && styles.chevronPressed]}
+          style={({ pressed }) => [
+            styles.chevron,
+            chevronSkin,
+            pressed && styles.chevronPressed,
+          ]}
         >
-          <MaterialIcons name="chevron-right" size={22} color={theme.colors.text} />
+          <MaterialIcons name="chevron-right" size={22} color={neo.text} />
         </Pressable>
       </View>
 
       <View style={styles.weekdayRow}>
         {weekdays.map((w, idx) => (
           <View key={`h-${idx}`} style={styles.weekdayCell}>
-            <Text style={[styles.weekdayText, { color: theme.colors.textMuted }]}>{w}</Text>
+            <Text style={[styles.weekdayText, { color: neo.textMuted }]}>{w}</Text>
           </View>
         ))}
       </View>
@@ -150,20 +178,15 @@ export function BaseMonthCalendar({
               >
                 <Animated.View
                   entering={FadeIn.duration(220)}
-                  style={[styles.cellInner, styles.cellSelected]}
+                  style={[
+                    styles.cellInner,
+                    styles.cellSelected,
+                    {
+                      backgroundColor: accentColor,
+                      boxShadow: neo.shadows.raisedSm,
+                    },
+                  ]}
                 >
-                  <LinearGradient
-                    colors={[accentColor, withAlpha(accentColor, 0.85)] as unknown as readonly [string, string, ...string[]]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[
-                      StyleSheet.absoluteFill,
-                      {
-                        borderRadius: 8,
-                        boxShadow: `0px 6px 12px -4px ${withAlpha(accentColor, 0.5)}`,
-                      } as unknown as object,
-                    ]}
-                  />
                   <Text style={[styles.cellNumSelected, { color: selectedNumColor }]}>
                     {day.dayOfMonth}
                   </Text>
@@ -173,38 +196,52 @@ export function BaseMonthCalendar({
             )
           }
 
+          // Tres estados restantes, todos tokenizados en `neoCalendar`:
+          //  · hoy        → inversión de fill (sale del pozo, sin outline)
+          //  · no elegible→ sin fill, tinta `future` (control deshabilitado)
+          //  · resto      → pozo + tinta de contenido
+          const isDisabled = !day.selectable
+          const cellSurface = isToday
+            ? {
+                backgroundColor: cal.today.bg,
+                boxShadow: neo.shadows.raisedSm,
+              }
+            : isDisabled
+              ? { backgroundColor: 'transparent', boxShadow: neo.shadows.insetSm }
+              : {
+                  backgroundColor: neo.well,
+                  boxShadow: neo.shadows.insetSm,
+                  borderWidth: reliefFallbackBorder,
+                  borderColor: neo.sheetDivider,
+                }
+          const numColor = isToday
+            ? cal.today.text
+            : isDisabled
+              ? cal.future.text
+              : neo.text
+          const numWeight = isToday ? '800' : '700'
+
           return (
             <Pressable
               key={day.isoDate}
-              disabled={!day.selectable}
+              disabled={isDisabled}
               onPress={() => handlePick(day)}
               accessibilityRole="button"
               accessibilityLabel={t('states:calendar.dayLabel', { day: day.dayOfMonth })}
-              accessibilityState={{ selected: false, disabled: !day.selectable }}
+              accessibilityState={{ selected: false, disabled: isDisabled }}
               style={({ pressed }) => [
                 styles.cell,
                 pressed && day.selectable && styles.cellPressed,
               ]}
             >
-              <View
-                style={[
-                  styles.cellInner,
-                  {
-                    backgroundColor: theme.colors.creamSoft,
-                    opacity: day.selectable ? 1 : 0.35,
-                  },
-                  isToday && [
-                    styles.cellTodayBorder,
-                    { borderColor: accentColor },
-                  ],
-                ]}
-              >
+              <View style={[styles.cellInner, isToday && styles.cellSelected, cellSurface]}>
                 <Text
                   style={[
                     styles.cellNum,
                     {
-                      color: isToday ? accentColor : theme.colors.textMuted,
-                      fontWeight: isToday ? '800' : '700',
+                      color: numColor,
+                      fontWeight: numWeight,
+                      fontFamily: nunitoFamily(numWeight),
                     },
                   ]}
                 >
@@ -216,7 +253,7 @@ export function BaseMonthCalendar({
           )
         })}
       </View>
-    </View>
+    </NeoSurface>
   )
 }
 
@@ -257,8 +294,6 @@ function formatIso(d: Date): string {
 const styles = StyleSheet.create({
   card: {
     padding: 14,
-    borderRadius: 18,
-    borderWidth: 1,
   },
   header: {
     flexDirection: 'row',
@@ -270,6 +305,8 @@ const styles = StyleSheet.create({
   chevron: {
     width: 32,
     height: 32,
+    // 32/2 → circular. `neoRadii.pill` (22) dejaría de leerse como chip
+    // redondo en una caja de 32pt.
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -278,6 +315,7 @@ const styles = StyleSheet.create({
   monthLabel: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     textTransform: 'capitalize',
   },
@@ -294,6 +332,7 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1,
   },
   grid: {
@@ -309,20 +348,19 @@ const styles = StyleSheet.create({
   cellPressed: { opacity: 0.7 },
   cellInner: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: neoRadii.calendarCell,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
+  // `visible` para que el relieve elevado (elegido / hoy) no se recorte.
   cellSelected: { overflow: 'visible' },
-  cellTodayBorder: {
-    borderWidth: 1.5,
-  },
   cellNum: {
     fontSize: 13,
   },
   cellNumSelected: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

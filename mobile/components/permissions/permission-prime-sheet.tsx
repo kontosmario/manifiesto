@@ -1,11 +1,16 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 
 /**
@@ -21,6 +26,13 @@ import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
  *      nuestro sheet. Si elige "Más tarde", guardamos cooldown 7d.
  *   3. Estandarizar el tono y la UI de todos los pre-prompts del
  *      app (consistencia con el resto de sheets).
+ *
+ * Piel: rediseño neumórfico (`ModalCard skin="neo"`). El sheet lo
+ * montan CINCO hosts —onboarding-success (clásico y neo),
+ * biometric-setup (clásico y neo) y el re-prompt del Home neo—, así
+ * que la hoja neo puede aparecer sobre un canvas V1 en los flujos
+ * clásicos: es aceptable porque es una hoja modal con scrim propio,
+ * pero conviene verlo en device en las cinco entradas.
  *
  * Caller pattern:
  *   ```tsx
@@ -104,7 +116,8 @@ export function PermissionPrimeSheet({
   onDismiss,
   biometricLabel = 'Face ID',
 }: PermissionPrimeSheetProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
 
   const copy = useMemo(
@@ -112,10 +125,18 @@ export function PermissionPrimeSheet({
     [type, biometricLabel, t],
   )
 
-  const handleAllow = () => {
-    void triggerHaptic('selection')
-    onAllow()
-  }
+  // Los dos pozos de esta hoja (el círculo del ícono y los tiles de
+  // cada razón) se leen SOLO por su sombra inset: su fill (`neo.well`)
+  // contra la hoja (`neo.sheet`) es ~1.06:1. En Android < API 29 el
+  // `boxShadow` inset se descarta EN SILENCIO, así que ahí caen a un
+  // hairline para no desaparecer.
+  const insetFallback = useMemo<ViewStyle | null>(
+    () =>
+      SUPPORTS_INSET_SHADOW
+        ? null
+        : { borderWidth: 1, borderColor: neo.sheetDivider },
+    [neo],
+  )
 
   const handleDismiss = () => {
     void triggerHaptic('selection')
@@ -124,44 +145,45 @@ export function PermissionPrimeSheet({
 
   return (
     <ModalCard
+      skin="neo"
       visible={visible}
       title={copy.title}
       subtitle={copy.subtitle}
       onClose={onDismiss}
     >
       <View style={styles.body}>
-        <View
-          style={[
-            styles.iconCircle,
-            { backgroundColor: theme.colors.surfaceMuted },
-          ]}
+        <NeoSurface
+          variant="insetMd"
+          radius={44}
+          backgroundColor={neo.well}
+          style={[styles.iconCircle, insetFallback]}
         >
           <MaterialIcons
             name={copy.icon}
             size={44}
-            color={theme.colors.text}
+            color={neo.green}
           />
-        </View>
+        </NeoSurface>
 
         <View style={styles.reasonsList}>
           {copy.reasons.map((reason) => (
             <View key={reason.text} style={styles.reasonRow}>
-              <View
-                style={[
-                  styles.reasonIconWrap,
-                  { backgroundColor: theme.colors.surfaceMuted },
-                ]}
+              <NeoSurface
+                variant="insetSm"
+                radius={neoRadii.chip}
+                backgroundColor={neo.well}
+                style={[styles.reasonIconWrap, insetFallback]}
               >
                 <MaterialIcons
                   name={reason.icon}
                   size={18}
-                  color={theme.colors.textMuted}
+                  color={neo.textMuted}
                 />
-              </View>
+              </NeoSurface>
               <Text
                 style={[
                   styles.reasonText,
-                  { color: theme.colors.text },
+                  { color: neo.text },
                 ]}
               >
                 {reason.text}
@@ -171,27 +193,15 @@ export function PermissionPrimeSheet({
         </View>
 
         <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={DEFAULT_HIT_SLOP}
-            onPress={handleAllow}
-            style={({ pressed }) => [
-              styles.primaryButton,
-              {
-                backgroundColor: theme.colors.text,
-                opacity: pressed ? 0.9 : 1,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.primaryLabel,
-                { color: theme.colors.background },
-              ]}
-            >
-              {copy.primaryLabel}
-            </Text>
-          </Pressable>
+          {/* `NeoButton` ya dispara el háptico 'selection' antes de
+              llamar a `onPress`, igual que hacía el handler local. */}
+          <NeoButton
+            variant="primary"
+            block
+            label={copy.primaryLabel}
+            onPress={onAllow}
+            style={styles.primaryButton}
+          />
 
           <Pressable
             accessibilityRole="button"
@@ -205,7 +215,7 @@ export function PermissionPrimeSheet({
             <Text
               style={[
                 styles.ghostLabel,
-                { color: theme.colors.textMuted },
+                { color: neo.textMuted },
               ]}
             >
               {copy.secondaryLabel}
@@ -227,7 +237,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: 88,
     height: 88,
-    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -245,30 +254,27 @@ const styles = StyleSheet.create({
   reasonIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 700 se renderiza como regular.
   reasonText: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14.5,
     lineHeight: 20,
-    fontWeight: '500',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   actions: {
     gap: 8,
   },
+  // Altura fija: el `NeoButton` mide por padding y acá se conserva la
+  // geometría original de 52px del pre-prompt.
   primaryButton: {
     height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    paddingVertical: 0,
   },
   ghostButton: {
     height: 44,
@@ -277,6 +283,7 @@ const styles = StyleSheet.create({
   },
   ghostLabel: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

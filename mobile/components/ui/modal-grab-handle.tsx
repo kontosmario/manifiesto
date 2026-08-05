@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Small horizontal pill rendered at the top of full-screen modals
@@ -8,14 +8,21 @@ import { useAppTheme } from '@/theme/theme-provider'
  * gesture that dismisses the sheet on iOS. Matches the dimensions
  * of the in-app numpad handle so the language is consistent across
  * every dismissable surface in the product.
+ *
+ * Geometría y tinta salen del handoff: píldora 44×5 radio 3 en
+ * `neo.sheetHandle` — literalmente la misma que dibujan la piel neo de
+ * `ModalCard`, `InAppNumpad` y `NumericEditSheet`. Ese "misma que el
+ * numpad" del párrafo de arriba es un invariante real, no una
+ * coincidencia: si acá quedaran los 40×4 de la V1, el alta de gasto,
+ * la de ingreso y la de fijos mostrarían una píldora distinta a la de
+ * cualquier hoja.
  */
 export function ModalGrabHandle() {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   return (
     <View style={styles.area} pointerEvents="none">
-      <View
-        style={[styles.handle, { backgroundColor: theme.colors.borderStrong }]}
-      />
+      <View style={[styles.handle, { backgroundColor: neo.sheetHandle }]} />
     </View>
   )
 }
@@ -31,9 +38,12 @@ const styles = StyleSheet.create({
     marginBottom: -25,
   },
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radii.pill,
-    opacity: 0.55,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    // Sin `opacity`: la V1 la bajaba a 0.55 sobre un token de BORDE. Con
+    // `sheetHandle` —que ya es la tinta exacta de la píldora en cada
+    // tema— atenuarla la dejaría por debajo de 1.1:1 contra el fondo y
+    // la única affordance del gesto de cierre desaparecería.
   },
 })

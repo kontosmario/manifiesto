@@ -1,5 +1,5 @@
 import { memo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -20,6 +20,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { ControlV2AlcanciaCardEmpty } from './alcancia-parts/control-v2-alcancia-card-empty'
 import { ReserveBlock } from './alcancia-parts/reserve-block'
+import { toast } from '@/lib/toast-bus'
 
 const MIN_DIAS = 3
 // La sugerencia de ahorro necesita gasto en varios días para no contar
@@ -226,9 +227,8 @@ function ControlV2AlcanciaCardImpl({
         },
         onError: (err) => {
           void triggerHaptic('error')
-          Alert.alert(
-            t('control:alcancia.errorSumarTitle'),
-            err instanceof Error ? err.message : t('control:alcancia.errorRetry'),
+          toast.error(
+            `${t('control:alcancia.errorSumarTitle')} · ${err instanceof Error ? err.message : t('control:alcancia.errorRetry')}`,
           )
         },
       },

@@ -155,7 +155,7 @@ interface NumpadTheme {
   digitShadow: string
   /** Tecla hundida ("," + backspace). */
   insetText: string
-  insetBg: string | undefined
+  insetBg: string
   insetShadow: string
   backspaceStroke: string
 }
@@ -174,7 +174,15 @@ const NUMPAD: Record<OnbMode, NumpadTheme> = {
     digitFallback: '#E9EBE0',
     digitShadow: '5px 5px 11px rgba(151,160,136,0.4), -5px -5px 11px rgba(255,255,255,0.9)',
     insetText: '#6C7B67',
-    insetBg: undefined,
+    // Fallback SÓLIDO, no `undefined`. Las teclas "," y backspace se dibujaban
+    // sólo con la sombra inset, y RN la descarta EN SILENCIO en Android < API
+    // 29 (ver `SUPPORTS_INSET_SHADOW`): ahí las dos teclas se quedaban sin
+    // ningún límite visible contra la hoja `#EDECDF` y el backspace —la única
+    // forma de corregir un dígito mal tipeado del monto— quedaba como un glifo
+    // flotando. Con el sólido la cápsula existe aunque el relieve no se pinte,
+    // y donde sí se pinta el inset va encima y manda igual. En oscuro esto ya
+    // estaba resuelto (`#142519`).
+    insetBg: '#E4E3D5',
     insetShadow:
       'inset 4px 4px 8px rgba(151,160,136,0.32), inset -4px -4px 8px rgba(255,255,255,0.88)',
     backspaceStroke: '#2E7C39',

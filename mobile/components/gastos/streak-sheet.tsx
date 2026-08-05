@@ -50,6 +50,7 @@ import {
   PrimaryStatusCta,
   SecondaryCta,
 } from './streak-sheet-parts/action-ctas'
+import { useModalVisibilityBeacon } from '@/lib/modal-visibility'
 
 const { height: SCREEN_H } = Dimensions.get('window')
 const DISMISS_DISTANCE = 120
@@ -106,6 +107,9 @@ export function StreakSheet({
   // snap-shut the sheet (RN <Modal> unmounts the moment its `visible`
   // prop flips to false).
   const [mounted, setMounted] = useState(visible)
+  // Avisa al resto de la app que hay una ventana nativa arriba (el
+  // ToastHost la necesita para no quedar tapado). Ver `modal-visibility`.
+  useModalVisibilityBeacon(mounted)
   // Guard contra runOnJS(setMounted)(false) callbacks tras unmount.
   // El callback de withTiming corre en el UI thread; si el componente
   // se desmonta entre el inicio del fade-out y el callback, llamar

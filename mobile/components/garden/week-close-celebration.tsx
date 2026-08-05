@@ -16,6 +16,8 @@ import { BroteFireflies } from '@/components/garden/brote-fireflies'
 import { CardParticles } from '@/components/ui/card-particles'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
+import { cssGradient, neoParticlePresets, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import type { BroteStage, WeekClose } from '@/features/garden/garden-model'
 
 interface WeekCloseCelebrationProps {
@@ -23,12 +25,46 @@ interface WeekCloseCelebrationProps {
   onContinue: () => void
 }
 
+/**
+ * Paleta ANCLADA a la rama OSCURA del rediseño, no a `useThemeTokens()`.
+ *
+ * La celebración es un TAKEOVER a pantalla completa que se auto-dispara
+ * sobre cualquier tab (`WeekCloseBridge` vive fuera del Stack), y siempre
+ * fue deliberadamente oscura en los dos temas. Resolver los tokens con el
+ * modo del usuario la convertiría en claro en un lavado verde pálido —y
+ * además rompe el contraste: sobre el hero CLARO (stop medio `#4C9A52`)
+ * los niveles de texto del sistema caen por debajo de AA. Anclar a
+ * `dark` preserva el momento Y el contraste (todas las tintas de abajo
+ * miden ≥ 4.5:1 contra el stop del gradiente donde cae el texto).
+ *
+ * Como el modo es constante, los tokens se resuelven a nivel de módulo y
+ * los estilos siguen siendo un `StyleSheet.create` estático.
+ */
+const neo = neoTokens('dark')
+
+/** Preset de partículas que el handoff definió para ESTA pantalla. */
+const WEEK_CLOSE_PARTICLES = neoParticlePresets.weekCloseLight
+
+/** CTA primario del rediseño: radial `circle at 32% 28%` + sombra `cta`. */
+const CTA_GRADIENT_CSS = `radial-gradient(circle at 32% 28%, ${neo.ctaGradient[0]}, ${neo.ctaGradient[1]} 85%)`
+
+/**
+ * Qué tan buena fue la semana, en la escala del rediseño. Es INFORMACIÓN
+ * (no decoración): la V1 tenía 5 tramos sobre un degradé verde→oliva→arena
+ * que no existe en neo, cuya paleta sólo tiene verde / cálido / 4 niveles
+ * de texto. Se conservan los escalones colapsando a 4 tramos —el
+ * neutro y el olivo de la V1 caían en el mismo token— manteniendo la
+ * misma lectura: verde = buena, cálido = floja, gris = vacía.
+ *
+ * Contraste sobre el stop del hero donde cae el texto (`#1B3A26`):
+ * green 8.3:1 · heroLabel 5.8:1 · warm 6.3:1 · textMuted 4.8:1.
+ * `textTertiary` (el nivel 4) queda fuera: da 3.7:1.
+ */
 function labelColorForScore(score: number): string {
-  if (score >= 7) return '#9FE08A'
-  if (score >= 5) return '#B7DD8E'
-  if (score >= 3) return '#CBD79F'
-  if (score >= 1) return '#E0C58E'
-  return '#A9A292'
+  if (score >= 7) return neo.green
+  if (score >= 5) return neo.heroLabel
+  if (score >= 1) return neo.warm
+  return neo.textMuted
 }
 
 function stageForDay(
@@ -44,10 +80,11 @@ function stageForDay(
 }
 
 /**
- * Celebración "Cierre de semana" (handoff Frame 4, familia HITO): takeover verde
- * con los 7 brotes de la semana que CRECEN escalonados (growIn) según el score
- * 0-7. Semana perfecta (7/7) → cada helecho con flor coral + confeti. Tap o
- * "Seguir cultivando" cierra. Se monta como overlay desde Mi jardín.
+ * Celebración "Cierre de semana" (handoff Frame 4, familia HITO): takeover
+ * sobre el hero verde del rediseño con los 7 brotes de la semana que CRECEN
+ * escalonados (growIn) según el score 0-7. Semana perfecta (7/7) → cada
+ * helecho con flor coral + confeti. Tap o "Seguir cultivando" cierra. Se
+ * monta como overlay desde Mi jardín.
  */
 export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebrationProps) {
   const reduced = useReducedMotion()
@@ -84,9 +121,18 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
       />
       {/* Campo de luciérnagas AMBIENTE (atmósfera) — siempre presente, además de
           las órbitas por-brote. Es hijo del scrim → hereda su fade-in (no popea
-          estático) y las peach ya driftean más con el boost global. */}
-      <CardParticles count={12} color="#FFFBF2" accentColor="#F0B488" />
-      {perfect && <ConfettiBurst pulseToken={1} originY={120} />}
+          estático) y las peach ya driftean más con el boost global.
+          Colores + cantidad del preset `weekCloseLight`, que el handoff creó
+          justamente para esta pantalla. */}
+      <CardParticles
+        count={WEEK_CLOSE_PARTICLES.count}
+        color={WEEK_CLOSE_PARTICLES.colors[2]}
+        accentColor={WEEK_CLOSE_PARTICLES.colors[0]}
+        peachColor={WEEK_CLOSE_PARTICLES.colors[1]}
+      />
+      {perfect && (
+        <ConfettiBurst pulseToken={1} originY={120} colors={WEEK_CLOSE_PARTICLES.colors} />
+      )}
 
       <Animated.View style={[styles.content, contentStyle]}>
         <Text style={[styles.eyebrow, { color: labelColor }]}>
@@ -125,7 +171,18 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
                 <Text
                   style={[
                     styles.broteLetter,
-                    { color: day.registered ? '#9FE08A' : day.recovered ? '#E2935E' : '#8CA285' },
+                    // Semántica del día, no decoración: registrado = verde de
+                    // acción · recuperado por escudo = cálido de alerta ·
+                    // salteado = texto apagado. El nivel 4 (`textTertiary`)
+                    // daría 3.7:1 sobre el hero, así que el salteado usa el
+                    // nivel 3.
+                    {
+                      color: day.registered
+                        ? neo.green
+                        : day.recovered
+                          ? neo.warm
+                          : neo.textMuted,
+                    },
                   ]}
                 >
                   {day.letter}
@@ -155,7 +212,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#163A1E',
+    // Fondo de takeover del rediseño: el hero verde oscuro de 3 stops
+    // (150deg #234931 / #1B3A26 / #16301F), con el stop medio de fallback
+    // si el gradiente CSS no está soportado.
+    ...cssGradient(neo.heroGradientCss, neo.heroGradient[1]),
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
@@ -170,30 +230,42 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 2.2,
   },
   title: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
-    color: '#FFFFFF',
+    color: neo.text,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 33,
   },
+  // Chip = pozo hundido del vocabulario neo (fill `well` + sombra inset),
+  // no un blanco translúcido. Tiene fill propio contra el hero, así que en
+  // Android < API 29 —donde el inset se descarta en silencio— sigue
+  // leyéndose como una placa.
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 30,
+    backgroundColor: neo.well,
+    boxShadow: neo.shadows.insetSm,
+    borderRadius: neoRadii.pill,
     paddingHorizontal: 14,
     paddingVertical: 6,
     marginTop: 12,
   },
-  chipLabel: { fontSize: 13, fontWeight: '800' },
-  chipDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
-  chipCount: { fontSize: 13, fontWeight: '700', color: '#C4D6BC' },
+  chipLabel: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  chipDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: neo.textTertiary },
+  chipCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    color: neo.textMuted,
+  },
   // Zona que contiene la fila de brotes + el cluster de luciérnagas. El
   // paddingTop da el espacio donde las luciérnagas "flotan" sobre los brotes.
   brotesZone: {
@@ -215,22 +287,29 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     position: 'relative',
   },
-  broteLetter: { fontSize: 11, fontWeight: '700' },
+  broteLetter: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700') },
   sub: {
     fontSize: 14,
     lineHeight: 21,
-    color: '#A9C2A1',
+    fontFamily: nunitoFamily('400'),
+    color: neo.textMuted,
     textAlign: 'center',
     marginTop: 22,
   },
   button: {
     width: '100%',
     height: 54,
-    borderRadius: 18,
-    backgroundColor: '#9FE08A',
+    borderRadius: neoRadii.input,
+    ...cssGradient(CTA_GRADIENT_CSS, neo.ctaGradient[1]),
+    boxShadow: neo.shadows.cta,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 24,
   },
-  buttonText: { fontSize: 16, fontWeight: '800', color: '#163A1E' },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    color: neo.ctaText,
+  },
 })

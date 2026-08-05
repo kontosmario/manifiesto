@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Alert,
   Keyboard,
   Modal,
   Pressable,
@@ -13,7 +12,6 @@ import Animated, {
   LinearTransition,
   runOnJS,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
@@ -25,14 +23,16 @@ import {
 } from 'react-native-gesture-handler'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import { useKeyboardOffset } from '@/lib/use-keyboard-offset'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { Step1Title, MAX_TITLE } from './wizard-steps/step-1-title-emoji'
 import { Step2Amount } from './wizard-steps/step-2-amount'
@@ -43,6 +43,7 @@ import {
 } from './wizard-steps/step-3-months'
 import { StepSummary } from './wizard-steps/step-4-summary'
 import { WizardStepHeader } from './wizard-steps/wizard-step-header'
+import { useModalVisibilityBeacon } from '@/lib/modal-visibility'
 
 export interface CreateSavingsGoalWizardSheetProps {
   visible: boolean
@@ -69,6 +70,15 @@ const DEFAULT_EMOJI = 'metas/objetivo'
 
 const DISMISS_DISTANCE = 100
 const DISMISS_VELOCITY = 650
+
+/**
+ * El handoff dibuja el scrim SÓLIDO porque en la maqueta el fondo ya
+ * viene lavado detrás de la hoja; en el dispositivo hay una pantalla
+ * real atrás, así que se aplica el mismo tono con alfa. Mismo valor y
+ * misma razón que `ModalCard` (`NEO_SCRIM_ALPHA`), para que las dos
+ * carcasas de hoja de la app se oscurezcan igual.
+ */
+const NEO_SCRIM_ALPHA = 0.84
 // CR Sprint D Minor #2: reuso del token central `motionEasings.enterSmooth`
 // (misma curva). Antes se redeclaraba aquí + en 3 step files.
 const EXPO_OUT = motionEasings.enterSmooth
@@ -87,7 +97,14 @@ const EXPO_OUT = motionEasings.enterSmooth
  * Chrome compartido (todos los steps):
  *   • Bottom-sheet Modal con drag handle + drag-to-dismiss
  *   • Header (`WizardStepHeader`): chevron-back (icono en step 1) + eyebrow + título
- *   • Footer: AppButton primary full-width (Continuar / Crear meta)
+ *   • Footer: NeoButton primary full-width (Continuar / Crear meta)
+ *
+ * Rediseño 2026-07 (cáscara): hoja `neo.sheet` con esquinas superiores
+ * en `neoRadii.sheet`, sombra HACIA ARRIBA (`neo.shadows.sheet`), sin
+ * borde, píldora de arrastre 44×5 en `neo.sheetHandle` y scrim del tema.
+ * Es la misma receta que `ModalCard skin="neo"` — este sheet no la monta
+ * porque su gesto, su offset de teclado y su transición de paso son
+ * propios (ver notas del handoff sobre extraer un `NeoSheet` común).
  *
  * Estado interno se resetea cuando `visible` pasa de false → true
  * (igual que NumericEditSheet) — así el wizard arranca limpio cada vez.
@@ -104,7 +121,8 @@ export function CreateSavingsGoalWizardSheet({
   onCreated,
   onClose,
 }: CreateSavingsGoalWizardSheetProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const insets = useSafeAreaInsets()
   const { height: screenHeight } = useWindowDimensions()
@@ -223,12 +241,16 @@ export function CreateSavingsGoalWizardSheet({
           void triggerHaptic('success')
           onCreated(goal)
         },
-        onError: (err) => {
+        // NO se emite un segundo aviso de error acá. `useUpsertSavingsGoal`
+        // ya publica `toast.error(settings:savingsGoalValidation.saveFailed)`
+        // CON acción "Reintentar" en su propio `onError`, y el host de
+        // toasts muestra UNA sola a la vez: un toast emitido desde este
+        // callback (que corre DESPUÉS del de la mutación) reemplazaría al
+        // de la mutación y se llevaría puesto el reintento. Antes del
+        // rediseño esto era un `Alert.alert` nativo, así que el usuario
+        // veía el alert del SO **y** el toast por el mismo fallo.
+        onError: () => {
           void triggerHaptic('error')
-          Alert.alert(
-            t('settings:savingsWizard.createErrorTitle'),
-            err instanceof Error ? err.message : t('settings:savingsWizard.retry'),
-          )
         },
       },
     )
@@ -242,7 +264,6 @@ export function CreateSavingsGoalWizardSheet({
     goalAmount,
     effectiveMonths,
     onCreated,
-    t,
   ])
 
   const handlePrimaryPress = useCallback(() => {
@@ -259,6 +280,9 @@ export function CreateSavingsGoalWizardSheet({
   const backdropOpacity = useSharedValue(0)
   const keyboardOffset = useKeyboardOffset(visible)
   const [mounted, setMounted] = useState(visible)
+  // Avisa al resto de la app que hay una ventana nativa arriba (el
+  // ToastHost la necesita para no quedar tapado). Ver `modal-visibility`.
+  useModalVisibilityBeacon(mounted)
 
   useEffect(() => {
     if (visible) {
@@ -460,7 +484,10 @@ export function CreateSavingsGoalWizardSheet({
             accessibilityLabel={t('settings:savingsWizard.closeA11y')}
             accessibilityRole="button"
             onPress={handleDismiss}
-            style={[styles.backdrop, { backgroundColor: theme.colors.overlay }]}
+            style={[
+              styles.backdrop,
+              { backgroundColor: withAlpha(neo.scrim, NEO_SCRIM_ALPHA) },
+            ]}
           />
         </Animated.View>
 
@@ -475,18 +502,17 @@ export function CreateSavingsGoalWizardSheet({
               styles.sheet,
               sheetAnimatedStyle,
               {
-                backgroundColor: theme.colors.surface,
+                backgroundColor: neo.sheet,
+                // En neo el límite de la hoja lo da la sombra (hacia
+                // ARRIBA, que es su único borde libre), nunca un borde.
+                boxShadow: neo.shadows.sheet,
                 paddingBottom: insets.bottom + 16,
-                borderColor: theme.colors.border,
               },
             ]}
           >
             <View style={styles.handleArea}>
               <View
-                style={[
-                  styles.handle,
-                  { backgroundColor: theme.colors.borderStrong },
-                ]}
+                style={[styles.handle, { backgroundColor: neo.sheetHandle }]}
               />
             </View>
 
@@ -508,13 +534,14 @@ export function CreateSavingsGoalWizardSheet({
             </Animated.View>
 
             <View style={styles.ctaWrap}>
-              <AppButton
+              <NeoButton
                 variant="primary"
+                block
                 label={ctaLabel}
                 onPress={handlePrimaryPress}
                 disabled={ctaDisabled}
-                loading={upsertMutation.isPending}
-                accessibilityLabel={
+                busy={upsertMutation.isPending}
+                accessibilityHint={
                   step < STEP_COUNT
                     ? t('settings:savingsWizard.continueA11y', { next: step + 1, total: STEP_COUNT })
                     : suggestedApply
@@ -539,9 +566,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sheet: {
-    borderTopLeftRadius: radii['2xl'],
-    borderTopRightRadius: radii['2xl'],
-    borderTopWidth: StyleSheet.hairlineWidth,
+    // Sólo las esquinas SUPERIORES: la hoja llega al borde inferior y
+    // ahí las recorta la pantalla (handoff `screens/3c.html`).
+    borderTopLeftRadius: neoRadii.sheet,
+    borderTopRightRadius: neoRadii.sheet,
     paddingTop: 0,
   },
   handleArea: {
@@ -549,10 +577,11 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     alignItems: 'center',
   },
+  // Píldora de arrastre del handoff: 44×5, radio 3.
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: radii.pill,
+    width: 44,
+    height: 5,
+    borderRadius: 3,
   },
   stepBodyWrap: {
     paddingHorizontal: 16,

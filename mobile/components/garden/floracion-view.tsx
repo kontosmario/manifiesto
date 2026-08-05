@@ -25,10 +25,14 @@ import {
   FilledAchievementIcon,
   hasFilledAchievementIcon,
 } from '@/components/achievements/achievement-icon-filled'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { floracionToneForTier } from '@/features/garden/garden-tier'
 import { achievementBody, achievementTitle } from '@/features/achievements/achievement-tiers'
+import { cssGradient, neoParticlePresets, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import type { AchievementTierKey } from '@/features/garden/garden-tier'
 import type { AchievementViewItem } from '@/features/achievements/use-achievements'
 
 interface FloracionViewProps {
@@ -38,12 +42,56 @@ interface FloracionViewProps {
 }
 
 /**
+ * Paleta ANCLADA a la rama OSCURA del rediseño, no a `useThemeTokens()`.
+ * Mismo criterio (y mismo motivo) que `week-close-celebration`: es un
+ * takeover global que aparece sobre cualquier tab y siempre fue oscuro en
+ * los dos temas. Sobre el hero CLARO los niveles de texto del sistema
+ * caen por debajo de AA, así que el ancla oscura preserva el momento Y el
+ * contraste. Al ser constante, los estilos siguen siendo estáticos.
+ */
+const neo = neoTokens('dark')
+
+/** Preset de partículas de celebración del handoff. */
+const CELEBRATION_PARTICLES = neoParticlePresets.celebrationDark
+
+/** CTA primario del rediseño: radial `circle at 32% 28%` + sombra `cta`. */
+const CTA_GRADIENT_CSS = `radial-gradient(circle at 32% 28%, ${neo.ctaGradient[0]}, ${neo.ctaGradient[1]} 85%)`
+
+/** Anillo del medallón: el durazno del sistema (`neo.warm`) al 55%. */
+const MEDALLION_RING = 'rgba(242,168,126,0.55)'
+
+/**
+ * Acento del chip de tier en la escala neo.
+ *
+ * `floracionToneForTier()` (features/garden/garden-tier) sigue devolviendo
+ * el acento V1 hardcodeado (#9FE08A / #B7DD8E / #CBD79F) — ese archivo
+ * está FUERA de esta migración. Hasta que se migre, el mapeo de color vive
+ * acá para no arrastrar lime fuera de paleta al takeover; la intensidad
+ * (luciérnagas y flores) se sigue leyendo de `tone`.
+ *
+ * Contraste sobre el chip (tinte al 15% sobre el hero): green 8.3:1 ·
+ * heroLabel 5.8:1 · textMuted 4.8:1.
+ */
+function chipAccentForTier(tier: AchievementTierKey): string {
+  switch (tier) {
+    case 'legendary':
+    case 'gold':
+      return neo.green
+    case 'silver':
+      return neo.heroLabel
+    case 'bronze':
+    default:
+      return neo.textMuted
+  }
+}
+
+/**
  * Celebración de hito "Floración". Reemplaza al AchievementUnlockModal feo por
- * un takeover verde full-screen (familia del handoff Frame 3): luciérnagas +
- * helecho de marca con glow + flores coral que laten. La intensidad escala con
- * el tier del logro. Tap en cualquier lado o "Seguir cultivando" cierra;
- * auto-cierra a los 6s. Se monta en el AchievementUnlockBridge (overlay
- * absoluto sobre todo, no es un RN Modal).
+ * un takeover full-screen sobre el hero verde del rediseño (familia del handoff
+ * Frame 3): luciérnagas + medalla del logro con glow + flores coral que laten.
+ * La intensidad escala con el tier del logro. Tap en cualquier lado o "Seguir
+ * cultivando" cierra; auto-cierra a los 6s. Se monta en el
+ * AchievementUnlockBridge (overlay absoluto sobre todo, no es un RN Modal).
  */
 export function FloracionView({ item, onDismiss }: FloracionViewProps) {
   const reduced = useReducedMotion()
@@ -89,12 +137,22 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
         onPress={onDismiss}
         style={StyleSheet.absoluteFill}
       />
-      {/* Luciérnagas (crema + coral), cantidad según tier. */}
-      <CardParticles count={tone.particleCount} color="#FFFBF2" accentColor="#F0B488" />
+      {/* Luciérnagas del preset de celebración (crema + verde + durazno),
+          cantidad según tier. */}
+      <CardParticles
+        count={tone.particleCount}
+        color={CELEBRATION_PARTICLES.colors[2]}
+        accentColor={CELEBRATION_PARTICLES.colors[0]}
+        peachColor={CELEBRATION_PARTICLES.colors[1]}
+      />
 
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.fernWrap}>
-          <AuroraBloom color="#2E6B34" size={210} intensity={0.5} />
+          {/* El bloom tiene que ser MÁS CLARO que el hero para leerse como
+              glow: `greenDeep` (#1F5429) queda por debajo del propio fondo
+              y lo apagaría. El verde del CTA es el único forest del tema
+              que sigue estando por encima del gradiente. */}
+          <AuroraBloom color={neo.ctaGradient[1]} size={210} intensity={0.5} />
           {/* El ícono ÚNICO del hito en una medalla crema → cada celebración se
               siente distinta. Antes era el FernMark genérico (todas iguales por
               tier). Fallback al helecho para codes sin ícono custom. */}
@@ -116,13 +174,13 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
             <FernMark variant="cream" size={150} />
           )}
           {tone.blooms >= 1 && (
-            <CoralBloom size={13} color="#E2935E" left="30%" top="24%" durationMs={11000} />
+            <CoralBloom size={13} color={neo.warm} left="30%" top="24%" durationMs={11000} />
           )}
           {tone.blooms >= 2 && (
             <CoralBloom
               size={11}
-              color="#F0B488"
-              glow="0 0 10px 2px rgba(240,180,136,0.5)"
+              color={neo.warmBright}
+              glow="0 0 10px 2px rgba(242,168,126,0.5)"
               left="62%"
               top="18%"
               durationMs={13500}
@@ -136,7 +194,7 @@ export function FloracionView({ item, onDismiss }: FloracionViewProps) {
 
         <View style={styles.chip}>
           <FernMark variant="mint" size={16} />
-          <Text style={[styles.chipText, { color: tone.accent }]}>
+          <Text style={[styles.chipText, { color: chipAccentForTier(item.tier) }]}>
             {translate(`achievements:floracion.tier.${item.tier}`)}
           </Text>
         </View>
@@ -157,7 +215,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#163A1E',
+    // Fondo de takeover del rediseño: hero verde oscuro de 3 stops
+    // (150deg #234931 / #1B3A26 / #16301F) + fallback al stop medio.
+    ...cssGradient(neo.heroGradientCss, neo.heroGradient[1]),
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
@@ -181,31 +241,38 @@ const styles = StyleSheet.create({
     width: 118,
     height: 118,
     borderRadius: 59,
-    backgroundColor: '#FFFBF2',
-    borderWidth: 3,
-    borderColor: 'rgba(240,180,136,0.55)',
+    backgroundColor: neo.text,
     alignItems: 'center',
     justifyContent: 'center',
     // El ícono relleno trae su fondo forest cuadrado → clip a círculo.
+    // ⚠️ Este `overflow: 'hidden'` es LOAD-BEARING y además cambia la
+    // regla: en iOS pone `masksToBounds`, que RECORTA la sombra del
+    // propio layer. Por eso el anillo de 3px del handoff NO puede ir en
+    // `boxShadow` acá (como sí hace `ringSelected`): se perdería en iOS
+    // y, por debajo de API 28, también en Android. Queda como borde real
+    // —misma geometría, el borde de RN es interior igual que antes— con
+    // el durazno del sistema.
     overflow: 'hidden',
-    // Glow cálido sobre el scrim verde (la aurora aporta el verde detrás).
-    shadowColor: '#F0B488',
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+    borderWidth: 3,
+    borderColor: MEDALLION_RING,
+    // Glow cálido sobre el hero (la aurora aporta el verde detrás). Es
+    // decorativo: si el clip o el piso de Android se lo comen, el
+    // medallón sigue separándose por su fill crema + el anillo.
+    boxShadow: '0 0 22px rgba(242,168,126,0.45)',
   },
   eyebrow: {
     fontSize: 11.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 2.2,
-    color: '#9FCB93',
+    color: neo.heroLabel,
   },
   title: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
-    color: '#FFFFFF',
+    color: neo.text,
     textAlign: 'center',
     marginTop: 10,
     lineHeight: 33,
@@ -213,18 +280,24 @@ const styles = StyleSheet.create({
   body: {
     fontSize: 14,
     lineHeight: 21,
-    color: '#A9C2A1',
+    fontFamily: nunitoFamily('400'),
+    color: neo.textMuted,
     textAlign: 'center',
     marginTop: 12,
   },
+  // Chip hundido con el tinte de estado del sistema (sin borde: el neo
+  // hunde en vez de delinear).
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(159,224,138,0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(159,224,138,0.3)',
-    borderRadius: 30,
+    backgroundColor: neo.selectedTint,
+    boxShadow: neo.shadows.insetSm,
+    // El tinte es de sólo 15%: sin la sombra inset (Android < API 29) el
+    // chip perdería todo límite, así que ahí cae a un hairline.
+    borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+    borderColor: 'rgba(164,227,166,0.3)',
+    borderRadius: neoRadii.pill,
     paddingHorizontal: 14,
     paddingVertical: 9,
     marginTop: 20,
@@ -232,13 +305,15 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
   },
   button: {
     width: '100%',
     height: 56,
-    borderRadius: 18,
-    backgroundColor: '#9FE08A',
+    borderRadius: neoRadii.input,
+    ...cssGradient(CTA_GRADIENT_CSS, neo.ctaGradient[1]),
+    boxShadow: neo.shadows.cta,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 28,
@@ -246,11 +321,16 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#163A1E',
+    fontFamily: nunitoFamily('800'),
+    color: neo.ctaText,
   },
   hint: {
     fontSize: 12.5,
-    color: '#9FCB93', // AA sobre el scrim #163A1E (6.9:1; antes #7E9579 = 3.9)
+    fontFamily: nunitoFamily('400'),
+    // `heroLabel`, no `textTertiary`: el nivel 4 da 3.7:1 sobre el hero
+    // oscuro (antes #9FCB93 daba 6.9:1 sobre el scrim plano #163A1E).
+    // heroLabel = 5.8:1 → AA.
+    color: neo.heroLabel,
     textAlign: 'center',
     marginTop: 14,
   },

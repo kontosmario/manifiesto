@@ -17,7 +17,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { buildScenes } from './build-scenes'
 import { CycleWrappedCta } from './scenes/cycle-wrapped-cta'
@@ -57,9 +59,19 @@ interface CycleWrappedModalProps {
  * Las scenes individuales viven en `./scenes/*`. Este file es el
  * orchestrator: hooks de animation top-level, scene index logic,
  * dispatch del render.
+ *
+ * Rediseño neo — ALCANCE DELIBERADAMENTE PARCIAL
+ * ----------------------------------------------
+ * Sólo se migra el CHROME del modal (scrim, fallbacks de fondo, marca,
+ * hint, confeti): la "color strategy committed" de arriba es una decisión
+ * de producto, y aplanar las escenas a la paleta salvia/bosque le sacaría
+ * exactamente lo que lo hace un momento. Los tintes por escena siguen
+ * viniendo de `./scenes/*` y NO se tocan — cambiarlos requiere decisión
+ * del owner, no una migración de material.
  */
 export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const reduced = useReducedMotion()
   const insets = useSafeAreaInsets()
@@ -120,7 +132,11 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // Background previo como SHARED VALUE (no ref) — el worklet del
   // cardBgStyle lo lee. Si fuera ref-en-worklet, Reanimated alerta
   // sobre mutación de propiedad ya serializada.
-  const prevSceneBgSv = useSharedValue<string>('#000000')
+  // El default es el fondo del sistema, no negro: si el primer frame del
+  // crossfade llega a leerlo (payload antes de que corra el effect de
+  // hidratación) se ve el material de la app, no un flash negro que no
+  // existe en ninguna pantalla.
+  const prevSceneBgSv = useSharedValue<string>(neo.bg)
 
   // sceneIndex como ref JS-only (no entra al worklet). Permite que
   // los event handlers lean el index actual sin recrear el callback en
@@ -139,13 +155,13 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   useEffect(() => {
     if (!payload) return
     void triggerHaptic('success')
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+     
     setSceneIndex(0)
     sceneIndexRef.current = 0
     setIsPaused(false)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+     
     setLeftoverSelected(null)
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset interno al abrir
+     
     setApplyingLeftover(false)
     enter.value = 0
     if (reduced) {
@@ -333,7 +349,7 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   // prevSceneBgSv lo seta `transitionToScene` ANTES del setSceneIndex,
   // así que el worklet siempre tiene el color de origen correcto para
   // el crossfade.
-  const currentSceneBg = scenes[sceneIndex]?.background ?? '#000000'
+  const currentSceneBg = scenes[sceneIndex]?.background ?? neo.bg
   const cardBgStyle = useAnimatedStyle(
     () => ({
       backgroundColor: interpolateColor(
@@ -357,10 +373,11 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
       style={[
         styles.scrim,
         scrimStyle,
-        // Scrim casi opaco — el wrapped es modal pesado, ocupa pantalla
-        // entera y la cream-on-black queda con suficiente contraste
-        // para el card sin competir con el fondo.
-        { backgroundColor: 'rgba(8, 20, 14, 0.78)' },
+        // Scrim del rediseño: SÓLIDO, no negro con alfa (regla explícita
+        // del handoff) y distinto por tema. El wrapped es modal pesado y
+        // su card ocupa la pantalla entera, así que el scrim sólo se ve
+        // durante el fade de entrada/salida.
+        { backgroundColor: neo.scrim },
       ]}
     >
       <Animated.View
@@ -507,16 +524,25 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           </View>
         ) : null}
 
-        {/* Confetti solo en el veredicto positivo */}
+        {/* Confetti solo en el veredicto positivo. SIN `colors`: el fondo
+            del veredicto sigue al tema (#E3F2D2 claro / #1F4530 oscuro),
+            que es exactamente el criterio del default de ConfettiBurst. */}
         {scene.confetti ? (
           <ConfettiBurst pulseToken={sceneIndex === verdictSceneIdx ? 1 : 0} originY={200} />
         ) : null}
 
         {/* Confetti al confirmar decisión de leftover real (meta /
             acumular / reserva). Disparado por setConfettiToken en el
-            CTA. Skip en reduced motion (es decorativo). */}
+            CTA. Skip en reduced motion (es decorativo).
+            `colors` EXPLÍCITO: cae sobre la escena de cierre, que es
+            forest fija (#0F2E1F) en los DOS temas — el default claro
+            (tokens oscuros del tema) desaparecería ahí. */}
         {!reduced ? (
-          <ConfettiBurst pulseToken={confettiToken} originY={400} />
+          <ConfettiBurst
+            pulseToken={confettiToken}
+            originY={400}
+            colors={neoParticlePresets.celebrationDark.colors}
+          />
         ) : null}
       </Animated.View>
     </Animated.View>
@@ -557,6 +583,7 @@ const styles = StyleSheet.create({
   brandMark: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 3,
   },
   closeBtn: {
@@ -577,6 +604,7 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.4,
     textAlign: 'center',
   },

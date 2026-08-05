@@ -220,8 +220,7 @@
       "installmentSummary": "{{count}} cuotas de {{amount}} · Total {{total}}",
       "howManyInstallments": "¿CUÁNTAS CUOTAS?",
       "installmentsA11y": "{{count}} cuotas",
-      "nameEditHint": "editar",
-      "categorySuggested": "sugerida por el nombre"
+      "nameEditHint": "editar"
     },
     "step2": {
       "noCategory": "Sin categoría",

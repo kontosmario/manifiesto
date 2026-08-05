@@ -18,9 +18,9 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import { BlurView } from 'expo-blur'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
@@ -29,8 +29,18 @@ import {
   motionSprings,
 } from '@/lib/motion/tokens'
 import { withAlpha } from '@/theme/color-utils'
-import { useAppTheme } from '@/theme/theme-provider'
+import {
+  cssGradient,
+  neoCategoryPastels,
+  neoRadii,
+  neoTokens,
+  pastelDark,
+  type NeoTokens,
+} from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import { AddQuickActionIcon, type ActionKey } from './add-quick-action-icon'
+import { useModalVisibilityBeacon } from '@/lib/modal-visibility'
 
 export interface QuickAction {
   key: ActionKey
@@ -41,8 +51,14 @@ export interface QuickAction {
    *  green to communicate "ya está hecho hoy" without removing it
    *  from the menu (so the user can toggle it off). */
   visualState?: 'default' | 'marked'
-  /** Accent color used to tint the icon on secondary rows. The
-   *  primary row ignores this — it's already brand-saturated. */
+  /**
+   * @deprecated Sin efecto desde la migración al material neumórfico.
+   * El rediseño (`screens/3c.html` L44-62) le da a cada fila un TILE
+   * PASTEL de categoría, no un ícono teñido con un accent propio: la
+   * identidad la lleva el pastel (`ACTION_PASTEL` acá abajo) y el glifo
+   * va siempre en la tinta principal del tema. Se mantiene en el tipo
+   * para no romper a los callers; se ignora al pintar.
+   */
   accentColor?: string
   /** `'primary'` renders as the full-width top tile with brand fill;
    *  `'secondary'` (default) renders in the vertical list below. */
@@ -63,6 +79,32 @@ const CARD_BOTTOM_OFFSET = 122
 const CARD_HORIZONTAL_MARGIN = 16
 const PRIMARY_TILE_HEIGHT = 84
 const SECONDARY_ROW_HEIGHT = 60
+const SECONDARY_TILE_SIZE = 42
+
+/**
+ * El handoff dibuja el scrim como un sólido (`#B9BEAC` claro / `#0A130D`
+ * oscuro) porque en la maqueta el fondo ya viene lavado detrás de la
+ * hoja. En el dispositivo hay una pantalla real atrás, así que a
+ * opacidad plena la borraría: se aplica el MISMO tono con alfa. Mismo
+ * valor que `ModalCard` con `skin="neo"`, para que las dos superficies
+ * de hoja de la app laven el fondo igual.
+ */
+const NEO_SCRIM_ALPHA = 0.84
+
+/**
+ * Pastel de categoría por acción — transcripción literal de los tiles de
+ * `screens/3c.html` L44-62: 📸 sobre `#E6E0F4` (ocio), 🌿 sobre `#DDEBDD`
+ * (hogar), 📈 sobre `#D6E4F0` (cuotas), 🗓️ sobre `#EDE6D4` (ropa). En
+ * oscuro el mismo pastel va translúcido al 14% (`pastelDark`), como en
+ * L102-118 del mismo archivo.
+ */
+const ACTION_PASTEL: Record<ActionKey, string> = {
+  expense: neoCategoryPastels.mercado,
+  import: neoCategoryPastels.ocio,
+  'no-spend': neoCategoryPastels.hogar,
+  income: neoCategoryPastels.cuotas,
+  fixed: neoCategoryPastels.ropa,
+}
 
 /**
  * Hierarchical FAB action menu. Replaces the legacy 5-petal radial
@@ -70,8 +112,15 @@ const SECONDARY_ROW_HEIGHT = 60
  * card grid" once we had five actions. New composition:
  *
  *   [eyebrow]
- *   [PRIMARY full-width tile — brand fill, pulsing icon]
- *   [vertical list of secondary rows — accent-tinted icons]
+ *   [PRIMARY full-width tile — CTA radial verde, pulsing icon]
+ *   [vertical list of secondary rows — tile pastel + chevron]
+ *
+ * Material: pantalla 3c del handoff neumórfico
+ * (`design/rediseno-2026-07/screens/3c.html` L31-62 claro / L87-118
+ * oscuro). La GEOMETRÍA flotante anclada al FAB (card centrada a
+ * `CARD_BOTTOM_OFFSET` del borde, no pegada abajo) es una decisión de
+ * producto aprobada por el owner y NO sale del handoff: acá sólo se
+ * transcribe el material dentro de esa geometría.
  *
  * Each row carries a signature entrance animation via `AddQuickActionIcon`
  * so individual actions announce themselves (the "+" rotates in, the
@@ -91,11 +140,16 @@ export function AddQuickActionsOverlay({
   onDismiss,
   actions,
 }: AddQuickActionsOverlayProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const isDark = theme.mode === 'dark'
   const { t } = useTranslation()
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
   const [mounted, setMounted] = useState(false)
+  // Avisa al resto de la app que hay una ventana nativa arriba (el
+  // ToastHost la necesita para no quedar tapado). Ver `modal-visibility`.
+  useModalVisibilityBeacon(mounted)
   const skipNextExitRef = useRef(false)
 
   const primary = actions.find((a) => a.tier === 'primary') ?? null
@@ -175,25 +229,18 @@ export function AddQuickActionsOverlay({
         accessibilityLabel={t('states:quickActions.closeLabel')}
         accessibilityRole="button"
       >
-        <Animated.View style={[StyleSheet.absoluteFill, scrimStyle]}>
-          <BlurView
-            intensity={28}
-            tint={theme.isDark ? 'dark' : 'systemChromeMaterialDark'}
-            style={StyleSheet.absoluteFill}
-          />
-          {/* Theme-aware dim on top of the blur. The palette's `overlay`
-              token is the canonical "dim while a sheet is open" value
-              (rgba forest-green at 0.32 in light, near-black 0.52 in
-              dark). Stacking it on the BlurView keeps bright underlying
-              content from leaking through while honoring the brand
-              tint instead of a hardcoded carbon. */}
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              { backgroundColor: theme.colors.overlay },
-            ]}
-          />
-        </Animated.View>
+        {/* Scrim SÓLIDO del rediseño. El BlurView V1
+            (`systemChromeMaterialDark`) apagaba el relieve neumórfico de
+            las cuatro vistas que quedan atrás: el material difuminado no
+            existe en el vocabulario del handoff, que lava el fondo con
+            un tono plano del tema. */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            scrimStyle,
+            { backgroundColor: withAlpha(neo.scrim, NEO_SCRIM_ALPHA) },
+          ]}
+        />
       </Pressable>
 
       <View style={styles.cardWrap} pointerEvents="box-none">
@@ -202,18 +249,17 @@ export function AddQuickActionsOverlay({
             styles.card,
             cardStyle,
             {
-              backgroundColor: theme.colors.surface,
-              // `borderStrong` instead of `line` so the card edge stays
-              // visible against the dark scrim — the regular `line`
-              // token in dark mode is `rgba(255,255,255,0.06)`, which
-              // makes the dark card blend into the scrim. `borderStrong`
-              // doubles that to 0.12, giving the card a clean rim on
-              // both themes.
-              borderColor: theme.colors.borderStrong,
+              backgroundColor: neo.sheet,
+              // Hoja del handoff: sin borde, la separación del scrim la
+              // da la sombra difusa (`0 -20px 50px`). El fill sólido ya
+              // contrasta con el scrim, así que en Android < API 28
+              // —donde el boxShadow outset se descarta en silencio— la
+              // card sigue siendo visible sin fallback.
+              boxShadow: neo.shadows.sheet,
             },
           ]}
         >
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.eyebrow, { color: neo.textMuted }]}>
             {t('states:quickActions.eyebrow')}
           </Text>
 
@@ -232,24 +278,14 @@ export function AddQuickActionsOverlay({
                 active={mounted}
                 signatureDelay={PRIMARY_DELAY + 60}
                 onSelect={handleTileSelect}
-                primaryColor={theme.colors.primary}
-                isDark={theme.isDark}
+                neo={neo}
+                isDark={isDark}
               />
             </Animated.View>
           ) : null}
 
           {secondaries.length > 0 ? (
-            <View
-              style={[
-                styles.list,
-                {
-                  // `line` straight (no extra alpha multiplier): in
-                  // dark it's already `rgba(255,255,255,0.06)`; halving
-                  // it further made the list container invisible.
-                  borderColor: theme.colors.line,
-                },
-              ]}
-            >
+            <View>
               {secondaries.map((action, idx) => {
                 const rowDelay = SECONDARY_BASE_DELAY + idx * SECONDARY_STAGGER
                 return (
@@ -267,12 +303,10 @@ export function AddQuickActionsOverlay({
                       action={action}
                       active={mounted}
                       signatureDelay={rowDelay + 40}
-                      isLast={idx === secondaries.length - 1}
+                      isFirst={idx === 0}
                       onSelect={handleTileSelect}
-                      surfaceMuted={theme.colors.surfaceMuted}
-                      line={theme.colors.line}
-                      textColor={theme.colors.text}
-                      mutedColor={theme.colors.textMuted}
+                      neo={neo}
+                      isDark={isDark}
                     />
                   </Animated.View>
                 )
@@ -292,7 +326,7 @@ interface PrimaryTileProps {
   active: boolean
   signatureDelay: number
   onSelect: (a: QuickAction) => void
-  primaryColor: string
+  neo: NeoTokens
   isDark: boolean
 }
 
@@ -301,7 +335,7 @@ function PrimaryTile({
   active,
   signatureDelay,
   onSelect,
-  primaryColor,
+  neo,
   isDark,
 }: PrimaryTileProps) {
   const pressScale = useSharedValue(1)
@@ -309,17 +343,32 @@ function PrimaryTile({
     transform: [{ scale: pressScale.value }],
   }))
 
-  const baseBg =
-    action.visualState === 'marked'
-      ? withAlpha(primaryColor, isDark ? 0.55 : 0.45)
-      : primaryColor
-  // Light theme primary is `#297811` (deep brand green) — we need a
-  // bright foreground for AA contrast. White lands at ~6.5:1; the
-  // previous dark-green `#0F2D06` failed at ~1.5:1. Dark theme primary
-  // is `#A6EF8F` (bright brand) so a near-black foreground is correct
-  // there (~9:1).
-  const fg = isDark ? '#0E1B14' : '#FFFFFF'
-  const iconBg = withAlpha(fg, isDark ? 0.14 : 0.18)
+  const isMarked = action.visualState === 'marked'
+
+  // CTA del handoff (`screens/3c.html` L34 / L90): fill radial
+  // `circle at 32% 28%` sobre el par `ctaGradient` del tema + la receta
+  // `shadows.cta` (que en oscuro incluye el glow verde).
+  //
+  // El estado 'marked' ("ya está hecho hoy") NO es un CTA atenuado: en
+  // el vocabulario neo es el estado SELECCIONADO — tinte verde sobre la
+  // hoja + anillo. Por eso también cambia la tinta: `ctaText` (#F5F2E1)
+  // sobre `selectedTint` translúcido encima de `sheet` daría ~1.1:1.
+  const fill = isMarked
+    ? { backgroundColor: neo.selectedTint }
+    : cssGradient(
+        `radial-gradient(circle at 32% 28%, ${neo.ctaGradient[0]}, ${neo.ctaGradient[1]} 85%)`,
+        neo.ctaGradient[1],
+      )
+  const shadow = isMarked ? neo.shadows.ringSelected : neo.shadows.cta
+  const fg = isMarked ? neo.text : neo.ctaText
+  // Disco del ícono: 44×44 (el wrap de `AddQuickActionIcon` mide
+  // `size + 16`), con el velo del handoff — blanco al 22% en claro,
+  // tinta al 25% en oscuro.
+  const iconBg = isMarked
+    ? neo.well
+    : isDark
+      ? 'rgba(15,30,20,0.25)'
+      : 'rgba(255,255,255,0.22)'
 
   return (
     <Animated.View style={animatedStyle}>
@@ -342,10 +391,15 @@ function PrimaryTile({
         }}
         style={({ pressed }) => [
           styles.primaryTile,
+          fill,
           {
-            backgroundColor: baseBg,
             opacity: pressed ? 0.94 : 1,
-            shadowColor: primaryColor,
+            boxShadow: shadow,
+            // El 'marked' se dibuja SOLO con relieve hundido + anillo, y
+            // Android < API 29 descarta el inset en silencio: sin
+            // fallback quedaría un tinte casi invisible sobre la hoja.
+            borderWidth: isMarked && !SUPPORTS_INSET_SHADOW ? 1.5 : 0,
+            borderColor: neo.green,
           },
         ]}
       >
@@ -364,7 +418,9 @@ function PrimaryTile({
           </Text>
           {action.subtitle ? (
             <Text
-              style={[styles.primarySubtitle, { color: withAlpha(fg, 0.7) }]}
+              // A 0.7 el subtítulo de 12px caía a ~4.1:1 sobre el fill
+              // radial; 0.85 lo devuelve por encima de AA.
+              style={[styles.primarySubtitle, { color: withAlpha(fg, 0.85) }]}
               numberOfLines={1}
             >
               {action.subtitle}
@@ -381,32 +437,28 @@ interface SecondaryRowProps {
   action: QuickAction
   active: boolean
   signatureDelay: number
-  isLast: boolean
+  isFirst: boolean
   onSelect: (a: QuickAction) => void
-  surfaceMuted: string
-  line: string
-  textColor: string
-  mutedColor: string
+  neo: NeoTokens
+  isDark: boolean
 }
 
 function SecondaryRow({
   action,
   active,
   signatureDelay,
-  isLast,
+  isFirst,
   onSelect,
-  surfaceMuted,
-  line,
-  textColor,
-  mutedColor,
+  neo,
+  isDark,
 }: SecondaryRowProps) {
   const pressScale = useSharedValue(1)
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }))
 
-  const accent = action.accentColor ?? mutedColor
-  const iconBg = withAlpha(accent, 0.18)
+  const pastel = ACTION_PASTEL[action.key]
+  const tileBg = isDark ? pastelDark(pastel) : pastel
   const isMarked = action.visualState === 'marked'
 
   return (
@@ -431,31 +483,48 @@ function SecondaryRow({
           styles.secondaryRow,
           {
             backgroundColor: isMarked
-              ? withAlpha(accent, 0.08)
+              ? neo.selectedTint
               : pressed
-                ? surfaceMuted
+                ? neo.well
                 : 'transparent',
-            borderBottomColor: line,
-            borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
+            // Único hairline del vocabulario neo: la línea de 1.5px
+            // entre ítems de una MISMA lista (`screens/3c.html` L49).
+            borderTopColor: neo.sheetDivider,
+            borderTopWidth: isFirst ? 0 : 1.5,
           },
         ]}
       >
-        <AddQuickActionIcon
-          actionKey={action.key}
-          icon={action.icon}
-          size={20}
-          color={accent}
-          bgColor={iconBg}
-          delay={signatureDelay}
-          active={active}
-        />
+        {/* Tile pastel 42×42 radio 14 del handoff. El ícono va sin su
+            disco propio (`bgColor` transparente) para que el pastel sea
+            la única superficie: el wrap circular de `AddQuickActionIcon`
+            (36px) queda centrado dentro del cuadrado. */}
+        <View
+          style={[
+            styles.secondaryTile,
+            { backgroundColor: tileBg },
+          ]}
+        >
+          <AddQuickActionIcon
+            actionKey={action.key}
+            icon={action.icon}
+            size={20}
+            color={neo.text}
+            bgColor="transparent"
+            delay={signatureDelay}
+            active={active}
+          />
+        </View>
         <Text
-          style={[styles.secondaryLabel, { color: textColor }]}
+          style={[styles.secondaryLabel, { color: neo.text }]}
           numberOfLines={1}
         >
           {action.label}
         </Text>
-        <MaterialIcons name="chevron-right" size={20} color={mutedColor} />
+        <MaterialIcons
+          name="chevron-right"
+          size={20}
+          color={neo.textTertiary}
+        />
       </Pressable>
     </Animated.View>
   )
@@ -475,37 +544,29 @@ const styles = StyleSheet.create({
   },
   card: {
     width: Math.min(SCREEN_WIDTH - CARD_HORIZONTAL_MARGIN * 2, 480),
-    borderRadius: 24,
-    borderWidth: 1,
+    borderRadius: neoRadii.cardSm,
     paddingHorizontal: 14,
     paddingTop: 14,
     paddingBottom: 10,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.32,
-    shadowRadius: 28,
-    elevation: 22,
   },
   eyebrow: {
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 1.4,
+    // 11.5 / 800 / 0.16em del handoff (0.16em × 11.5 ≈ 1.84).
+    fontSize: 11.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.84,
     textTransform: 'uppercase',
     paddingLeft: 4,
   },
   primaryTile: {
     minHeight: PRIMARY_TILE_HEIGHT,
-    borderRadius: 18,
+    borderRadius: neoRadii.cardSm,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.36,
-    shadowRadius: 18,
-    elevation: 12,
   },
   primaryLabelCol: {
     flex: 1,
@@ -514,17 +575,14 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 19,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.4,
   },
   primarySubtitle: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.2,
-  },
-  list: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   secondaryRow: {
     minHeight: SECONDARY_ROW_HEIGHT,
@@ -534,10 +592,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
+  secondaryTile: {
+    width: SECONDARY_TILE_SIZE,
+    height: SECONDARY_TILE_SIZE,
+    borderRadius: neoRadii.chip,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
   secondaryLabel: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 15.5,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.2,
   },
 })

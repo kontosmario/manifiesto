@@ -35,6 +35,13 @@ export function SuggestedAmountStrip({
         <Pressable
           key={v}
           onPress={() => onAdd(v)}
+          // El chip mide ~30pt de alto en neo (padV 7 + texto de 12px) y 28 en
+          // classic, muy por debajo del mínimo de 44. El `hitSlop` agranda el
+          // área real sin tocar el layout del handoff: adentro de un ScrollView
+          // horizontal, fallar el tap arrastra la fila o cae en el chip vecino
+          // y suma OTRA cifra al importe que después se confirma. Mismo recurso
+          // que `add-income-parts/quick-text-chips`.
+          hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
           accessibilityRole="button"
           accessibilityLabel={t('home:suggestedAmount.addAccessibility', { amount: v })}
           style={[
@@ -61,7 +68,10 @@ export function SuggestedAmountStrip({
               { color: theme.colors.text },
               neo
                 ? {
-                    color: neo.add.quickChip.ink,
+                    // La variante de TEXTO del clay: `quickChip.ink` es
+                    // `#C25B33`, que a 12px sobre `#E9EBE0` da 3.60:1 — abajo
+                    // de AA. Ver `accentClayInk` en la piel.
+                    color: neo.add.accentClayInk,
                     fontSize: neo.add.quickChip.fontSize,
                     fontWeight: '800',
                     fontFamily: neo.font('800'),
@@ -76,6 +86,9 @@ export function SuggestedAmountStrip({
       {currentAmount > 0 ? (
         <Pressable
           onPress={onClear}
+          // El chip de borrar NO recibe el override de neo: se queda en el
+          // padding de 6 (~28pt) y es el más chico de la fila.
+          hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
           accessibilityRole="button"
           accessibilityLabel={t('home:suggestedAmount.clearAccessibility')}
           style={[styles.chipDashed, { borderColor: theme.colors.line }]}

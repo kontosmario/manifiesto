@@ -12,6 +12,13 @@ export const CONTROL_TOUR = TOUR_KEYS.control
  * las señales del asesor se movieron al ícono de Home. No re-agregar
  * sin una card en Control que registre el target.)
  *
+ * ORDEN 2026-08-03 (vista neo, design_handoff_control): los `order`
+ * siguen el orden VERTICAL del layout nuevo — hero fusionado (hoy 0 +
+ * alcanza 1 apuntan a la misma card), comparativa (vsMes 2), tendencia
+ * (semana 3), hábito (patron 4), reparto (cobertura 5) y la meta/
+ * alcancía al final (alcancia 6). Con los orders viejos el auto-scroll
+ * del tour saltaba al fondo en el paso 2 y volvía a subir.
+ *
  * `text` vía getter para reaccionar al cambio de idioma en runtime.
  */
 export const CONTROL_TOUR_STEPS = {
@@ -27,10 +34,10 @@ export const CONTROL_TOUR_STEPS = {
       return i18n.t('states:tour.control.alcanza')
     },
   },
-  alcancia: {
+  vsMes: {
     order: 2,
     get text() {
-      return i18n.t('states:tour.control.alcancia')
+      return i18n.t('states:tour.control.vsMes')
     },
   },
   semana: {
@@ -39,22 +46,22 @@ export const CONTROL_TOUR_STEPS = {
       return i18n.t('states:tour.control.semana')
     },
   },
-  vsMes: {
-    order: 4,
-    get text() {
-      return i18n.t('states:tour.control.vsMes')
-    },
-  },
   patron: {
-    order: 5,
+    order: 4,
     get text() {
       return i18n.t('states:tour.control.patron')
     },
   },
   cobertura: {
-    order: 6,
+    order: 5,
     get text() {
       return i18n.t('states:tour.control.cobertura')
+    },
+  },
+  alcancia: {
+    order: 6,
+    get text() {
+      return i18n.t('states:tour.control.alcancia')
     },
   },
 } satisfies Record<string, TourStepCopy>

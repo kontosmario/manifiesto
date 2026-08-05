@@ -1,6 +1,6 @@
 // Infinite hour carousel — picks an hour (0–23) on a horizontal reel that
 // loops seamlessly (after 23 comes 00 and vice-versa). Replaces the finite
-// hour strip: the centered tile is the selection, grows + turns primary,
+// hour strip: the centered tile is the selection, grows + turns green,
 // neighbours scale/fade toward the edges for depth.
 //
 // Design notes (ui-ux-pro-max / emil / impeccable):
@@ -13,6 +13,16 @@
 //    to the middle copy once the reel comes to rest (invisible to the user).
 //  · A light haptic ticks each time a new hour passes the centre.
 //  · Respects reduced motion (no depth scaling; snap still works).
+//
+// Rediseño 2026-07 (material, no layout):
+//  · El carrusel es un POZO: `neo.well` + `shadows.insetMd`, sin hairline.
+//  · La ranura de foco es el estado seleccionado del sistema — `selectedTint`
+//    + `shadows.ringSelected` (anillo verde 2.5px).
+//  · El número centrado SALE del pozo (`shadows.raisedSm` sobre el tinte),
+//    que es el contraste de material que da la sensación de reel. El estado
+//    es un swap DISCRETO por `isCentered`: `backgroundColor`/`boxShadow` no
+//    son animables en el native driver de RN Animated, así que no se
+//    interpola — no intentar animar el relieve acá.
 
 import { memo, useCallback, useRef, useState } from 'react'
 import {
@@ -27,10 +37,12 @@ import {
   type ScrollView,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 const ITEM_WIDTH = 62
 const HEIGHT = 88
@@ -47,15 +59,11 @@ interface Props {
 }
 
 export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const hourSuffix = t('states:hourPicker.suffix')
   const reduced = useReducedMotion()
-  // Texto sobre el pill primary: mismo patrón que el Button canónico —
-  // blanco en light (5.5:1 sobre #297811) y el canvas oscuro en dark
-  // (sobre el verde claro #A6EF8F), para que el número central se lea bien
-  // en ambos temas.
-  const onPrimary = theme.isDark ? theme.colors.background : '#FFFFFF'
   const scrollRef = useRef<ScrollView>(null)
   const scrollX = useRef(new Animated.Value(0)).current
 
@@ -124,14 +132,33 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
     <View
       style={[
         styles.container,
-        { backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border },
+        {
+          // Pozo del handoff: fill propio + relieve hundido. El fill sólido
+          // sobrevive al piso Android donde el boxShadow se descarta
+          // (`inset-shadow-support`), así que el carrusel nunca desaparece.
+          backgroundColor: neo.well,
+          boxShadow: neo.shadows.insetMd,
+        },
       ]}
       onLayout={onLayout}
     >
-      {/* Center slot: a filled band marks where the selection lands, so the
-          reel reads as anchored to the centre (not floating). */}
+      {/* Center slot: la ranura de foco marca dónde aterriza la selección,
+          así el reel se lee anclado al centro (no flotando). */}
       <View pointerEvents="none" style={styles.focusLayer}>
-        <View style={[styles.focusSlot, { backgroundColor: theme.colors.primarySurface }]} />
+        <View
+          style={[
+            styles.focusSlot,
+            {
+              backgroundColor: neo.selectedTint,
+              boxShadow: neo.shadows.ringSelected,
+              // El anillo de `ringSelected` es un boxShadow: en Android < 28/29
+              // se descarta en silencio y la ranura quedaría marcada sólo por
+              // un tinte al 10-15%. El borde sólo aparece en ese piso.
+              borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 2,
+              borderColor: neo.green,
+            },
+          ]}
+        />
       </View>
 
       {width > 0 ? (
@@ -158,10 +185,15 @@ export function HourCarousel({ value, onChange, accessibilityLabel }: Props) {
               isCentered={idx === centeredIndex}
               reduced={reduced}
               scrollX={scrollX}
-              primary={theme.colors.primary}
-              onPrimary={onPrimary}
-              textColor={theme.colors.text}
-              mutedColor={theme.colors.textMuted}
+              accentColor={neo.green}
+              tintColor={neo.selectedTint}
+              raisedShadow={neo.shadows.raisedSm}
+              // Jerarquía 1:1 de la V1: el número es contenido (`text`) y el
+              // sufijo es su unidad (`textMuted`). No bajan a `textTertiary`
+              // porque las horas laterales YA vienen atenuadas por opacity
+              // (0.32–0.6) y a esa alfa el terciario desaparece.
+              textColor={neo.text}
+              mutedColor={neo.textMuted}
               hourSuffix={hourSuffix}
               onTilePress={onTilePress}
             />
@@ -178,8 +210,11 @@ interface TileProps {
   isCentered: boolean
   reduced: boolean
   scrollX: Animated.Value
-  primary: string
-  onPrimary: string
+  /** Verde de acción — tinta del número/sufijo centrado. */
+  accentColor: string
+  /** Fondo tinted del pill centrado (acompaña al relieve). */
+  tintColor: string
+  raisedShadow: string
   textColor: string
   mutedColor: string
   hourSuffix: string
@@ -195,8 +230,9 @@ const HourTile = memo(function HourTile({
   isCentered,
   reduced,
   scrollX,
-  primary,
-  onPrimary,
+  accentColor,
+  tintColor,
+  raisedShadow,
   textColor,
   mutedColor,
   hourSuffix,
@@ -235,20 +271,34 @@ const HourTile = memo(function HourTile({
       style={styles.tileTap}
     >
       <Animated.View style={[styles.tile, { transform: [{ scale }], opacity }]}>
-        <View style={[styles.pill, isCentered ? { backgroundColor: primary } : null]}>
+        <View
+          style={[
+            styles.pill,
+            isCentered
+              ? { backgroundColor: tintColor, boxShadow: raisedShadow }
+              : null,
+          ]}
+        >
           <Text
             style={[
               styles.num,
               {
-                color: isCentered ? onPrimary : textColor,
+                color: isCentered ? accentColor : textColor,
                 fontWeight: isCentered ? '900' : '700',
+                fontFamily: nunitoFamily(isCentered ? '900' : '700'),
               },
             ]}
           >
             {hh}
           </Text>
         </View>
-        <Text style={[styles.suffix, { color: isCentered ? primary : mutedColor }]}>{hourSuffix}</Text>
+        {/* El sufijo NO se tiñe de verde: a 10pt no es "texto grande", y el
+            verde de acción sobre el pozo tinteado da 3.8:1 (< AA 4.5). El
+            cue de "esta es la hora" ya lo dan el pill elevado y el número
+            en verde 900, que sí es texto grande (20pt/900 → umbral 3:1). */}
+        <Text style={[styles.suffix, { color: isCentered ? textColor : mutedColor }]}>
+          {hourSuffix}
+        </Text>
       </Animated.View>
     </Pressable>
   )
@@ -259,8 +309,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: HEIGHT,
     justifyContent: 'center',
-    borderRadius: radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: neoRadii.input,
+    // El relieve reemplaza al hairline V1. `overflow: hidden` recorta el
+    // reel a la boca del pozo: el pill centrado siempre cae en el centro
+    // (≥16pt de aire arriba/abajo y lejos de los bordes laterales), así que
+    // su `raisedSm` —de alcance 15pt— no llega al clip.
     overflow: 'hidden',
   },
   focusLayer: {
@@ -271,7 +324,7 @@ const styles = StyleSheet.create({
   focusSlot: {
     width: ITEM_WIDTH - 4,
     height: 56,
-    borderRadius: radii.md,
+    borderRadius: neoRadii.chip,
   },
   tileTap: {
     width: ITEM_WIDTH,
@@ -287,6 +340,8 @@ const styles = StyleSheet.create({
   pill: {
     minWidth: 42,
     height: 38,
+    // Cápsula REAL de 38pt de alto: acá el 999 es el valor correcto, no
+    // `neoRadii.pill` (22, pensado para pastillas finas).
     borderRadius: 999,
     paddingHorizontal: 8,
     alignItems: 'center',
@@ -300,6 +355,7 @@ const styles = StyleSheet.create({
   suffix: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.5,
   },
 })

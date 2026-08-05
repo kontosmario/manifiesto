@@ -6,6 +6,7 @@ import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { AchievementUnlockBridge } from '@/components/bridges/achievement-unlock-bridge'
 import { WeekCloseBridge } from '@/components/garden/week-close-bridge'
 import { CycleWrappedBridge } from '@/components/bridges/cycle-wrapped-bridge'
+import { NeoConfirmHost } from '@/components/ui/neo-confirm-host'
 import { ToastHost } from '@/components/ui/toast-host'
 import { NoSpendConfettiHost } from '@/components/ui/no-spend-confetti-host'
 import { DailyBudgetNudgeBridge } from '@/components/bridges/daily-budget-nudge-bridge'
@@ -161,6 +162,11 @@ export function AppStackShell() {
   return (
     <>
       <DailyBudgetNudgeBridge />
+      {/* Fuera del gate de `userId && familyId` a propósito: reemplaza a
+          `Alert.alert`, que estaba disponible en toda la app. Sin host
+          montado `neoConfirm()` resuelve `false`, así que una pregunta
+          hecha durante el logout se tragaría la respuesta en silencio. */}
+      <NeoConfirmHost />
       {userId && familyId ? (
         <>
           <GlobalSettingsModalsHost familyId={familyId} userId={userId} />

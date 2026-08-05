@@ -9,9 +9,13 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { useAppTheme } from '@/theme/theme-provider'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 
@@ -32,10 +36,6 @@ interface QuickAddSavingsSheetProps {
 }
 
 const PRESET_PERCENTAGES = [25, 50, 75, 100] as const
-const SLIDER_GRADIENT: readonly [string, string, ...string[]] = [
-  '#6FE09A',
-  '#F2B58A',
-]
 const THUMB_SIZE = 28
 
 /**
@@ -44,13 +44,18 @@ const THUMB_SIZE = 28
  *  · Big amount + percentage display at the top so the slider's
  *    feedback is the focal element.
  *  · Custom Reanimated slider (gesture-driven, snaps to whole
- *    hundreds). The fill is the same green→peach gradient that
- *    powers the meta progress bar — visual continuity across the
- *    savings surface.
+ *    hundreds). Physics untouched by the neo migration — only the
+ *    material changed: the track is now a sunken well (`insetSm`) and
+ *    the thumb a raised tile (`raisedSm`) with a green ring.
  *  · Preset chips (25 / 50 / 75 / 100) snap the slider to fixed
- *    proportions in one tap.
- *  · `AppButton` save at the bottom — primary path stays visible
- *    above the safe-area + keyboard inset that ModalCard manages.
+ *    proportions in one tap: raised tiles when idle, `ringSelected`
+ *    when picked.
+ *  · `NeoButton` save at the bottom — primary path stays visible above
+ *    the safe-area + keyboard inset that ModalCard manages.
+ *
+ * Rediseño 2026-07: la carcasa la pinta `ModalCard skin="neo"` (hoja
+ * `neo.sheet`, radio 34, sombra hacia arriba, píldora 44×5, scrim del
+ * tema). Este archivo sólo aporta el CONTENIDO.
  */
 export function QuickAddSavingsSheet({
   visible,
@@ -62,9 +67,10 @@ export function QuickAddSavingsSheet({
   onSubmit,
   inline,
 }: QuickAddSavingsSheetProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
-  const isDark = theme.isDark
+  const isDark = theme.mode === 'dark'
 
   // The slider's "100%" reference. Prefer the suggested amount,
   // otherwise fall back to whatever's still missing on the goal so
@@ -85,7 +91,7 @@ export function QuickAddSavingsSheet({
   // Reset on every open: start at 100% of the suggested amount.
   useEffect(() => {
     if (!visible) return
-     
+
     setAmount(maxAmount)
     // @motion-allow: 360ms initial fill on sheet open; slightly slower than deliberate (320) for an unhurried setup feel
     fillRatio.value = withTiming(1, {
@@ -145,7 +151,9 @@ export function QuickAddSavingsSheet({
         // activates the moment the finger lands, so a pure tap on
         // the track jumps the thumb (no need for a separate Tap
         // handler). The parent ModalCard pan disambiguates via its
-        // own `activeOffsetY(8) / failOffsetX([-16, 16])`.
+        // own `activeOffsetY(8) / failOffsetX([-16, 16])` — la piel
+        // neo NO cambia esa negociación: sigue siendo el MISMO
+        // `ModalCard`, sólo repintado.
         .minDistance(0)
         .onBegin((event) => {
           'worklet'
@@ -197,22 +205,33 @@ export function QuickAddSavingsSheet({
     return null
   }, [amount, maxAmount, snapAmount])
 
-  const accentFg = theme.colors.success
-  const trackBg = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(15,42,30,0.10)'
-  const inactiveChipBg = isDark
-    ? 'rgba(255,255,255,0.05)'
-    : 'rgba(15,42,30,0.04)'
-  const inactiveChipBorder = isDark
-    ? 'rgba(255,255,255,0.10)'
-    : 'rgba(15,42,30,0.10)'
-  const activeChipBg = isDark
-    ? 'rgba(122,216,163,0.20)'
-    : 'rgba(28,126,58,0.12)'
-  const activeChipBorder = isDark
-    ? 'rgba(122,216,163,0.50)'
-    : 'rgba(28,126,58,0.36)'
-  const thumbBg = isDark ? '#FFFBF2' : '#FFFFFF'
-  const thumbBorder = accentFg
+  // Barra de progreso: verde de acción → cálido, el MISMO par que pinta
+  // la barra de la meta (continuidad deliberada con `meta-card` /
+  // `control-v2-alcancia-card`, que siguen en V1 — ver notas).
+  const sliderGradient = useMemo<readonly [string, string, ...string[]]>(
+    () => [neo.green, neo.warm],
+    [neo],
+  )
+
+  // Tinta verde de TEXTO. `neo.green` es el verde de MATERIAL (relleno,
+  // anillo, gradiente); como tinta a 10-12pt sobre el pozo claro
+  // (#E9EBE0) da 4.29:1 y sobre el tile seleccionado 3.97:1 — los dos
+  // por debajo de AA. `greenDeep` sobre esas mismas superficies da
+  // 7.4:1 / 6.8:1. En oscuro el verde claro ya cumple (10.8:1 / 6.5:1)
+  // y `greenDeep` sería ilegible, así que la tinta es mode-aware.
+  const accentInk = isDark ? neo.green : neo.greenDeep
+  // Alerta "te pasás de lo que falta". `neo.warm` en claro (#C96F3F)
+  // sobre la hoja da 3.09:1 a 12pt: se usa el rojo-tierra de exceso del
+  // propio rediseño (`gastos-spec.dayExcesoInk` / `fijos-spec.
+  // tagOverdueInk`), que da 4.93:1. En oscuro `neo.warm` ya da ~7:1.
+  const warnInk = isDark ? neo.warm : '#A84A2F'
+
+  // Android < API 28/29 descarta el boxShadow EN SILENCIO. El pozo del
+  // monto, el riel y los chips se leen SÓLO por su relieve (su fill es
+  // casi el de la hoja), así que ahí — y sólo ahí — cae un hairline.
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: theme.colors.border }
 
   const isValid = amount > 0
   const exceedsRemaining = isValid && remaining > 0 && amount > remaining
@@ -243,24 +262,23 @@ export function QuickAddSavingsSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
+      skin="neo"
       title={t('home:quickAddSavings.title', { goalTitle })}
       subtitle={t('home:quickAddSavings.subtitle')}
     >
       <View style={styles.body}>
-        <View
-          style={[
-            styles.amountCard,
-            {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.border,
-            },
-          ]}
+        {/* El display del aporte es un POZO, no una card elevada. */}
+        <NeoSurface
+          variant="insetLg"
+          radius={neoRadii.input}
+          backgroundColor={neo.well}
+          style={[styles.amountCard, flatFallback]}
         >
-          <Text style={[styles.amountEyebrow, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.amountEyebrow, { color: neo.textMuted }]}>
             {t('home:quickAddSavings.contributionEyebrow')}
           </Text>
           <Text
-            style={[styles.amountValue, { color: theme.colors.text }]}
+            style={[styles.amountValue, { color: neo.text }]}
             numberOfLines={1}
             adjustsFontSizeToFit
             // Without a floor, iOS's `adjustsFontSizeToFit` happily
@@ -277,8 +295,8 @@ export function QuickAddSavingsSheet({
           >
             {currencyFormatter.format(amount)}
           </Text>
-          <Text style={[styles.amountSub, { color: accentFg }]}>{pctLabel}</Text>
-        </View>
+          <Text style={[styles.amountSub, { color: accentInk }]}>{pctLabel}</Text>
+        </NeoSurface>
 
         <View style={styles.sliderBlock}>
           <GestureDetector gesture={panGesture}>
@@ -300,11 +318,18 @@ export function QuickAddSavingsSheet({
             >
               <View
                 onLayout={handleTrackLayout}
-                style={[styles.track, { backgroundColor: trackBg }]}
+                style={[
+                  styles.track,
+                  {
+                    backgroundColor: neo.well,
+                    boxShadow: neo.shadows.insetSm,
+                  },
+                  flatFallback,
+                ]}
               >
                 <Animated.View style={[styles.fill, fillStyle]}>
                   <LinearGradient
-                    colors={SLIDER_GRADIENT}
+                    colors={sliderGradient}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={StyleSheet.absoluteFill}
@@ -315,8 +340,15 @@ export function QuickAddSavingsSheet({
                   style={[
                     styles.thumb,
                     {
-                      backgroundColor: thumbBg,
-                      borderColor: thumbBorder,
+                      backgroundColor: neo.surface,
+                      // El anillo del pulgar es SOMBRA, no borde (mismo
+                      // recurso que `ringSelected`). El borde sólo
+                      // aparece donde el sistema descarta el boxShadow:
+                      // sin él, en claro el pulgar (#E9EBE0) queda del
+                      // mismo color exacto que el riel y desaparece.
+                      boxShadow: `${neo.shadows.raisedSm}, 0 0 0 2.5px ${neo.green}`,
+                      borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 3,
+                      borderColor: neo.green,
                     },
                     thumbStyle,
                   ]}
@@ -324,11 +356,16 @@ export function QuickAddSavingsSheet({
               </View>
             </View>
           </GestureDetector>
+          {/* Los extremos de la escala se quedan en `textMuted` y NO bajan
+              a `textTertiary`: sobre la hoja clara (#F0EFE3) el terciario
+              (#9AA694) da 2.20:1 y en oscuro 4.19:1 — los dos por debajo de
+              AA para 11pt semibold. `textMuted` da 3.89:1 / 5.53:1. Mismo
+              criterio que el radio de `month-close-decision-sheet`. */}
           <View style={styles.scaleRow}>
-            <Text style={[styles.scaleText, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.scaleText, { color: neo.textMuted }]}>
               $0
             </Text>
-            <Text style={[styles.scaleText, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.scaleText, { color: neo.textMuted }]}>
               {formatMoneyShort(maxAmount)}
             </Text>
           </View>
@@ -350,17 +387,32 @@ export function QuickAddSavingsSheet({
                 accessibilityState={{ selected: isActive }}
                 style={({ pressed }) => [
                   styles.chip,
-                  {
-                    backgroundColor: isActive ? activeChipBg : inactiveChipBg,
-                    borderColor: isActive ? activeChipBorder : inactiveChipBorder,
-                    opacity: pressed ? 0.72 : 1,
-                  },
+                  // Sin selección = tile extruido (gradiente raised del
+                  // tema); seleccionado = pozo + anillo verde 2.5px
+                  // sobre el tinte del sistema. En neo la separación la
+                  // da el relieve, nunca un borde de 1px.
+                  isActive
+                    ? {
+                        backgroundColor: neo.selectedTint,
+                        boxShadow: neo.shadows.ringSelected,
+                      }
+                    : {
+                        ...cssGradient(neo.raisedGradientCss, neo.surface),
+                        boxShadow: neo.shadows.raisedSm,
+                      },
+                  flatFallback
+                    ? {
+                        borderWidth: 1,
+                        borderColor: isActive ? neo.green : theme.colors.border,
+                      }
+                    : null,
+                  { opacity: pressed ? 0.72 : 1 },
                 ]}
               >
                 <Text
                   style={[
                     styles.chipPct,
-                    { color: isActive ? accentFg : theme.colors.text },
+                    { color: isActive ? accentInk : neo.text },
                   ]}
                 >
                   {pct}%
@@ -369,7 +421,7 @@ export function QuickAddSavingsSheet({
                   style={[
                     styles.chipAmount,
                     {
-                      color: isActive ? accentFg : theme.colors.textMuted,
+                      color: isActive ? accentInk : neo.textMuted,
                     },
                   ]}
                   numberOfLines={1}
@@ -384,20 +436,17 @@ export function QuickAddSavingsSheet({
         <Text
           style={[
             styles.helper,
-            {
-              color: exceedsRemaining
-                ? theme.colors.warning
-                : theme.colors.textMuted,
-            },
+            { color: exceedsRemaining ? warnInk : neo.textMuted },
           ]}
         >
           {helper}
         </Text>
 
-        <AppButton
+        <NeoButton
           variant="primary"
+          block
           label={saveLabel}
-          loading={isSaving}
+          busy={isSaving}
           disabled={!isValid}
           onPress={() => {
             if (!isValid) return
@@ -414,8 +463,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   amountCard: {
-    borderRadius: 18,
-    borderWidth: 1,
+    // El radio lo pone `NeoSurface` (neoRadii.input). Sin borde: la
+    // profundidad la da `shadows.insetLg`.
     paddingHorizontal: 18,
     paddingVertical: 16,
     alignItems: 'center',
@@ -424,6 +473,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     marginBottom: 4,
   },
   amountValue: {
@@ -439,11 +489,13 @@ const styles = StyleSheet.create({
     // gentle for the same reason.
     fontSize: 44,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
   },
   amountSub: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     marginTop: 4,
     letterSpacing: 0.2,
   },
@@ -456,7 +508,7 @@ const styles = StyleSheet.create({
   },
   track: {
     height: 8,
-    borderRadius: 999,
+    borderRadius: neoRadii.pill,
     overflow: 'visible',
     position: 'relative',
   },
@@ -471,7 +523,7 @@ const styles = StyleSheet.create({
     // travel direction).
     width: '100%',
     transformOrigin: 'left' as const,
-    borderRadius: 999,
+    borderRadius: neoRadii.pill,
     overflow: 'hidden',
   },
   thumb: {
@@ -481,12 +533,6 @@ const styles = StyleSheet.create({
     width: THUMB_SIZE,
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
-    borderWidth: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
   },
   scaleRow: {
     flexDirection: 'row',
@@ -495,6 +541,7 @@ const styles = StyleSheet.create({
   scaleText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   chipsRow: {
     flexDirection: 'row',
@@ -504,8 +551,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 8,
     paddingHorizontal: 6,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: neoRadii.chip,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
@@ -513,16 +559,19 @@ const styles = StyleSheet.create({
   chipPct: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   chipAmount: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginTop: 2,
   },
   helper: {
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
 })

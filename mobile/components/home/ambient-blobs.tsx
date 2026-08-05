@@ -74,7 +74,12 @@ export const AmbientBlobs = memo(function AmbientBlobs({ tone = 'aurora' }: Ambi
     : { color: theme.colors.auroraC, opacity: 0.35 }
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    // overflow hidden es load-bearing en web: los blobs cuelgan fuera del
+    // borde (right/left negativos) y sin clip ensanchan el scrollWidth del
+    // contenedor de screens — un scrollIntoView del navegador (focus de un
+    // input) lo scrollea y TODA la pantalla queda corrida. En nativo no
+    // cambia nada: esas zonas ya caían fuera del viewport.
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.clip]}>
       <Animated.View style={[styles.blob, { top: -70, right: -50, width: 240, height: 240, backgroundColor: blobA.color, opacity: blobA.opacity }, aStyle]} />
       <Animated.View style={[styles.blob, { top: 440, left: -80, width: 240, height: 240, backgroundColor: blobB.color, opacity: blobB.opacity }, bStyle]} />
       <Animated.View style={[styles.blob, { top: 1000, right: -60, width: 260, height: 260, backgroundColor: blobC.color, opacity: blobC.opacity }, cStyle]} />
@@ -84,4 +89,5 @@ export const AmbientBlobs = memo(function AmbientBlobs({ tone = 'aurora' }: Ambi
 
 const styles = StyleSheet.create({
   blob: { position: 'absolute', borderRadius: 9999 },
+  clip: { overflow: 'hidden' },
 })

@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -15,15 +15,19 @@ import Animated, {
   withSpring,
   withTiming,
   interpolateColor,
-  useReducedMotion,
 } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
+// El hook PROPIO, nunca el de reanimated: `Tile` lo llama una vez POR TILE (el
+// alta de ingreso monta 9), y el de la librería abre una suscripción a
+// `AccessibilityInfo` en cada call site además de ignorar el override de
+// Motion de Ajustes. El propio es un `useContext` sobre un store único.
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import type { Category } from '@/features/categories/use-categories'
 import { CategoryIcon } from '@/components/category/category-icon'
 import type { CategoryIconScope } from '@/components/category/category-icon-map'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
-import { radii } from '@/theme/palette'
+import { neoRadii } from '@/theme/neo-tokens'
 import { typography } from '@/theme/typography'
 import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -97,6 +101,21 @@ interface TileRailProps {
 }
 
 /**
+ * Key de una columna por CONTENIDO, no por posición.
+ *
+ * Los tiles llegan rankeados por uso (`rankCategoriesByUsage`), y ese ranking
+ * se recomputa cada vez que cambia el cache de gastos: refetch on focus, un
+ * movimiento de otro miembro del hogar, el insert optimista. Con `key={index}`
+ * un tile que pasa de la columna 2 a la 1 cambia de PADRE, así que React lo
+ * desmonta y lo remonta: pierde sus shared values, `selectedProgress` vuelve a
+ * 0 y el tile recién elegido se despinta (borde y check) con la hoja abierta y
+ * sin que el form haya cambiado. Mismo idiom que las filas de `onb-numpad`.
+ */
+function columnKey(column: readonly RailTile[]): string {
+  return column.map((tile) => tile.id).join('-')
+}
+
+/**
  * Rail presentacional genérico (scroll horizontal 2-filas + tiles animadas).
  * No conoce categorías ni ingresos — sólo `RailTile[]`.
  */
@@ -125,12 +144,18 @@ export function TileRail({
       easing: Easing.bezier(0.32, 0.72, 0, 1),
     })
   }, [warning, warningProgress])
+  // Extremos del glide, resueltos por piel. En `neo` la tinta de reposo es la
+  // sub del rediseño (`theme.colors.textMuted` es verde NEÓN en oscuro) y la
+  // de aviso el terracota para TEXTO CHICO — `accentClay` a secas se queda
+  // abajo de AA como tinta en claro.
+  //
+  // Antes el estilo animado se aplicaba ANTES del objeto neo, así que el
+  // `color` estático del skin lo pisaba y el aviso quedaba MUDO en las tres
+  // altas: ahora viaja último y es el único que decide la tinta.
+  const labelIdleInk = neoRail ? neoRail.mutedInk : theme.colors.textMuted
+  const labelWarnInk = neoRail ? neoRail.add.accentClayInk : theme.colors.warning
   const labelAnimatedStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      warningProgress.value,
-      [0, 1],
-      [theme.colors.textMuted, theme.colors.warning],
-    ),
+    color: interpolateColor(warningProgress.value, [0, 1], [labelIdleInk, labelWarnInk]),
   }))
 
   const columns = useMemo(() => {
@@ -167,6 +192,10 @@ export function TileRail({
     return Math.max(tileWidth, Math.min(computed, 110))
   }, [staticGrid, measuredWidth, tileWidth, columns.length])
 
+  // `onSelect` va DERECHO al tile, sin cerrarlo sobre `tile.id` acá: un arrow
+  // inline por tile es una prop nueva por render y anula el `memo` de `Tile`
+  // (que paga 3 `useAnimatedStyle` + la resolución de paleta). El háptico y la
+  // llamada se arman adentro, colgados de `[tile.id, onSelect]`.
   const renderTile = (tile: RailTile, width: number) => (
     <Tile
       key={tile.id}
@@ -174,24 +203,29 @@ export function TileRail({
       selected={tile.id === selectedId}
       width={width}
       height={tileHeight}
-      onPress={() => {
-        void triggerHaptic('selection')
-        onSelect(tile.id)
-      }}
+      onSelect={onSelect}
     />
   )
 
   return (
-    <View style={styles.root}>
+    // El grupo de radios: sin él VoiceOver anuncia N radios sueltos sin decir
+    // cuántas alternativas hay, que son excluyentes, ni a qué campo
+    // pertenecen — el eyebrow es un `<Text>` hermano y tampoco se asocia.
+    // Mismo tratamiento que los chips de día del alta de ingreso.
+    <View style={styles.root} accessibilityRole="radiogroup" accessibilityLabel={labelText}>
       <View style={styles.eyebrowRow}>
         <Animated.Text
           style={[
+            // `typography.eyebrow` primero, y NO se elimina en neo: de ahí sale
+            // el `textTransform` que pone el label en mayúsculas, igual que los
+            // de `Field`. El objeto de abajo pisa tamaño, peso y familia.
             typography.eyebrow,
             { paddingHorizontal: 4 },
+            // Único eyebrow del paso 1 que no pasa por `Field`. Los tokens van
+            // del skin (tamaño/peso/familia/tracking); el `color` NO, para que
+            // el glide de aviso siga siendo el último en decidirlo.
+            neoRail ? neoRail.add.sectionLabel : null,
             labelAnimatedStyle,
-            // Único eyebrow del paso 1 que no pasa por `Field`. La tinta va
-            // del skin: `theme.colors.textMuted` es verde NEÓN en oscuro.
-            neoRail ? { ...neoRail.add.sectionLabel, color: neoRail.mutedInk } : null,
           ]}
         >
           {labelText}
@@ -205,6 +239,10 @@ export function TileRail({
               {
                 color: neoRail.detail.ctaEditInk,
                 backgroundColor: neoRail.accent('paid').chipBackground,
+                // El `fontFamily` viaja con el peso: cada peso de Nunito es un
+                // face estático, así que un `fontWeight: '800'` suelto rendía
+                // el regular del sistema (mismo fix que ya tiene `Field`).
+                fontFamily: neoRail.font('800'),
               },
             ]}
           >
@@ -217,8 +255,8 @@ export function TileRail({
           onLayout={handleStaticLayout}
           style={[styles.staticContent, { gap: STATIC_TILE_GAP }]}
         >
-          {columns.map((column, columnIndex) => (
-            <View key={columnIndex} style={[styles.column, { gap: STATIC_TILE_GAP }]}>
+          {columns.map((column) => (
+            <View key={columnKey(column)} style={[styles.column, { gap: STATIC_TILE_GAP }]}>
               {column.map((tile) => renderTile(tile, staticTileWidth))}
             </View>
           ))}
@@ -228,14 +266,23 @@ export function TileRail({
           ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          // Sin esto cae al default `'never'`: con el teclado abierto el
+          // ScrollView se queda el toque para cerrarlo y NO se lo entrega al
+          // `Pressable` del tile, así que el primer tap después de escribir la
+          // descripción sólo baja el teclado y la categoría no cambia. Es el
+          // control de un campo REQUERIDO. `'handled'` y no `'always'`: es el
+          // mismo valor de los dos vecinos del paso (`SuggestedAmountStrip`,
+          // `QuickTextChips`) y del ScrollView del `Screen`, y deja que el
+          // fondo del `WizardShell` siga cerrando el teclado.
+          keyboardShouldPersistTaps="handled"
           style={neoRail ? styles.scrollBleedNeo : undefined}
           contentContainerStyle={[styles.scrollContent, neoRail ? styles.scrollContentNeo : null]}
           decelerationRate="fast"
           snapToInterval={tileWidth + TILE_GAP}
           snapToAlignment="start"
         >
-          {columns.map((column, columnIndex) => (
-            <View key={columnIndex} style={styles.column}>
+          {columns.map((column) => (
+            <View key={columnKey(column)} style={styles.column}>
               {column.map((tile) => renderTile(tile, tileWidth))}
             </View>
           ))}
@@ -346,10 +393,22 @@ interface TileProps {
   selected: boolean
   width: number
   height: number
-  onPress: () => void
+  /** El id lo cierra el TILE, no el caller: ver `renderTile`. */
+  onSelect: (id: string) => void
 }
 
-function Tile({ tile, selected, width, height, onPress }: TileProps) {
+/**
+ * MEMOIZADO — y por eso `onSelect` TIENE que llegar estable desde la pantalla.
+ *
+ * El rail del paso 1 de agregar gasto monta el catálogo variable entero (13
+ * categorías + "Otros" + las custom del hogar) y cada tile paga `useFijosSkin`
+ * + `useAppTheme` + `useReducedMotion` + `resolveFijosCategoryTone` + TRES
+ * `useAnimatedStyle`. Sin memo, cada tecla tipeada en la descripción re-rendea
+ * la screen → el paso → el rail → los ~14 tiles: tipear "Cafetería" son ~126
+ * re-montajes de estilo animado. Es la trampa de memos derrotadas por
+ * callbacks inestables, sólo que acá no había memo que derrotar.
+ */
+const Tile = memo(function Tile({ tile, selected, width, height, onSelect }: TileProps) {
   const { theme } = useAppTheme()
   // COMPARTIDO con add-gasto / add-ingreso: solo resuelve a `neo` dentro del
   // wizard de fijos, que es el único que monta el provider.
@@ -388,19 +447,34 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
   // Selección bien diferenciable también en dark: borde grueso (1→3pt) en el
   // INK oscuro del hue (contrasta fuerte sobre el pastel claro del tile, en
   // ambos modos) + un check badge en la esquina.
-  const borderStyle = useAnimatedStyle(() => ({
-    borderColor: interpolateColor(
-      selectedProgress.value,
-      [0, 1],
-      [theme.colors.border, hue.ink],
-    ),
-    borderWidth: 1 + selectedProgress.value * 2,
-  }))
+  //
+  // En `neo` este estilo NO se aplica (el tile se hunde con anillo, no se
+  // bordea) y el worklet corta antes de interpolar: son ~14 tiles pagando una
+  // interpolación de `theme.colors.border` por frame para nada.
+  const isNeo = neo != null
+  const borderStyle = useAnimatedStyle(() => {
+    'worklet'
+    if (isNeo) return { borderColor: 'transparent', borderWidth: 0 }
+    return {
+      borderColor: interpolateColor(
+        selectedProgress.value,
+        [0, 1],
+        [theme.colors.border, hue.ink],
+      ),
+      borderWidth: 1 + selectedProgress.value * 2,
+    }
+  })
 
   const checkStyle = useAnimatedStyle(() => ({
     opacity: selectedProgress.value,
     transform: [{ scale: 0.5 + selectedProgress.value * 0.5 }],
   }))
+
+  const tileId = tile.id
+  const handlePress = useCallback(() => {
+    void triggerHaptic('selection')
+    onSelect(tileId)
+  }, [onSelect, tileId])
 
   return (
     <Animated.View style={[styles.tileWrap, { width, height }, scaleStyle]}>
@@ -417,7 +491,7 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
         onPressOut={() => {
           scale.value = withSpring(1, motionSprings.press)
         }}
-        onPress={onPress}
+        onPress={handlePress}
         style={({ pressed }) => [{ width, height, opacity: pressed ? 0.92 : 1 }]}
       >
         <Animated.View
@@ -449,7 +523,15 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
         >
           {tile.icon}
           <Text
-            style={[styles.label, { color: hue.ink }]}
+            style={[
+              styles.label,
+              { color: hue.ink },
+              // El `fontFamily` viaja con el peso (Nunito son faces estáticas
+              // por peso). Sólo en neo: en classic el label lo rinde la face
+              // del sistema desde siempre y este componente también lo monta
+              // import-review, que no pasó por el gate del rediseño.
+              neo ? { fontFamily: neo.font('700') } : null,
+            ]}
             // Clave del fix: una palabra ÚNICA larga (Transferencia, Suscripciones,
             // Entretenimiento) con numberOfLines=2 se char-breakea ("Transferen"/
             // "cia") y eso YA satisface las 2 líneas → adjustsFontSizeToFit nunca
@@ -474,12 +556,14 @@ function Tile({ tile, selected, width, height, onPress }: TileProps) {
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hintPill: {
-    borderRadius: 8,
+    // Sólo se dibuja en `neo`, así que el radio sale del vocabulario del
+    // rediseño en vez de un literal V1.
+    borderRadius: neoRadii.chip,
     fontSize: 9.5,
     fontWeight: '800',
     paddingHorizontal: 7,
@@ -520,7 +604,9 @@ const styles = StyleSheet.create({
   tile: {
     paddingVertical: 8,
     paddingHorizontal: 4,
-    borderRadius: radii.lg,
+    // Mismo valor que el `radii.lg` V1 que había acá (18): es el radio de tile
+    // del rediseño, tokenizado. En neo lo pisa igual `neo.add.tile.radius`.
+    borderRadius: neoRadii.tile,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
@@ -550,7 +636,8 @@ const styles = StyleSheet.create({
     right: 4,
     width: 17,
     height: 17,
-    borderRadius: 999,
+    // A 17×17 el `pill` del rediseño (22) redondea igual que el 999 V1.
+    borderRadius: neoRadii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

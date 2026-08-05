@@ -517,6 +517,11 @@ export function useCreateExpense(familyId?: string, userId?: string) {
       }
       if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
       if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
+      // Ver `CreateExpenseInput.skipRetryToast`: el reintento del toast corre
+      // por un camino que no pasa por el guard de doble submit del caller ni
+      // cierra su pantalla, así que en el wizard terminaba creando el gasto
+      // DOS veces. Los flujos con reintento propio lo apagan.
+      if (input.skipRetryToast) return
       toast.error(i18n.t('gastos:errors.saveFailed'), {
         actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),

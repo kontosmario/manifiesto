@@ -7,14 +7,18 @@
 // and the user dismisses with "Listo" (or backdrop / swipe-down). Pass a
 // distinct `instanceKey` per slot so the reel remounts and re-centres on the
 // new value when a different slot opens.
+//
+// Rediseño 2026-07: la hoja monta la piel `neo` de `ModalCard` (carcasa,
+// píldora, tipografía del handoff) y el CTA es el `NeoButton` primario —
+// el mismo fill radial verde + sombra `cta` que el resto del rediseño. La
+// altura de 48pt del botón V1 se conserva con un override de estilo: esto
+// es un cambio de MATERIAL, no de layout.
 
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import { HourCarousel } from '@/components/ui/hour-carousel'
-import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
 
 interface Props {
   visible: boolean
@@ -40,7 +44,6 @@ export function HourPickerSheet({
   subtitle,
   accessibilityLabel,
 }: Props) {
-  const { theme } = useAppTheme()
   const { t } = useTranslation()
 
   return (
@@ -49,6 +52,7 @@ export function HourPickerSheet({
       title={title}
       subtitle={subtitle ?? t('states:hourPicker.sheetSubtitle')}
       onClose={onClose}
+      skin="neo"
     >
       <View style={styles.wrap}>
         <HourCarousel
@@ -57,24 +61,15 @@ export function HourPickerSheet({
           onChange={onChange}
           accessibilityLabel={accessibilityLabel}
         />
-        <Pressable
-          onPress={() => {
-            void triggerHaptic('selection')
-            onClose()
-          }}
-          style={({ pressed }) => [
-            styles.doneButton,
-            { backgroundColor: theme.colors.primary, opacity: pressed ? 0.85 : 1 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel={t('common:actions.done')}
-        >
-          <Text
-            style={[styles.doneLabel, { color: theme.isDark ? theme.colors.background : '#FFFFFF' }]}
-          >
-            {t('common:actions.done')}
-          </Text>
-        </Pressable>
+        {/* `NeoButton` ya dispara el háptico de selección al presionar, así
+            que el cierre sólo tiene que propagar `onClose`. */}
+        <NeoButton
+          label={t('common:actions.done')}
+          onPress={onClose}
+          variant="primary"
+          block
+          style={styles.doneButton}
+        />
       </View>
     </ModalCard>
   )
@@ -82,11 +77,10 @@ export function HourPickerSheet({
 
 const styles = StyleSheet.create({
   wrap: { gap: 16 },
+  // Altura del CTA V1 preservada (el `NeoButton` la resolvería con su
+  // padding vertical de 15 y quedaría ~5pt más alto).
   doneButton: {
     height: 48,
-    borderRadius: radii.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 0,
   },
-  doneLabel: { fontSize: 15, fontWeight: '700' },
 })

@@ -44,6 +44,18 @@ const ENTRIES: PreviewEntry[] = [
     statusKey: 'home-final',
   },
   {
+    label: 'CONTROL neo · datos reales',
+    detail: 'Handoff design_handoff_control: hero fusionado + score de salud + comparativa/tendencia/hábito/reparto/alcancía — swap directo por pedido del owner',
+    route: '/(app)/settings/dev/neo-control',
+    statusKey: 'control',
+  },
+  {
+    label: 'CONTROL (kit · todos los estados)',
+    detail: 'Layout ensamblado + las 30 variantes de las 7 secciones con fixtures del handoff · claro/oscuro',
+    route: '/(app)/settings/dev/redesign-control',
+    statusKey: 'control',
+  },
+  {
     label: 'GASTOS neo · datos reales',
     detail: 'Cableado F0+F1 (ciclo actual read-only: hero + calendario/exceso + filtro) — pre-swap de ruta',
     route: '/(app)/settings/dev/neo-gastos',
@@ -84,6 +96,16 @@ const ENTRIES: PreviewEntry[] = [
     detail: 'Port Skia de brot.js · 2a',
     route: '/(app)/settings/dev/redesign-brot',
     statusKey: 'brot',
+  },
+  {
+    // No es una réplica del design doc sino el BANCO del edge-to-edge: se
+    // lista acá porque es el único índice dev que el owner abre en device, y
+    // el efecto solo se puede juzgar en un iPhone con isla (en web expo-blur
+    // cae a un backdrop-filter aproximado).
+    label: 'Scroll edge effect (banco)',
+    detail: 'Insets simulados 59/118/177 · A/B tabla vieja ⇄ nueva · fondos de peor caso · steppers N/K/p',
+    route: '/(app)/settings/dev/edge-effect',
+    statusKey: 'edge-effect',
   },
   {
     label: 'Partículas',

@@ -32,11 +32,10 @@
  * ── ESCRITURAS REALES ───────────────────────────────────────────────────
  * El CTA "✓ Confirmar cobro" del estado E8 escribe `family_finance` de
  * verdad: NO es reversible desde acá y además descongela el saldo de Home.
- * Por eso va con `Alert` de confirmación explícito.
+ * Por eso va con `neoConfirm` de confirmación explícito.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   RefreshControl,
   StyleSheet,
   Text,
@@ -60,7 +59,6 @@ import {
   useScreenTour,
   useTourTargetRef,
 } from '@/features/tours'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
 // La lista de "Todos tus fijos" reusa el componente COLAPSABLE de la pantalla
 // viva, no las filas del kit. El kit dibuja UNA fila por categoría, sin
@@ -122,6 +120,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 // "Semana del 6 jul → 12 jul · día 22". El view-model supersede a la spec acá.
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { motionDurations, motionEasings } from '@/lib/motion'
+import { neoConfirm } from '@/lib/confirm-bus'
 import { toast } from '@/lib/toast-bus'
 import { brand } from '@/theme/palette'
 import { nunitoFamily } from '@/theme/typography'
@@ -591,7 +590,9 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
       revertRef.current.mutate(paymentId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
-          Alert.alert(t('fijos:neo.alert.revertFailed'), getErrorMessage(error, t('states:error.server')))
+          toast.error(
+            `${t('fijos:neo.alert.revertFailed')} · ${getErrorMessage(error, t('states:error.server'))}`,
+          )
         },
         onSuccess: () => {
           void triggerHaptic('success')
@@ -633,9 +634,8 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
         {
           onError: (error: unknown) => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('fijos:neo.alert.payFailed'),
-              getErrorMessage(error, t('states:error.server')),
+            toast.error(
+              `${t('fijos:neo.alert.payFailed')} · ${getErrorMessage(error, t('states:error.server'))}`,
             )
           },
           onSuccess: () => {
@@ -725,46 +725,43 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   const handleDelete = useCallback(
     (fixedExpenseId: string) => {
       void triggerHaptic('warning')
-      Alert.alert(t('fijos:alerts.deleteTitle'), t('fijos:alerts.deleteMessage'), [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('common:actions.delete'),
-          style: 'destructive',
-          onPress: () => {
-            deleteMutation.mutate(fixedExpenseId, {
-              onError: (error: unknown) => {
-                void triggerHaptic('error')
-                Alert.alert(
-                  t('fijos:alerts.deleteFailedTitle'),
-                  getErrorMessage(error, t('states:error.server')),
-                )
-              },
-              onSuccess: () => void triggerHaptic('success'),
-            })
+      void (async () => {
+        const confirmed = await neoConfirm(t('fijos:alerts.deleteTitle'), {
+          message: t('fijos:alerts.deleteMessage'),
+          confirmLabel: t('common:actions.delete'),
+          tone: 'destructive',
+        })
+        if (!confirmed) return
+        deleteMutation.mutate(fixedExpenseId, {
+          onError: (error: unknown) => {
+            void triggerHaptic('error')
+            toast.error(
+              `${t('fijos:alerts.deleteFailedTitle')} · ${getErrorMessage(error, t('states:error.server'))}`,
+            )
           },
-        },
-      ])
+          onSuccess: () => void triggerHaptic('success'),
+        })
+      })()
     },
     [deleteMutation, t],
   )
 
   /**
    * ESCRITURA REAL y NO reversible desde acá: ancla el ciclo y descongela el
-   * saldo de Home. Por eso el `Alert` explícito antes de mutar.
+   * saldo de Home. Por eso la confirmación explícita antes de mutar.
+   *
+   * `tone: 'irreversible'` y no `'destructive'`: no borra nada, pero tampoco
+   * se puede deshacer. El naranja de alerta lo separa del rojo de "eliminar",
+   * que en esta misma pantalla significa perder el historial de un fijo.
    */
   const handleConfirmCobro = useCallback(() => {
-    Alert.alert(
-      t('fijos:neo.confirmCobro.title'),
-      t('fijos:neo.confirmCobro.message'),
-      [
-        { style: 'cancel', text: t('common:actions.cancel') },
-        {
-          onPress: () => confirmCycleStartingBalance(null),
-          style: 'destructive',
-          text: t('common:actions.confirm'),
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('fijos:neo.confirmCobro.title'), {
+        message: t('fijos:neo.confirmCobro.message'),
+        tone: 'irreversible',
+      })
+      if (confirmed) confirmCycleStartingBalance(null)
+    })()
   }, [confirmCycleStartingBalance, t])
 
   // ── Gate ────────────────────────────────────────────────────────────────
@@ -799,10 +796,6 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   return (
     <Screen
       backgroundColor={s.bg}
-      // Detrás del ScrollView, no adentro: las auroras cubren el viewport
-      // completo y no scrollean con el contenido. Mismo tratamiento que la
-      // pantalla viva.
-      backgroundSlot={<AmbientBlobs tone={mode === 'dark' ? 'calm' : 'aurora'} />}
       contentContainerStyle={styles.body}
       onContentSizeChange={onTourContentSizeChange}
       onScroll={handleScroll}

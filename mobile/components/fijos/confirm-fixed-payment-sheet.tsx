@@ -1,14 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { TextField } from '@/components/ui/text-field'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
+
+/**
+ * Terracota AA para TEXTO CHICO en el tema CLARO.
+ *
+ * `neo.warm` (#C96F3F) y `neo.danger` (#C25B33) están calibrados para bordes,
+ * anillos y fills, que sólo necesitan 3:1: como TINTA sobre las superficies
+ * claras del rediseño se quedan en 2.99-3.75:1, abajo de los 4.5 que pide AA
+ * para texto normal (la nota de aviso son 11px, el chip del delta 12px). Este
+ * es el mismo oscurecimiento que ya vive en la piel del wizard
+ * (`fijos-skin.tsx` → `STEP2.light.accentClayInk`), y sobre el pozo claro
+ * (#E9EBE0) da 5.49:1 y sobre el chip teñido 4.96:1.
+ *
+ * En OSCURO no hace falta: `neo.warm` (#F2A87E) ya da 5.28-8.16:1 sobre las
+ * mismas superficies.
+ */
+const ALERT_INK_LIGHT = '#9A421F'
 
 interface ConfirmFixedPaymentSheetProps {
   visible: boolean
@@ -43,9 +63,16 @@ type Mode = 'same' | 'changed'
  *   2) Nota de "cobrado con mora" si `wasOverdue` (rojo soft, sutil).
  *   3) Dos opciones grandes:
  *        a) "Mismo monto · $X" (primario, default) → cierra sin override.
- *        b) "Cambió" (secondary)   → revela TextField con $X precargado.
+ *        b) "Cambió" (secondary)   → revela el pozo de monto con $X precargado.
  *   4) Preview inline del cambio cuando edita ("+$1.500 · +12%").
  *   5) Botón final "Confirmar pago".
+ *
+ * PIEL: rediseño neumórfico. La carcasa la pone `ModalCard skin="neo"` (hoja
+ * `neo.sheet`, esquinas 34, sombra hacia arriba, píldora de arrastre) y el
+ * contenido habla el mismo idioma: la card del último monto es una superficie
+ * ELEVADA, la nota de mora y el chip del delta son POZOS, el selector de modo
+ * se HUNDE al elegirse (no se rellena en negativo) y el input de monto es el
+ * pozo grande del handoff en vez de un `TextField` con borde.
  *
  * El sheet NO conoce de mutations — la pantalla huésped maneja
  * `recordPaymentMutation.mutate` en `onConfirmSame`/`onConfirmChanged`.
@@ -63,12 +90,21 @@ export function ConfirmFixedPaymentSheet({
   onConfirmSame,
   onConfirmChanged,
 }: ConfirmFixedPaymentSheetProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const isDark = theme.mode === 'dark'
   const { t } = useTranslation()
   const [mode, setMode] = useState<Mode>('same')
   const [amountText, setAmountText] = useState('')
   const samePress = usePressScale({ pressedScale: 0.97 })
   const changedPress = usePressScale({ pressedScale: 0.97 })
+
+  // Tintas de estado ya resueltas por tema. `alertInk` sube (aumento, mora),
+  // `positiveInk` baja (el fijo salió más barato) y es también la tinta del
+  // chip seleccionado — en claro va el verde PROFUNDO porque el `green` del
+  // sistema sobre el tinte de selección se queda en 3.97:1.
+  const alertInk = isDark ? neo.warm : ALERT_INK_LIGHT
+  const positiveInk = isDark ? neo.green : neo.greenDeep
 
   // Hidratamos cuando el sheet abre — useEffect en vez de inicializador
   // de useState porque el sheet vive montado entre aperturas y queremos
@@ -103,158 +139,139 @@ export function ConfirmFixedPaymentSheet({
   // En modo "same" siempre OK; el botón es la opción primaria default.
   const isSameValid = previousAmount > 0
 
+  // Material del chip de modo. El seleccionado se HUNDE con el anillo verde
+  // (`ringSelected`) sobre el tinte de selección; el de reposo es un tile
+  // ELEVADO con el gradiente raised del tema. En Android < API 28 el anillo
+  // —que es un boxShadow outset— se descarta en silencio: el `selectedTint`
+  // es lo único que queda para distinguirlos, por eso no se omite.
+  const modeSurface = (selected: boolean) =>
+    selected
+      ? { backgroundColor: neo.selectedTint, boxShadow: neo.shadows.ringSelected }
+      : { ...cssGradient(neo.raisedGradientCss, neo.surface), boxShadow: neo.shadows.raisedSm }
+
   const previousLabel = currencyFormatter.format(previousAmount)
   const overduePill = wasOverdue ? (
-    <View
+    <NeoSurface
+      backgroundColor={neo.well}
+      radius={neoRadii.pill}
       style={[
         styles.overduePill,
-        {
-          backgroundColor: theme.isDark
-            ? 'rgba(242,167,140,0.16)'
-            : 'rgba(151,53,17,0.10)',
-        },
+        // Sin sombra inset (Android < API 29) el pozo queda como un
+        // rectángulo casi del mismo tono que la card: ahí y sólo ahí,
+        // hairline en la propia tinta de la alerta.
+        SUPPORTS_INSET_SHADOW
+          ? null
+          : { borderWidth: 1, borderColor: withAlpha(alertInk, 0.35) },
       ]}
+      variant="insetSm"
     >
-      <MaterialIcons
-        name="warning"
-        size={11}
-        color={theme.isDark ? '#F2A78C' : '#973511'}
-      />
-      <Text
-        style={[
-          styles.overduePillText,
-          { color: theme.isDark ? '#F2A78C' : '#973511' },
-        ]}
-      >
+      <MaterialIcons color={alertInk} name="warning" size={12} />
+      <Text style={[styles.overduePillText, { color: alertInk }]}>
         {t('fijos:confirmPayment.overdueNote')}
       </Text>
-    </View>
+    </NeoSurface>
   ) : null
 
   return (
     <ModalCard
-      visible={visible}
       onClose={onClose}
-      title={t('fijos:confirmPayment.title')}
+      skin="neo"
       subtitle={t('fijos:confirmPayment.subtitle')}
+      title={t('fijos:confirmPayment.title')}
+      visible={visible}
     >
       <View style={styles.body}>
-        {/* Snapshot del último monto + nombre del fijo. */}
-        <View
+        {/* Snapshot del último monto + nombre del fijo. Card ELEVADA dentro
+            de la hoja: el neumorfismo la separa por relieve, sin borde. */}
+        <NeoSurface
+          radius={neoRadii.cardSm}
           style={[
             styles.snapshotCard,
-            {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.border,
-            },
+            // La card se separa de la hoja SOLO por relieve: su gradiente
+            // raised está a un paso del tono de la hoja. Donde Android
+            // descarta el boxShadow en silencio, el bloque se fundiría con el
+            // fondo — ahí y sólo ahí, hairline.
+            SUPPORTS_INSET_SHADOW
+              ? null
+              : { borderWidth: 1, borderColor: withAlpha(neo.textTertiary, 0.4) },
           ]}
+          variant="raisedMd"
         >
           <Text
-            style={[styles.snapshotEyebrow, { color: theme.colors.textMuted }]}
             numberOfLines={1}
+            style={[styles.snapshotEyebrow, { color: neo.textMuted }]}
           >
             {fixedExpenseName.toUpperCase()}
           </Text>
-          <Text style={[styles.snapshotValue, { color: theme.colors.text }]}>
+          <Text style={[styles.snapshotValue, { color: neo.text }]}>
             {previousLabel}
           </Text>
-          <Text
-            style={[styles.snapshotMeta, { color: theme.colors.textMuted }]}
-          >
+          <Text style={[styles.snapshotMeta, { color: neo.textMuted }]}>
             {t('fijos:confirmPayment.lastAmount')}
           </Text>
           {overduePill}
-        </View>
+        </NeoSurface>
 
         {/* Selector de modo. Misma altura para que la transición entre
-            options se sienta firme; el activo se hincha con creamCard
-            + bordered text (mismo patrón visual que GastosFilterPill). */}
+            options se sienta firme; el activo NO se rellena en negativo —
+            se hunde con el anillo verde, que es el recurso de "presionado"
+            del neumorfismo (mismo patrón que FreqTile y los tiles del alta). */}
         <View style={styles.modeRow}>
           <Pressable
+            accessibilityLabel={t('fijos:confirmPayment.sameAmount')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === 'same' }}
             onPress={() => setMode('same')}
             onPressIn={samePress.onPressIn}
             onPressOut={samePress.onPressOut}
-            accessibilityRole="button"
-            accessibilityState={{ selected: mode === 'same' }}
-            accessibilityLabel={t('fijos:confirmPayment.sameAmount')}
             style={styles.modeWrap}
           >
             <Animated.View
-              style={[
-                styles.modeBtn,
-                mode === 'same'
-                  ? {
-                      backgroundColor: theme.colors.text,
-                      borderColor: theme.colors.text,
-                    }
-                  : {
-                      backgroundColor: theme.colors.pageBg,
-                      borderColor: theme.colors.line,
-                    },
-                samePress.animatedStyle,
-              ]}
+              style={[styles.modeBtn, modeSurface(mode === 'same'), samePress.animatedStyle]}
             >
               <MaterialIcons
+                color={mode === 'same' ? positiveInk : neo.textMuted}
                 name="check"
                 size={14}
-                color={mode === 'same' ? theme.colors.creamCard : theme.colors.text}
               />
               <Text
+                numberOfLines={1}
                 style={[
                   styles.modeBtnText,
-                  {
-                    color:
-                      mode === 'same'
-                        ? theme.colors.creamCard
-                        : theme.colors.text,
-                  },
+                  { color: mode === 'same' ? positiveInk : neo.text },
                 ]}
-                numberOfLines={1}
               >
                 {t('fijos:confirmPayment.same', { amount: previousLabel })}
               </Text>
             </Animated.View>
           </Pressable>
           <Pressable
+            accessibilityLabel={t('fijos:confirmPayment.changed')}
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === 'changed' }}
             onPress={() => setMode('changed')}
             onPressIn={changedPress.onPressIn}
             onPressOut={changedPress.onPressOut}
-            accessibilityRole="button"
-            accessibilityState={{ selected: mode === 'changed' }}
-            accessibilityLabel={t('fijos:confirmPayment.changed')}
             style={styles.modeWrap}
           >
             <Animated.View
               style={[
                 styles.modeBtn,
-                mode === 'changed'
-                  ? {
-                      backgroundColor: theme.colors.text,
-                      borderColor: theme.colors.text,
-                    }
-                  : {
-                      backgroundColor: theme.colors.pageBg,
-                      borderColor: theme.colors.line,
-                    },
+                modeSurface(mode === 'changed'),
                 changedPress.animatedStyle,
               ]}
             >
               <MaterialIcons
+                color={mode === 'changed' ? positiveInk : neo.textMuted}
                 name="edit"
                 size={14}
-                color={mode === 'changed' ? theme.colors.creamCard : theme.colors.text}
               />
               <Text
+                numberOfLines={1}
                 style={[
                   styles.modeBtnText,
-                  {
-                    color:
-                      mode === 'changed'
-                        ? theme.colors.creamCard
-                        : theme.colors.text,
-                  },
+                  { color: mode === 'changed' ? positiveInk : neo.text },
                 ]}
-                numberOfLines={1}
               >
                 {t('fijos:confirmPayment.changed')}
               </Text>
@@ -271,69 +288,82 @@ export function ConfirmFixedPaymentSheet({
             exiting={FadeOut.duration(120)}
             style={styles.changedBlock}
           >
-            <TextField
-              label={t('fijos:confirmPayment.amountPaid')}
-              value={amountText}
-              onChangeText={setAmountText}
-              keyboardType="number-pad"
-              inputMode="numeric"
-              placeholder="0"
-              accessibilityLabel={t('fijos:confirmPayment.amountPaidA11y')}
-            />
+            {/* El label sale AFUERA del campo, como los eyebrows del wizard
+                (NOMBRE / MONTO / CATEGORÍA): adentro del pozo queda sólo la
+                cifra. Reemplaza al label flotante del `TextField` V1. */}
+            <Text style={[styles.fieldEyebrow, { color: neo.textMuted }]}>
+              {t('fijos:confirmPayment.amountPaid')}
+            </Text>
+            <NeoSurface
+              backgroundColor={neo.well}
+              radius={neoRadii.input}
+              style={[
+                styles.amountWell,
+                SUPPORTS_INSET_SHADOW
+                  ? null
+                  : { borderWidth: 1, borderColor: withAlpha(neo.textTertiary, 0.45) },
+              ]}
+              variant="insetLg"
+            >
+              <TextInput
+                accessibilityLabel={t('fijos:confirmPayment.amountPaidA11y')}
+                allowFontScaling
+                inputMode="numeric"
+                keyboardType="number-pad"
+                maxFontSizeMultiplier={1.2}
+                onChangeText={setAmountText}
+                style={[styles.amountInput, { color: neo.text }]}
+                value={amountText}
+              />
+              {/* Placeholder PROPIO, no la prop nativa: en iOS el
+                  `placeholderRect` de UITextField no coincide con el
+                  `textRect` y el "0" se dibuja pegado abajo (el mismo motivo
+                  por el que `TextField` monta su propio overlay). Comparte los
+                  tokens tipográficos del input, así que cae en la misma línea. */}
+              {amountText === '' ? (
+                <Text
+                  pointerEvents="none"
+                  style={[styles.amountPlaceholder, { color: neo.textTertiary }]}
+                >
+                  0
+                </Text>
+              ) : null}
+            </NeoSurface>
             {parsedAmount > 0 && delta !== 0 ? (
-              <View
-                style={[
-                  styles.deltaRow,
-                  {
-                    backgroundColor:
-                      delta > 0
-                        ? 'rgba(242,167,140,0.14)'
-                        : 'rgba(166,239,143,0.14)',
-                  },
-                ]}
+              <NeoSurface
+                backgroundColor={withAlpha(
+                  delta > 0 ? neo.warm : neo.green,
+                  isDark ? 0.16 : 0.14,
+                )}
+                radius={neoRadii.chip}
+                style={styles.deltaRow}
+                variant="insetSm"
               >
                 <MaterialIcons
+                  color={delta > 0 ? alertInk : positiveInk}
                   name={delta > 0 ? 'trending-up' : 'trending-down'}
                   size={14}
-                  color={
-                    delta > 0
-                      ? theme.isDark
-                        ? '#F2A78C'
-                        : '#B84014'
-                      : theme.isDark
-                        ? '#A6EF8F'
-                        : '#297811'
-                  }
                 />
                 <Text
                   style={[
                     styles.deltaText,
-                    {
-                      color:
-                        delta > 0
-                          ? theme.isDark
-                            ? '#F2A78C'
-                            : '#B84014'
-                          : theme.isDark
-                            ? '#A6EF8F'
-                            : '#297811',
-                    },
+                    { color: delta > 0 ? alertInk : positiveInk },
                   ]}
                 >
                   {delta > 0 ? '+' : '−'}
                   {formatMoneyShort(Math.abs(delta))}
                   {deltaPct !== 0 ? ` · ${delta > 0 ? '+' : ''}${deltaPct}%` : ''}
                 </Text>
-              </View>
+              </NeoSurface>
             ) : null}
           </Animated.View>
         ) : null}
 
-        <AppButton
-          variant="primary"
-          label={t('fijos:confirmPayment.confirm')}
-          loading={isProcessing}
+        <NeoButton
+          block
+          busy={isProcessing}
           disabled={mode === 'changed' ? !isChangedValid : !isSameValid}
+          label={t('fijos:confirmPayment.confirm')}
           onPress={() => {
             if (mode === 'changed') {
               if (!isChangedValid) return
@@ -343,6 +373,7 @@ export function ConfirmFixedPaymentSheet({
               onConfirmSame()
             }
           }}
+          variant="primary"
         />
       </View>
     </ModalCard>
@@ -352,41 +383,47 @@ export function ConfirmFixedPaymentSheet({
 const styles = StyleSheet.create({
   body: { gap: 14 },
   snapshotCard: {
-    borderRadius: 16,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     alignItems: 'flex-start',
     gap: 2,
   },
+  // El `fontFamily` viaja SIEMPRE con el peso: cada peso de Nunito es un face
+  // estático, así que un `fontWeight` suelto rinde el regular del sistema.
   snapshotEyebrow: {
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     marginBottom: 2,
   },
   snapshotValue: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
   snapshotMeta: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   overduePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 999,
     marginTop: 8,
   },
+  // 10 → 11px: a 10 la nota de mora no llegaba a AA ni con la tinta
+  // oscurecida sobre el pozo claro (el umbral de "texto grande" arranca en
+  // 18.66px, así que estos 11px se miden contra 4.5:1 igual que los 10).
   overduePillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.2,
   },
   modeRow: {
@@ -397,8 +434,7 @@ const styles = StyleSheet.create({
   modeBtn: {
     paddingVertical: 11,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: neoRadii.chip,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -407,22 +443,54 @@ const styles = StyleSheet.create({
   modeBtnText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
     flexShrink: 1,
   },
   changedBlock: { gap: 8 },
+  fieldEyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.98,
+    textTransform: 'uppercase',
+  },
+  amountWell: {
+    paddingHorizontal: 17,
+    paddingVertical: 12,
+  },
+  amountInput: {
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.6,
+    // `padding: 0` mata el padding implícito del TextInput de Android, que
+    // desalinea la cifra respecto del padding del pozo.
+    padding: 0,
+    fontVariant: ['tabular-nums'],
+  },
+  amountPlaceholder: {
+    position: 'absolute',
+    left: 17,
+    top: 12,
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.6,
+    fontVariant: ['tabular-nums'],
+  },
   deltaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
     alignSelf: 'flex-start',
   },
   deltaText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     fontVariant: ['tabular-nums'],
   },

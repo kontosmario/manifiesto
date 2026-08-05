@@ -1,5 +1,5 @@
 import { memo, useEffect, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {
@@ -25,6 +25,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoneyShort } from '@/utils/money'
+import { toast } from '@/lib/toast-bus'
 
 interface MetaCardProps {
   goal: SavingsGoal
@@ -130,9 +131,11 @@ function MetaCardImpl({
         },
         onError: (err) => {
           void triggerHaptic('error')
-          Alert.alert(
-            t('home:metaCard.addError'),
-            err instanceof Error ? err.message : t('home:metaCard.retrySoon'),
+          // El sheet de aporte sigue ABIERTO cuando esto falla (sólo se
+          // cierra en onSuccess), así que el toast necesita la ventana
+          // nativa que `ToastHost` levanta cuando hay un modal arriba.
+          toast.error(
+            `${t('home:metaCard.addError')} · ${err instanceof Error ? err.message : t('home:metaCard.retrySoon')}`,
           )
         },
       },

@@ -10,7 +10,7 @@
 // buildNextDueOn) viven en `add-fijo-helpers.ts`.
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  Alert,
+  InteractionManager,
   Keyboard,
   Pressable,
   type ScrollView,
@@ -22,13 +22,11 @@ import { useTranslation } from 'react-i18next'
 import Animated, {
   LinearTransition,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
-import { InAppNumpad } from '@/components/ui/in-app-numpad'
 import { OnbNumpad } from '@/components/redesign/onboarding/onb-numpad'
 import { StickyFooter } from '@/components/ui/sticky-footer'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
@@ -49,11 +47,16 @@ import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expe
 import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
+// Del hook de la app, NUNCA de 'react-native-reanimated': el de la
+// librería es el import-trap catalogado que suscribe un listener de
+// accesibilidad por call site (jank en Android gama baja).
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
+import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
 import { serializePrice } from '@/utils/money'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -88,7 +91,7 @@ export function AddFijoV2Screen({
   prefillDescription,
 }: AddFijoV2ScreenProps) {
   const router = useRouter()
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
   const skin = useFijosSkin()
   const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
@@ -258,18 +261,25 @@ export function AddFijoV2Screen({
             await recordPaymentMutation.mutateAsync({
               fixedExpenseId: created.id,
             })
-          } catch (paymentError) {
+          } catch {
             // Mismo error UX: notificamos pero no abortamos — el fijo
             // ya se creó y el user puede registrar el pago manualmente
             // desde el listado.
-            void triggerHaptic('error')
-            Alert.alert(
-              t('fijos:wizard.errors.createdNotPaidTitle'),
-              t('fijos:wizard.errors.createdNotPaidBody', {
-                error: getErrorMessage(paymentError, t('states:error.server')),
-              }),
-            )
+            //
+            // Éxito PARCIAL, no fallo: por eso el háptico de advertencia y
+            // el toast neutro (el rojo de `toast.error` diría que no se
+            // guardó nada, y el fijo SÍ está creado).
+            void triggerHaptic('warning')
             handleClose()
+            // El aviso se emite DESPUÉS de que la hoja terminó de salir:
+            // el `ToastHost` vive en el shell global y esta alta es una
+            // stack-modal, así que un toast en el mismo tick se dibujaría
+            // detrás de la hoja que se está cerrando.
+            void InteractionManager.runAfterInteractions(() => {
+              toast.info(t('fijos:wizard.errors.createdNotPaidTitle'), {
+                durationMs: 6000,
+              })
+            })
             return
           }
         }
@@ -277,11 +287,14 @@ export function AddFijoV2Screen({
       handleClose()
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(
-        isEditing
-          ? t('fijos:wizard.errors.updateFailed')
-          : t('fijos:wizard.errors.createFailed'),
-        getErrorMessage(error, t('states:error.server')),
+      // Título + detalle fundidos en un solo renglón: el toast reemplaza a
+      // un diálogo de dos campos, no los apila.
+      toast.error(
+        `${
+          isEditing
+            ? t('fijos:wizard.errors.updateFailed')
+            : t('fijos:wizard.errors.createFailed')
+        } · ${getErrorMessage(error, t('states:error.server'))}`,
       )
     }
   }
@@ -334,6 +347,12 @@ export function AddFijoV2Screen({
       contentContainerStyle={neo ? [styles.screen, styles.screenNeo] : styles.screen}
       bodyStyle={neo ? styles.bodyNeo : undefined}
       showGrabHandle
+      // `add-fixed-expense` se registra con `presentation: 'modal'`
+      // (`app-stack-shell.tsx`): en iOS es una hoja que arranca debajo de la
+      // isla, así que el inset superior del dispositivo no le corresponde y
+      // dejaba ~59pt de hueco muerto arriba del título. En Android la ruta
+      // es `card` y el flag se ignora. Ver el docblock de `presentedAsSheet`.
+      presentedAsSheet
     >
       <Pressable
         style={neo ? [styles.stack, styles.stackNeo] : styles.stack}
@@ -434,22 +453,19 @@ export function AddFijoV2Screen({
             onPressOut={ctaStep1Press.onPressOut}
             style={[
               styles.primaryCta,
-              form.canContinue
-                ? { backgroundColor: theme.colors.text }
-                : { backgroundColor: theme.colors.text, opacity: 0.45 },
               // El paso de "faltan datos" a "listo" era un corte de opacidad.
               // En neo lo glidea, que es lo que convierte el CTA en un
               // indicador de progreso y no en dos estados sin relación.
-              neo ? ctaStep1Enabled : null,
-            neo
-              ? {
-                  backgroundColor: neo.add.cta.background,
-                  experimental_backgroundImage: neo.add.cta.gradientCss,
-                  borderRadius: neo.add.cta.radius,
-                  paddingVertical: neo.add.cta.padV,
-                  boxShadow: neo.add.cta.shadow,
-                }
-              : null,
+              ctaStep1Enabled,
+              neo
+                ? {
+                    backgroundColor: neo.add.cta.background,
+                    experimental_backgroundImage: neo.add.cta.gradientCss,
+                    borderRadius: neo.add.cta.radius,
+                    paddingVertical: neo.add.cta.padV,
+                    boxShadow: neo.add.cta.shadow,
+                  }
+                : null,
             ]}
             accessibilityRole="button"
             accessibilityLabel={
@@ -461,7 +477,6 @@ export function AddFijoV2Screen({
             <Text
               style={[
                 styles.primaryCtaText,
-                { color: theme.colors.creamCard },
                 neo
                   ? {
                       color: neo.add.cta.ink,
@@ -487,22 +502,19 @@ export function AddFijoV2Screen({
             disabled={pending}
             style={[
               styles.primaryCta,
-              form.canSubmit
-                ? { backgroundColor: theme.colors.text, opacity: pending ? 0.7 : 1 }
-                : { backgroundColor: theme.colors.text, opacity: 0.45 },
-              neo ? ctaStep2Enabled : null,
-            // El CTA del paso 2 NO comparte tratamiento con el del paso 1: el
-            // verde con gradiente dice "seguí", y acá la acción es confirmar.
-            // El handoff lo pinta con el mismo par invertido que el chip de
-            // frecuencia activo — sólido, sin gradiente.
-            neo
-              ? {
-                  backgroundColor: neo.add.ctaStep2.background,
-                  borderRadius: neo.add.cta.radius,
-                  paddingVertical: neo.add.cta.padV,
-                  boxShadow: neo.add.ctaStep2.shadow,
-                }
-              : null,
+              ctaStep2Enabled,
+              // El CTA del paso 2 NO comparte tratamiento con el del paso 1: el
+              // verde con gradiente dice "seguí", y acá la acción es confirmar.
+              // El handoff lo pinta con el mismo par invertido que el chip de
+              // frecuencia activo — sólido, sin gradiente.
+              neo
+                ? {
+                    backgroundColor: neo.add.ctaStep2.background,
+                    borderRadius: neo.add.cta.radius,
+                    paddingVertical: neo.add.cta.padV,
+                    boxShadow: neo.add.ctaStep2.shadow,
+                  }
+                : null,
             ]}
             accessibilityRole="button"
             accessibilityLabel={
@@ -516,10 +528,9 @@ export function AddFijoV2Screen({
             <Text
               style={[
                 styles.primaryCtaText,
-                // Siempre crema: el estado "deshabilitado" lo da el opacity 0.45
+                // Tinta única: el estado "deshabilitado" lo da el opacity 0.45
                 // del Pressable, NO un fg de bajo contraste. Antes textMuted
                 // (verde-claro) sobre el fill crema daba 1.14:1 en dark (ilegible).
-                { color: theme.colors.creamCard },
                 neo
                   ? {
                       color: neo.add.ctaStep2.ink,
@@ -556,20 +567,13 @@ export function AddFijoV2Screen({
       */}
       {neo ? (
         <OnbNumpad
-          mode={theme.isDark ? 'dark' : 'light'}
+          mode={theme.mode}
           visible={form.isNumpadVisible}
           value={form.amount}
           onChange={(next) => form.setRawAmount(serializePrice(next))}
           onDone={() => form.setIsNumpadVisible(false)}
         />
-      ) : (
-        <InAppNumpad
-          visible={form.isNumpadVisible}
-          rawValue={form.rawAmount}
-          onChangeRawValue={form.setRawAmount}
-          onDismiss={() => form.setIsNumpadVisible(false)}
-        />
-      )}
+      ) : null}
     </Screen>
   )
 }
@@ -586,9 +590,12 @@ const styles = StyleSheet.create({
   // `paddingTop` del footer (14 / 10) da el aire del handoff en el caso corto
   // y una separación que se sostiene en el largo.
   stackNeo: { flexGrow: 1, paddingBottom: 18 },
+  // Sólo la caja: el radio (20), el padding vertical (16) y el cuerpo de
+  // texto (16/900) salen de `neo.add.cta`, que es la única fuente de esas
+  // medidas. Antes vivían acá EN PARALELO con valores distintos (16 de
+  // radio, 15/800 de texto) y el objeto neo los pisaba por orden de array:
+  // un reorder los resucitaba.
   primaryCta: {
-    paddingVertical: 16,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     // No marginHorizontal aquí: el StickyFooter sit adentro del Screen
@@ -596,5 +603,5 @@ const styles = StyleSheet.create({
     // Agregar margin encima double-padea el CTA, dejándolo ~40pt más
     // estrecho que los inputs arriba.
   },
-  primaryCtaText: { fontSize: 15, fontWeight: '800' },
+  primaryCtaText: { textAlign: 'center' },
 })

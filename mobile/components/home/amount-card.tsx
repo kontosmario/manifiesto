@@ -13,13 +13,18 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
-  useReducedMotion,
   interpolateColor,
 } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
+// El hook PROPIO, nunca el de reanimated: el de la librería abre una
+// suscripción a `AccessibilityInfo` por call site (el import trap del jank de
+// Android gama baja) e ignora el override de Motion de Ajustes.
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { formatAnimatedAmount } from '@/components/ui/animated-amount-format'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
+import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
@@ -42,6 +47,14 @@ interface AmountCardProps {
    *  `primary` so the card reads as "amount required and currently
    *  empty" without painting the whole import-review card red. */
   warning?: boolean
+  /**
+   * Tinta de la cifra en la piel `neo`. `positive` la pinta con el verde del
+   * sistema porque el monto es plata que ENTRA (alta de ingreso); `neutral`
+   * (default) la deja en la tinta de título, que es lo que ya hacían fijos y
+   * gastos. NO toca la rama `classic`: ahí la card se dibuja igual que
+   * siempre, así las pantallas que la montan sin provider no cambian.
+   */
+  tone?: 'neutral' | 'positive'
 }
 
 export function AmountCard({
@@ -51,11 +64,14 @@ export function AmountCard({
   label,
   size = 'default',
   warning = false,
+  tone = 'neutral',
 }: AmountCardProps) {
   const { theme } = useAppTheme()
-  // COMPARTIDO con add-gasto y add-ingreso: el skin solo resuelve a `neo`
-  // dentro del wizard de fijos, que es el único que monta el provider. Las
-  // otras dos pantallas siguen recibiendo `classic` y no cambian.
+  // COMPARTIDO por las TRES altas: el skin resuelve a `neo` en las rutas que
+  // montan el provider —`add-fixed-expense`, `add-expense` y `add-income`, más
+  // el listado neo de fijos— y a `classic` en las que no (import-review, el
+  // onboarding, `numeric-edit-sheet`). Esa es la lista de consumidores a
+  // mirar antes de tocar cualquiera de las dos ramas de esta card.
   const skin = useFijosSkin()
   const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
@@ -120,6 +136,15 @@ export function AmountCard({
     opacity: 1 - activeProgress.value,
   }))
 
+  // En neo el `borderStyle` de arriba NO se aplica (el pozo del handoff se
+  // dibuja sin contorno), así que `warning` quedaba MUDO: el usuario tocaba el
+  // CTA atenuado y la card no cambiaba nada. El cue va por un anillo apoyado
+  // encima, cuya OPACIDAD sí se puede animar (un `boxShadow` es un string y
+  // Reanimated no lo interpola) y que no mueve el layout.
+  const warnRingStyle = useAnimatedStyle(() => ({
+    opacity: warningProgress.value,
+  }))
+
   const displayText = formatAnimatedAmount(amount)
 
   // El handoff saca el label AFUERA del pozo, con el mismo tratamiento que
@@ -164,6 +189,10 @@ export function AmountCard({
         }}
         style={({ pressed }) => [
           styles.cardPressable,
+          // El Pressable ENVUELVE la card: con el radio V1 (28) afuera y el
+          // del pozo adentro, el recorte del press queda con otra curva que la
+          // superficie que el usuario ve. En neo comparten radio.
+          neo ? { borderRadius: neo.add.well.radius } : null,
           {
             opacity: pressed ? 0.96 : 1,
           },
@@ -173,13 +202,26 @@ export function AmountCard({
           style={[
             size === 'compact' ? styles.cardCompact : styles.card,
             neo ? null : borderStyle,
-            { backgroundColor: theme.colors.surface },
+            // Sólo en classic: el objeto neo de abajo ya lo pisa, pero dejarlo
+            // aplicado en las dos ramas hacía que un reorden del array
+            // destapara el `#FFFFFF`/`#102018` V1 debajo del pozo del rediseño.
+            neo ? null : { backgroundColor: theme.colors.surface },
             // Handoff: POZO, no card elevada.
             neo
               ? {
                   backgroundColor: neo.add.well.background,
                   borderRadius: neo.add.well.radius,
-                  borderWidth: 0,
+                  // El relieve del pozo es SOLO sombra inset. Donde el sistema
+                  // la descarta (Android < API 29) la card se aplanaría contra
+                  // el fondo sin ningún límite visible: ahí y sólo ahí, hairline.
+                  //
+                  // La tinta sale de la piel, NO de `theme.colors.border`: ese
+                  // token es `rgba(15,46,31,0.08)` y sobre el material salvia
+                  // se lee AZULADO — justo en el parque Android donde el
+                  // neumorfismo ya está degradado y el hairline es lo único
+                  // que delimita la card.
+                  borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+                  borderColor: withAlpha(neo.faintInk, 0.4),
                   boxShadow: neo.add.well.shadow,
                   paddingHorizontal: 17,
                   paddingVertical: 12,
@@ -219,7 +261,7 @@ export function AmountCard({
                       fontWeight: '900',
                       fontFamily: neo.font('900'),
                       letterSpacing: -0.64,
-                      color: neo.ink.title,
+                      color: tone === 'positive' ? neo.add.accentGreen : neo.ink.title,
                       flexShrink: 1,
                     }
                   : null,
@@ -249,6 +291,17 @@ export function AmountCard({
               </Animated.Text>
             ) : null}
           </MaybeRow>
+          {neo ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                StyleSheet.absoluteFill,
+                styles.warnRing,
+                { borderRadius: neo.add.well.radius, borderColor: neo.add.accentClay },
+                warnRingStyle,
+              ]}
+            />
+          ) : null}
         </Animated.View>
       </Pressable>
     </Animated.View>
@@ -294,6 +347,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   neoEyebrow: { marginBottom: 8 },
+  // Anillo de "falta este dato" en neo. Va ENCIMA del contenido (último hijo)
+  // y con `pointerEvents: none` para no comerse el tap de la card.
+  warnRing: { borderWidth: 2 },
   // Alineados por BASELINE, no por centro: la cifra es 32px y el hint 11, y
   // centrarlos deja el hint flotando a media altura del número.
   neoValueRow: {

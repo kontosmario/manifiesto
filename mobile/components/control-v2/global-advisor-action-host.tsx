@@ -1,4 +1,4 @@
-import { Alert } from 'react-native'
+import { InteractionManager } from 'react-native'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
@@ -29,7 +29,30 @@ import { useFixedExpenseCategories } from '@/features/categories/use-categories'
 import { logAdvisorInteraction } from '@/features/insights/log-advisor-interaction'
 import { logAdvisorValue } from '@/features/insights/log-advisor-value'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { formatMoney } from '@/utils/money'
+
+/**
+ * Confirmación de éxito diferida al cierre de la hoja.
+ *
+ * Los cinco `onSuccess` de este host llaman primero a
+ * `clearPendingAdvisorAction()`, que baja el `visible` del sheet. En iOS
+ * la hoja es un `<Modal>` nativo (un UIVC presentado) y el `ToastHost`
+ * vive en el shell, POR DEBAJO de esa presentación: emitir el toast en el
+ * mismo tick lo dibujaría detrás de una hoja que todavía se está yendo y
+ * el usuario vería la mitad de la animación. Diferirlo hasta que la
+ * interacción termine es el mismo patrón de modal-chain que ya usa el
+ * resto del repo para encadenar overlays en iOS.
+ *
+ * Los errores NO pasan por acá: en `onError` la hoja sigue abierta a
+ * propósito (el usuario conserva lo que cargó y puede reintentar), así
+ * que el aviso sale en el acto.
+ */
+function toastAfterSheetClose(message: string): void {
+  void InteractionManager.runAfterInteractions(() => {
+    toast.success(message)
+  })
+}
 
 interface Props {
   familyId: string
@@ -254,18 +277,17 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert(
-              t('control:advisorHost.savingsDoneTitle'),
-              t('control:advisorHost.savingsDoneBody', {
-                amount: formatMoney(safeAmount),
-              }),
+            toastAfterSheetClose(
+              `${t('control:advisorHost.savingsDoneTitle')} ${t(
+                'control:advisorHost.savingsDoneBody',
+                { amount: formatMoney(safeAmount) },
+              )}`,
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('control:advisorHost.savingsErrorTitle'),
-              t('control:advisorHost.errorRetrySeconds'),
+            toast.error(
+              `${t('control:advisorHost.savingsErrorTitle')} · ${t('control:advisorHost.errorRetrySeconds')}`,
             )
           },
         },
@@ -316,16 +338,14 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert(
-              t('control:advisorHost.warningDoneTitle'),
-              t('control:advisorHost.warningDoneBody'),
+            toastAfterSheetClose(
+              `${t('control:advisorHost.warningDoneTitle')} · ${t('control:advisorHost.warningDoneBody')}`,
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('control:advisorHost.warningErrorTitle'),
-              t('control:advisorHost.errorRetrySeconds'),
+            toast.error(
+              `${t('control:advisorHost.warningErrorTitle')} · ${t('control:advisorHost.errorRetrySeconds')}`,
             )
           },
         },
@@ -382,16 +402,14 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert(
-              t('control:advisorHost.goalUpdatedTitle'),
-              t('control:advisorHost.changesSaved'),
+            toastAfterSheetClose(
+              `${t('control:advisorHost.goalUpdatedTitle')} · ${t('control:advisorHost.changesSaved')}`,
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('control:advisorHost.goalSaveErrorTitle'),
-              t('control:advisorHost.errorRetrySeconds'),
+            toast.error(
+              `${t('control:advisorHost.goalSaveErrorTitle')} · ${t('control:advisorHost.errorRetrySeconds')}`,
             )
           },
         },
@@ -449,16 +467,14 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert(
-              t('control:advisorHost.fixedUpdatedTitle'),
-              t('control:advisorHost.changesSaved'),
+            toastAfterSheetClose(
+              `${t('control:advisorHost.fixedUpdatedTitle')} · ${t('control:advisorHost.changesSaved')}`,
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('control:advisorHost.goalSaveErrorTitle'),
-              t('control:advisorHost.errorRetrySeconds'),
+            toast.error(
+              `${t('control:advisorHost.goalSaveErrorTitle')} · ${t('control:advisorHost.errorRetrySeconds')}`,
             )
           },
         },
@@ -508,16 +524,14 @@ export function GlobalAdvisorActionHost({
               })
             }
             clearPendingAdvisorAction()
-            Alert.alert(
-              t('control:advisorHost.fixedAddedTitle'),
-              t('control:advisorHost.fixedAddedBody'),
+            toastAfterSheetClose(
+              `${t('control:advisorHost.fixedAddedTitle')} · ${t('control:advisorHost.fixedAddedBody')}`,
             )
           },
           onError: () => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('control:advisorHost.fixedAddErrorTitle'),
-              t('control:advisorHost.errorRetrySeconds'),
+            toast.error(
+              `${t('control:advisorHost.fixedAddErrorTitle')} · ${t('control:advisorHost.errorRetrySeconds')}`,
             )
           },
         },

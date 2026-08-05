@@ -219,7 +219,7 @@ export interface HomeSpec {
 
 export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     shellShadow: '0 34px 80px rgba(8,14,8,0.55)',
     statusInk: '#24382A',
 
@@ -374,7 +374,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     homeIndicatorOpacity: 0.75,
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     shellShadow: '0 34px 80px rgba(0,0,0,0.6)',
     statusInk: '#F1EEDD',
 

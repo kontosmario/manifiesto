@@ -115,6 +115,14 @@ const STEP2 = {
   light: {
     accentGreen: '#2E7C39',
     accentClay: '#C25B33',
+    // Variante del clay para TEXTO CHICO. `#C25B33` se diseñó para bordes,
+    // anillos y fills (les alcanza 3:1), pero como tinta de 11-12px sobre las
+    // superficies claras del paso 2 se queda en 3.3-3.6:1 — abajo de los 4.5
+    // que pide AA para texto normal: 3.54 sobre el `librePanel` (la línea que
+    // dice cuánto te pasaste del cupo), 3.31 sobre el fondo del chip del delta
+    // y 3.60 sobre el fondo de los chips rápidos. Oscurecido da 5.4 / 5.1 /
+    // 5.5 en esas mismas tres superficies.
+    accentClayInk: '#9A421F',
     deltaChipBackground: '#F6DCCB',
     librePanelBackground: 'rgba(219,235,215,0.6)',
     librePanelBorder: 'rgba(46,116,52,0.22)',
@@ -122,13 +130,22 @@ const STEP2 = {
     gaugeKnobBackground: '#F7F4E4',
     healthOkInk: '#2E7C39',
     healthOkBackground: '#DCEBD8',
-    healthWarnInk: '#C25B33',
+    // `accentClayInk`, no el `accentClay` de bordes: la badge pinta 11px/900
+    // sobre `#F6DCCB`, el MISMO par que arriba se mide en 3.31:1. Es texto
+    // normal para AA (11px bold no llega a los 18.66px de "texto grande"), así
+    // que el umbral es 4.5:1. Oscurecido da 5.1:1. En oscuro la badge se
+    // invierte (tinta `#0F1E14` sobre fill sólido) y ya cumplía.
+    healthWarnInk: '#9A421F',
     healthWarnBackground: '#F6DCCB',
     toggleOn: '#2E7C39',
   },
   dark: {
     accentGreen: '#A4E3A6',
     accentClay: '#F0A47E',
+    // En oscuro el clay ya pasa como texto chico (6.6:1 sobre el chip rápido,
+    // 5.9 sobre el panel): la variante existe sólo para que el consumidor no
+    // tenga que ramificar por tema.
+    accentClayInk: '#F0A47E',
     deltaChipBackground: 'rgba(240,164,126,0.16)',
     librePanelBackground: 'rgba(164,227,166,0.08)',
     librePanelBorder: 'rgba(164,227,166,0.2)',
@@ -360,6 +377,10 @@ export interface FijosAddSkin {
   /** Verde y terracota del paso 2, ya resueltos por tema. */
   accentGreen: string
   accentClay: string
+  /** El terracota para TEXTO CHICO (11-12px). `accentClay` es el color de
+   *  bordes/anillos/fills, que sólo necesitan 3:1; como tinta se quedaba abajo
+   *  de AA en el tema claro. Ver `STEP2.light.accentClayInk`. */
+  accentClayInk: string
   /** Chip del delta (`+$12.900`), a la derecha del eyebrow de impacto. */
   deltaChip: { radius: number; padH: number; padV: number; ink: string; background: string; fontSize: number }
   /** "TE QUEDA LIBRE" es un panel PLANO tintado con anillo, no un pozo: es el
@@ -670,6 +691,7 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       },
       accentGreen: STEP2[mode].accentGreen,
       accentClay: STEP2[mode].accentClay,
+      accentClayInk: STEP2[mode].accentClayInk,
       deltaChip: {
         radius: 10,
         padH: 9,

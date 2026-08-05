@@ -111,7 +111,6 @@ import {
   type RefObject,
 } from 'react'
 import {
-  Alert,
   RefreshControl,
   StyleSheet,
   View,
@@ -239,6 +238,7 @@ import { useFamilyDashboard, type FamilyDashboard } from '@/hooks/use-family-das
 import { useCurrentDate } from '@/hooks/use-current-date'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { useThemeMode } from '@/theme/theme-provider'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { formatMoney, formatMoneyShort, formatUsd } from '@/utils/money'
@@ -866,16 +866,18 @@ function NeoHomeDashboard({
     handleChipConfirm()
   }, [trackTap, handleChipConfirm])
 
-  // ── Deletes del feed (haptics + Alert, literal de la vieja) ────────
+  // ── Deletes del feed (haptics + aviso neo) ─────────────────────────
+  // El fallo es un aviso sin decisión: va al toast del host global, que
+  // además sobrevive al desmontaje de la Home si el delete resuelve
+  // después de navegar (el diálogo del SO sobrevivía por ser del SO).
   const handleDeleteExpense = useCallback((expenseId: string) => {
     trackTap('activity_row', 'S7')
     void triggerHaptic('warning')
     deleteExpenseMutation.mutate(expenseId, {
       onError: (error: unknown) => {
         void triggerHaptic('error')
-        Alert.alert(
-          t('home:homeScreen.deleteError'),
-          getErrorMessage(error, t('states:error.server')),
+        toast.error(
+          `${t('home:homeScreen.deleteError')} · ${getErrorMessage(error, t('states:error.server'))}`,
         )
       },
       onSuccess: () => {
@@ -892,9 +894,8 @@ function NeoHomeDashboard({
         {
           onError: (error: unknown) => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('home:homeScreen.deleteError'),
-              getErrorMessage(error, t('states:error.server')),
+            toast.error(
+              `${t('home:homeScreen.deleteError')} · ${getErrorMessage(error, t('states:error.server'))}`,
             )
           },
           onSuccess: () => {
@@ -1301,9 +1302,13 @@ function NeoHomeDashboard({
           },
           onError: (err: unknown) => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('home:metaCard.addError'),
-              err instanceof Error ? err.message : t('home:metaCard.retrySoon'),
+            // El sheet de la meta sigue ABIERTO acá (el monto tipeado no se
+            // pierde): el aviso NO puede ser hijo del sheet ni un modal
+            // encima — sale por el toast del host global.
+            toast.error(
+              `${t('home:metaCard.addError')} · ${
+                err instanceof Error ? err.message : t('home:metaCard.retrySoon')
+              }`,
             )
           },
         },

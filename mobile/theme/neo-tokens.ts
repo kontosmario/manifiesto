@@ -48,7 +48,13 @@ export interface NeoShadows {
   ringSelected: string
   /** CTA principal (sobre fill radial verde). */
   cta: string
-  /** Sheets / modales flotando sobre scrim. */
+  /**
+   * Sheets / modales anclados al borde inferior. Sombra HACIA ARRIBA
+   * (`0 -20px …`): la hoja está pegada abajo, así que su único borde
+   * libre es el superior y es ahí donde tiene que despegarse del
+   * contenido. Valor literal del handoff (`screens/3c.html` L31 claro /
+   * L87 oscuro), el mismo que ya usaba `onb-numpad`.
+   */
   sheet: string
 }
 
@@ -68,6 +74,19 @@ export interface NeoTokens {
   sheetAlt: string
   /** Scrim detrás de sheets (el diseño lo usa sólido, no negro alpha). */
   scrim: string
+  /**
+   * Píldora de arrastre en el borde superior de la hoja (44×5, radio 3).
+   * No es un `textDim` ni un `border`: el handoff le da un valor propio
+   * en cada tema (`screens/3c.html` L32 / L88).
+   */
+  sheetHandle: string
+  /**
+   * Separador entre filas DENTRO de una hoja. El neumorfismo evita
+   * bordes, pero las listas de acciones del handoff sí llevan una línea
+   * de 1.5px (`screens/3c.html` L46 / L102) — es el único hairline del
+   * vocabulario, y sólo aplica entre ítems de una misma lista.
+   */
+  sheetDivider: string
   /** Fondo de pozos hundidos (en claro = bg; en oscuro #142519). */
   well: string
   /** Jerarquía de texto (4 niveles del handoff). */
@@ -113,7 +132,7 @@ const lightShadows: NeoShadows = {
   insetLg:      'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)',
   ringSelected: 'inset 3px 3px 7px rgba(90,110,70,0.2), inset -3px -3px 7px rgba(255,255,255,0.85), 0 0 0 2.5px #2E7C39',
   cta:          '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
-  sheet:        '0 34px 80px rgba(8,14,8,0.55)',
+  sheet:        '0 -20px 50px rgba(20,30,18,0.35)',
 }
 
 const darkShadows: NeoShadows = {
@@ -127,18 +146,20 @@ const darkShadows: NeoShadows = {
   insetLg:      'inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.08)',
   ringSelected: 'inset 3px 3px 7px rgba(0,0,0,0.4), 0 0 0 2.5px #A4E3A6',
   cta:          '0 12px 24px rgba(0,0,0,0.45), 0 0 26px rgba(140,225,150,0.3), inset 0 2px 3px rgba(255,255,255,0.3)',
-  sheet:        '0 34px 80px rgba(0,0,0,0.6)',
+  sheet:        '0 -20px 50px rgba(0,0,0,0.6)',
 }
 
 const lightNeo: NeoTokens = {
-  bg:             '#E9EBE0',
-  welcomeBg:      '#E9EBE0',
+  bg:             '#DCDFCD',
+  welcomeBg:      '#DCDFCD',
   surface:        '#E9EBE0',
   raisedGradient: ['#F0F2E7', '#E1E4D6'],
   raisedGradientCss: 'linear-gradient(145deg, #F0F2E7, #E1E4D6)',
   sheet:          '#F0EFE3',
   sheetAlt:       '#EDECDF',
   scrim:          '#B9BEAC',
+  sheetHandle:    '#C6CAB8',
+  sheetDivider:   'rgba(151,160,136,0.25)',
   well:           '#E9EBE0',
   text:           '#24382A',
   textMuted:      '#6C7B67',
@@ -163,7 +184,7 @@ const lightNeo: NeoTokens = {
 }
 
 const darkNeo: NeoTokens = {
-  bg:             '#16271C',
+  bg:             '#0F1A13',
   welcomeBg:      '#0F1E14',
   surface:        '#1D3426',
   raisedGradient: ['#1D3426', '#132318'],
@@ -171,6 +192,8 @@ const darkNeo: NeoTokens = {
   sheet:          '#1B2F22',
   sheetAlt:       '#192B1E',
   scrim:          '#0A130D',
+  sheetHandle:    '#3A5241',
+  sheetDivider:   'rgba(101,152,113,0.18)',
   well:           '#142519',
   text:           '#F1EEDD',
   textMuted:      '#93A78F',
@@ -199,12 +222,56 @@ export function neoTokens(mode: ResolvedThemeMode): NeoTokens {
 }
 
 /**
+ * El material neumórfico como ESTILO suelto, para views que ya existen y solo
+ * necesitan cambiar de piel.
+ *
+ * `NeoSurface` sigue siendo la forma preferida: es un componente y se lee mejor.
+ * Este helper es para el caso en que reestructurar el JSX (envolver, mover
+ * children, reubicar el cierre) sería un cambio grande y riesgoso a cambio de
+ * nada visual — típicamente una card V1 que ya trae su `borderRadius` en el
+ * StyleSheet y solo le estaba pasando `backgroundColor` inline. Se usó así al
+ * migrar Ajustes (2026-08-05).
+ *
+ * Devuelve el mismo par (gradiente + receta de sombra) que aplica `NeoSurface`,
+ * así que las dos rutas producen píxeles idénticos.
+ */
+export function neoMaterial(mode: ResolvedThemeMode, variant: keyof NeoShadows = 'raisedLg'): ViewStyle {
+  const neo = neoTokens(mode)
+  const isHero = variant === 'hero'
+  const isRaised = variant.startsWith('raised')
+  const isInset = variant.startsWith('inset') || variant === 'ringSelected'
+
+  if (isHero || isRaised) {
+    return {
+      ...cssGradient(
+        isHero ? neo.heroGradientCss : neo.raisedGradientCss,
+        isHero ? neo.heroGradient[1] : neo.surface,
+      ),
+      boxShadow: neo.shadows[variant],
+    }
+  }
+
+  return {
+    backgroundColor: variant === 'sheet' ? neo.sheet : isInset ? neo.well : neo.surface,
+    boxShadow: neo.shadows[variant],
+  }
+}
+
+/**
  * Radios por capa (handoff §Radios y capas). Independientes del tema.
  * hero 32 · cards 24–28 · tiles 18 · chips 14–22 · inputs 18 · nav 32 ·
- * celdas de calendario 13–14.
+ * celdas de calendario 13–14 · esquinas superiores de hoja 34.
  */
 export const neoRadii = {
   hero:         32,
+  /**
+   * Sólo las esquinas SUPERIORES de una hoja anclada abajo. El handoff
+   * la dibuja como `34px 34px 46px 46px`, donde el 46 es el radio del
+   * marco del teléfono en la maqueta: en el dispositivo la hoja llega a
+   * borde y las esquinas de abajo las recorta la pantalla, así que sólo
+   * el 34 es un valor nuestro.
+   */
+  sheet:        34,
   card:         26,
   cardSm:       24,
   tile:         18,

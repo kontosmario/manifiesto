@@ -7,7 +7,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Lightweight Reanimated confetti.
@@ -47,6 +48,21 @@ import { useAppTheme } from '@/theme/theme-provider'
  * - **Easing from Reanimated** (NOT react-native — mixing crashes at
  *   runtime per project memory `feedback_reanimated_easing_runtime`).
  * - **Reduced motion**: renders null when the user opted out.
+ *
+ * Paleta (rediseño neo)
+ * ---------------------
+ * El confeti es GLOBAL: lo montan el wrapped (2 instancias sobre escenas
+ * con tinte editorial propio), el cierre de semana, las filas de Fijos y
+ * el sheet de compra. Cada host tiene un fondo distinto, así que un
+ * preset único desaparecería en alguno — por eso la paleta es una PROP.
+ *
+ * El DEFAULT resuelve por tema el caso "el confeti cae sobre el material
+ * de la app": en oscuro es el preset `celebrationDark` (sus 3 colores son
+ * claros y saltan sobre las superficies oscuras); en claro esos mismos 3
+ * se lavarían sobre una card `raised` (#E1E4D6) o una hoja (#F0EFE3), así
+ * que van los tokens saturados del tema. Un host que cae sobre un fondo
+ * PROPIO —el takeover verde del cierre de semana, la escena forest del
+ * wrapped— pasa su preset explícito.
  */
 interface ConfettiBurstProps {
   /** Increment this to fire a new burst. 0 / undefined = inert. */
@@ -56,6 +72,12 @@ interface ConfettiBurstProps {
   count?: number
   /** Origin offset relative to the parent. Defaults to centered. */
   originY?: number
+  /**
+   * Paleta cicleada por índice de partícula. Sin valor, el default por
+   * tema (ver docblock). El host la pasa cuando el confeti cae sobre un
+   * fondo propio y no sobre el material de la app.
+   */
+  colors?: readonly string[]
 }
 
 interface ParticleConfig {
@@ -83,9 +105,22 @@ export function ConfettiBurst({
   pulseToken,
   count = 18,
   originY = 0,
+  colors,
 }: ConfettiBurstProps) {
   const reduced = useReducedMotion()
-  const { theme } = useAppTheme()
+  const { mode } = useThemeTokens()
+  const neo = neoTokens(mode)
+  // Clave por CONTENIDO de la paleta: un array literal inline en el
+  // caller cambia de identidad en cada render y reconstruiría los N
+  // ParticleConfig sin que la paleta haya cambiado (mismo patrón que
+  // `BrotParticles.paletteKeyFor`). '|' como separador para tolerar
+  // colores `rgba(…)` con comas.
+  const defaultPalette: readonly string[] =
+    mode === 'dark'
+      ? neoParticlePresets.celebrationDark.colors
+      : [neo.green, neo.warm, neo.greenDeep]
+  const paletteKey = (colors && colors.length > 0 ? colors : defaultPalette).join('|')
+  const fallbackColor = neo.green
   // One shared progress driver shared by every particle. Cheaper than
   // N independent timing values, and guarantees they stay in phase.
   const t = useSharedValue(0)
@@ -99,13 +134,7 @@ export function ConfettiBurst({
   // the worklet (which the Reanimated runtime can't access).
   const particles = useMemo<ParticleConfig[]>(() => {
     if (reduced) return []
-    const palette = [
-      theme.brand.bright,       // mint
-      theme.colors.peach,       // warm accent
-      theme.colors.peachBand,
-      theme.colors.creamCard,
-      theme.brand.deep,
-    ]
+    const palette = paletteKey.split('|')
     const out: ParticleConfig[] = []
     for (let i = 0; i < count; i++) {
       // Spread evenly around the circle with a tiny jitter so it
@@ -118,7 +147,7 @@ export function ConfettiBurst({
         angle: baseAngle + jitter,
         velocity: 120 + Math.abs(Math.sin(i * 13.7)) * 80, // 120–200 px
         rotationEnd: 360 + (i % 5) * 90,                    // varied spins
-        color: palette[i % palette.length] ?? theme.brand.bright,
+        color: palette[i % palette.length] ?? fallbackColor,
         // Slightly larger particles (7-11 vs 6-10) — visibility on
         // light backgrounds was borderline at the smaller sizes.
         size: 7 + (i % 3) * 2,
@@ -132,7 +161,7 @@ export function ConfettiBurst({
       })
     }
     return out
-  }, [count, reduced, theme])
+  }, [count, reduced, paletteKey, fallbackColor])
 
   useEffect(() => {
     if (reduced) return

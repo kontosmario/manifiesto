@@ -8,10 +8,14 @@ import Animated, {
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import i18n from '@/lib/i18n'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 
 /**
@@ -37,6 +41,10 @@ import { currencyFormatter, formatMoneyShort } from '@/utils/money'
  * the math (reserve a % of the cycle's variable budget) is identical
  * to a per-day goal, so we don't add a new column. The framing here is
  * what makes it a "goal" instead of a "buffer".
+ *
+ * Rediseño 2026-07: la carcasa la pinta `ModalCard skin="neo"` (hoja
+ * `neo.sheet`, esquinas 34, sombra hacia arriba, píldora 44×5 y scrim del
+ * tema). Este archivo sólo aporta el CONTENIDO.
  */
 
 // Step ordering matters: read left-to-right as "tighter → looser",
@@ -137,7 +145,9 @@ export function DailyGoalSheet({
   inline,
   incomeMode,
 }: DailyGoalSheetProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const isDark = theme.mode === 'dark'
   const isDynamicIncome = incomeMode === 'dynamic'
   const { t } = useTranslation()
   const subtitle = useMemo(() => pickGoalSubtitle(userStats), [userStats])
@@ -165,6 +175,19 @@ export function DailyGoalSheet({
   const wasActive = resolvedInitialPct < 100
   const dirty = selectedPct !== resolvedInitialPct
 
+  // Tinta verde de TEXTO. `neo.green` es el verde de MATERIAL (relleno,
+  // anillo, gradiente); como tinta sobre el tinte del hero/chip seleccionado
+  // en claro se queda abajo de AA, así que ahí manda `greenDeep`. En oscuro el
+  // verde claro ya cumple y `greenDeep` sería ilegible.
+  const accentInk = isDark ? neo.green : neo.greenDeep
+
+  // Android < API 28/29 descarta el boxShadow EN SILENCIO. El chip
+  // seleccionado y el pozo del impacto se leen SÓLO por su relieve, así que
+  // ahí — y sólo ahí — cae un hairline.
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: theme.colors.border }
+
   // ── Dynamic CTA copy ───────────────────────────────────────────
   // The single primary action shifts label based on intent so the
   // user always reads exactly what the next tap will do:
@@ -185,6 +208,7 @@ export function DailyGoalSheet({
       visible={visible}
       onClose={onClose}
       inline={inline}
+      skin="neo"
       title={t('control:dailyGoal.title')}
       subtitle={subtitle}
     >
@@ -194,30 +218,22 @@ export function DailyGoalSheet({
             "% del cupo" eyebrow that animates as the user picks a
             step. Cupo real + remaining cycle days sit demoted below
             as context refs so the user always sees the absolute
-            ceiling alongside their personal one. */}
-        <View
-          style={[
-            styles.hero,
-            {
-              backgroundColor: isGoalActive
-                ? theme.colors.primarySurface
-                : theme.colors.surfaceMuted,
-              borderColor: isGoalActive
-                ? theme.colors.primary
-                : theme.colors.border,
-            },
-          ]}
+            ceiling alongside their personal one.
+            Piel neo: card protagonista = relieve `raisedXl`, sin
+            hairline. El estado activo se marca con el tinte verde del
+            sistema, no invirtiendo el fill. */}
+        <NeoSurface
+          variant="raisedXl"
+          radius={neoRadii.card}
+          backgroundColor={isGoalActive ? neo.selectedTint : undefined}
+          style={styles.hero}
         >
           <Animated.Text
             key={`hero-eyebrow-${selectedPct}`}
             entering={FadeIn.duration(180)}
             style={[
               styles.heroEyebrow,
-              {
-                color: isGoalActive
-                  ? theme.colors.primary
-                  : theme.colors.textMuted,
-              },
+              { color: isGoalActive ? accentInk : neo.textMuted },
             ]}
           >
             {isGoalActive
@@ -229,11 +245,7 @@ export function DailyGoalSheet({
             entering={FadeIn.duration(220)}
             style={[
               styles.heroAmount,
-              {
-                color: isGoalActive
-                  ? theme.colors.primary
-                  : theme.colors.text,
-              },
+              { color: isGoalActive ? accentInk : neo.text },
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -244,13 +256,13 @@ export function DailyGoalSheet({
           <View style={styles.heroFootRow}>
             {isGoalActive ? (
               <>
-                <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.heroFootMuted, { color: neo.textMuted }]}>
                   {t('control:dailyGoal.heroCupoReal', {
                     amount: currencyFormatter.format(safeCupo),
                   })}
                 </Text>
-                <View style={[styles.heroFootDot, { backgroundColor: theme.colors.textMuted }]} />
-                <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
+                <View style={[styles.heroFootDot, { backgroundColor: neo.textTertiary }]} />
+                <Text style={[styles.heroFootMuted, { color: neo.textMuted }]}>
                   {t(
                     isDynamicIncome
                       ? 'control:dailyGoal.heroDiasCiclo'
@@ -260,19 +272,20 @@ export function DailyGoalSheet({
                 </Text>
               </>
             ) : (
-              <Text style={[styles.heroFootMuted, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.heroFootMuted, { color: neo.textMuted }]}>
                 {t('control:dailyGoal.heroSinMeta')}
               </Text>
             )}
           </View>
-        </View>
+        </NeoSurface>
 
         {/* ── Step picker ─────────────────────────────────────────
             Discrete behavioural buckets (60/70/80/90/Off). Each chip
             is a chunky tap target — fontSize 14, paddingV 12 — so
             the row reads as a deliberate selection control, not a
-            secondary helper. Active chip fills with mint and pops
-            forward via a small scale (visible on press as well). */}
+            secondary helper. En neo el chip elegido NO se rellena de
+            verde: se HUNDE con el anillo verde de 2.5px, que es el
+            recurso de "presionado" del neumorfismo. */}
         <View style={styles.stepper}>
           {STEPS.map((step) => {
             const active = selectedPct === step.pct
@@ -294,25 +307,28 @@ export function DailyGoalSheet({
                 }
                 style={({ pressed }) => [
                   styles.stepperCell,
-                  {
-                    backgroundColor: active
-                      ? theme.colors.primary
-                      : theme.colors.surfaceMuted,
-                    borderColor: active
-                      ? theme.colors.primary
-                      : theme.colors.border,
-                    opacity: pressed ? 0.78 : 1,
-                  },
+                  active
+                    ? {
+                        backgroundColor: neo.selectedTint,
+                        boxShadow: neo.shadows.ringSelected,
+                      }
+                    : {
+                        ...cssGradient(neo.raisedGradientCss, neo.surface),
+                        boxShadow: neo.shadows.raisedSm,
+                      },
+                  flatFallback
+                    ? {
+                        borderWidth: active ? 2.5 : 1,
+                        borderColor: active ? neo.green : theme.colors.border,
+                      }
+                    : null,
+                  { opacity: pressed ? 0.78 : 1 },
                 ]}
               >
                 <Text
                   style={[
                     styles.stepperLabel,
-                    {
-                      color: active
-                        ? theme.colors.background
-                        : theme.colors.text,
-                    },
+                    { color: active ? accentInk : neo.text },
                   ]}
                   numberOfLines={1}
                 >
@@ -328,31 +344,39 @@ export function DailyGoalSheet({
             the lever that turns "−20%" into "$312k extra". The
             crossfade (key=projectedCycleSaving) keeps the projection
             text feeling alive between step taps without remounting
-            the card frame. Icon badge anchors the section visually. */}
+            the card frame. Icon badge anchors the section visually.
+            Piel neo: bloque de lectura = POZO, no card con hairline.
+            El material va en el propio `Animated.View` para no meter
+            un nivel de anidación que rompa el `LinearTransition`. */}
         <Animated.View
           layout={LinearTransition.duration(260)}
           style={[
             styles.impact,
             {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.border,
+              backgroundColor: neo.well,
+              boxShadow: neo.shadows.insetMd,
             },
+            flatFallback,
           ]}
         >
           <View
             style={[
               styles.impactIconBadge,
-              {
-                backgroundColor: isGoalActive
-                  ? theme.colors.primary
-                  : theme.colors.border,
-              },
+              isGoalActive
+                ? { backgroundColor: neo.green }
+                : {
+                    // Sin meta el badge es un pozo apagado. El `border` como
+                    // FONDO era un uso V1 sin equivalente en neo — y con la
+                    // tinta encima no llegaba a 3:1 en oscuro.
+                    backgroundColor: neo.well,
+                    boxShadow: neo.shadows.insetSm,
+                  },
             ]}
           >
             <MaterialIcons
               name={isGoalActive ? 'flag' : 'lightbulb-outline'}
               size={16}
-              color={isGoalActive ? theme.colors.background : theme.colors.text}
+              color={isGoalActive ? neo.ctaText : neo.textMuted}
             />
           </View>
           <View style={styles.impactBody}>
@@ -361,14 +385,14 @@ export function DailyGoalSheet({
                 key={`impact-active-${projectedCycleSaving}`}
                 entering={FadeIn.duration(220)}
                 exiting={FadeOut.duration(140)}
-                style={[styles.impactCopy, { color: theme.colors.text }]}
+                style={[styles.impactCopy, { color: neo.text }]}
               >
                 {t(
                   isDynamicIncome
                     ? 'control:dailyGoal.impactActivePrefixDynamic'
                     : 'control:dailyGoal.impactActivePrefix',
                 )}
-                <Text style={[styles.impactStrong, { color: theme.colors.primary }]}>
+                <Text style={[styles.impactStrong, { color: accentInk }]}>
                   {formatMoneyShort(projectedCycleSaving)}
                 </Text>
                 {t('control:dailyGoal.impactActiveSuffix', {
@@ -381,7 +405,7 @@ export function DailyGoalSheet({
                 key="impact-empty"
                 entering={FadeIn.duration(220)}
                 exiting={FadeOut.duration(140)}
-                style={[styles.impactCopy, { color: theme.colors.textMuted }]}
+                style={[styles.impactCopy, { color: neo.textMuted }]}
               >
                 {t('control:dailyGoal.impactEmpty')}
               </Animated.Text>
@@ -398,12 +422,12 @@ export function DailyGoalSheet({
             active) — present but visually subordinate, satisfying
             guardrail #8 without competing with the primary path. */}
         <View style={styles.ctaStack}>
-          <AppButton
+          <NeoButton
             variant="primary"
+            block
             label={ctaLabel}
-            loading={isSaving}
+            busy={isSaving}
             disabled={!dirty}
-            fullWidth
             onPress={() => {
               if (!dirty) return
               if (selectedPct >= 100) {
@@ -427,7 +451,7 @@ export function DailyGoalSheet({
               accessibilityLabel={t('control:dailyGoal.exitRampA11y')}
               style={styles.exitRamp}
             >
-              <Text style={[styles.exitRampText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.exitRampText, { color: neo.textMuted }]}>
                 {t('control:dailyGoal.exitRamp')}
               </Text>
             </Pressable>
@@ -442,14 +466,11 @@ const styles = StyleSheet.create({
   body: {
     gap: 18,
   },
-  // Hero card — focal element. Generous padding (20pt vertical)
-  // and a 18pt radius for a "card-within-card" feel that sits
-  // confidently above the stepper row. Border colour switches
-  // to mint when a goal is active so the user reads "this is yours
-  // now".
+  // Hero card — focal element. Generous padding (20pt vertical). El
+  // radio (neoRadii.card) y el relieve los pone `NeoSurface`; el borde
+  // de 1px del V1 desaparece: en neo las superficies se separan con
+  // sombra, nunca con hairline.
   hero: {
-    borderRadius: 18,
-    borderWidth: 1,
     paddingVertical: 20,
     paddingHorizontal: 18,
     alignItems: 'center',
@@ -459,10 +480,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   heroAmount: {
     fontSize: 40,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.8,
     fontVariant: ['tabular-nums'],
   },
@@ -475,6 +498,7 @@ const styles = StyleSheet.create({
   heroFootMuted: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   heroFootDot: {
     width: 3,
@@ -494,34 +518,33 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: neoRadii.chip,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
   },
   stepperLabel: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.2,
   },
   // Impact card — horizontal layout with an icon badge anchoring
   // the copy. Always visible (no longer toggling between active /
-  // empty states with full-card colour swap). Background stays
-  // muted so the hero card above keeps the spotlight.
+  // empty states with full-card colour swap). En neo es un POZO: el
+  // bloque de conclusión se hunde respecto del hero.
   impact: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: neoRadii.input,
     paddingVertical: 14,
     paddingHorizontal: 14,
   },
   impactIconBadge: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 1,
@@ -533,9 +556,11 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 19,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
   impactStrong: {
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   // CTA stack — single full-width primary button followed by an
   // optional ghost-text exit ramp. Vertical gap is intentionally
@@ -543,15 +568,17 @@ const styles = StyleSheet.create({
   // the same action group, not an unrelated control.
   ctaStack: {
     gap: 8,
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   exitRamp: {
+    alignSelf: 'center',
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
   exitRampText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.2,
     textDecorationLine: 'underline',
   },
