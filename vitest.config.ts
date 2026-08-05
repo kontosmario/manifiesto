@@ -28,6 +28,14 @@ export default defineConfig({
       'dist/**',
       'ios/**',
       'node_modules/**',
+      // Los tests de integración hablan con un Supabase REAL: necesitan
+      // credenciales, red, y crean/borran datos. Corriendo acá se colaban en
+      // `npm test` y en `npm run validate` — y como el destino sale de
+      // `.env.supabase`, escribían en PRODUCCIÓN.
+      // Tienen su propio comando y su propia config, apuntando a staging:
+      //   npm run test:integration
+      // Ver docs/operaciones/ambiente-dev.md
+      'tests/integration/**',
     ],
     include: ['tests/**/*.test.ts'],
   },

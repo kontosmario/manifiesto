@@ -42,7 +42,17 @@
 -- trigger no chequea EXECUTE, así que no son vector de leak.
 
 -- Relay de notificaciones (solo orchestrator vía service_role / pg_cron).
-revoke execute on function public.dispatch_notifications_kind(text) from public, anon, authenticated;
+-- `dispatch_notifications_kind` se creó a mano en prod antes de esta migración, y
+-- el repo recién la codificó en 20260709000322_sync_prod_function_sources. Por eso
+-- en un replay desde cero (local / staging) todavía no existe acá. El revoke se
+-- re-afirma al final de esa migración, así que la postura de seguridad es la misma
+-- en prod y en una base reconstruida.
+do $$
+begin
+  if to_regprocedure('public.dispatch_notifications_kind(text)') is not null then
+    revoke execute on function public.dispatch_notifications_kind(text) from public, anon, authenticated;
+  end if;
+end $$;
 revoke execute on function public.emit_notification(uuid,uuid,text,text,text,text,uuid,jsonb) from public, anon, authenticated;
 revoke execute on function public.emit_notifications_bulk(jsonb) from public, anon, authenticated;
 revoke execute on function public.emit_notifications_bulk_returning(jsonb) from public, anon, authenticated;

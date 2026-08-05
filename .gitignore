@@ -16,7 +16,15 @@ dist-ssr
 .env
 .env.supabase
 .env.supabase.*
+# Ambientes de desarrollo (local / staging): traen URL y keys del backend
+# que NO es producción, pero igual son secretos. Ver docs/operaciones/ambiente-dev.md.
+.env.dev
+.env.staging
+.env.localdb
 !.env.supabase.example
+!.env.dev.example
+!.env.staging.example
+!.env.localdb.example
 .expo
 .expo-shared
 android

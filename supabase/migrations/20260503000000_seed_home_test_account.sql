@@ -67,6 +67,15 @@ declare
   v_picked_desc text;
   v_inserted_at timestamptz;
 begin
+  -- Guard de reproducibilidad: los seeds de cuentas demo solo corren si se piden
+  -- explícitamente. En prod ya se aplicaron (y sus cuentas fueron dadas de baja);
+  -- en una base nueva (local o staging) el dato de desarrollo viene de
+  -- supabase/seed.sql, no de migraciones. Ver docs/operaciones/ambiente-dev.md.
+  if coalesce(current_setting('manifiesto.seed_demo_accounts', true), 'off') <> 'on' then
+    raise notice 'seed de cuenta demo omitido (activar con: set manifiesto.seed_demo_accounts = ''on'')';
+    return;
+  end if;
+
   -- ── Bail if user already exists ─────────────────────────────────
   select id into v_user_id
   from auth.users

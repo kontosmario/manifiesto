@@ -9,7 +9,7 @@
 -- Misma cirugía verbatim-base de siempre.
 -- ════════════════════════════════════════════════════════════════════
 
-create function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
+create or replace function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
 returns void language plpgsql as $helper$
 declare
   src text;

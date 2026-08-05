@@ -544,3 +544,13 @@ begin
 end;
 $function$
 ;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Re-afirmar el lockdown de `dispatch_notifications_kind`.
+--
+-- 20260630034907_lock_internal_security_definer_functions revoca el execute de
+-- esta función, pero en un replay desde cero todavía no existía en ese punto
+-- (en prod se había creado a mano). Acá recién queda definida, así que el revoke
+-- se aplica ahora. Idempotente: en prod ya está revocado y esto es un no-op.
+-- ─────────────────────────────────────────────────────────────────────────
+revoke execute on function public.dispatch_notifications_kind(text) from public, anon, authenticated;

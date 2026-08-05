@@ -74,6 +74,7 @@ Snapshots completos del proyecto verificados contra el código. Foto vigente: **
 | Doc | Estado | Cubre |
 |---|---|---|
 | [setup-entorno.md](operaciones/setup-entorno.md) | 🔧 vigente | Setup local, env vars, Supabase CLI, email, push, deep linking, CI |
+| [ambiente-dev.md](operaciones/ambiente-dev.md) | 🔧 vigente | **Ambiente de desarrollo de DB y backend**: stack local (Docker) + staging en la nube, cuentas de prueba, cómo se promueve un cambio hasta prod |
 | [runbook-backend-hardening.md](operaciones/runbook-backend-hardening.md) | 🔧 vigente | Runbook operacional de backend (refresh, retention, rollback) |
 | [pendientes-seguridad.md](operaciones/pendientes-seguridad.md) | 🔧 backlog | Backlog de seguridad pendiente |
 | [push-notifications-ios-setup.md](operaciones/push-notifications-ios-setup.md) | 🔧 pendiente | Setup de push iOS (bloqueado por Apple Dev) |
@@ -95,6 +96,7 @@ Snapshots completos del proyecto verificados contra el código. Foto vigente: **
 
 - **¿Cómo está el proyecto hoy?** → [ESTADO-DEL-PROYECTO/2026-05-21](ESTADO-DEL-PROYECTO/2026-05-21-estado-actual/00-INDICE.md)
 - **¿Cómo levanto el proyecto?** → [operaciones/setup-entorno.md](operaciones/setup-entorno.md)
+- **¿Cómo pruebo un cambio de backend sin tocar producción?** → [operaciones/ambiente-dev.md](operaciones/ambiente-dev.md)
 - **¿Reglas de código?** → [arquitectura/code-rules.md](arquitectura/code-rules.md)
 - **¿Cómo funciona un sistema (logros/Wrapped/asistente)?** → [sistemas/](sistemas/)
 - **¿Qué falta para el "ideal"?** → [auditorias/real-value-suggestions/](auditorias/real-value-suggestions/README.md)

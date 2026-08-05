@@ -38,7 +38,7 @@
 --     en schema extensions) → la sección Slow Queries siempre vacía.
 -- ════════════════════════════════════════════════════════════════════
 
-create function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
+create or replace function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
 returns void language plpgsql as $helper$
 declare
   src text;
@@ -57,7 +57,7 @@ begin
 end;
 $helper$;
 
-create function pg_temp.patch_fn_after_begin(p_fn regprocedure, p_insert text)
+create or replace function pg_temp.patch_fn_after_begin(p_fn regprocedure, p_insert text)
 returns void language plpgsql as $helper$
 declare
   src text;

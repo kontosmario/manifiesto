@@ -25,7 +25,7 @@
 --     copy neutral) y severity info para balance ≥ 0.
 -- ════════════════════════════════════════════════════════════════════
 
-create function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
+create or replace function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
 returns void language plpgsql as $helper$
 declare
   src text;

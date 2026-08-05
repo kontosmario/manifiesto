@@ -59,7 +59,10 @@ schema_paths = []
 
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
-enabled = false
+# Habilitado 2026-08-04: `supabase db reset` deja la base local con las cuentas
+# de prueba de supabase/seed.sql. Ese archivo aborta solo si detecta usuarios
+# reales, así que no puede ensuciar producción. Ver docs/operaciones/ambiente-dev.md.
+enabled = true
 # Specifies an ordered list of seed files to load during db reset.
 # Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = ["./seed.sql"]
@@ -107,7 +110,12 @@ port = 54324
 # sender_name = "Admin"
 
 [storage]
-enabled = true
+# Desactivado 2026-08-04: la app NO usa Supabase Storage (cero llamadas a
+# .storage en mobile/, app/ y supabase/functions/; los avatares son packs de
+# assets y el OCR corre on-device con ML Kit). El contenedor quedaba unhealthy
+# al reiniciar y hacía fallar `supabase db reset` con las migraciones y el seed
+# ya aplicados correctamente. Si algún día se suben archivos, volver a true.
+enabled = false
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 

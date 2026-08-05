@@ -11,7 +11,7 @@
 -- Misma técnica de cirugía verbatim-base que 20260708230000.
 -- ════════════════════════════════════════════════════════════════════
 
-create function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
+create or replace function pg_temp.patch_fn(p_fn regprocedure, p_from text, p_to text)
 returns void language plpgsql as $helper$
 declare
   src text;
