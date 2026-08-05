@@ -8,7 +8,6 @@ import { resetIntroSeen } from '@/features/onboarding-intro/intro-seen'
 import { useFocusEffect } from '@react-navigation/native'
 import { Alert, Linking, StyleSheet, Switch, Text, View } from 'react-native'
 import * as StoreReview from 'expo-store-review'
-import { LinearGradient } from 'expo-linear-gradient'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { useRouter } from 'expo-router'
@@ -19,10 +18,12 @@ import { membershipVariant } from '@/features/billing/membership-state'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { Screen } from '@/components/ui/screen'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { withAlpha } from '@/theme/color-utils'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   SettingsGroup,
@@ -101,6 +102,8 @@ import {
   saveBiometricCredentials,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
+import { neoConfirm } from '@/lib/confirm-bus'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { isAnimLogEnabled, setAnimLogEnabled } from '@/lib/dev/anim-log'
 import { supabase } from '@/lib/supabase'
@@ -128,6 +131,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const isSuperAdmin = useIsSuperAdmin()
   const isNavSettled = useIsNavigationSettled()
   const { preference, setPreference, theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const DISABLED_HINT = t('settings:settingsScreen.disabledHint')
   const {
@@ -286,19 +290,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handleBiometricToggle = useCallback(async () => {
     if (isBiometricBusy) return
     if (!biometricState.isAvailable) {
-      Alert.alert(
-        t('settings:biometric.unavailableTitle'),
-        t('settings:biometric.unavailableMessage', {
+      toast.error(t('settings:biometric.unavailableMessage', {
           method: biometricState.label.toLowerCase(),
-        }),
-      )
+        }))
       return
     }
     if (!userEmail) {
-      Alert.alert(
-        t('settings:biometric.invalidSessionTitle'),
-        t('settings:biometric.invalidSessionMessage'),
-      )
+      toast.info(t('settings:biometric.invalidSessionMessage'))
       return
     }
 
@@ -329,10 +327,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       const sessionResponse = await supabase.auth.getSession()
       const refreshToken = sessionResponse.data.session?.refresh_token
       if (!refreshToken) {
-        Alert.alert(
-          t('settings:biometric.noSessionTitle'),
-          t('settings:biometric.noSessionMessage'),
-        )
+        toast.info(t('settings:biometric.noSessionMessage'))
         return
       }
       await saveBiometricCredentials({
@@ -347,10 +342,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       if (__DEV__) {
         console.error('[biometric] activation failed:', error)
       }
-      Alert.alert(
-        t('settings:biometric.saveFailedTitle'),
-        t('settings:biometric.saveFailedMessage'),
-      )
+      toast.error(t('settings:biometric.saveFailedMessage'))
     } finally {
       setBiometricBusy(false)
     }
@@ -393,6 +385,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       router.push('/(app)/pin-setup')
       return
     }
+    // ÚNICO Alert.alert que sobrevive en Ajustes tras el pase a neumorfismo
+    // (2026-08-05). No es una confirmación: es un MENÚ de tres opciones
+    // (cambiar / quitar / cancelar), y `neoConfirm` es binario por diseño.
+    // Convertirlo pide un action sheet propio en material neo, del estilo de
+    // `member-action-sheet`. Hasta entonces queda el diálogo del sistema —
+    // feo pero funcional, y preferible a inventar un flujo binario que
+    // esconda una de las dos acciones.
     Alert.alert(t('settings:pin.title'), t('settings:pin.prompt'), [
       { text: t('settings:pin.change'), onPress: () => router.push('/(app)/pin-setup') },
       {
@@ -423,10 +422,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     dashboard.dashboardError ??
     (supportsPushActivation ? hasPushSubscriptionQuery.error : null)
 
+  // Sin deps: el toast recibe el mensaje ya resuelto por el caller, así que
+  // `t` dejó de usarse acá cuando el Alert nativo (que armaba su propio título
+  // traducido) pasó a ser un toast.
   const showError = useCallback(async (error: unknown, fallbackMessage: string) => {
     await triggerHaptic('error')
-    Alert.alert(t('settings:errors.genericTitle'), getErrorMessage(error, fallbackMessage))
-  }, [t])
+    toast.error(getErrorMessage(error, fallbackMessage))
+  }, [])
 
   const saveProfile = useCallback(
     (nextDisplayName: string) => {
@@ -538,7 +540,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           openReviewUrl: () => Linking.openURL(APP_STORE_REVIEW_URL),
         })
       } catch {
-        Alert.alert(t('settings:rate.errorTitle'), t('settings:rate.errorBody'))
+        toast.error(t('settings:rate.errorBody'))
       }
     })()
   }, [t])
@@ -602,10 +604,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
   const handlePushActivation = useCallback(() => {
     if (!supportsRemotePushNotifications) {
-      Alert.alert(
-        t('settings:push.devBuildTitle'),
-        t('settings:push.devBuildMessage'),
-      )
+      toast.info(t('settings:push.devBuildMessage'))
       return
     }
     enablePushMutation.mutate(
@@ -725,62 +724,52 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     const message = willLoseAccess
       ? `${baseMsg}\n\n${t('settings:leaveHousehold.lostAccessNote')}`
       : baseMsg
-    Alert.alert(
-      t('settings:leaveHousehold.title'),
-      message,
-      [
-        { style: 'cancel', text: t('common:actions.cancel') },
-        {
-          style: 'destructive',
-          text: t('settings:leaveHousehold.leave'),
-          onPress: () => void runLeaveFamily(),
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:leaveHousehold.title'), {
+        confirmLabel: t('settings:leaveHousehold.leave'),
+        message,
+        tone: 'destructive',
+      })
+      if (!confirmed) return
+      await runLeaveFamily()
+    })()
   }, [isOwnerDestroyFlow, runLeaveFamily, entitlementQuery.data, t])
 
   const handleConfirmConvertToSolo = useCallback(() => {
-    Alert.alert(
-      t('settings:convertToSolo.title'),
-      t('settings:convertToSolo.message'),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('settings:convertToSolo.confirm'),
-          style: 'destructive',
-          onPress: () =>
-            convertToSolo.mutate(undefined, {
-              onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
-            }),
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:convertToSolo.title'), {
+        confirmLabel: t('settings:convertToSolo.confirm'),
+        message: t('settings:convertToSolo.message'),
+        tone: 'destructive',
+      })
+      if (!confirmed) return
+      convertToSolo.mutate(undefined, {
+        onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
+      })
+    })()
   }, [convertToSolo, showError, t])
 
   const handleConfirmConvertToFamily = useCallback(() => {
-    Alert.alert(
-      t('settings:convertToFamily.title'),
-      t('settings:convertToFamily.message'),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('settings:convertToFamily.confirm'),
-          onPress: () =>
-            convertToFamily.mutate(undefined, {
-              onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
-            }),
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:convertToFamily.title'), {
+        confirmLabel: t('settings:convertToFamily.confirm'),
+        message: t('settings:convertToFamily.message'),
+      })
+      if (!confirmed) return
+      convertToFamily.mutate(undefined, {
+        onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
+      })
+    })()
   }, [convertToFamily, showError, t])
 
   const handleConfirmLogout = useCallback(() => {
-    Alert.alert(t('settings:logout.title'), t('settings:logout.message'), [
-      { style: 'cancel', text: t('common:actions.cancel') },
-      {
-        style: 'destructive',
-        text: t('settings:leaveHousehold.leave'),
-        onPress: () => {
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:logout.title'), {
+        confirmLabel: t('settings:leaveHousehold.leave'),
+        message: t('settings:logout.message'),
+        tone: 'destructive',
+      })
+      if (confirmed) {
           // Logout va directo a welcome sin pasar por el WarmFernLogo
           // splash. El splash (auth-transition-splash) tiene piso de
           // 3s para la animación de entrada — apropiado para sign-in
@@ -791,13 +780,12 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           // paralelo (~200-400ms) → signOut → SIGNED_OUT event →
           // AppEntryGate ve session=null + Keychain limpio →
           // Redirect a /(auth)/welcome direct.
-          void logoutSession({
-            onError: (error) => void showError(error, t('settings:errors.logout')),
-            onSuccess: () => router.replace('/'),
-          })
-        },
-      },
-    ])
+        void logoutSession({
+          onError: (error) => void showError(error, t('settings:errors.logout')),
+          onSuccess: () => router.replace('/'),
+        })
+      }
+    })()
   }, [router, showError, t])
 
   // Footer "Manifiesto X.Y.Z (build N)" — Apple Review usa el build
@@ -834,11 +822,8 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const handleResetIntroSeen = useCallback(() => {
     void triggerHaptic('selection')
     void resetIntroSeen().then(() => {
-      Alert.alert(
-        'Intro pre-auth reiniciado',
-        // @i18n-ignore: alert de acción dev-only (botón gateado por __DEV__, no user-facing)
-        'El showcase de 5 slides se mostrará en el próximo arranque sin sesión. Cerrá sesión para verlo ahora.',
-      )
+      // @i18n-ignore: aviso dev-only (botón gateado por __DEV__, no user-facing)
+      toast.success('Intro pre-auth reiniciado. Cerrá sesión para ver el showcase.')
     })
   }, [])
 
@@ -941,23 +926,27 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   } | null>(() => {
     const ent = entitlementQuery.data
     if (ent == null) return null
-    // Tono → trío de colores forest-safe. positive=mint, neutral=cream
-    // tenue, caution=peach (alineado con los chips de la hero del Home).
+    // Tono → trío de colores derivados de los tokens del hero neo, en vez de
+    // los rgba hardcodeados de la hero forest V1: el gradiente cambió (claro
+    // #337B39→#5FAC64 / oscuro #234931→#16301F) y esos valores estaban
+    // calibrados contra el anterior. `border` se conserva en la forma del
+    // objeto porque lo consume el markup, pero ahora es un tinte del mismo
+    // token, no un color suelto.
     const TONES = {
       positive: {
-        fg: '#F2EAD3', // heroText — AA-safe sobre el fill mint en el hero forest
-        bg: 'rgba(166,239,143,0.16)',
-        border: 'rgba(166,239,143,0.42)',
+        fg: neo.heroText,
+        bg: withAlpha(neo.heroGreen, 0.16),
+        border: withAlpha(neo.heroGreen, 0.42),
       },
       neutral: {
-        fg: '#F2EAD3', // heroText — AA-safe sobre el fill cream tenue en el hero forest
-        bg: 'rgba(246,251,239,0.10)',
-        border: 'rgba(255,255,255,0.18)',
+        fg: neo.heroText,
+        bg: withAlpha(neo.heroText, 0.1),
+        border: withAlpha(neo.heroText, 0.18),
       },
       caution: {
-        fg: '#FADFC8',
-        bg: 'rgba(242,167,140,0.18)',
-        border: 'rgba(242,167,140,0.50)',
+        fg: neo.heroPeach,
+        bg: withAlpha(neo.heroPeach, 0.18),
+        border: withAlpha(neo.heroPeach, 0.5),
       },
     } as const
     // 1) Trial → "Acceso completo · N días" (copy compliant).
@@ -990,13 +979,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           ? TONES.neutral
           : TONES.positive
     return { label, ...tone }
-  }, [entitlementQuery.data, t])
+    // `neo` entra en deps porque los TONES ahora derivan de sus tokens: sin
+    // esto el chip se quedaba con los colores del tema anterior al cambiar
+    // claro↔oscuro. No agrega renders: `neoTokens()` devuelve el mismo objeto
+    // congelado por modo, así que la identidad solo cambia con el tema.
+  }, [entitlementQuery.data, neo, t])
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
       canGoBack
       contentContainerStyle={styles.screenContent}
+      titleColor={neo.text}
       subtitle={
         isSolo
           ? t('settings:screen.subtitleSolo')
@@ -1017,14 +1011,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
 
         {shouldShowErrorState ? (
-          <ErrorState
+          <NeoStateBlock
+            actionLabel={t('states:errorState.action')}
             description={getErrorMessage(
               settingsLoadError,
               isSolo
                 ? t('settings:loadError.descriptionSolo')
                 : t('settings:loadError.descriptionFamily'),
             )}
+            icon="error-outline"
             title={t('settings:loadError.title')}
+            tone="error"
             onAction={() => {
               void Promise.all([
                 profileQuery.refetch(),
@@ -1051,21 +1048,18 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 del contenido. Logo (helecho) arriba-izq + chip de plan/estado
                 arriba-der. Texto en tokens claros (heroText/heroMuted). */}
             <RiseView>
-              <LinearGradient
-                colors={
-                  [...theme.colors.heroGradient] as unknown as readonly [
-                    string,
-                    string,
-                    ...string[],
-                  ]
-                }
-                start={{ x: 0.1, y: 0 }}
-                end={{ x: 0.9, y: 1 }}
-                style={[styles.heroCard, { borderColor: 'rgba(166,239,143,0.12)' }]}
-              >
-                {/* Campo de partículas: primer hijo absoluto, detrás del
-                    contenido. accent peach (legible sobre el forest). */}
-                <CardParticles count={10} accentColor="#F2A78C" />
+              <NeoSurface radius={neoRadii.hero} style={styles.heroCard} variant="hero">
+                {/* Campo de partículas detrás del contenido. Va en su PROPIA
+                    capa con `overflow: hidden`, no en la NeoSurface: recortar
+                    sobre la view que lleva el `boxShadow` le come el relieve
+                    neumórfico. Acá se clipea solo el campo de partículas y la
+                    sombra del hero queda intacta. */}
+                <View
+                  pointerEvents="none"
+                  style={[StyleSheet.absoluteFill, styles.heroParticleClip]}
+                >
+                  <CardParticles count={10} accentColor={neo.heroPeach} />
+                </View>
                 {/* Contenido textual envuelto para que el `gap` del card no
                     descoloque el absoluteFill de las partículas. */}
                 <View style={styles.heroContent}>
@@ -1076,10 +1070,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       <View
                         style={[
                           styles.heroChip,
-                          {
-                            backgroundColor: planChip.bg,
-                            borderColor: planChip.border,
-                          },
+                          { backgroundColor: planChip.bg },
                         ]}
                       >
                         <View
@@ -1095,13 +1086,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={[styles.heroEyebrow, { color: theme.colors.heroText }]}>
+                  <Text style={[styles.heroEyebrow, { color: neo.heroLabel }]}>
                     {isSolo ? t('settings:hero.eyebrowSolo') : t('settings:hero.eyebrowFamily')}
                   </Text>
-                  <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
+                  <Text style={[styles.heroTitle, { color: neo.heroText }]}>
                     {displayName.trim() || t('settings:hero.unnamedProfile')}
                   </Text>
-                  <Text style={[styles.heroSub, { color: theme.colors.heroMuted }]}>
+                  <Text style={[styles.heroSub, { color: neo.heroTextSoft }]}>
                     {isSolo
                       ? t('settings:hero.personalAccount')
                       : totalMembers === 1
@@ -1112,30 +1103,21 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     <View
                       style={[
                         styles.ownerPill,
-                        {
-                          backgroundColor: 'rgba(166,239,143,0.16)',
-                          borderColor: 'rgba(166,239,143,0.35)',
-                        },
+                        { backgroundColor: withAlpha(neo.heroGreen, 0.16) },
                       ]}
                     >
-                      <MaterialIcons
-                        color={theme.colors.heroAccent}
-                        name="verified"
-                        size={14}
-                      />
-                      <Text
-                        style={[styles.ownerText, { color: theme.colors.heroAccent }]}
-                      >
+                      <MaterialIcons color={neo.heroGreen} name="verified" size={14} />
+                      <Text style={[styles.ownerText, { color: neo.heroGreen }]}>
                         {t('settings:hero.ownerPill')}
                       </Text>
                     </View>
                   ) : role === 'member' ? (
-                    <Text style={[styles.memberHint, { color: theme.colors.heroMuted2 }]}>
+                    <Text style={[styles.memberHint, { color: neo.heroTextSoft }]}>
                       {t('settings:hero.memberHint')}
                     </Text>
                   ) : null}
                 </View>
-              </LinearGradient>
+              </NeoSurface>
             </RiseView>
 
             {/* 1. PERFIL */}
@@ -1250,7 +1232,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 <SettingsGroup title={t('settings:reserve.title')}>
                   <View style={styles.reserveInner}>
                     <Text
-                      style={[styles.reserveAmount, { color: theme.colors.text }]}
+                      style={[styles.reserveAmount, { color: neo.text }]}
                       maxFontSizeMultiplier={1.4}
                     >
                       {currencyFormatter.format(
@@ -1260,7 +1242,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       )}
                     </Text>
                     <Text
-                      style={[styles.reserveSub, { color: theme.colors.textMuted }]}
+                      style={[styles.reserveSub, { color: neo.textMuted }]}
                     >
                       {t('settings:reserve.subtitle')}
                     </Text>
@@ -1806,7 +1788,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
 
             {/* Footer de versión — queda último. */}
             <RiseView delay={420}>
-              <Text style={[styles.versionFooter, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.versionFooter, { color: neo.textMuted }]}>
                 {appVersionLabel}
               </Text>
             </RiseView>
@@ -1938,10 +1920,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroCard: {
-    borderWidth: 1,
-    borderRadius: 20,
     padding: 18,
-    // Clipea el campo de partículas al bounding box del card.
+  },
+  // Capa que clipea el campo de partículas. Separada de la NeoSurface a
+  // propósito: ver el comentario en el markup del hero.
+  heroParticleClip: {
+    borderRadius: neoRadii.hero,
     overflow: 'hidden',
   },
   // Envuelve el contenido textual: como el card aloja también el
@@ -1960,7 +1944,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 9,
     paddingVertical: 4,
@@ -1992,7 +1975,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,

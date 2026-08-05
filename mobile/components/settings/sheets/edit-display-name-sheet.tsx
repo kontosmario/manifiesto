@@ -5,6 +5,7 @@ import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
 
 interface EditDisplayNameSheetProps {
   visible: boolean
@@ -22,6 +23,7 @@ export function EditDisplayNameSheet({
   onSave,
 }: EditDisplayNameSheetProps) {
   const { theme } = useAppTheme()
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [draft, setDraft] = useState(currentName)
 
@@ -38,6 +40,7 @@ export function EditDisplayNameSheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={t('settings:editName.subtitle')}
       title={t('settings:editName.title')}
@@ -55,7 +58,7 @@ export function EditDisplayNameSheet({
           value={draft}
         />
         {isInvalid ? (
-          <Text style={[styles.error, { color: theme.colors.danger }]}>
+          <Text style={[styles.error, { color: ink.danger }]}>
             {t('settings:editName.invalid')}
           </Text>
         ) : null}

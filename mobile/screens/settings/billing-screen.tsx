@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Alert, AppState, Modal, RefreshControl, StyleSheet, View } from 'react-native'
+import { AppState, Modal, RefreshControl, StyleSheet, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { toast } from '@/lib/toast-bus'
+import { neoConfirm } from '@/lib/confirm-bus'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
 import { triggerHaptic } from '@/lib/haptics'
 import {
   useBilling,
@@ -93,6 +95,7 @@ export function BillingScreen({
   onContinue?: () => void
 } = {}) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const router = useRouter()
   const billing = useBilling()
@@ -274,27 +277,19 @@ export function BillingScreen({
   // logoutSession dispara SIGNED_OUT → AppEntryGate → welcome, lo que
   // desmonta el Modal del SubscriptionGate (sin sesión no hay gate).
   const handleLogout = useCallback(() => {
-    Alert.alert(
-      t('billing:logout.confirmTitle'),
-      t('billing:logout.confirmMessage'),
-      [
-        { text: t('billing:logout.cancel'), style: 'cancel' },
-        {
-          text: t('billing:logout.confirm'),
-          style: 'destructive',
-          onPress: () => {
-            void logoutSession({
-              onError: (e) =>
-                Alert.alert(
-                  t('billing:logout.errorTitle'),
-                  getErrorMessage(e, t('billing:logout.errorFallback')),
-                ),
-              onSuccess: () => {},
-            })
-          },
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('billing:logout.confirmTitle'), {
+        cancelLabel: t('billing:logout.cancel'),
+        confirmLabel: t('billing:logout.confirm'),
+        message: t('billing:logout.confirmMessage'),
+        tone: 'destructive',
+      })
+      if (!confirmed) return
+      void logoutSession({
+        onError: (e) => toast.error(getErrorMessage(e, t('billing:logout.errorFallback'))),
+        onSuccess: () => {},
+      })
+    })()
   }, [t])
 
   const isErrorSheet =
@@ -321,9 +316,10 @@ export function BillingScreen({
     <>
       {isManage ? (
         <Screen
-          // Mismo fondo que Ajustes: canvas casi-negro DARK_TAB_CANVAS + halos
-          // ambientales, para que "Plan del hogar" pertenezca a la misma paleta.
-          backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+          // Mismo material que Ajustes: fondo neumórfico + halos ambientales,
+          // para que "Plan del hogar" pertenezca a la misma paleta.
+          backgroundColor={neo.bg}
+          titleColor={neo.text}
           canGoBack={!lockMode && !welcomeMode}
           title={t('billing:screen.title')}
           scrollable

@@ -43,6 +43,7 @@ export function EditCycleConfigSheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={t(
         copyVariant === 'cycle'

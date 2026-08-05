@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
@@ -14,9 +14,10 @@ import {
   type NotificationPreferences,
 } from '@/features/notifications/use-notification-preferences'
 import { type NotificationGroup } from '@/utils/notifications'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { neoTokens } from '@/theme/neo-tokens'
 
 type CheckinSlot = 'morning' | 'midday' | 'evening'
 
@@ -48,6 +49,7 @@ function formatHour(hour: number): string {
 
 export function NotificationsPreferencesScreen() {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const preferencesQuery = useNotificationPreferences()
   const updateMutation = useUpdateNotificationPreferences()
@@ -60,7 +62,7 @@ export function NotificationsPreferencesScreen() {
       updateMutation.mutate(patch, {
         onError: () => {
           void triggerHaptic('error')
-          Alert.alert(t('settings:notif.saveErrorTitle'), t('settings:notif.saveErrorMessage'))
+          toast.error(t('settings:notif.saveErrorMessage'))
         },
       })
     },
@@ -141,7 +143,8 @@ export function NotificationsPreferencesScreen() {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       canGoBack
       contentContainerStyle={styles.screenContent}
       title={t('settings:notif.title')}

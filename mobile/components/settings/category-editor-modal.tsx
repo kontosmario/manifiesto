@@ -5,6 +5,7 @@ import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { TextField } from '@/components/ui/text-field'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
 import { radii } from '@/theme/palette'
 
 interface CategoryEditorModalProps {
@@ -29,23 +30,25 @@ export function CategoryEditorModal({
   isBusy = false,
 }: CategoryEditorModalProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [value, setValue] = useState(initialValue)
   const canSubmit = value.trim().length > 0
 
   return (
-    <ModalCard visible={visible} title={title} subtitle={subtitle} onClose={onClose}>
+    <ModalCard skin="neo" visible={visible} title={title} subtitle={subtitle} onClose={onClose}>
       <View
         style={[
           styles.intro,
           {
-            backgroundColor: theme.colors.surfaceMuted,
-            borderColor: theme.colors.border,
+            backgroundColor: neo.well,
+            boxShadow: neo.shadows.insetLg,
+            borderColor: neo.sheetDivider,
           },
         ]}
       >
-        <Text style={[styles.introLabel, { color: theme.colors.primaryStrong }]}>{t('settings:categoryEditor.introLabel')}</Text>
-        <Text style={[styles.introText, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.introLabel, { color: neo.greenDeep }]}>{t('settings:categoryEditor.introLabel')}</Text>
+        <Text style={[styles.introText, { color: neo.textMuted }]}>
           {t('settings:categoryEditor.introText')}
         </Text>
       </View>

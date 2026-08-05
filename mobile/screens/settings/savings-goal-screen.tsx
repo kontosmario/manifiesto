@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -10,7 +10,6 @@ import { AppButton } from '@/components/ui/button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
 import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { MetaCard } from '@/components/home/meta-card'
 import {
   SettingsGroup,
@@ -22,8 +21,12 @@ import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-saving
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import { useDeleteSavingsGoal } from '@/features/savings-goals/use-delete-savings-goal'
 import { useRequireReauth } from '@/features/auth/use-require-reauth'
+import { neoConfirm } from '@/lib/confirm-bus'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
 import { currencyFormatter } from '@/utils/money'
 
 interface SavingsGoalScreenProps {
@@ -34,6 +37,7 @@ interface SavingsGoalScreenProps {
 export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) {
   const router = useRouter()
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   // Importante: useLatestSavingsGoal (no useSavingsGoal) — Settings
   // necesita VER el goal aunque esté desactivado. Con la versión que
@@ -51,7 +55,8 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
   if (goalQuery.isLoading) {
     return (
       <Screen
-        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        backgroundColor={neo.bg}
+        titleColor={neo.text}
         contentContainerStyle={styles.screenContent}
         title={t('settings:savingsGoalScreen.title')}
         canGoBack
@@ -64,7 +69,8 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
   if (!goalQuery.data) {
     return (
       <Screen
-        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        backgroundColor={neo.bg}
+        titleColor={neo.text}
         contentContainerStyle={styles.screenContent}
         title={t('settings:savingsGoalScreen.title')}
         canGoBack
@@ -83,7 +89,8 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       contentContainerStyle={styles.screenContent}
       title={t('settings:savingsGoalScreen.title')}
       canGoBack
@@ -105,6 +112,9 @@ interface EmptyStateProps {
 
 function EmptyState({ onCreatePress }: EmptyStateProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   return (
     <View style={styles.stack}>
@@ -114,8 +124,8 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
           style={[
             styles.emptyCard,
             {
-              backgroundColor: theme.colors.primarySurface,
-              borderColor: theme.colors.primary,
+              backgroundColor: neo.selectedTint,
+              borderColor: ink.accent,
               borderRadius: theme.radii.xl,
             },
           ]}
@@ -124,19 +134,17 @@ function EmptyState({ onCreatePress }: EmptyStateProps) {
             style={[
               styles.emptyIconWrap,
               {
-                backgroundColor: theme.isDark
-                  ? theme.colors.surfaceMuted
-                  : theme.colors.creamCard,
-                borderColor: theme.colors.line,
+                ...cardMaterial,
+                borderColor: neo.sheetDivider,
               },
             ]}
           >
-            <MaterialIcons color={theme.colors.primary} name="flag" size={32} />
+            <MaterialIcons color={ink.accent} name="flag" size={32} />
           </View>
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.emptyTitle, { color: neo.text }]}>
             {t('settings:savingsGoalScreen.emptyTitle')}
           </Text>
-          <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.emptyBody, { color: neo.textMuted }]}>
             {t('settings:savingsGoalScreen.emptyBody')}
           </Text>
           <View style={styles.emptyCta}>
@@ -167,6 +175,9 @@ function SavingsGoalViewer({
   onDeleted,
 }: SavingsGoalViewerProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const upsert = useUpsertSavingsGoal(familyId, userId)
   const remove = useDeleteSavingsGoal(familyId, userId)
@@ -269,33 +280,25 @@ function SavingsGoalViewer({
       onDeleted()
     } catch (err) {
       void triggerHaptic('error')
-      Alert.alert(
-        t('settings:savingsGoalScreen.deleteErrorTitle'),
-        err instanceof Error ? err.message : t('settings:savingsGoalScreen.tryAgain'),
-      )
+      toast.error(err instanceof Error ? err.message : t('settings:savingsGoalScreen.tryAgain'))
     }
   }
 
   const handleDelete = () => {
     const needsReauth = currentAmount > 0
-    Alert.alert(
-      t('settings:savingsGoalScreen.deleteTitle'),
-      t('settings:savingsGoalScreen.deleteMessage', { title: goal.title }),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('common:actions.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            if (needsReauth) {
-              const ok = await reauth.requireReauth(t('settings:savingsGoalScreen.deleteReauth'))
-              if (!ok) return
-            }
-            await proceedDelete()
-          },
-        },
-      ],
-    )
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:savingsGoalScreen.deleteTitle'), {
+        confirmLabel: t('common:actions.delete'),
+        message: t('settings:savingsGoalScreen.deleteMessage', { title: goal.title }),
+        tone: 'destructive',
+      })
+      if (!confirmed) return
+      if (needsReauth) {
+        const ok = await reauth.requireReauth(t('settings:savingsGoalScreen.deleteReauth'))
+        if (!ok) return
+      }
+      await proceedDelete()
+    })()
   }
 
   return (
@@ -313,24 +316,22 @@ function SavingsGoalViewer({
           style={[
             styles.insightCard,
             {
-              backgroundColor: theme.isDark
-                ? theme.colors.surfaceMuted
-                : theme.colors.creamCard,
-              borderColor: theme.colors.line,
+              ...cardMaterial,
+              borderColor: neo.sheetDivider,
               borderRadius: theme.radii.xl,
             },
           ]}
         >
           {!goalDefined ? (
-            <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.insightMuted, { color: neo.textMuted }]}>
               {t('settings:savingsGoalScreen.noTarget')}
             </Text>
           ) : currentAmount >= goalAmount ? (
             <View style={styles.reachedStack}>
-              <Text style={[styles.insightCelebrate, { color: theme.colors.primary }]}>
+              <Text style={[styles.insightCelebrate, { color: ink.accent }]}>
                 {t('settings:savingsGoalScreen.reached')}
               </Text>
-              <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.insightMuted, { color: neo.textMuted }]}>
                 {t('settings:savingsGoalScreen.sequentialDisclaimer')}
               </Text>
               <AppButton
@@ -347,7 +348,7 @@ function SavingsGoalViewer({
                 <View
                   style={[
                     styles.progressTrack,
-                    { backgroundColor: theme.colors.primarySurface },
+                    { backgroundColor: neo.selectedTint },
                   ]}
                 >
                   <View
@@ -355,34 +356,34 @@ function SavingsGoalViewer({
                       styles.progressFill,
                       {
                         width: `${pct}%` as `${number}%`,
-                        backgroundColor: theme.colors.primary,
+                        backgroundColor: ink.accent,
                       },
                     ]}
                   />
                 </View>
-                <Text style={[styles.progressPct, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.progressPct, { color: neo.textMuted }]}>
                   {pct}%
                 </Text>
               </View>
 
               {/* Falta */}
-              <Text style={[styles.insightLine, { color: theme.colors.text }]}>
+              <Text style={[styles.insightLine, { color: neo.text }]}>
                 {t('settings:savingsGoalScreen.remainingPrefix')}{' '}
-                <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
+                <Text style={{ color: ink.accent, fontWeight: '600' }}>
                   {currencyFormatter.format(remaining)}
                 </Text>
               </Text>
 
               {/* Por mes */}
               {monthly != null ? (
-                <Text style={[styles.insightLine, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.insightLine, { color: neo.textMuted }]}>
                   {t('settings:savingsGoalScreen.monthlyPlan', {
                     amount: currencyFormatter.format(monthly),
                     count: targetMonths ?? 0,
                   })}
                 </Text>
               ) : (
-                <Text style={[styles.insightMuted, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.insightMuted, { color: neo.textMuted }]}>
                   {t('settings:savingsGoalScreen.noDeadline')}
                 </Text>
               )}

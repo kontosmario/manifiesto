@@ -15,6 +15,9 @@ import type { FamilyMemberStats } from '@/features/family/use-family-admin'
 import { triggerHaptic } from '@/lib/haptics'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { withAlpha } from '@/theme/color-utils'
+import { neoTokens } from '@/theme/neo-tokens'
 import { formatMoney } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -62,6 +65,8 @@ export function MemberActionSheet({
   onRemove,
 }: MemberActionSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const visible = member != null
   // Cachea el último integrante (en un ref, actualizado en render) para que el
@@ -109,11 +114,12 @@ export function MemberActionSheet({
   }
 
   if (!m) {
-    return <ModalCard visible={false} title="" subtitle="" onClose={onClose} />
+    return <ModalCard skin="neo" visible={false} title="" subtitle="" onClose={onClose} />
   }
 
   const name = m.displayName
-  const surface = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+  // Bloques de datos y de acciones dentro de la hoja: pozo, no relieve.
+  const surface = neo.well
 
   return (
     <ModalCard visible={visible} title="" subtitle="" onClose={onClose}>
@@ -124,25 +130,25 @@ export function MemberActionSheet({
               styles.confirmIcon,
               {
                 backgroundColor: confirm.danger
-                  ? theme.colors.peachSoft
-                  : theme.colors.primarySurface,
+                  ? withAlpha(neo.warm, 0.16)
+                  : neo.selectedTint,
               },
             ]}
           >
             <MaterialIcons
               name={confirm.icon}
               size={26}
-              color={confirm.danger ? theme.colors.danger : theme.colors.primaryStrong}
+              color={confirm.danger ? ink.danger : neo.greenDeep}
             />
           </View>
-          <Text style={[styles.confirmTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.confirmTitle, { color: neo.text }]}>
             {confirm.title}
           </Text>
-          <Text style={[styles.confirmBody, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.confirmBody, { color: neo.textMuted }]}>
             {confirm.body}
           </Text>
           {error ? (
-            <Text style={[styles.confirmError, { color: theme.colors.danger }]}>
+            <Text style={[styles.confirmError, { color: ink.danger }]}>
               {error}
             </Text>
           ) : null}
@@ -177,11 +183,11 @@ export function MemberActionSheet({
             {m.avatarAnimal ? (
               <AvatarAnimal slug={m.avatarAnimal} size={64} />
             ) : (
-              <Avatar name={name} color={theme.colors.primary} size={64} />
+              <Avatar name={name} color={ink.accent} size={64} />
             )}
             <View style={styles.nameRow}>
               <Text
-                style={[styles.name, { color: theme.colors.text }]}
+                style={[styles.name, { color: neo.text }]}
                 numberOfLines={1}
               >
                 {name}
@@ -190,7 +196,7 @@ export function MemberActionSheet({
               <RoleBadge role={m.role} />
             </View>
             <Text
-              style={[styles.since, { color: theme.colors.textMuted }]}
+              style={[styles.since, { color: neo.textMuted }]}
               numberOfLines={1}
             >
               {formatMemberSince(m.memberSince)}
@@ -199,7 +205,7 @@ export function MemberActionSheet({
 
           {/* Métricas — celdas centradas */}
           <View
-            style={[styles.statsCard, { backgroundColor: surface, borderColor: theme.colors.line }]}
+            style={[styles.statsCard, { backgroundColor: surface, borderColor: neo.sheetDivider }]}
           >
             <View style={styles.statsRow}>
               <StatCell
@@ -213,7 +219,7 @@ export function MemberActionSheet({
                 secondary={m.lastExpenseAt ? formatRelative(m.lastExpenseAt) : '—'}
               />
             </View>
-            <View style={[styles.statsDivider, { backgroundColor: theme.colors.line }]} />
+            <View style={[styles.statsDivider, { backgroundColor: neo.sheetDivider }]} />
             <View style={styles.statsRow}>
               <StatCell
                 label={t('settings:member.statGarden')}
@@ -230,12 +236,12 @@ export function MemberActionSheet({
 
           {/* Acciones — filas centradas (iOS action-sheet feel) */}
           {isMe ? (
-            <Text style={[styles.ownerNote, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.ownerNote, { color: neo.textMuted }]}>
               {t('settings:member.ownerNote')}
             </Text>
           ) : (
             <View
-              style={[styles.actionsCard, { backgroundColor: surface, borderColor: theme.colors.line }]}
+              style={[styles.actionsCard, { backgroundColor: surface, borderColor: neo.sheetDivider }]}
             >
               {m.role === 'blocked' ? (
                 <>
@@ -323,7 +329,9 @@ interface ActionRowProps {
 
 function ActionRow({ icon, label, destructive = false, isLast = false, onPress }: ActionRowProps) {
   const { theme } = useAppTheme()
-  const color = destructive ? theme.colors.danger : theme.colors.text
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const color = destructive ? ink.danger : neo.text
   return (
     <Pressable
       accessibilityRole="button"
@@ -338,7 +346,7 @@ function ActionRow({ icon, label, destructive = false, isLast = false, onPress }
         style={[
           styles.actionRow,
           !isLast && {
-            borderBottomColor: theme.colors.line,
+            borderBottomColor: neo.sheetDivider,
             borderBottomWidth: StyleSheet.hairlineWidth,
           },
         ]}
@@ -353,12 +361,14 @@ function ActionRow({ icon, label, destructive = false, isLast = false, onPress }
 // ─── Badge de rol (owner / blocked; los miembros no llevan badge) ──────────
 function RoleBadge({ role }: { role: FamilyMemberStats['role'] }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   if (role === 'member') return null
   const bg =
-    role === 'owner' ? theme.colors.primarySurface : theme.colors.peachSoft
-  const fg = role === 'owner' ? theme.colors.primaryStrong : theme.colors.danger
+    role === 'owner' ? neo.selectedTint : withAlpha(neo.warm, 0.16)
+  const fg = role === 'owner' ? neo.greenDeep : ink.danger
   return (
-    <View style={[styles.badge, { backgroundColor: bg, borderColor: theme.colors.line }]}>
+    <View style={[styles.badge, { backgroundColor: bg, borderColor: neo.sheetDivider }]}>
       <Text style={[styles.badgeText, { color: fg }]}>{roleLabel(role)}</Text>
     </View>
   )
@@ -372,14 +382,15 @@ interface StatCellProps {
 
 function StatCell({ label, primary, secondary }: StatCellProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   return (
     <View style={styles.statCell}>
-      <Text style={[styles.statLabel, { color: theme.colors.textMuted }]}>{label}</Text>
-      <Text style={[styles.statPrimary, { color: theme.colors.text }]} numberOfLines={1}>
+      <Text style={[styles.statLabel, { color: neo.textMuted }]}>{label}</Text>
+      <Text style={[styles.statPrimary, { color: neo.text }]} numberOfLines={1}>
         {primary}
       </Text>
       <Text
-        style={[styles.statSecondary, { color: theme.colors.textMuted }]}
+        style={[styles.statSecondary, { color: neo.textMuted }]}
         numberOfLines={1}
       >
         {secondary}

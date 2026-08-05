@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
@@ -9,9 +9,12 @@ import {
   useCreateFamilyInvite,
   type FamilyInviteCreated,
 } from '@/features/family/use-family-actions'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 
 interface ShareInviteSheetProps {
   visible: boolean
@@ -37,6 +40,8 @@ interface ShareInviteSheetProps {
  */
 export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const createInvite = useCreateFamilyInvite()
   const [invite, setInvite] = useState<FamilyInviteCreated | null>(null)
@@ -67,10 +72,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
       setInvite(result)
     } catch (error) {
       void triggerHaptic('error')
-      Alert.alert(
-        t('settings:invite.generateErrorTitle'),
-        getErrorMessage(error, t('settings:invite.retry')),
-      )
+      toast.error(getErrorMessage(error, t('settings:invite.retry')))
       onClose()
     }
   }, [createInvite, onClose, t])
@@ -91,7 +93,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
     if (!invite) return
     await copyInviteCodeLocally(invite.code)
     await triggerHaptic('selection')
-    Alert.alert(t('settings:invite.copiedTitle'), t('settings:invite.copiedMessage', { code: invite.code }))
+    toast.success(t('settings:invite.copiedMessage', { code: invite.code }))
   }
 
   const handleShare = async () => {
@@ -116,6 +118,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={t('settings:invite.subtitle')}
       title={t('settings:invite.title')}
@@ -126,32 +129,32 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
           style={[
             styles.codeWrap,
             {
-              backgroundColor: theme.colors.primarySurface,
-              borderColor: theme.colors.primary,
+              backgroundColor: neo.selectedTint,
+              borderColor: ink.accent,
             },
           ]}
         >
           {invite ? (
             <Pressable onPress={handleCopy} accessibilityRole="button">
               <Text
-                style={[styles.codeText, { color: theme.colors.text }]}
+                style={[styles.codeText, { color: neo.text }]}
                 accessibilityLabel={t('settings:invite.codeA11y', { code: invite.code })}
                 selectable
               >
                 {formatCode(invite.code)}
               </Text>
-              <Text style={[styles.codeHint, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.codeHint, { color: neo.textMuted }]}>
                 {t('settings:invite.tapToCopy')}
               </Text>
             </Pressable>
           ) : (
-            <Text style={[styles.codeText, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.codeText, { color: neo.textMuted }]}>
               {createInvite.isPending ? t('settings:invite.generating') : '— — — — — — — —'}
             </Text>
           )}
         </View>
 
-        <Text style={[styles.meta, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.meta, { color: neo.textMuted }]}>
           {t('settings:invite.meta')}
         </Text>
 
@@ -168,7 +171,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
             style={({ pressed }) => [
               styles.secondaryAction,
               {
-                borderColor: theme.colors.line,
+                borderColor: neo.sheetDivider,
                 opacity: pressed ? 0.7 : 1,
               },
             ]}
@@ -176,10 +179,10 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
             <MaterialIcons
               name="refresh"
               size={16}
-              color={theme.colors.textMuted}
+              color={neo.textMuted}
             />
             <Text
-              style={[styles.secondaryActionText, { color: theme.colors.textMuted }]}
+              style={[styles.secondaryActionText, { color: neo.textMuted }]}
             >
               {t('settings:invite.regenerate')}
             </Text>

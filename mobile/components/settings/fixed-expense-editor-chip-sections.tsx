@@ -14,6 +14,7 @@ import {
   type FixedExpenseStatus,
 } from '@/features/fixed-expenses/fixed-expense-types'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
 
 interface FixedExpenseSectionLabelProps {
   label: string
@@ -21,8 +22,9 @@ interface FixedExpenseSectionLabelProps {
 
 function FixedExpenseSectionLabel({ label }: FixedExpenseSectionLabelProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
 
-  return <Text style={[styles.sectionLabel, { color: theme.colors.textMuted }]}>{label}</Text>
+  return <Text style={[styles.sectionLabel, { color: neo.textMuted }]}>{label}</Text>
 }
 
 interface FixedExpenseKindSectionProps {

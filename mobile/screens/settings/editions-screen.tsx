@@ -5,11 +5,9 @@ import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
-import { ErrorState } from '@/components/ui/error-state'
-import { EmptyState } from '@/components/ui/empty-state'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -22,6 +20,8 @@ import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
 import { monthShort } from '@/utils/date-format'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 
 /**
@@ -47,6 +47,7 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  */
 export function EditionsScreen() {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
@@ -106,13 +107,16 @@ export function EditionsScreen() {
   if (error && editions.length === 0) {
     return (
       <Screen
-        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        backgroundColor={neo.bg}
+        titleColor={neo.text}
         title={t('billing:editions.title')}
         canGoBack
       >
-        <ErrorState
-          title={t('billing:editions.errorTitle')}
+        <NeoStateBlock
           description={t('billing:editions.errorDescription')}
+          icon="error-outline"
+          title={t('billing:editions.errorTitle')}
+          tone="error"
         />
       </Screen>
     )
@@ -120,7 +124,8 @@ export function EditionsScreen() {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       title={t('billing:editions.title')}
       subtitle={t('billing:editions.subtitle')}
       canGoBack
@@ -128,10 +133,10 @@ export function EditionsScreen() {
       <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       {isLoading ? null : editions.length === 0 ? (
         <RiseView>
-          <EmptyState
+          <NeoStateBlock
+            description={t('billing:editions.emptySubtitle')}
             icon="auto-stories"
             title={t('billing:editions.emptyTitle')}
-            subtitle={t('billing:editions.emptySubtitle')}
           />
         </RiseView>
       ) : (
@@ -166,19 +171,22 @@ interface MastheadProps {
 
 function Masthead({ savedTotal, cycleCount }: MastheadProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   return (
     <View
       style={[
         styles.masthead,
         {
-          backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-          borderColor: theme.colors.line,
+          ...cardMaterial,
+          borderColor: neo.sheetDivider,
         },
       ]}
     >
       <Text
-        style={[styles.mastheadEyebrow, { color: theme.colors.textMuted }]}
+        style={[styles.mastheadEyebrow, { color: neo.textMuted }]}
       >
         {t('billing:editions.mastheadEyebrow')}
       </Text>
@@ -186,16 +194,16 @@ function Masthead({ savedTotal, cycleCount }: MastheadProps) {
         value={savedTotal}
         duration={1400}
         format={(n) => formatMoney(Math.round(n))}
-        style={[styles.mastheadAmount, { color: theme.colors.text }]}
+        style={[styles.mastheadAmount, { color: neo.text }]}
       />
       <View style={styles.mastheadFooter}>
         <View
           style={[
             styles.mastheadRule,
-            { backgroundColor: theme.colors.primary },
+            { backgroundColor: ink.accent },
           ]}
         />
-        <Text style={[styles.mastheadCaption, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.mastheadCaption, { color: neo.textMuted }]}>
           {t('billing:editions.mastheadCaption', { count: cycleCount })}
         </Text>
       </View>
@@ -216,6 +224,8 @@ interface EditionRowProps {
 
 function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.97 })
 
@@ -246,8 +256,8 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
         style={({ pressed }) => [
           styles.row,
           {
-            backgroundColor: theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard,
-            borderColor: theme.colors.line,
+            ...cardMaterial,
+            borderColor: neo.sheetDivider,
             opacity: pressed ? 0.92 : 1,
           },
         ]}
@@ -257,7 +267,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
 
         <View style={styles.rowBody}>
           <Text
-            style={[styles.rowTitle, { color: theme.colors.text }]}
+            style={[styles.rowTitle, { color: neo.text }]}
             numberOfLines={1}
           >
             {edition.period_label}
@@ -265,7 +275,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
           <View style={styles.rowMeta}>
             {range ? (
               <Text
-                style={[styles.rowMetaText, { color: theme.colors.textMuted }]}
+                style={[styles.rowMetaText, { color: neo.textMuted }]}
               >
                 {range}
               </Text>
@@ -273,7 +283,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
             <Text
               style={[
                 styles.rowMetaText,
-                { color: theme.colors.textMuted },
+                { color: neo.textMuted },
               ]}
             >
               {edition.expenses_count}{' '}
@@ -288,7 +298,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
             {formatMoney(Math.round(amountAbs))}
           </Text>
           <Text
-            style={[styles.rowAmountLabel, { color: theme.colors.textMuted }]}
+            style={[styles.rowAmountLabel, { color: neo.textMuted }]}
           >
             {toneLabel}
           </Text>
@@ -297,7 +307,7 @@ function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
         <MaterialIcons
           name="chevron-right"
           size={20}
-          color={theme.colors.textMuted}
+          color={neo.textMuted}
         />
       </Pressable>
     </Animated.View>

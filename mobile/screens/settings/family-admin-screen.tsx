@@ -2,17 +2,16 @@ import { useCallback, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { LinearGradient } from 'expo-linear-gradient'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { SettingsGroup } from '@/components/settings/settings-grouped-list'
 import { MemberActionSheet } from '@/components/settings/sheets/member-action-sheet'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
-import { ErrorState } from '@/components/ui/error-state'
 import { CardParticles } from '@/components/ui/card-particles'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
-import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
+import { radii } from '@/theme/palette'
 import {
   useBlockMember,
   useFamilyMemberStats,
@@ -22,7 +21,11 @@ import {
 } from '@/features/family/use-family-admin'
 import { formatMemberSince, roleLabel } from '@/features/family/member-display'
 import { triggerHaptic } from '@/lib/haptics'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface FamilyAdminScreenProps {
@@ -33,6 +36,7 @@ interface FamilyAdminScreenProps {
 
 export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const statsQuery = useFamilyMemberStats()
   const blockMutation = useBlockMember()
@@ -66,19 +70,23 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
   if (statsQuery.isError && !statsQuery.data) {
     return (
       <Screen
-        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        backgroundColor={neo.bg}
+        titleColor={neo.text}
         title={t('settings:familyAdmin.title')}
         subtitle={t('settings:familyAdmin.subtitleError')}
         canGoBack
         backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       >
         <RiseView>
-          <ErrorState
-            title={t('settings:familyAdmin.errorTitle')}
+          <NeoStateBlock
+            actionLabel={t('states:errorState.action')}
             description={getErrorMessage(
               statsQuery.error,
               t('settings:familyAdmin.errorDescription'),
             )}
+            icon="error-outline"
+            title={t('settings:familyAdmin.errorTitle')}
+            tone="error"
             onAction={() => {
               void statsQuery.refetch()
             }}
@@ -90,7 +98,8 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       title={t('settings:familyAdmin.title')}
       subtitle={t('settings:familyAdmin.subtitle')}
       canGoBack
@@ -102,28 +111,27 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
           onRefresh={() => {
             void statsQuery.refetch()
           }}
-          tintColor={theme.colors.textMuted}
+          tintColor={neo.textMuted}
         />
       }
     >
       <RiseView>
-        <LinearGradient
-          colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-          start={{ x: 0.1, y: 0 }}
-          end={{ x: 0.9, y: 1 }}
+        <NeoSurface
+          radius={neoRadii.hero}
           style={styles.hero}
+          variant="hero"
         >
-          <CardParticles count={9} accentColor={authTokens.peach} />
-          <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
+          <CardParticles count={9} accentColor={neo.heroPeach} />
+          <Text style={[styles.heroEyebrow, { color: neo.heroGreen }]}>
             {t('settings:familyAdmin.heroEyebrow')}
           </Text>
-          <Text style={[styles.heroCount, { color: theme.colors.heroText }]}>
+          <Text style={[styles.heroCount, { color: neo.heroText }]}>
             {t('settings:familyAdmin.memberCount', { count: totalMembers })}
           </Text>
-          <Text style={[styles.heroSummary, { color: theme.colors.heroMuted }]}>
+          <Text style={[styles.heroSummary, { color: neo.heroTextSoft }]}>
             {heroSummary}
           </Text>
-        </LinearGradient>
+        </NeoSurface>
       </RiseView>
 
       <RiseView delay={80}>
@@ -192,12 +200,14 @@ interface MemberRowProps {
  */
 function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const showBadge = member.role !== 'member'
   const badgeBg =
-    member.role === 'owner' ? theme.colors.primarySurface : theme.colors.peachSoft
+    member.role === 'owner' ? neo.selectedTint : withAlpha(neo.warm, 0.16)
   const badgeColor =
-    member.role === 'owner' ? theme.colors.primaryStrong : theme.colors.danger
+    member.role === 'owner' ? neo.greenDeep : ink.danger
 
   return (
     <Pressable
@@ -210,7 +220,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
         style={[
           styles.memberRow,
           !isLast && {
-            borderBottomColor: theme.colors.line,
+            borderBottomColor: neo.sheetDivider,
             borderBottomWidth: StyleSheet.hairlineWidth,
           },
         ]}
@@ -218,12 +228,12 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
         {member.avatarAnimal ? (
           <AvatarAnimal slug={member.avatarAnimal} size={40} />
         ) : (
-          <Avatar name={member.displayName} color={theme.colors.primary} size={40} />
+          <Avatar name={member.displayName} color={ink.accent} size={40} />
         )}
         <View style={styles.memberCopy}>
           <View style={styles.memberNameRow}>
             <Text
-              style={[styles.memberName, { color: theme.colors.text }]}
+              style={[styles.memberName, { color: neo.text }]}
               numberOfLines={1}
             >
               {member.displayName}
@@ -233,7 +243,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
               <View
                 style={[
                   styles.badge,
-                  { backgroundColor: badgeBg, borderColor: theme.colors.line },
+                  { backgroundColor: badgeBg, borderColor: neo.sheetDivider },
                 ]}
               >
                 <Text style={[styles.badgeText, { color: badgeColor }]}>
@@ -243,13 +253,13 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
             ) : null}
           </View>
           <Text
-            style={[styles.memberSince, { color: theme.colors.textMuted }]}
+            style={[styles.memberSince, { color: neo.textMuted }]}
             numberOfLines={1}
           >
             {formatMemberSince(member.memberSince)}
           </Text>
         </View>
-        <MaterialIcons name="chevron-right" size={22} color={theme.colors.textSoft} />
+        <MaterialIcons name="chevron-right" size={22} color={neo.textMuted} />
       </View>
     </Pressable>
   )
@@ -257,9 +267,10 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
 
 function EmptyRow({ text }: { text: string }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   return (
     <View style={styles.emptyRow}>
-      <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>{text}</Text>
+      <Text style={[styles.emptyText, { color: neo.textMuted }]}>{text}</Text>
     </View>
   )
 }

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
   StyleSheet,
@@ -29,11 +28,14 @@ import {
 } from '@/lib/biometric-auth'
 import { logoutSession } from '@/features/auth/logout'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { supabase } from '@/lib/supabase'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
 import { typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 
@@ -76,6 +78,9 @@ type Step =
  */
 export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccountScreenProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const CONFIRM_PHRASE = t('settings:deleteAccount.confirmPhrase')
   const router = useRouter()
@@ -175,13 +180,10 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         // processor cierra el loop en T+30d.
         void logoutSession({
           onError: (error) => {
-            Alert.alert(
-              t('settings:deleteAccount.logoutErrorTitle'),
-              getErrorMessage(
+            toast.error(getErrorMessage(
                 error,
                 t('settings:deleteAccount.logoutErrorMessage'),
-              ),
-            )
+              ))
           },
           onSuccess: () => {
             router.replace('/')
@@ -190,13 +192,10 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       },
       onError: (error) => {
         void triggerHaptic('error')
-        Alert.alert(
-          t('settings:deleteAccount.scheduleErrorTitle'),
-          getErrorMessage(
+        toast.error(getErrorMessage(
             error,
             t('settings:deleteAccount.scheduleErrorMessage'),
-          ),
-        )
+          ))
       },
     })
   }, [requestDeletion, router, t])
@@ -330,10 +329,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       const hasHardware = await LocalAuthentication.hasHardwareAsync()
       const isEnrolled = await LocalAuthentication.isEnrolledAsync()
       if (!hasHardware || !isEnrolled) {
-        Alert.alert(
-          t('settings:deleteAccount.biometricUnavailableTitle'),
-          t('settings:deleteAccount.biometricUnavailableMessage'),
-        )
+        toast.error(t('settings:deleteAccount.biometricUnavailableMessage'))
         setReauthChecking(false)
         setStep('confirm')
         return
@@ -354,10 +350,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
     } catch (error) {
       setReauthChecking(false)
       setStep('confirm')
-      Alert.alert(
-        t('settings:deleteAccount.confirmErrorTitle'),
-        getErrorMessage(error, t('settings:deleteAccount.tryAgain')),
-      )
+      toast.error(getErrorMessage(error, t('settings:deleteAccount.tryAgain')))
     }
   }, [isReauthChecking, performRequestDeletion, requestDeletion.isPending, t])
 
@@ -385,7 +378,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
   if (isOwnerWithMembers) {
     return (
       <Screen
-        backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+        backgroundColor={neo.bg}
+        titleColor={neo.text}
         canGoBack={!onClose}
         contentContainerStyle={styles.screenContent}
         subtitle={t('settings:deleteAccount.blockedSubtitle')}
@@ -399,21 +393,22 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             style={[
               styles.warningCard,
               {
-                backgroundColor: theme.colors.surfaceMuted,
-                borderColor: theme.colors.warning,
+                backgroundColor: neo.well,
+                boxShadow: neo.shadows.insetMd,
+                borderColor: ink.warn,
               },
             ]}
           >
             <MaterialIcons
-              color={theme.colors.warning}
+              color={ink.warn}
               name="info-outline"
               size={28}
             />
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.warningTitle, { color: neo.text }]}>
                 {t('settings:deleteAccount.blockedTitle')}
               </Text>
-              <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.warningBody, { color: neo.textMuted }]}>
                 {t('settings:deleteAccount.blockedBody')}
               </Text>
             </View>
@@ -426,7 +421,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       canGoBack={!onClose}
       contentContainerStyle={styles.screenContent}
       subtitle={
@@ -453,24 +449,25 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.warningCard,
                 {
-                  backgroundColor: theme.colors.surfaceMuted,
-                  borderColor: theme.colors.danger,
+                  backgroundColor: neo.well,
+                  boxShadow: neo.shadows.insetMd,
+                  borderColor: ink.danger,
                 },
               ]}
             >
               <MaterialIcons
-                color={theme.colors.danger}
+                color={ink.danger}
                 name="warning-amber"
                 size={28}
               />
               <View style={{ flex: 1, gap: 6 }}>
                 <Text
-                  style={[styles.warningTitle, { color: theme.colors.text }]}
+                  style={[styles.warningTitle, { color: neo.text }]}
                 >
                   {t('settings:deleteAccount.disclaimerTitle')}
                 </Text>
                 <Text
-                  style={[styles.warningBody, { color: theme.colors.textMuted }]}
+                  style={[styles.warningBody, { color: neo.textMuted }]}
                 >
                   {t('settings:deleteAccount.disclaimerBody')}
                 </Text>
@@ -482,67 +479,65 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.tableCard,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
+                  ...cardMaterial,
+                  borderColor: neo.sheetDivider,
                 },
               ]}
             >
               <Text
-                style={[styles.tableTitle, { color: theme.colors.text }]}
+                style={[styles.tableTitle, { color: neo.text }]}
               >
                 {t('settings:deleteAccount.deletedTitle')}
               </Text>
               <ImpactRow
-                color={theme.colors.danger}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={ink.danger}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="delete-outline"
                 label={t('settings:deleteAccount.deletedProfile')}
               />
               <ImpactRow
-                color={theme.colors.danger}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={ink.danger}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="notifications-off"
                 label={t('settings:deleteAccount.deletedPush')}
               />
               <ImpactRow
-                color={theme.colors.danger}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={ink.danger}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="receipt-long"
                 label={t('settings:deleteAccount.deletedSubscription')}
               />
 
               <View
-                style={[styles.divider, { backgroundColor: theme.colors.line }]}
+                style={[styles.divider, { backgroundColor: neo.sheetDivider }]}
               />
 
               <Text
-                style={[styles.tableTitle, { color: theme.colors.text }]}
+                style={[styles.tableTitle, { color: neo.text }]}
               >
                 {t('settings:deleteAccount.preservedTitle')}
               </Text>
               <ImpactRow
-                color={theme.colors.primaryStrong}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={neo.greenDeep}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="history"
                 label={t('settings:deleteAccount.preservedHistory')}
               />
               <ImpactRow
-                color={theme.colors.primaryStrong}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={neo.greenDeep}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="group"
                 label={t('settings:deleteAccount.preservedFamily')}
               />
               <ImpactRow
-                color={theme.colors.primaryStrong}
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                color={neo.greenDeep}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="schedule"
                 label={t('settings:deleteAccount.preservedGrace')}
               />
@@ -569,18 +564,16 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.tableCard,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
+                  ...cardMaterial,
+                  borderColor: neo.sheetDivider,
                 },
               ]}
             >
               <Text
-                style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
+                style={[styles.confirmHelper, { color: neo.textMuted }]}
               >
                 {t('settings:deleteAccount.confirmHelperPrefix')}{' '}
-                <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
+                <Text style={{ color: ink.danger, fontWeight: '800' }}>
                   {CONFIRM_PHRASE}
                 </Text>{' '}
                 {t('settings:deleteAccount.confirmHelperSuffix')}
@@ -593,40 +586,39 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 autoCorrect={false}
                 onChangeText={setPhrase}
                 placeholder={CONFIRM_PHRASE}
-                placeholderTextColor={theme.colors.textSoft}
+                placeholderTextColor={neo.textMuted}
                 returnKeyType="done"
                 spellCheck={false}
                 style={[
                   styles.input,
                   {
-                    backgroundColor: theme.isDark
-                      ? theme.colors.background
-                      : theme.colors.surfaceMuted,
+                    backgroundColor: neo.well,
+                    boxShadow: neo.shadows.insetLg,
                     borderColor: matchesPhrase
-                      ? theme.colors.danger
-                      : theme.colors.line,
-                    color: theme.colors.text,
+                      ? ink.danger
+                      : neo.sheetDivider,
+                    color: neo.text,
                   },
                 ]}
                 value={phrase}
               />
 
               {phrase.length > 0 && !matchesPhrase ? (
-                <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+                <Text style={[styles.errorText, { color: ink.danger }]}>
                   {t('settings:deleteAccount.phraseMismatch', { phrase: CONFIRM_PHRASE })}
                 </Text>
               ) : null}
 
               {pinIsSet ? (
-                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.helperHint, { color: neo.textMuted }]}>
                   {t('settings:deleteAccount.willAskPin')}
                 </Text>
               ) : biometricState?.isAvailable ? (
-                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.helperHint, { color: neo.textMuted }]}>
                   {t('settings:deleteAccount.willAskBiometric', { method: biometricState.label })}
                 </Text>
               ) : (
-                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.helperHint, { color: neo.textMuted }]}>
                   {t('settings:deleteAccount.willAskPassword')}
                 </Text>
               )}
@@ -655,18 +647,16 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.tableCard,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
+                  ...cardMaterial,
+                  borderColor: neo.sheetDivider,
                 },
               ]}
             >
-              <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.reauthTitle, { color: neo.text }]}>
                 {t('settings:deleteAccount.pinTitle')}
               </Text>
               <Text
-                style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
+                style={[styles.confirmHelper, { color: neo.textMuted }]}
               >
                 {t('settings:deleteAccount.pinHelper')}
               </Text>
@@ -675,7 +665,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                   // Sprint K · Audit #4 K-4: gate PinPad render on the
                   // SecureStore read so a fast tap on a 6-digit PIN
                   // doesn't auto-submit a 4-digit slice.
-                  <ActivityIndicator color={theme.colors.primary} />
+                  <ActivityIndicator color={ink.accent} />
                 ) : (
                   <PinPad
                     errorToken={pinErrorToken}
@@ -687,7 +677,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 {pinLockoutMessage ? (
                   <Text
                     accessibilityLiveRegion="polite"
-                    style={[styles.lockoutText, { color: theme.colors.danger }]}
+                    style={[styles.lockoutText, { color: ink.danger }]}
                   >
                     {pinLockoutMessage}
                   </Text>
@@ -703,7 +693,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 { opacity: pressed ? 0.6 : 1 },
               ]}
             >
-              <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.backLinkText, { color: neo.textMuted }]}>
                 {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>
@@ -716,23 +706,21 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.tableCard,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
+                  ...cardMaterial,
+                  borderColor: neo.sheetDivider,
                 },
               ]}
             >
-              <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.reauthTitle, { color: neo.text }]}>
                 {t('settings:deleteAccount.passwordTitle')}
               </Text>
               <Text
-                style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
+                style={[styles.confirmHelper, { color: neo.textMuted }]}
               >
                 {t('settings:deleteAccount.passwordHelper')}
               </Text>
               {accountEmail ? (
-                <Text style={[styles.helperHint, { color: theme.colors.textMuted }]}>
+                <Text style={[styles.helperHint, { color: neo.textMuted }]}>
                   {t('settings:deleteAccount.accountLabel', { email: accountEmail })}
                 </Text>
               ) : null}
@@ -750,20 +738,20 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 }}
                 onSubmitEditing={() => void handlePasswordSubmit()}
                 placeholder={t('settings:deleteAccount.passwordPlaceholder')}
-                placeholderTextColor={theme.colors.textSoft}
+                placeholderTextColor={neo.textMuted}
                 returnKeyType="done"
                 secureTextEntry
                 spellCheck={false}
                 style={[
                   styles.input,
                   {
-                    backgroundColor: theme.isDark
-                      ? theme.colors.background
-                      : theme.colors.surfaceMuted,
-                    borderColor: passwordError
-                      ? theme.colors.danger
-                      : theme.colors.line,
-                    color: theme.colors.text,
+                    // Input = pozo en ambos temas. El ternario V1 existía
+                    // porque `surfaceMuted` no servía en oscuro; `neo.well`
+                    // tiene valor propio por tema y no lo necesita.
+                    backgroundColor: neo.well,
+                    boxShadow: neo.shadows.insetLg,
+                    borderColor: passwordError ? ink.danger : neo.sheetDivider,
+                    color: neo.text,
                     letterSpacing: 0.5,
                   },
                 ]}
@@ -774,7 +762,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               {passwordError ? (
                 <Text
                   accessibilityLiveRegion="polite"
-                  style={[styles.errorText, { color: theme.colors.danger }]}
+                  style={[styles.errorText, { color: ink.danger }]}
                 >
                   {passwordError}
                 </Text>
@@ -801,7 +789,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 { opacity: pressed ? 0.6 : 1 },
               ]}
             >
-              <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.backLinkText, { color: neo.textMuted }]}>
                 {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>
@@ -814,26 +802,24 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               style={[
                 styles.tableCard,
                 {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
+                  ...cardMaterial,
+                  borderColor: neo.sheetDivider,
                 },
               ]}
             >
               <MaterialIcons
-                color={theme.colors.primaryStrong}
+                color={neo.greenDeep}
                 name="fingerprint"
                 size={36}
                 style={{ alignSelf: 'center' }}
               />
-              <Text style={[styles.reauthTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.reauthTitle, { color: neo.text }]}>
                 {t('settings:deleteAccount.biometricTitle', {
                   method: biometricState?.label ?? t('settings:deleteAccount.biometricFallback'),
                 })}
               </Text>
               <Text
-                style={[styles.confirmHelper, { color: theme.colors.textMuted }]}
+                style={[styles.confirmHelper, { color: neo.textMuted }]}
               >
                 {t('settings:deleteAccount.biometricRetryHelper')}
               </Text>
@@ -854,7 +840,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 { opacity: pressed ? 0.6 : 1 },
               ]}
             >
-              <Text style={[styles.backLinkText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.backLinkText, { color: neo.textMuted }]}>
                 {t('settings:deleteAccount.cancelDeletion')}
               </Text>
             </Pressable>

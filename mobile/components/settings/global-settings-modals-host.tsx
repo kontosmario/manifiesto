@@ -1,4 +1,3 @@
-import { Alert } from 'react-native'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
@@ -28,6 +27,7 @@ import {
 } from '@/features/profile/use-profile'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface Props {
@@ -112,9 +112,19 @@ export function GlobalSettingsModalsHost({ familyId, userId }: Props) {
     ],
   )
 
+  /**
+   * Aviso de fallo de guardado. Un solo botón, sin decisión → toast del
+   * host global, no un diálogo del SO.
+   *
+   * El sheet que falló queda ABIERTO (ninguna mutación cierra en
+   * `onError`), así que el usuario conserva lo que había cargado y puede
+   * reintentar sin volver a tipear.
+   */
   const showError = useCallback((error: unknown, fallback: string) => {
     void triggerHaptic('error')
-    Alert.alert(t('settings:notif.saveErrorTitle'), getErrorMessage(error, fallback))
+    toast.error(
+      `${t('settings:notif.saveErrorTitle')} · ${getErrorMessage(error, fallback)}`,
+    )
   }, [t])
 
   const saveFinanceSnapshot = useCallback(

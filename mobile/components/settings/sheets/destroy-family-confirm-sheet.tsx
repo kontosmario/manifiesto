@@ -6,6 +6,8 @@ import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 
 interface DestroyFamilyConfirmSheetProps {
   visible: boolean
@@ -41,6 +43,8 @@ export function DestroyFamilyConfirmSheet({
   mode = 'family',
 }: DestroyFamilyConfirmSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const isAccount = mode === 'account'
   const confirmPhrase = isAccount
@@ -78,6 +82,7 @@ export function DestroyFamilyConfirmSheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onCancel}
       subtitle={
         step === 1
@@ -101,24 +106,25 @@ export function DestroyFamilyConfirmSheet({
             style={[
               styles.warningCard,
               {
-                backgroundColor: theme.colors.surfaceMuted,
-                borderColor: theme.colors.danger,
+                backgroundColor: neo.well,
+                boxShadow: neo.shadows.insetSm,
+                borderColor: ink.danger,
               },
             ]}
           >
             <View
               style={[
                 styles.warningIcon,
-                { backgroundColor: theme.colors.danger },
+                { backgroundColor: ink.danger },
               ]}
             >
               <MaterialIcons name="warning-amber" size={20} color="#FFFFFF" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.warningTitle, { color: theme.colors.text }]}>
+              <Text style={[styles.warningTitle, { color: neo.text }]}>
                 {isAccount ? t('settings:destroyFamily.warningTitleAccount') : t('settings:destroyFamily.warningTitleFamily')}
               </Text>
-              <Text style={[styles.warningBody, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.warningBody, { color: neo.textMuted }]}>
                 {isAccount
                   ? t('settings:destroyFamily.warningBodyAccount')
                   : t('settings:destroyFamily.warningBodyFamily', { members: memberLabel })}
@@ -129,20 +135,20 @@ export function DestroyFamilyConfirmSheet({
           {isAccount ? (
             <View style={styles.bullets}>
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="delete-outline"
                 label={t('settings:destroyFamily.accountBullet1')}
               />
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="restart-alt"
                 label={t('settings:destroyFamily.accountBullet2')}
               />
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="verified"
                 label={t('settings:destroyFamily.accountBullet3')}
               />
@@ -150,20 +156,20 @@ export function DestroyFamilyConfirmSheet({
           ) : (
             <View style={styles.bullets}>
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="delete-outline"
                 label={t('settings:destroyFamily.familyBullet1')}
               />
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="people-outline"
                 label={t('settings:destroyFamily.familyBullet2', { members: memberLabel })}
               />
               <BulletRow
-                colorMuted={theme.colors.textMuted}
-                colorText={theme.colors.text}
+                colorMuted={neo.textMuted}
+                colorText={neo.text}
                 icon="restore"
                 label={t('settings:destroyFamily.familyBullet3')}
               />
@@ -186,9 +192,9 @@ export function DestroyFamilyConfirmSheet({
       ) : (
         <View style={styles.stack}>
           <View style={styles.confirmHelperRow}>
-            <Text style={[styles.confirmHelper, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.confirmHelper, { color: neo.textMuted }]}>
               {t('settings:destroyFamily.confirmHelperPrefix')}{' '}
-              <Text style={{ color: theme.colors.danger, fontWeight: '800' }}>
+              <Text style={{ color: ink.danger, fontWeight: '800' }}>
                 {confirmPhrase}
               </Text>{' '}
               {t('settings:destroyFamily.confirmHelperSuffix')}
@@ -200,7 +206,7 @@ export function DestroyFamilyConfirmSheet({
             value={phrase}
             onChangeText={(value) => setPhrase(value.toUpperCase())}
             placeholder={confirmPhrase}
-            placeholderTextColor={theme.colors.textSoft}
+            placeholderTextColor={neo.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
             spellCheck={false}
@@ -208,16 +214,19 @@ export function DestroyFamilyConfirmSheet({
             style={[
               styles.input,
               {
-                backgroundColor: theme.colors.surfaceMuted,
-                borderColor: theme.colors.danger,
-                color: theme.colors.text,
+                // Input = pozo. El borde rojo se mantiene: acá el hairline
+                // comunica el estado destructivo, no la forma de la caja.
+                backgroundColor: neo.well,
+                boxShadow: neo.shadows.insetLg,
+                borderColor: ink.danger,
+                color: neo.text,
               },
             ]}
             returnKeyType="done"
           />
 
           {phrase.length > 0 && !matches ? (
-            <Text style={[styles.errorText, { color: theme.colors.danger }]}>
+            <Text style={[styles.errorText, { color: ink.danger }]}>
               {t('settings:destroyFamily.mismatch', { phrase: confirmPhrase })}
             </Text>
           ) : null}

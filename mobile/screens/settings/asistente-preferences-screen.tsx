@@ -19,7 +19,7 @@
 //     migration 20260501010000).
 
 import { useCallback, useMemo, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import i18n from '@/lib/i18n'
@@ -34,11 +34,15 @@ import {
   SettingsRow,
   SettingsSwitchRow,
 } from '@/components/settings/settings-grouped-list'
+import { neoConfirm } from '@/lib/confirm-bus'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS, radii } from '@/theme/palette'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
+import { radii } from '@/theme/palette'
 
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { useAdvisorValueSummary } from '@/features/insights/use-advisor-value-summary'
@@ -164,6 +168,8 @@ function formatHour(h: number): string {
 
 export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const statsQuery = useInteractionStats(userId)
@@ -260,47 +266,36 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
   const handleUnblock = useCallback(
     (family: string) => {
-      Alert.alert(
-        t('settings:asistente.unblockTitle'),
-        t('settings:asistente.unblockMessage', { label: familyLabel(family) }),
-        [
-          { text: t('common:actions.cancel'), style: 'cancel' },
+      void (async () => {
+        const confirmed = await neoConfirm(t('settings:asistente.unblockTitle'), {
+          confirmLabel: t('settings:asistente.unblockConfirm'),
+          message: t('settings:asistente.unblockMessage', { label: familyLabel(family) }),
+        })
+        if (!confirmed) return
+        void triggerHaptic('selection')
+        unblockMutation.mutate(
+          { userId, family },
           {
-            text: t('settings:asistente.unblockConfirm'),
-            onPress: () => {
-              void triggerHaptic('selection')
-              unblockMutation.mutate(
-                { userId, family },
-                {
-                  onError: () => {
-                    void triggerHaptic('error')
-                    Alert.alert(
-                      t('settings:asistente.unblockErrorTitle'),
-                      t('settings:asistente.unblockErrorMessage'),
-                    )
-                  },
-                },
-              )
+            onError: () => {
+              void triggerHaptic('error')
+              toast.error(t('settings:asistente.unblockErrorMessage'))
             },
           },
-        ],
-        { cancelable: true },
-      )
+        )
+      })()
     },
     [userId, unblockMutation, t],
   )
 
   const handleClearHistory = useCallback(() => {
-    Alert.alert(
-      t('settings:asistente.clearTitle'),
-      t('settings:asistente.clearMessage'),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        {
-          text: t('settings:asistente.clearConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            void triggerHaptic('warning')
+    void (async () => {
+      const confirmed = await neoConfirm(t('settings:asistente.clearTitle'), {
+        confirmLabel: t('settings:asistente.clearConfirm'),
+        message: t('settings:asistente.clearMessage'),
+        tone: 'destructive',
+      })
+      if (!confirmed) return
+      void triggerHaptic('warning')
             try {
               const { error } = await supabase
                 .from('advisor_interactions')
@@ -313,15 +308,11 @@ export function AsistentePreferencesScreen({ userId }: Props) {
               queryClient.invalidateQueries({
                 queryKey: ['advisor-interaction-stats', userId ?? null],
               })
-              Alert.alert(t('settings:asistente.clearedTitle'), t('settings:asistente.clearedMessage'))
-            } catch {
-              Alert.alert(t('settings:asistente.clearErrorTitle'), t('settings:asistente.clearErrorMessage'))
-            }
-          },
-        },
-      ],
-      { cancelable: true },
-    )
+      toast.success(t('settings:asistente.clearedMessage'))
+      } catch {
+        toast.error(t('settings:asistente.clearErrorMessage'))
+      }
+    })()
   }, [userId, queryClient, t])
 
   // Footnote de "Tu estilo" según el modo.
@@ -333,7 +324,8 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       title={t('settings:asistente.title')}
       subtitle={t('settings:asistente.subtitle')}
       canGoBack
@@ -342,22 +334,22 @@ export function AsistentePreferencesScreen({ userId }: Props) {
 
       {showValueCard && value ? (
         <RiseView delay={40} style={styles.block}>
-          <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>{t('settings:asistente.valueEyebrow')}</Text>
-          <View style={[styles.heroCard, { backgroundColor: theme.colors.primarySurface }]}>
+          <Text style={[styles.eyebrow, { color: neo.textMuted }]}>{t('settings:asistente.valueEyebrow')}</Text>
+          <View style={[styles.heroCard, { backgroundColor: neo.selectedTint }]}>
             <View style={styles.heroRow}>
-              <View style={[styles.heroIcon, { backgroundColor: theme.colors.surface }]}>
-                <MaterialIcons name="savings" size={22} color={theme.colors.primary} />
+              <View style={[styles.heroIcon, { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm }]}>
+                <MaterialIcons name="savings" size={22} color={ink.accent} />
               </View>
               <View style={styles.heroText}>
-                <Text style={[styles.heroAmount, { color: theme.colors.text }]}>
+                <Text style={[styles.heroAmount, { color: neo.text }]}>
                   {formatMoney(value.savedQuarter)}
                 </Text>
-                <Text style={[styles.heroCaption, { color: theme.colors.textSoft }]}>
+                <Text style={[styles.heroCaption, { color: neo.textMuted }]}>
                   {t('settings:asistente.thisQuarter')}
                 </Text>
               </View>
             </View>
-            <Text style={[styles.heroFootnote, { color: theme.colors.textSoft }]}>
+            <Text style={[styles.heroFootnote, { color: neo.textMuted }]}>
               {`${t('settings:asistente.savedThisMonth', { amount: formatMoney(value.savedMonth) })} · ${t('settings:asistente.actionsCount', { count: value.totalActions })} · ${t('settings:asistente.signalTypesCount', { count: value.distinctFamilies })}`}
             </Text>
           </View>
@@ -452,7 +444,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                     <MaterialIcons
                       name={selected ? 'check-circle' : 'radio-button-unchecked'}
                       size={22}
-                      color={selected ? theme.colors.primary : theme.colors.textSoft}
+                      color={selected ? ink.accent : neo.textMuted}
                     />
                   }
                 />
@@ -535,6 +527,7 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       />
 
       <ModalCard
+        skin="neo"
         visible={urgencyOpen}
         title={t('settings:asistente.urgencyModalTitle')}
         onClose={() => setUrgencyOpen(false)}
@@ -550,22 +543,22 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 style={({ pressed }) => [
                   styles.urgencyOption,
                   {
-                    borderColor: selected ? theme.colors.primary : theme.colors.border,
-                    backgroundColor: selected ? theme.colors.primarySurface : 'transparent',
+                    borderColor: selected ? ink.accent : neo.sheetDivider,
+                    backgroundColor: selected ? neo.selectedTint : 'transparent',
                     opacity: pressed ? 0.7 : 1,
                   },
                 ]}
               >
                 <View style={styles.urgencyCopy}>
-                  <Text style={[styles.optionLabel, { color: theme.colors.text }]}>
+                  <Text style={[styles.optionLabel, { color: neo.text }]}>
                     {t(`settings:urgency.${optKey}.label`)}
                   </Text>
-                  <Text style={[styles.urgencyHelper, { color: theme.colors.textMuted }]}>
+                  <Text style={[styles.urgencyHelper, { color: neo.textMuted }]}>
                     {t(`settings:urgency.${optKey}.helper`)}
                   </Text>
                 </View>
                 {selected ? (
-                  <MaterialIcons name="check-circle" size={22} color={theme.colors.primary} />
+                  <MaterialIcons name="check-circle" size={22} color={ink.accent} />
                 ) : null}
               </Pressable>
             )

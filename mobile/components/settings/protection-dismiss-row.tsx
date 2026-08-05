@@ -12,6 +12,7 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
 
 interface ProtectionDismissRowProps {
   onPress: () => void
@@ -19,6 +20,7 @@ interface ProtectionDismissRowProps {
 
 export function SettingsProtectionDismissRow({ onPress }: ProtectionDismissRowProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   return (
     <Pressable
@@ -31,7 +33,7 @@ export function SettingsProtectionDismissRow({ onPress }: ProtectionDismissRowPr
       }}
       style={styles.row}
     >
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.label, { color: neo.textMuted }]}>
         {t('settings:protectionDismiss.label')}
       </Text>
     </Pressable>

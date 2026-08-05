@@ -8,6 +8,8 @@ import type {
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 import { currencyFormatter } from '@/utils/money'
 import { radii } from '@/theme/palette'
 
@@ -23,6 +25,8 @@ export function HouseholdSetupProgressCard({
   totalSteps: number
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
 
   return (
@@ -30,13 +34,14 @@ export function HouseholdSetupProgressCard({
       style={[
         styles.progressCard,
         {
-          backgroundColor: theme.colors.surfaceMuted,
-          borderColor: theme.colors.border,
+          backgroundColor: neo.well,
+          boxShadow: neo.shadows.insetSm,
+          borderColor: neo.sheetDivider,
         },
       ]}
     >
       <View style={styles.progressHeader}>
-        <Text style={[styles.progressEyebrow, { color: theme.colors.primaryStrong }]}>
+        <Text style={[styles.progressEyebrow, { color: neo.greenDeep }]}>
           {t('settings:householdSetup.stepOf', { current: currentStep, total: totalSteps })}
         </Text>
         <View style={styles.progressDots}>
@@ -50,8 +55,8 @@ export function HouseholdSetupProgressCard({
                   styles.progressDot,
                   {
                     backgroundColor: isActive
-                      ? theme.colors.primary
-                      : withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.08),
+                      ? ink.accent
+                      : withAlpha(neo.text, theme.isDark ? 0.16 : 0.08),
                   },
                 ]}
               />
@@ -59,8 +64,8 @@ export function HouseholdSetupProgressCard({
           })}
         </View>
       </View>
-      <Text style={[styles.progressTitle, { color: theme.colors.text }]}>{title}</Text>
-      <Text style={[styles.progressSubtitle, { color: theme.colors.textMuted }]}>{subtitle}</Text>
+      <Text style={[styles.progressTitle, { color: neo.text }]}>{title}</Text>
+      <Text style={[styles.progressSubtitle, { color: neo.textMuted }]}>{subtitle}</Text>
     </View>
   )
 }
@@ -75,6 +80,8 @@ export function HouseholdSavingsResearchPanel({
   stats: readonly HouseholdSavingsResearchStat[]
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
 
   return (
@@ -82,8 +89,8 @@ export function HouseholdSavingsResearchPanel({
       style={[
         styles.researchCard,
         {
-          backgroundColor: theme.colors.primarySurface,
-          borderColor: withAlpha(theme.colors.primary, theme.isDark ? 0.24 : 0.16),
+          backgroundColor: neo.selectedTint,
+          borderColor: withAlpha(ink.accent, theme.isDark ? 0.24 : 0.16),
         },
       ]}
     >
@@ -92,18 +99,18 @@ export function HouseholdSavingsResearchPanel({
           style={[
             styles.researchIconWrap,
             {
-              backgroundColor: theme.colors.backgroundElevated,
-              borderColor: withAlpha(theme.colors.primary, 0.18),
+              backgroundColor: neo.sheet,
+              borderColor: withAlpha(ink.accent, 0.18),
             },
           ]}
         >
-          <AppSymbol color={theme.colors.primaryStrong} fallback="insights" name="chart.bar.doc.horizontal.fill" size={18} />
+          <AppSymbol color={neo.greenDeep} fallback="insights" name="chart.bar.doc.horizontal.fill" size={18} />
         </View>
         <View style={styles.researchCopy}>
-          <Text style={[styles.researchTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.researchTitle, { color: neo.text }]}>
             {t('settings:householdSetup.researchTitle')}
           </Text>
-          <Text style={[styles.researchSubtitle, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.researchSubtitle, { color: neo.textMuted }]}>
             {t('settings:householdSetup.researchSubtitle')}
           </Text>
         </View>
@@ -116,29 +123,29 @@ export function HouseholdSavingsResearchPanel({
             style={[
               styles.researchStat,
               {
-                backgroundColor: withAlpha(theme.colors.backgroundElevated, theme.isDark ? 0.06 : 0.76),
-                borderColor: withAlpha(theme.colors.primary, theme.isDark ? 0.2 : 0.12),
+                backgroundColor: withAlpha(neo.sheet, theme.isDark ? 0.06 : 0.76),
+                borderColor: withAlpha(ink.accent, theme.isDark ? 0.2 : 0.12),
               },
             ]}
           >
-            <Text style={[styles.researchValue, { color: theme.colors.primaryStrong }]}>
+            <Text style={[styles.researchValue, { color: neo.greenDeep }]}>
               {stat.value}
             </Text>
-            <Text style={[styles.researchLabel, { color: theme.colors.text }]}>{stat.label}</Text>
-            <Text style={[styles.researchDetail, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.researchLabel, { color: neo.text }]}>{stat.label}</Text>
+            <Text style={[styles.researchDetail, { color: neo.textMuted }]}>
               {stat.detail}
             </Text>
-            <Text style={[styles.researchSource, { color: theme.colors.textSoft }]}>
+            <Text style={[styles.researchSource, { color: neo.textMuted }]}>
               {stat.source}
             </Text>
           </View>
         ))}
       </View>
 
-      <Text style={[styles.benchmarkText, { color: theme.colors.text }]}>
+      <Text style={[styles.benchmarkText, { color: neo.text }]}>
         {t('settings:householdSetup.benchmarkText', { amount: currencyFormatter.format(benchmarkFund || 0) })}
       </Text>
-      <Text style={[styles.researchNote, { color: theme.colors.textMuted }]}>{note}</Text>
+      <Text style={[styles.researchNote, { color: neo.textMuted }]}>{note}</Text>
     </View>
   )
 }
@@ -153,6 +160,8 @@ export function HouseholdSavingsPresetCard({
   preset: HouseholdSavingsPreset
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
 
   return (
@@ -161,7 +170,7 @@ export function HouseholdSavingsPresetCard({
       accessibilityRole="button"
       android_ripple={{
         borderless: false,
-        color: withAlpha(theme.colors.primary, theme.isDark ? 0.22 : 0.12),
+        color: withAlpha(ink.accent, theme.isDark ? 0.22 : 0.12),
       }}
       hitSlop={DEFAULT_HIT_SLOP}
       onPress={onPress}
@@ -169,32 +178,32 @@ export function HouseholdSavingsPresetCard({
       style={({ pressed }) => [
         styles.presetCard,
         {
-          backgroundColor: isSelected ? theme.colors.primarySurface : theme.colors.surfaceMuted,
-          borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+          backgroundColor: isSelected ? neo.selectedTint : neo.well,
+          borderColor: isSelected ? ink.accent : neo.sheetDivider,
           opacity: pressed ? 0.9 : 1,
         },
       ]}
     >
       <View style={styles.presetHeader}>
         <View style={styles.presetTitleWrap}>
-          <Text style={[styles.presetTitle, { color: theme.colors.text }]}>{preset.title}</Text>
-          <Text style={[styles.presetMix, { color: theme.colors.textSoft }]}>
+          <Text style={[styles.presetTitle, { color: neo.text }]}>{preset.title}</Text>
+          <Text style={[styles.presetMix, { color: neo.textMuted }]}>
             50 / {preset.flexiblePercent} / {preset.savingsPercent}
           </Text>
         </View>
         <View style={styles.presetValueWrap}>
-          <Text style={[styles.presetPercent, { color: theme.colors.primaryStrong }]}>
+          <Text style={[styles.presetPercent, { color: neo.greenDeep }]}>
             {preset.savingsPercent}%
           </Text>
-          <Text style={[styles.presetValue, { color: theme.colors.textSoft }]}>
+          <Text style={[styles.presetValue, { color: neo.textMuted }]}>
             {currencyFormatter.format(preset.monthlyGoal)}
           </Text>
         </View>
       </View>
-      <Text style={[styles.presetSubtitle, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.presetSubtitle, { color: neo.textMuted }]}>
         {preset.subtitle}
       </Text>
-      <Text style={[styles.presetHelper, { color: theme.colors.textSoft }]}>{preset.helper}</Text>
+      <Text style={[styles.presetHelper, { color: neo.textMuted }]}>{preset.helper}</Text>
     </Pressable>
   )
 }

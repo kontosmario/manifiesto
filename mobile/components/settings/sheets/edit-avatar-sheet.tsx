@@ -46,6 +46,7 @@ export function EditAvatarSheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={t('settings:editAvatar.subtitle')}
       title={t('settings:editAvatar.title')}

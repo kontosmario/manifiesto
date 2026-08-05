@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   useAnimatedStyle,
@@ -19,13 +18,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
 import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { DrawRing } from '@/components/ui/draw-ring'
 import { CardParticles } from '@/components/ui/card-particles'
-import { ErrorState } from '@/components/ui/error-state'
 import { BadgeDetailSheet } from '@/components/achievements/badge-detail-sheet'
-import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
+import { radii } from '@/theme/palette'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -49,7 +48,9 @@ import {
   FilledAchievementIcon,
   hasFilledAchievementIcon,
 } from '@/components/achievements/achievement-icon-filled'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 
 const GRID_GAP = 10
 
@@ -66,6 +67,7 @@ const GRID_GAP = 10
  */
 export function AchievementsGalleryScreen() {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: session } = useAuthSession()
@@ -91,7 +93,8 @@ export function AchievementsGalleryScreen() {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       title={t('achievements:gallery.title')}
       subtitle={t('achievements:gallery.subtitle')}
       canGoBack
@@ -99,9 +102,12 @@ export function AchievementsGalleryScreen() {
       backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
     >
       {error && !data ? (
-        <ErrorState
-          title={t('achievements:gallery.errorTitle')}
+        <NeoStateBlock
+          actionLabel={t('states:errorState.action')}
           description={t('achievements:gallery.errorDescription')}
+          icon="error-outline"
+          title={t('achievements:gallery.errorTitle')}
+          tone="error"
           onAction={handleRetry}
         />
       ) : !data ? (
@@ -134,6 +140,7 @@ function ProgressRingHero({
   totalCount: number
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const progress = totalCount > 0 ? earnedCount / totalCount : 0
   const pct = Math.round(progress * 100)
@@ -149,19 +156,18 @@ function ProgressRingHero({
           : t('achievements:gallery.hero.subStart')
 
   return (
-    <LinearGradient
-      colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
+    <NeoSurface
+      radius={neoRadii.hero}
       style={styles.hero}
+      variant="hero"
     >
-      <CardParticles count={10} accentColor={authTokens.peach} />
+      <CardParticles count={10} accentColor={neo.heroPeach} />
       <View style={styles.heroRow}>
         <View style={{ width: RING, height: RING }}>
           <DrawRing
             size={RING}
             strokeWidth={11}
-            color={theme.colors.heroAccent}
+            color={neo.heroGreen}
             trackColor="rgba(242,234,211,0.14)"
             progress={progress}
           />
@@ -169,26 +175,26 @@ function ProgressRingHero({
             <CountUpText
               value={earnedCount}
               format={(n) => `${Math.round(n)}`}
-              style={[styles.ringCount, { color: theme.colors.heroText }]}
+              style={[styles.ringCount, { color: neo.heroText }]}
             />
-            <Text style={[styles.ringTotal, { color: theme.colors.heroMuted }]}>
+            <Text style={[styles.ringTotal, { color: neo.heroTextSoft }]}>
               {t('achievements:gallery.hero.of', { count: totalCount })}
             </Text>
           </View>
         </View>
         <View style={styles.heroText}>
-          <Text style={[styles.heroEyebrow, { color: theme.colors.heroAccent }]}>
+          <Text style={[styles.heroEyebrow, { color: neo.heroGreen }]}>
             {t('achievements:gallery.hero.eyebrow')}
           </Text>
-          <Text style={[styles.heroPct, { color: theme.colors.heroText }]}>
+          <Text style={[styles.heroPct, { color: neo.heroText }]}>
             {pct}%
           </Text>
-          <Text style={[styles.heroSub, { color: theme.colors.heroMuted }]}>
+          <Text style={[styles.heroSub, { color: neo.heroTextSoft }]}>
             {subtitle}
           </Text>
         </View>
       </View>
-    </LinearGradient>
+    </NeoSurface>
   )
 }
 
@@ -201,6 +207,7 @@ function BadgeGrid({
   onPress: (badge: AchievementViewItem) => void
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   // 3 columnas. 40 = padding horizontal del Screen (2×20).
@@ -210,7 +217,7 @@ function BadgeGrid({
 
   if (items.length === 0) {
     return (
-      <Text style={[styles.emptyText, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.emptyText, { color: neo.textMuted }]}>
         {t('achievements:gallery.empty')}
       </Text>
     )
@@ -243,13 +250,16 @@ function BadgeTile({
   onPress: () => void
 }) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const press = usePressScale({ pressedScale: 0.95 })
   const tone = tierTone(item.tier, theme.isDark)
   const earned = item.earned
   const premium = earned && tierIsPremium(item.tier)
   const title = achievementTitle(item.code, item.title)
 
-  const lockedBg = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+  // Un logro BLOQUEADO se dibuja hundido (pozo), no en relieve: el relieve es
+  // lo que distingue a los ya conseguidos.
+  const lockedBg = neo.well
 
   return (
     <Pressable
@@ -267,7 +277,7 @@ function BadgeTile({
             ? { backgroundColor: tone.bg, borderColor: tone.border }
             : {
                 backgroundColor: lockedBg,
-                borderColor: isNext ? theme.colors.heroAccent : theme.colors.line,
+                borderColor: isNext ? neo.heroGreen : neo.sheetDivider,
               },
           premium
             ? {
@@ -301,9 +311,9 @@ function BadgeTile({
             <AchievementIcon
               code={item.code}
               size={30}
-              stroke={earned ? ICON_FOREST : theme.colors.textMuted}
-              accent={earned ? ICON_CORAL : theme.colors.textMuted}
-              accentSoft={earned ? ICON_CORAL_SOFT : theme.colors.textMuted}
+              stroke={earned ? ICON_FOREST : neo.textMuted}
+              accent={earned ? ICON_CORAL : neo.textMuted}
+              accentSoft={earned ? ICON_CORAL_SOFT : neo.textMuted}
             />
           ) : (
             <Text style={[styles.tileIcon, !earned && styles.tileIconLocked]}>{item.icon}</Text>
@@ -312,7 +322,7 @@ function BadgeTile({
         <Text
           style={[
             styles.tileTitle,
-            { color: earned ? theme.colors.text : theme.colors.textMuted },
+            { color: earned ? neo.text : neo.textMuted },
           ]}
           numberOfLines={2}
         >
@@ -324,12 +334,12 @@ function BadgeTile({
               styles.tileLock,
               {
                 backgroundColor: theme.isDark
-                  ? theme.colors.surfaceStrong
-                  : theme.colors.borderStrong,
+                  ? neo.sheetHandle
+                  : neo.sheetHandle,
               },
             ]}
           >
-            <MaterialIcons name="lock" size={10} color={theme.colors.textMuted} />
+            <MaterialIcons name="lock" size={10} color={neo.textMuted} />
           </View>
         ) : null}
       </Animated.View>
@@ -340,6 +350,7 @@ function BadgeTile({
 // ─── Skeleton de carga (nunca blanco) ──────────────────────────────────────
 function AchievementsSkeleton() {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const reduced = useReducedMotion()
   const { width } = useWindowDimensions()
   const tileSize = (width - 40 - GRID_GAP * 2) / 3
@@ -353,14 +364,14 @@ function AchievementsSkeleton() {
   const pulseStyle = useAnimatedStyle(() => ({
     opacity: reduced ? 0.6 : pulse.value,
   }))
-  const sk = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+  const sk = neo.well
 
   return (
     <View style={styles.skeletonStack}>
       <Animated.View
         style={[
           styles.heroSkeleton,
-          { backgroundColor: sk, borderColor: theme.colors.line },
+          { backgroundColor: sk, borderColor: neo.sheetDivider },
           pulseStyle,
         ]}
       />
@@ -374,7 +385,7 @@ function AchievementsSkeleton() {
                 width: tileSize,
                 height: tileSize * 1.16,
                 backgroundColor: sk,
-                borderColor: theme.colors.line,
+                borderColor: neo.sheetDivider,
               },
               pulseStyle,
             ]}

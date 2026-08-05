@@ -5,6 +5,8 @@ import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 import { radii } from '@/theme/palette'
 
 interface EditPaydaySheetProps {
@@ -27,6 +29,8 @@ export function EditPaydaySheet({
   onSave,
 }: EditPaydaySheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [selected, setSelected] = useState(currentValue)
   const [cellSize, setCellSize] = useState(0)
@@ -52,6 +56,7 @@ export function EditPaydaySheet({
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       subtitle={t('settings:editPayday.subtitle')}
       title={t('settings:editPayday.title')}
@@ -77,15 +82,15 @@ export function EditPaydaySheet({
                   {
                     width: cellSize,
                     height: cellSize,
-                    backgroundColor: isOn ? theme.colors.primary : theme.colors.creamCard,
-                    borderColor: isOn ? theme.colors.primary : theme.colors.line,
+                    backgroundColor: isOn ? ink.accent : neo.well,
+                    borderColor: isOn ? ink.accent : neo.sheetDivider,
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.cellText,
-                    { color: isOn ? '#FFFFFF' : theme.colors.text },
+                    { color: isOn ? '#FFFFFF' : neo.text },
                   ]}
                 >
                   {day}

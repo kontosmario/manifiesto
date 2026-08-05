@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
@@ -11,8 +11,8 @@ import { HeroStat, SettingsSwitchRow } from '@/components/settings/settings-prim
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { AppButton } from '@/components/ui/button'
 import { BrandedPanel } from '@/components/ui/branded-panel'
-import { ErrorState } from '@/components/ui/error-state'
 import { LoadingBlock } from '@/components/ui/loading-block'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
 import { SectionHeader } from '@/components/ui/section-header'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -42,9 +42,11 @@ import {
   resolveEmergencyFundTarget,
   resolveFlexibleTargetPercent,
 } from '@/features/settings/household-setup-wizard.model'
+import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getNumberFormat } from '@/lib/i18n/active-locale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
 import { getErrorMessage } from '@/utils/error-message'
 import { typography } from '@/theme/typography'
 
@@ -97,7 +99,17 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
 
   if (financeQuery.isLoading && !financeSnapshot) {
     return (
-      <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
+      // `household-setup` se registra con `presentation: 'modal'`
+      // (`app-stack-shell.tsx`): en iOS es una hoja que arranca debajo de la
+      // isla y el inset superior del DISPOSITIVO no le corresponde. Va en LAS
+      // CUATRO ramas de render de la ruta —si faltara en alguna, el contenido
+      // saltaría ~59pt al pasar de cargando a cargado. En Android la ruta es
+      // `card` y el flag se ignora. Ver el docblock de `presentedAsSheet`.
+      <Screen
+        canGoBack={!isInitialFlow}
+        presentedAsSheet
+        title={t('settings:householdSetup.screenTitle')}
+      >
         <LoadingBlock label={t('settings:householdSetup.loading')} />
       </Screen>
     )
@@ -105,10 +117,17 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
 
   if (!financeSnapshot) {
     return (
-      <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
-        <ErrorState
+      <Screen
+        canGoBack={!isInitialFlow}
+        presentedAsSheet
+        title={t('settings:householdSetup.screenTitle')}
+      >
+        <NeoStateBlock
+          actionLabel={t('states:errorState.action')}
           description={t('settings:householdSetup.errorDescription')}
+          icon="error-outline"
           title={t('settings:householdSetup.errorTitle')}
+          tone="error"
           onAction={() => {
             void financeQuery.refetch()
           }}
@@ -141,7 +160,11 @@ function HouseholdSetupDynamicNotice({ isInitialFlow }: { isInitialFlow: boolean
   const router = useRouter()
   const { t } = useTranslation()
   return (
-    <Screen canGoBack={!isInitialFlow} title={t('settings:householdSetup.screenTitle')}>
+    <Screen
+      canGoBack={!isInitialFlow}
+      presentedAsSheet
+      title={t('settings:householdSetup.screenTitle')}
+    >
       <BrandedPanel>
         <SectionHeader
           subtitle={t('settings:householdSetup.dynamicSubtitle')}
@@ -167,6 +190,7 @@ function HouseholdSetupWizardContent({
   const router = useRouter()
   const { t } = useTranslation()
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   // userId hace falta para que `useUpsertFamilyFinance` pueda invalidar
   // home_snapshot (root key) tras el upsert. Sin esto, los users veían
   // valores stale en el hero hasta el próximo refetch manual. Code
@@ -236,10 +260,7 @@ function HouseholdSetupWizardContent({
     upsertFinanceMutation.mutate(submitState.input, {
       onError: async (error: unknown) => {
         await triggerHaptic('error')
-        Alert.alert(
-          t('settings:householdSetup.saveErrorTitle'),
-          getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')),
-        )
+        toast.error(getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')))
       },
       onSuccess: async () => {
         // El ingreso del dueño debe vivir como su monthly_income_contribution:
@@ -251,10 +272,7 @@ function HouseholdSetupWizardContent({
           await updateMyContributionMutation.mutateAsync(monthlyIncome)
         } catch (error) {
           await triggerHaptic('error')
-          Alert.alert(
-            t('settings:householdSetup.saveErrorTitle'),
-            getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')),
-          )
+          toast.error(getErrorMessage(error, t('settings:householdSetup.saveErrorMessage')))
           return
         }
         await triggerHaptic('success')
@@ -267,6 +285,9 @@ function HouseholdSetupWizardContent({
     <Screen
       canGoBack={!isInitialFlow}
       contentContainerStyle={styles.screenContent}
+      // Cuarta rama de la MISMA ruta modal — ver el comentario de la rama de
+      // carga arriba.
+      presentedAsSheet
       subtitle={
         isInitialFlow
           ? t('settings:householdSetup.subtitleInitial')
@@ -486,7 +507,7 @@ function HouseholdSetupWizardContent({
                 <HeroStat compact label={t('settings:householdSetup.summaryFlexible')} value={`${flexibleTargetPercent}%`} />
                 <HeroStat compact label={t('settings:householdSetup.summaryCheckin')} value={t('settings:householdSetup.summaryCheckinValue', { hour: checkinHourNumber || 9 })} />
               </View>
-              <Text style={[styles.summaryNote, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.summaryNote, { color: neo.textMuted }]}>
                 {t('settings:householdSetup.summaryNote', {
                   fund: formattedBenchmarkFund,
                   percent: fieldValues.savings || '0',

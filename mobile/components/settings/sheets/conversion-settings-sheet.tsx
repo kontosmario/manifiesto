@@ -7,6 +7,8 @@ import { useUsdRate } from '@/features/finance/use-usd-rate'
 import { radii } from '@/theme/palette'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 import { formatMoney } from '@/utils/money'
 
 // Solo la bandera (emoji) vive acá; el nombre se resuelve por i18n vía
@@ -51,8 +53,12 @@ export function ConversionSettingsSheet({
   onClose,
 }: ConversionSettingsSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
-  const surface = theme.isDark ? theme.colors.surfaceMuted : theme.colors.creamCard
+  // Dentro de una hoja neo, un tile NO seleccionado se dibuja hundido: el
+  // relieve queda reservado para el estado activo.
+  const surface = neo.well
 
   // Cotización del seleccionado, solo para mostrarla en este sheet (no en el
   // hero). Disabled si no aplica → no fetchea.
@@ -61,17 +67,18 @@ export function ConversionSettingsSheet({
 
   return (
     <ModalCard
+      skin="neo"
       visible={visible}
       title={t('settings:conversion.sheetTitle')}
       subtitle={t('settings:conversion.sheetSubtitle')}
       onClose={onClose}
     >
-      <View style={[styles.toggleRow, { borderColor: theme.colors.line }]}>
+      <View style={[styles.toggleRow, { borderColor: neo.sheetDivider }]}>
         <View style={styles.toggleCopy}>
-          <Text style={[styles.toggleLabel, { color: theme.colors.text }]}>
+          <Text style={[styles.toggleLabel, { color: neo.text }]}>
             {t('settings:conversion.toggleLabel')}
           </Text>
-          <Text style={[styles.toggleHelper, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.toggleHelper, { color: neo.textMuted }]}>
             {t('settings:conversion.toggleHelper')}
           </Text>
         </View>
@@ -85,7 +92,7 @@ export function ConversionSettingsSheet({
 
       {enabled ? (
         <View style={styles.pickerWrap}>
-          <Text style={[styles.pickerLabel, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.pickerLabel, { color: neo.textMuted }]}>
             {currency ? t('settings:conversion.yourCurrency') : t('settings:conversion.chooseCurrency')}
           </Text>
           <View style={styles.list}>
@@ -107,16 +114,16 @@ export function ConversionSettingsSheet({
                   style={({ pressed }) => [
                     styles.row,
                     {
-                      backgroundColor: active ? theme.colors.primarySurface : surface,
-                      borderColor: active ? theme.colors.primary : theme.colors.line,
+                      backgroundColor: active ? neo.selectedTint : surface,
+                      borderColor: active ? ink.accent : neo.sheetDivider,
                       opacity: pressed ? 0.92 : 1,
                     },
                   ]}
                 >
                   <Text style={styles.flag}>{flag}</Text>
                   <View style={styles.copy}>
-                    <Text style={[styles.code, { color: theme.colors.text }]}>{code}</Text>
-                    <Text style={[styles.name, { color: theme.colors.textMuted }]}>
+                    <Text style={[styles.code, { color: neo.text }]}>{code}</Text>
+                    <Text style={[styles.name, { color: neo.textMuted }]}>
                       {name}
                     </Text>
                   </View>
@@ -124,7 +131,7 @@ export function ConversionSettingsSheet({
                     <MaterialIcons
                       name="check-circle"
                       size={20}
-                      color={theme.colors.primaryStrong}
+                      color={neo.greenDeep}
                     />
                   ) : null}
                 </Pressable>
@@ -133,7 +140,7 @@ export function ConversionSettingsSheet({
           </View>
 
           {rateActive && rateQuery.data ? (
-            <Text style={[styles.rateNote, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.rateNote, { color: neo.textMuted }]}>
               {t('settings:conversion.rateInUse', {
                 rate: formatMoney(rateQuery.data.ratePerUsd),
                 suffix: rateQuery.data.source.startsWith('dolarapi') ? ' · blue' : '',

@@ -5,6 +5,8 @@ import type { ComponentProps } from 'react'
 import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 
 type IconName = ComponentProps<typeof MaterialIcons>['name']
 
@@ -50,9 +52,12 @@ export function IncomeModeConfirmSheet({
 }: IncomeModeConfirmSheetProps) {
   const { t } = useTranslation()
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
 
   return (
     <ModalCard
+      skin="neo"
       onClose={onClose}
       title={t(`settings:household.incomeModeConfirmTitle_${nextMode}`)}
       subtitle={t(`settings:household.incomeModeConfirmBody_${nextMode}`)}
@@ -63,8 +68,9 @@ export function IncomeModeConfirmSheet({
           style={[
             styles.effects,
             {
-              backgroundColor: theme.colors.surfaceMuted,
-              borderColor: theme.colors.line,
+              backgroundColor: neo.well,
+              boxShadow: neo.shadows.insetSm,
+              borderColor: neo.sheetDivider,
             },
           ]}
         >
@@ -73,10 +79,10 @@ export function IncomeModeConfirmSheet({
               <MaterialIcons
                 name={icon}
                 size={18}
-                color={theme.colors.primary}
+                color={ink.accent}
                 style={styles.effectIcon}
               />
-              <Text style={[styles.effectText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.effectText, { color: neo.textMuted }]}>
                 {t(`settings:household.incomeModeSheet.${key}`)}
               </Text>
             </View>

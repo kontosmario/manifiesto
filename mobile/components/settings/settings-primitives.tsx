@@ -1,11 +1,34 @@
-import { type ComponentProps } from 'react'
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native'
+import { useMemo, type ComponentProps } from 'react'
+import { Pressable, StyleSheet, Switch, Text, View, type ViewStyle } from 'react-native'
 import { AppSymbol } from '@/components/ui/app-symbol'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
-import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
-import { useAppTheme } from '@/theme/theme-provider'
-import { radii } from '@/theme/palette'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+
+/**
+ * Primitivas sueltas de Ajustes (las consumen `household-setup` y
+ * `notifications-preferences`), en material neumórfico desde 2026-08-05.
+ *
+ * Antes eran V1: `borderWidth: 1` + `surfaceMuted` y un tile de ícono con
+ * hairline. Traducción al vocabulario del handoff:
+ *  · HeroStat  → pozo `insetSm` (dato hundido, no card flotante)
+ *  · fila      → `NeoSurface raisedLg` suelta (no van dentro de un grupo)
+ *  · ícono     → sub-tile `raisedSm` radio `chip`
+ */
+
+/** Ver el mismo razonamiento en `settings-grouped-list`. */
+function useFlatFallback(): ViewStyle | null {
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  return useMemo(
+    () => (SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: neo.sheetDivider }),
+    [neo],
+  )
+}
 
 export function HeroStat({
   compact = false,
@@ -16,24 +39,22 @@ export function HeroStat({
   label: string
   value: string
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const flatFallback = useFlatFallback()
 
   return (
-    <View
-      style={[
-        styles.heroStat,
-        compact ? styles.heroStatCompact : null,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-        },
-      ]}
+    <NeoSurface
+      backgroundColor={neo.well}
+      radius={neoRadii.tile}
+      style={[styles.heroStat, compact ? styles.heroStatCompact : null, flatFallback]}
+      variant="insetSm"
     >
-      <Text style={[styles.heroStatLabel, { color: theme.colors.textMuted }]}>{label}</Text>
-      <Text numberOfLines={1} style={[styles.heroStatValue, { color: theme.colors.text }]}>
+      <Text style={[styles.heroStatLabel, { color: neo.textMuted }]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.heroStatValue, { color: neo.text }]}>
         {value}
       </Text>
-    </View>
+    </NeoSurface>
   )
 }
 
@@ -54,58 +75,45 @@ export function SettingsRow({
   title: string
   value: string
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const flatFallback = useFlatFallback()
 
   return (
     <Pressable
       accessibilityRole="button"
-      android_ripple={{
-        borderless: false,
-        color: withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.08),
-      }}
       hitSlop={DEFAULT_HIT_SLOP}
       onPress={() => {
         void triggerHaptic('selection')
         onPress()
       }}
       pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          backgroundColor: theme.colors.surfaceMuted,
-          borderColor: theme.colors.border,
-          opacity: pressed ? 0.86 : 1,
-        },
-      ]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.94 : 1 }]}
     >
-      <View
-        style={[
-          styles.rowIconWrap,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <AppSymbol color={theme.colors.text} fallback={iconFallback} name={iconName} size={18} />
-      </View>
+      <NeoSurface radius={neoRadii.card} style={[styles.row, flatFallback]} variant="raisedLg">
+        <NeoSurface
+          radius={neoRadii.chip}
+          style={[styles.rowIconWrap, flatFallback]}
+          variant="raisedSm"
+        >
+          <AppSymbol color={neo.text} fallback={iconFallback} name={iconName} size={18} />
+        </NeoSurface>
 
-      <View style={styles.rowCopy}>
-        <Text style={[styles.rowTitle, { color: theme.colors.text }]}>{title}</Text>
-        <Text style={[styles.rowSubtitle, { color: theme.colors.textMuted }]}>{subtitle}</Text>
-      </View>
+        <View style={styles.rowCopy}>
+          <Text style={[styles.rowTitle, { color: neo.text }]}>{title}</Text>
+          <Text style={[styles.rowSubtitle, { color: neo.textMuted }]}>{subtitle}</Text>
+        </View>
 
-      <View style={styles.rowTrailing}>
-        <Text style={[styles.rowValue, { color: theme.colors.text }]}>
-          {isLoading ? '...' : value}
-        </Text>
-        <AppSymbol
-          color={theme.colors.textSoft}
-          fallback="chevron-right"
-          name="chevron.right"
-          size={14}
-        />
-      </View>
+        <View style={styles.rowTrailing}>
+          <Text style={[styles.rowValue, { color: neo.text }]}>{isLoading ? '...' : value}</Text>
+          <AppSymbol
+            color={neo.textMuted}
+            fallback="chevron-right"
+            name="chevron.right"
+            size={14}
+          />
+        </View>
+      </NeoSurface>
     </Pressable>
   )
 }
@@ -121,7 +129,10 @@ export function SettingsSwitchRow({
   onValueChange: (value: boolean) => void
   value: boolean
 }) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const flatFallback = useFlatFallback()
+  const trackOff = neo.sheetHandle
   const toggleValue = (nextValue: boolean) => {
     void triggerHaptic('selection')
     onValueChange(nextValue)
@@ -131,39 +142,25 @@ export function SettingsSwitchRow({
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
-      android_ripple={{
-        borderless: false,
-        color: withAlpha(theme.colors.primary, theme.isDark ? 0.18 : 0.1),
-      }}
       hitSlop={DEFAULT_HIT_SLOP}
       onPress={() => {
         toggleValue(!value)
       }}
       pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
-      style={[
-        styles.switchRow,
-        {
-          backgroundColor: theme.colors.surfaceMuted,
-          borderColor: theme.colors.border,
-        },
-      ]}
     >
-      <View style={styles.switchRowCopy}>
-        <Text style={[styles.switchRowTitle, { color: theme.colors.text }]}>{label}</Text>
-        <Text style={[styles.switchRowDescription, { color: theme.colors.textMuted }]}>
-          {description}
-        </Text>
-      </View>
-      <Switch
-        ios_backgroundColor={theme.isDark ? theme.colors.surfaceStrong : theme.colors.borderStrong}
-        onValueChange={toggleValue}
-        thumbColor="#FFFFFF"
-        trackColor={{
-          false: theme.isDark ? theme.colors.surfaceStrong : theme.colors.borderStrong,
-          true: theme.colors.primary,
-        }}
-        value={value}
-      />
+      <NeoSurface radius={neoRadii.card} style={[styles.switchRow, flatFallback]} variant="raisedLg">
+        <View style={styles.switchRowCopy}>
+          <Text style={[styles.switchRowTitle, { color: neo.text }]}>{label}</Text>
+          <Text style={[styles.switchRowDescription, { color: neo.textMuted }]}>{description}</Text>
+        </View>
+        <Switch
+          ios_backgroundColor={trackOff}
+          onValueChange={toggleValue}
+          thumbColor="#FFFFFF"
+          trackColor={{ false: trackOff, true: neo.green }}
+          value={value}
+        />
+      </NeoSurface>
     </Pressable>
   )
 }
@@ -171,8 +168,6 @@ export function SettingsSwitchRow({
 const styles = StyleSheet.create({
   heroStat: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: radii.xl,
     paddingHorizontal: 12,
     paddingVertical: 12,
     gap: 4,
@@ -185,27 +180,25 @@ const styles = StyleSheet.create({
   heroStatLabel: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   heroStatValue: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 1,
-    borderRadius: radii.xl,
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
   rowIconWrap: {
     width: 36,
     height: 36,
-    borderRadius: radii.pill,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -216,9 +209,11 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   rowSubtitle: {
     fontSize: 13,
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
   },
   rowTrailing: {
@@ -229,13 +224,12 @@ const styles = StyleSheet.create({
   rowValue: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-    borderRadius: radii.xl,
-    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 13,
   },
@@ -246,9 +240,11 @@ const styles = StyleSheet.create({
   switchRowTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   switchRowDescription: {
     fontSize: 13,
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
   },
 })

@@ -11,6 +11,8 @@ import {
 } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
 import { radii } from '@/theme/palette'
 
 interface EditBufferSheetProps {
@@ -33,6 +35,8 @@ export function EditBufferSheet({
   onSave,
 }: EditBufferSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [mode, setMode] = useState<BufferMode>(currentMode)
   const [draft, setDraft] = useState(() => serializePrice(currentValue))
@@ -134,15 +138,15 @@ export function EditBufferSheet({
                 style={[
                   styles.modeCard,
                   {
-                    backgroundColor: isOn ? theme.colors.primary : theme.colors.creamCard,
-                    borderColor: isOn ? theme.colors.primary : theme.colors.line,
+                    backgroundColor: isOn ? ink.accent : neo.well,
+                    borderColor: isOn ? ink.accent : neo.sheetDivider,
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.modeLabel,
-                    { color: isOn ? '#FFFFFF' : theme.colors.text },
+                    { color: isOn ? '#FFFFFF' : neo.text },
                   ]}
                 >
                   {t(`settings:buffer.mode.${modeKey}.label`)}
@@ -151,7 +155,7 @@ export function EditBufferSheet({
                   numberOfLines={1}
                   style={[
                     styles.modeHint,
-                    { color: isOn ? '#FFFFFF' : theme.colors.textMuted },
+                    { color: isOn ? '#FFFFFF' : neo.textMuted },
                   ]}
                 >
                   {t(`settings:buffer.mode.${modeKey}.hint`)}

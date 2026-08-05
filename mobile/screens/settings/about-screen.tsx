@@ -1,9 +1,9 @@
 import { useCallback } from 'react'
-import { Alert, Linking, Platform, StyleSheet, Text, View } from 'react-native'
+import { Linking, Platform, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
-import { LinearGradient } from 'expo-linear-gradient'
+import { toast } from '@/lib/toast-bus'
 import { CardParticles } from '@/components/ui/card-particles'
 import { FernMark } from '@/components/billing/fern-mark'
 import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
@@ -15,8 +15,10 @@ import {
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
-import { DARK_TAB_CANVAS, authTokens, radii } from '@/theme/palette'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import {
   PRIVACY_POLICY_URL,
@@ -42,6 +44,7 @@ interface AboutScreenProps {
  */
 export function AboutScreen({ userId }: AboutScreenProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const isNavSettled = useIsNavigationSettled()
 
@@ -59,20 +62,14 @@ export function AboutScreen({ userId }: AboutScreenProps) {
   const handleOpenPrivacy = useCallback(() => {
     if (!hasPrivacy) return
     void Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
-      Alert.alert(
-        t('settings:about.browserErrorTitle'),
-        t('settings:about.browserErrorMessage', { url: PRIVACY_POLICY_URL }),
-      )
+      toast.error(t('settings:about.browserErrorMessage', { url: PRIVACY_POLICY_URL }))
     })
   }, [hasPrivacy, t])
 
   const handleOpenTerms = useCallback(() => {
     if (!hasTerms) return
     void Linking.openURL(TERMS_OF_SERVICE_URL).catch(() => {
-      Alert.alert(
-        t('settings:about.browserErrorTitle'),
-        t('settings:about.browserErrorMessage', { url: TERMS_OF_SERVICE_URL }),
-      )
+      toast.error(t('settings:about.browserErrorMessage', { url: TERMS_OF_SERVICE_URL }))
     })
   }, [hasTerms, t])
 
@@ -85,10 +82,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
       userId,
     })
     void Linking.openURL(url).catch(() => {
-      Alert.alert(
-        t('settings:about.mailErrorTitle'),
-        t('settings:about.mailErrorMessage', { email: SUPPORT_EMAIL }),
-      )
+      toast.error(t('settings:about.mailErrorMessage', { email: SUPPORT_EMAIL }))
     })
   }, [appVersion, buildNumber, hasSupport, userId, t])
 
@@ -100,7 +94,8 @@ export function AboutScreen({ userId }: AboutScreenProps) {
 
   return (
     <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
+      backgroundColor={neo.bg}
+      titleColor={neo.text}
       canGoBack
       contentContainerStyle={styles.screenContent}
       subtitle={t('settings:about.subtitle')}
@@ -114,21 +109,20 @@ export function AboutScreen({ userId }: AboutScreenProps) {
           {/* HERO con el logo + versión visible — Apple usa este surface
               para confirmar el match de build durante el review. */}
           <RiseView>
-            <LinearGradient
-              colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-              start={{ x: 0.1, y: 0 }}
-              end={{ x: 0.9, y: 1 }}
+            <NeoSurface
+              radius={neoRadii.hero}
               style={styles.heroCard}
+              variant="hero"
             >
-              <CardParticles count={11} accentColor={authTokens.peach} />
+              <CardParticles count={11} accentColor={neo.heroPeach} />
               <FernMark variant="cream" size={58} />
-              <Text style={[styles.heroTitle, { color: theme.colors.heroText }]}>
+              <Text style={[styles.heroTitle, { color: neo.heroText }]}>
                 Manifiesto
               </Text>
-              <Text style={[styles.heroVersion, { color: theme.colors.heroMuted }]}>
+              <Text style={[styles.heroVersion, { color: neo.heroTextSoft }]}>
                 {versionLabel}
               </Text>
-            </LinearGradient>
+            </NeoSurface>
           </RiseView>
 
           {/* INFORMACIÓN LEGAL — solo se renderiza si al menos una URL
@@ -181,7 +175,7 @@ export function AboutScreen({ userId }: AboutScreenProps) {
 
           {/* FOOTER cálido — refuerza la identidad del producto. */}
           <RiseView delay={240}>
-            <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.footer, { color: neo.textMuted }]}>
               {t('settings:about.madeWithLove')}
             </Text>
           </RiseView>
