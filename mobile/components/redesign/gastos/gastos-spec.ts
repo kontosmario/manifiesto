@@ -20,6 +20,13 @@
  * Gradientes como strings CSS (experimental_backgroundImage) y sombras como
  * boxShadow literal (multi-sombra + inset, rinde con minSdk 29). El text-shadow
  * del monto NO va como string (textShadowColor/Offset/Radius).
+ *
+ * HANDOFF v2 (2026-08-04, design/gastos-2026-08-v2/): pase de completitud —
+ * los 10 componentes con TODOS sus estados (H/C/B/D/CAL/DS/BK/F/M/NAV) + los 7
+ * vacíos (EV1–EV7). Los tokens que suma van al final de la interfaz, marcados
+ * `v2`, con los valores literales de "Gastos Componentes.dc.html" (inventario)
+ * y "Gastos Manifiesto.dc.html" (vacíos). Un token v1 solo cambia cuando v2 lo
+ * cambia explícitamente — hoy, solo el banner de aviso en dark (ver su nota).
  */
 
 export type GastosMode = 'light' | 'dark'
@@ -239,6 +246,61 @@ export interface GastosSpec {
   // ─── Home indicator (nav se reusa del home-kit) ───
   homeIndicator: string
   homeIndicatorOpacity: number
+
+  // ══════════════════════════════════════════════════════════════════
+  // v2 (handoff design/gastos-2026-08-v2) — valores literales de
+  // "Gastos Componentes.dc.html" (inventario de estados) y
+  // "Gastos Manifiesto.dc.html" (vacíos EV1–EV7).
+  // ══════════════════════════════════════════════════════════════════
+
+  // ─── Molde punteado (D-atom "sin datos", EV1/EV2/EV4/EV6) ───
+  // El trazo NO se dibuja con borderStyle:'dashed': sobre borderRadius,
+  // Android lo rinde SÓLIDO en varias versiones. Va con react-native-svg
+  // (Rect + strokeDasharray), ver `parts/ghost.tsx`.
+  /** Trazo del molde sobre el canvas de la pantalla. */
+  dashStroke: string
+  /** Texto dentro de un molde punteado (número de día, label de chip). */
+  dashInk: string
+  /** Bloques sólidos del esqueleto dentro de una fila fantasma. */
+  ghostFill: string
+  /** Trazo del molde sobre el forest del hero (paleta única, no theme-switched). */
+  dashStrokeOnHero: string
+  dashInkOnHero: string
+
+  // ─── BK · Botón "Volver al calendario" (target 44px) ───
+  backBtnBackground: string
+  backBtnGradientCss: string | undefined
+  backBtnShadow: string
+  /** Presionado: la superficie se hunde (además del scale 0.96). */
+  backBtnPressedShadow: string
+  backBtnIcoBackground: string | undefined
+  backBtnIcoShadow: string
+  backBtnIcoInk: string
+  backBtnTextInk: string
+
+  // ─── Sublínea del hero (H-2 solo lectura / H-3 fuera / H-4 vacío) ───
+  heroSublineInk: string
+  heroSublineWarnInk: string
+  /** Separador sobre el pie de categorías del hero vacío. */
+  heroDividerColor: string
+
+  // ─── Pill de estado del filtro y de la sección (F-1…F-4, M-4) ───
+  statusPillShadow: string
+  statusPillInk: string
+  statusPillMutedInk: string
+  statusPillAlertInk: string
+
+  // ─── Pozo de aviso (F-4, EV2, EV6) ───
+  /** Inset PROFUNDO (F-4, el vacío con más peso). */
+  noticeWellShadow: string
+  /** Inset normal (strips explicativos de EV2/EV6). */
+  noticeStripShadow: string
+  noticeTitleInk: string
+  noticeBodyInk: string
+  noticeStrongInk: string
+
+  // ─── M-3 · Nota de fila fuera de ciclo ───
+  outNoteInk: string
 }
 
 // Alias de sombras — definidos una vez y re-usados (como home-spec inlinea).
@@ -261,7 +323,7 @@ const INS_SOFT_D = 'inset 2px 2px 5px rgba(0,0,0,0.45), inset -2px -2px 5px rgba
 
 export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
   light: {
-    bg: '#E9EBE0',
+    bg: '#DCDFCD',
     cardGradientCss: undefined,
     cardBackground: '#E9EBE0',
     text: '#24382A',
@@ -429,9 +491,43 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
 
     homeIndicator: '#24382A',
     homeIndicatorOpacity: 0.75,
+
+    // ─── v2 ───
+    dashStroke: 'rgba(151,160,136,0.5)',
+    dashInk: '#9AA694',
+    ghostFill: '#E1E3D6',
+    dashStrokeOnHero: 'rgba(240,248,230,0.4)',
+    dashInkOnHero: 'rgba(240,248,230,0.5)',
+
+    backBtnBackground: '#E9EBE0',
+    backBtnGradientCss: undefined,
+    backBtnShadow: RAISE_L,
+    backBtnPressedShadow: 'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
+    backBtnIcoBackground: undefined,
+    backBtnIcoShadow: 'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
+    backBtnIcoInk: '#2E7C39',
+    backBtnTextInk: '#24382A',
+
+    // Paleta única: el hero es forest en ambos temas.
+    heroSublineInk: 'rgba(240,248,230,0.75)',
+    heroSublineWarnInk: '#FBD9BC',
+    heroDividerColor: 'rgba(240,248,230,0.22)',
+
+    statusPillShadow: 'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
+    statusPillInk: '#2E7C39',
+    statusPillMutedInk: '#9AA694',
+    statusPillAlertInk: '#C25B33',
+
+    noticeWellShadow: 'inset 5px 5px 12px rgba(151,160,136,0.5), inset -5px -5px 12px rgba(255,255,255,0.92)',
+    noticeStripShadow: 'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
+    noticeTitleInk: '#24382A',
+    noticeBodyInk: '#6C7B67',
+    noticeStrongInk: '#24382A',
+
+    outNoteInk: '#8A4A30',
   },
   dark: {
-    bg: '#16271C',
+    bg: '#0F1A13',
     cardGradientCss: 'linear-gradient(145deg, #1D3426, #132318)',
     cardBackground: '#1A2D21',
     text: '#F1EEDD',
@@ -586,14 +682,15 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
     closedBarInk: '#E8C88A',
     closedBarGradientCss: 'linear-gradient(145deg, #3A3322, #2A2416)',
     closedBarShadow: '6px 6px 14px rgba(0,0,0,0.5)',
-    // Banner vencido: MISMA paleta peach del claro, pero la sombra dark saca el
-    // glow blanco (-8px -8px rgba(255,255,255,0.85)) que quedaba feo sobre el
-    // canvas oscuro; usa la sombra dark del sistema (raise dark suave).
-    alertGradientCss: 'linear-gradient(145deg, #F5D9C8, #EFC5AE)',
-    alertShadow: '8px 8px 18px rgba(0,0,0,0.45), -6px -6px 14px rgba(101,152,113,0.1)',
-    alertTitleInk: '#7A2E17',
-    alertSubInk: '#8A4A30',
-    confirmBtnInk: '#FFF3E8',
+    // v2 (2026-08-04): el banner dark deja de ser el peach del claro y pasa al
+    // marrón hundido del handoff v2 (B-1/B-2, Componentes §03). Cumple la regla
+    // dark del handoff — "los estados de color llevan textura hundida, nunca
+    // color plano" —, que el peach plano sobre canvas oscuro violaba.
+    alertGradientCss: 'linear-gradient(145deg, #3A2418, #2A1810)',
+    alertShadow: RAISE_D,
+    alertTitleInk: '#F2A87E',
+    alertSubInk: 'rgba(242,168,126,0.8)',
+    confirmBtnInk: '#F5F2E1',
     confirmBtnBackground: '#C25B33',
     confirmBtnShadow: '0 6px 12px rgba(194,91,51,0.4)',
 
@@ -606,5 +703,38 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
 
     homeIndicator: '#F1EEDD',
     homeIndicatorOpacity: 0.7,
+
+    // ─── v2 ───
+    dashStroke: 'rgba(101,152,113,0.28)',
+    dashInk: '#7C917A',
+    ghostFill: '#142519',
+    dashStrokeOnHero: 'rgba(240,248,230,0.4)',
+    dashInkOnHero: 'rgba(240,248,230,0.5)',
+
+    backBtnBackground: '#1A2D21',
+    backBtnGradientCss: 'linear-gradient(145deg, #1D3426, #132318)',
+    backBtnShadow: RAISE_D,
+    backBtnPressedShadow: 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.08)',
+    backBtnIcoBackground: '#142519',
+    backBtnIcoShadow: 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.08)',
+    backBtnIcoInk: '#A4E3A6',
+    backBtnTextInk: '#F1EEDD',
+
+    heroSublineInk: 'rgba(240,248,230,0.75)',
+    heroSublineWarnInk: '#FBD9BC',
+    heroDividerColor: 'rgba(240,248,230,0.22)',
+
+    statusPillShadow: 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.08)',
+    statusPillInk: '#A4E3A6',
+    statusPillMutedInk: '#7C917A',
+    statusPillAlertInk: '#F2A87E',
+
+    noticeWellShadow: 'inset 5px 5px 12px rgba(0,0,0,0.55), inset -5px -5px 12px rgba(101,152,113,0.1)',
+    noticeStripShadow: 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.08)',
+    noticeTitleInk: '#F1EEDD',
+    noticeBodyInk: '#93A78F',
+    noticeStrongInk: '#F1EEDD',
+
+    outNoteInk: '#F2A87E',
   },
 }

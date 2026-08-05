@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin:0; padding:0; background:#20241C; }
+    body { font-family:'Nunito', system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+    a { color:#A4E3A6; } a:hover { color:#C6F0C8; }
+    @keyframes mfIn { from { opacity:0; transform:translateY(12px) scale(0.985); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes mfDrop { from { opacity:0; transform:translateY(-10px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes mfPulse { 0%, 100% { box-shadow:0 0 4px rgba(120,220,130,0.45); } 50% { box-shadow:0 0 11px rgba(120,220,130,0.95); } }
+  </style>
+</helmet>
+
+<div style="min-height:100vh; padding:48px 30px 80px; display:flex; flex-direction:column; align-items:center; gap:22px; box-sizing:border-box">
+  <div style="text-align:center; max-width:620px; display:flex; flex-direction:column; gap:8px">
+    <div style="font-size:11px; font-weight:800; letter-spacing:0.24em; color:#8FA089">GASTOS · VISTA COMPLETA INTERACTIVA</div>
+    <div style="font-size:22px; font-weight:900; color:#F1EEDD; line-height:1.12">Hero · ciclos con énfasis · calendario · día · filtro · movimientos</div>
+    <div style="font-size:12.5px; font-weight:600; color:#A8B4A0; line-height:1.5">El ciclo se cambia desde el texto bajo el título (tocá “Ciclo 20 jun → 19 jul ▾” para desplegar el selector). Tocá un día: el calendario se oculta y aparece el detalle (“‹ Volver al calendario” vuelve). Brot en la esquina lleva al Jardín y se preocupa si el ciclo vence sin cobro.</div>
+  </div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center">
+    <div onClick="{{ toggleTheme }}" style="{{ s.tgl }}" style-active="transform:scale(0.95)">{{ themeLabel }}</div>
+    <div onClick="{{ toggleVenc }}" style="{{ s.tglWarn }}" style-active="transform:scale(0.95)">{{ vencLabel }}</div>
+  </div>
+
+  <div data-screen-label="Gastos completo interactivo" style="{{ s.phone }}">
+    <div style="padding:20px 20px 0">
+      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px">
+        <div style="min-width:0">
+          <div style="{{ s.h1 }}">Gastos</div>
+          <div onClick="{{ toggleDd }}" style="{{ s.cycTrig }}" style-active="opacity:0.65"><span style="{{ s.cycTrigDot }}"></span><span>{{ cycTrigLab }}</span><span style="{{ s.cycCaret }}">▾</span></div>
+        </div>
+        <div onClick="{{ goJardin }}" style="{{ s.brotBtn }}" style-active="transform:scale(0.9)">
+          <x-import component-from-global-scope="brot-mascot" from="./brot.js" pose="{{ brotPose }}" size="46" shadow="false" hint-size="36px,46px"></x-import>
+          <div style="{{ s.brotBadge }}">🌱 1</div>
+        </div>
+      </div>
+      <sc-if value="{{ ddOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ s.dd }}">
+          <sc-for list="{{ ddItems }}" as="o" hint-placeholder-count="3">
+            <div onClick="{{ o.tap }}" style="{{ o.st }}" style-active="transform:scale(0.97)"><span style="{{ o.icSt }}">{{ o.icon }}</span><span style="{{ o.nameSt }}">{{ o.name }}</span><span style="{{ o.tagSt }}">{{ o.tag }}</span></div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ viewingClosed }}" hint-placeholder-val="{{ false }}">
+        <div style="{{ s.closedBar }}">
+          <span style="font-size:13px">📁</span>
+          <span style="flex:1; font-size:11.5px; font-weight:900; letter-spacing:0.06em">EDICIÓN CERRADA · SOLO LECTURA</span>
+          <span onClick="{{ nextCycle }}" style="{{ s.closedBtn }}" style-active="opacity:0.55">Volver al actual ›</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+        <div style="border-radius:20px; background:linear-gradient(145deg, #F5D9C8, #EFC5AE); box-shadow:8px 8px 18px rgba(120,70,45,0.4); padding:13px 15px; display:flex; align-items:center; gap:11px; margin-top:14px; animation:mfIn 0.32s cubic-bezier(0.22,0.9,0.3,1) both">
+          <div style="flex:none; width:48px; margin:-4px 0"><x-import component-from-global-scope="brot-mascot" from="./brot.js" pose="worried" size="48" shadow="false" hint-size="38px,48px"></x-import></div>
+          <div style="flex:1; min-width:0"><div style="font-size:11.5px; font-weight:900; color:#7A2E17">Tu ciclo terminó el 19</div><div style="font-size:10.5px; font-weight:700; color:#8A4A30; margin-top:1px">2 días sin confirmar el cobro — quedan fuera del ciclo</div></div>
+          <div onClick="{{ confirmCobro }}" style="flex:none; border-radius:13px; padding:8px 11px; font-size:11px; font-weight:900; color:#FFF3E8; background:#C25B33; box-shadow:0 6px 12px rgba(194,91,51,0.4); transition:transform 0.15s ease" style-active="transform:scale(0.93)">✓ Confirmar</div>
+        </div>
+      </sc-if>
+
+      <!-- hero -->
+      <div style="{{ s.hero }}">
+        <div style="position:absolute; top:0; left:0; right:0; bottom:0; border-radius:32px; overflow:hidden; pointer-events:none"><x-import component-from-global-scope="brot-particles" from="./particles.js" colors="#C9F3C6,#FBD9BC,#EFF6E2" count="10" style="width:100%; height:100%" hint-size="100%,100%"></x-import></div>
+        <div style="position:relative">
+          <div style="display:flex; align-items:center; justify-content:space-between"><div style="display:flex; align-items:center; gap:8px"><div style="width:8px; height:8px; border-radius:50%; background:#C9F3C6"></div><span style="font-size:11.5px; font-weight:800; letter-spacing:0.14em; color:rgba(240,248,230,0.85)">{{ heroTag }}</span></div><div style="font-size:11px; font-weight:800; color:#F2F7E6; border-radius:14px; padding:6px 10px; background:rgba(255,255,255,0.16); box-shadow:inset 0 1px 2px rgba(20,45,25,0.25)">{{ heroChip }}</div></div>
+          <div style="margin-top:13px; border-radius:24px; padding:16px 18px 14px; background:rgba(13,34,18,0.30); box-shadow:inset 6px 6px 14px rgba(6,20,10,0.5), inset -5px -5px 12px rgba(130,190,130,0.18)"><div style="font-size:38px; font-weight:900; color:#F7F4E4; letter-spacing:-0.02em; line-height:1; text-shadow:0 2px 8px rgba(10,30,15,0.35)">{{ heroTotal }}</div></div>
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-top:14px">
+            <div><div style="font-size:10.5px; font-weight:800; letter-spacing:0.1em; color:rgba(240,248,230,0.8)">PROMEDIO DÍA</div><div style="font-size:20px; font-weight:900; color:#F7F4E4; margin-top:3px">{{ heroProm }}</div></div>
+            <div style="display:flex; align-items:flex-end; gap:4px; padding-bottom:2px">
+              <div style="width:7px; height:12px; border-radius:3px; background:rgba(240,248,230,0.75)"></div><div style="width:7px; height:18px; border-radius:3px; background:rgba(240,248,230,0.75)"></div><div style="width:7px; height:9px; border-radius:3px; background:rgba(240,248,230,0.45)"></div><div style="width:7px; height:14px; border-radius:3px; background:rgba(240,248,230,0.75)"></div><div style="width:7px; height:22px; border-radius:3px; background:#EFF6E2"></div><div style="width:7px; height:11px; border-radius:3px; background:rgba(240,248,230,0.45)"></div><div style="width:7px; height:6px; border-radius:3px; background:rgba(240,248,230,0.45)"></div>
+            </div>
+          </div>
+          <div style="font-size:10.5px; font-weight:800; letter-spacing:0.1em; color:rgba(240,248,230,0.8); margin-top:14px">MÁS PESO POR CATEGORÍA</div>
+          <div style="display:flex; flex-direction:column; gap:9px; margin-top:9px">
+            <div><div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:800; color:#F2F7E6"><span>🏠 Hogar</span><span>{{ cat1v }}</span></div><div style="height:7px; border-radius:4px; background:rgba(15,35,20,0.35); margin-top:5px; box-shadow:inset 0 1.5px 3px rgba(10,25,14,0.4)"><div style="{{ cat1w }}"></div></div></div>
+            <div><div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:800; color:#F2F7E6"><span>🔀 Transferencia</span><span>{{ cat2v }}</span></div><div style="height:7px; border-radius:4px; background:rgba(15,35,20,0.35); margin-top:5px; box-shadow:inset 0 1.5px 3px rgba(10,25,14,0.4)"><div style="{{ cat2w }}"></div></div></div>
+            <div><div style="display:flex; justify-content:space-between; font-size:12.5px; font-weight:800; color:#F2F7E6"><span>🛒 Mercado</span><span>{{ cat3v }}</span></div><div style="height:7px; border-radius:4px; background:rgba(15,35,20,0.35); margin-top:5px; box-shadow:inset 0 1.5px 3px rgba(10,25,14,0.4)"><div style="{{ cat3w }}"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- calendario -->
+      <sc-if value="{{ showCal }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ s.calCard }}">
+        <div style="display:flex; align-items:center; justify-content:space-between"><span style="{{ s.calLab }}">TU MES EN UN VISTAZO</span><span style="{{ s.calHint }}">tocá un día</span></div>
+        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:7px; margin-top:12px; text-align:center; font-size:11px; font-weight:800; color:#9AA694"><div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div></div>
+        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:7px; margin-top:8px">
+          <sc-for list="{{ cells }}" as="d" hint-placeholder-count="35">
+            <div onClick="{{ d.tap }}" style="{{ d.st }}" style-active="transform:scale(0.88)"><span>{{ d.lab }}</span><span style="{{ d.subSt }}">{{ d.sub }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- día seleccionado (alterna con el calendario) -->
+      <sc-if value="{{ showDay }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ s.dayCard }}">
+        <div style="display:flex; align-items:center; gap:9px">
+          <div onClick="{{ clearDay }}" style="{{ s.backBtn }}" style-active="transform:scale(0.96)">
+            <span style="{{ s.backIco }}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 6l-6 6 6 6"></path></svg></span>
+            <span style="{{ s.backTxt }}">Volver al calendario</span>
+          </div>
+          <sc-if value="{{ selBad }}" hint-placeholder-val="{{ false }}"><span style="{{ s.selBadSt }}">{{ selBadLab }}</span></sc-if>
+        </div>
+        <div style="{{ s.calLabDay }}">DÍA SELECCIONADO</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px">
+          <div onClick="{{ prevDay }}" style="{{ s.arrow }}" style-active="transform:scale(0.88)">‹</div>
+          <div style="text-align:center"><div style="{{ s.dayNum }}">{{ selN }}</div><div style="{{ s.sub11 }}">{{ selSub }}</div></div>
+          <div onClick="{{ nextDay }}" style="{{ s.arrow }}" style-active="transform:scale(0.88)">›</div>
+        </div>
+        <div style="display:flex; margin-top:12px; border-top:1.5px solid rgba(151,160,136,0.35); padding-top:11px">
+          <div style="flex:1"><div style="{{ s.statLab }}">GASTADO</div><div style="{{ s.statValOr }}">{{ selG }}</div></div>
+          <div style="flex:1; border-left:1.5px solid rgba(151,160,136,0.35); padding-left:14px; text-align:right"><div style="{{ s.statLab }}">MOVIMIENTOS</div><div style="{{ s.statVal }}">{{ selM }}</div></div>
+        </div>
+        <sc-if value="{{ outSel }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ s.outStrip }}"><div style="flex:none; width:42px"><x-import component-from-global-scope="brot-mascot" from="./brot.js" pose="sad" size="42" shadow="false" hint-size="33px,42px"></x-import></div><span style="{{ s.outStripTxt }}">Estos gastos quedaron fuera del ciclo — al confirmar el cobro pasan al próximo.</span></div>
+        </sc-if>
+        <sc-if value="{{ isCurrent }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ s.cta }}" style-active="transform:scale(0.97)">+ Registrar gasto olvidado</div>
+          <div style="{{ s.ghost }}" style-active="transform:scale(0.97)">🌿 Marcar día sin gastos</div>
+        </sc-if>
+      </div>
+      </sc-if>
+
+      <!-- filtro C1 -->
+      <div style="{{ s.filtLab }}">FILTRAR POR CATEGORÍA</div>
+      <div style="position:relative; margin:4px -6px -24px -6px; padding:0">
+        <div style="display:flex; gap:6px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -ms-overflow-style:none; padding:6px 6px 24px 6px; -webkit-overflow-scrolling:touch">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+            <div onClick="{{ c.tap }}" style="{{ c.st }}" style-active="transform:scale(0.93)">{{ c.lab }} <span style="{{ c.cntSt }}">{{ c.n }}</span></div>
+          </sc-for>
+        </div>
+        <div style="{{ s.fade }}"></div>
+      </div>
+
+      <!-- movimientos -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-top:20px; padding:0 4px"><span style="{{ s.calLab }}">MOVIMIENTOS</span><span onClick="{{ clearDay }}" style="{{ s.movChip }}" style-active="opacity:0.55">{{ movChipLab }}</span></div>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px">
+        <div style="display:flex; align-items:baseline; justify-content:space-between; padding:0 4px"><span style="{{ s.gHead }}">{{ g1Lab }}</span><span style="{{ s.gTot }}">{{ g1Tot }}</span></div>
+        <div style="{{ s.row }}"><div style="{{ r1.tileSt }}">{{ r1.e }}</div><div style="flex:1; min-width:0"><div style="{{ s.rowT }}">{{ r1.t }}</div><div style="{{ s.rowS }}">{{ r1.s }}</div></div><div style="flex:none; margin-left:8px; {{ s.rowT }}">{{ r1.a }}</div></div>
+        <div style="{{ s.row }}"><div style="{{ r2.tileSt }}">{{ r2.e }}</div><div style="flex:1; min-width:0"><div style="{{ s.rowT }}">{{ r2.t }}</div><div style="{{ s.rowS }}">{{ r2.s }}</div></div><div style="flex:none; margin-left:8px; {{ s.rowT }}">{{ r2.a }}</div></div>
+        <sc-if value="{{ showG2 }}" hint-placeholder-val="{{ true }}">
+          <div style="height:4px"></div>
+          <div style="display:flex; align-items:baseline; justify-content:space-between; padding:0 4px"><span style="{{ s.gHead }}">{{ g2Lab }}</span><span style="{{ s.gTot }}">{{ g2Tot }}</span></div>
+          <div style="{{ s.row }}"><div style="{{ r3.tileSt }}">{{ r3.e }}</div><div style="flex:1; min-width:0"><div style="{{ s.rowT }}">{{ r3.t }}</div><div style="{{ s.rowS }}">{{ r3.s }}</div></div><div style="flex:none; margin-left:8px; {{ s.rowT }}">{{ r3.a }}</div></div>
+          <div style="{{ s.row }}"><div style="{{ r4.tileSt }}">{{ r4.e }}</div><div style="flex:1; min-width:0"><div style="{{ s.rowT }}">{{ r4.t }}</div><div style="{{ s.rowS }}">{{ r4.s }}</div></div><div style="flex:none; margin-left:8px; {{ s.rowT }}">{{ r4.a }}</div></div>
+          <div style="{{ s.more }}" style-active="transform:scale(0.97)">Ver días anteriores ˅</div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- nav -->
+    <div style="{{ s.navBar }}">
+      <div style="{{ s.navIdle }}">Inicio</div>
+      <div style="{{ s.navOn }}">Gastos</div>
+      <div style="{{ s.fabOuter }}" style-active="transform:scale(0.9)"><div style="{{ s.fabInner }}">+</div></div>
+      <div style="{{ s.navIdle }}">Fijos</div>
+      <div style="{{ s.navIdle }}">Control</div>
+    </div>
+    <div style="{{ s.homeInd }}"></div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { dark: false, cyc: 0, sel: 7, venc: false, dayF: false, cat: 0, dd: false };
+  renderVals() {
+    const { dark: D, cyc, sel, venc, dayF, cat, dd } = this.state;
+    const L = !D;
+    const bg = L ? '#E9EBE0' : '#16271C';
+    const card = L ? '#E9EBE0' : 'linear-gradient(145deg, #1D3426, #132318)';
+    const text = L ? '#24382A' : '#F1EEDD', sub = L ? '#6C7B67' : '#93A78F', faint = L ? '#9AA694' : '#7C917A', d2 = L ? '#3E5A44' : '#B9CCB2', green = L ? '#2E7C39' : '#A4E3A6';
+    const raise = L ? '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)' : '8px 8px 18px rgba(0,0,0,0.55), -8px -8px 18px rgba(101,152,113,0.1)';
+    const ins = L ? 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)' : 'inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.1)';
+    const insBg = L ? '' : 'background:#142519; ';
+    const okC = L ? 'background:#DCEBD8; color:#3E6B44; box-shadow:inset 2px 2px 4px rgba(90,110,70,0.15)' : 'background:rgba(164,227,166,0.16); box-shadow:inset 2px 2px 4px rgba(0,0,0,0.45), inset -2px -2px 4px rgba(164,227,166,0.08); color:#B5DDB4';
+    const badC = L ? 'background:#F3C9BC; color:#A84A2F; box-shadow:inset 2px 2px 4px rgba(150,80,50,0.2)' : 'background:rgba(217,115,85,0.24); box-shadow:inset 2px 2px 4px rgba(0,0,0,0.45), inset -2px -2px 4px rgba(242,168,126,0.08); color:#F2A87E';
+    const nowC = L ? 'background:#24382A; color:#F5F2E1; box-shadow:0 6px 14px rgba(36,56,42,0.35)' : 'background:#F1EEDD; color:#16271C; box-shadow:0 0 18px rgba(241,238,221,0.25)';
+    const futC = L ? 'box-shadow:inset 2px 2px 5px rgba(151,160,136,0.3), inset -2px -2px 5px rgba(255,255,255,0.8); color:#B3BCA8' : 'background:#142519; box-shadow:inset 2px 2px 5px rgba(0,0,0,0.45), inset -2px -2px 5px rgba(101,152,113,0.07); color:#5F7361';
+    const outC = 'background:repeating-linear-gradient(135deg, #F3C9BC 0 6px, #EFB8A6 6px 12px); box-shadow:0 0 0 2px #D97355, 0 4px 10px rgba(217,115,85,0.35); color:#8A3A20';
+    const selRing = '0 0 0 3px ' + (L ? '#2E7C39' : '#A4E3A6');
+    const base = 'height:40px; border-radius:13px; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:13px; font-weight:800; cursor:pointer; transition:background 0.35s ease, color 0.35s ease, box-shadow 0.3s ease, transform 0.14s ease; ';
+    const tr = 'transition:background 0.4s ease, color 0.4s ease, box-shadow 0.4s ease, opacity 0.3s ease, transform 0.18s ease; ';
+    const CY = [
+      { name: '20 jun → 19 jul', tag: 'CICLO ACTUAL · EN CURSO', short: 'HOY', total: '$3.008.920', movs: '64 mov · Todas', prom: '$167.162', bads: [24, 2, 4, 5], def: 7,
+        c1: '$710.352 · 24%', w1: '72%', c2: '$690.000 · 23%', w2: '69%', c3: '$487.406 · 16%', w3: '48%',
+        g1: ['HOY · MARTES 7', '−$73.700'], r1: ['🍕', 'pink', 'Delivery', 'Mario · Comida y salidas', '−$61.200'], r2: ['🛒', 'merc', 'Verdulería', 'Camila · Mercado', '−$12.500'],
+        g2: ['AYER · LUNES 6', '−$54.300'], r3: ['🩺', 'rose', 'Farmacia', 'Mario · Salud', '−$8.900'], r4: ['🏠', 'mint', 'Ferretería', 'Camila · Hogar', '−$45.400'] },
+      { name: 'Mayo 2026', tag: 'EDICIÓN CERRADA · −$1.588.087', short: 'MAY', total: '$4.612.480', movs: '72 mov · cerrado', prom: '$148.790', bads: [22, 27, 3, 9, 15], def: 25,
+        c1: '$1.102.300 · 24%', w1: '74%', c2: '$980.000 · 21%', w2: '64%', c3: '$741.220 · 16%', w3: '49%',
+        g1: ['VIE 19 JUN · CIERRE', '−$154.800'], r1: ['🛒', 'merc', 'Supermercado', 'Camila · Mercado', '−$98.200'], r2: ['🏠', 'mint', 'Expensas', 'Mario · Hogar', '−$56.600'],
+        g2: ['JUE 18 JUN', '−$122.400'], r3: ['🔀', 'pink', 'Transferencia', 'Mario · Transferencia', '−$90.000'], r4: ['🍕', 'rose', 'Delivery', 'Camila · Comida', '−$32.400'] },
+      { name: 'Abril 2026', tag: 'EDICIÓN CERRADA · +$1.727.195', short: 'ABR', total: '$3.981.040', movs: '89 mov · cerrado', prom: '$132.700', bads: [28, 6, 12], def: 25,
+        c1: '$955.400 · 24%', w1: '70%', c2: '$818.000 · 21%', w2: '61%', c3: '$620.900 · 16%', w3: '46%',
+        g1: ['MAR 19 MAY · CIERRE', '−$118.300'], r1: ['🛒', 'merc', 'Supermercado', 'Camila · Mercado', '−$84.100'], r2: ['🩺', 'rose', 'Farmacia', 'Mario · Salud', '−$34.200'],
+        g2: ['LUN 18 MAY', '−$96.750'], r3: ['🏠', 'mint', 'Ferretería', 'Mario · Hogar', '−$61.500'], r4: ['🍕', 'pink', 'Delivery', 'Camila · Comida', '−$35.250'] },
+    ];
+    const C = CY[cyc], cur = cyc === 0;
+    const tile = { pink: L ? '#F6D9D2' : 'rgba(246,217,210,0.14)', merc: L ? '#E2EDD2' : 'rgba(226,237,210,0.13)', rose: L ? '#F5D8DD' : 'rgba(245,216,221,0.14)', mint: L ? '#DDEBDD' : 'rgba(164,227,166,0.14)' };
+    const days = [];
+    for (let i = 0; i < 5; i++) days.push({ blank: 1 });
+    for (let n = 20; n <= 30; n++) days.push({ n });
+    for (let n = 1; n <= 19; n++) days.push({ n });
+    const cells = days.map((d) => {
+      if (d.blank) return { lab: '', sub: '', st: 'height:40px', subSt: 'display:none', tap: () => {} };
+      const n = d.n; let kind = 'ok';
+      if (cur) { if (n === 7) kind = 'now'; else if (n >= 8 && n <= 19) kind = 'fut'; else if (C.bads.indexOf(n) >= 0) kind = 'bad'; }
+      else if (C.bads.indexOf(n) >= 0) kind = 'bad';
+      const stMap = { ok: okC, bad: badC, now: nowC, fut: futC };
+      return { lab: String(n), sub: '', subSt: 'display:none', st: base + stMap[kind] + (sel === n ? '; box-shadow:' + selRing : ''), tap: () => this.setState({ sel: n, dayF: true, dd: false }) };
+    });
+    if (cur && venc) { [20.5, 21.5].forEach((v, i) => cells.push({ lab: '+2' + i, sub: 'FUERA', subSt: 'font-size:7px; letter-spacing:0.08em; line-height:1', st: base + outC, tap: () => this.setState({ sel: v, dayF: true }) })); }
+    const gmap = { 2: ['$254.364', '4'], 24: ['$310.120', '5'], 4: ['$198.400', '3'], 5: ['$221.750', '4'], 7: ['$73.700', '2'], 20.5: ['$41.900', '1'], 21.5: ['$18.300', '1'] };
+    const out = sel === 20.5 || sel === 21.5;
+    const fut = cur && !out && sel >= 8 && sel <= 19 && sel !== 7;
+    const gg = fut ? ['—', '0'] : (gmap[sel] || ['$96.300', '2']);
+    const isBad = C.bads.indexOf(sel) >= 0;
+    const order = days.filter((x) => !x.blank).map((x) => x.n);
+    const move = (dir) => { const i = Math.max(0, order.indexOf(Math.floor(sel))); this.setState({ sel: order[Math.min(order.length - 1, Math.max(0, i + dir))], dayF: true }); };
+    const cats = [['Todas', '64'], ['🏠 Hogar', '4'], ['🔀 Transf.', '3'], ['🛒 Merc.', '2']];
+    const chips = cats.map((c, i) => ({ lab: c[0], n: c[1],
+      st: 'transition:background 0.3s ease, color 0.3s ease, box-shadow 0.3s ease, transform 0.14s ease; flex:none; display:flex; align-items:center; gap:5px; border-radius:16px; padding:8px 10px; font-size:12.5px; font-weight:' + (cat === i ? '900' : '800') + '; cursor:pointer; ' + (cat === i ? 'color:' + (L ? '#F5F2E1' : '#0F1E14') + '; background:radial-gradient(circle at 32% 28%, ' + (L ? '#63B168, #2E7434' : '#9FDC9F, #3E7D46') + ' 85%); box-shadow:0 8px 16px rgba(46,116,52,0.3), inset 0 2px 3px rgba(255,255,255,0.3)' : 'color:' + d2 + '; ' + insBg + 'box-shadow:' + ins),
+      cntSt: 'min-width:16px; height:16px; border-radius:8px; font-size:9.5px; font-weight:900; display:inline-flex; align-items:center; justify-content:center; padding:0 4px; ' + (cat === i ? 'background:rgba(255,255,255,0.25); color:inherit' : (L ? 'background:#DCEBD8; color:#3E6B44' : 'background:rgba(164,227,166,0.16); color:#A4E3A6')),
+      tap: () => this.setState({ cat: i }) }));
+    const dots = CY.map((c, i) => ({ lab: c.short,
+      st: 'border-radius:13px; padding:6px 12px; font-size:10px; font-weight:900; letter-spacing:0.08em; cursor:pointer; ' + (cyc === i ? (i === 0 ? 'color:' + (L ? '#F5F2E1' : '#0F1E14') + '; background:radial-gradient(circle at 32% 28%, ' + (L ? '#63B168, #2E7434' : '#9FDC9F, #3E7D46') + ' 85%); box-shadow:0 0 14px rgba(99,177,104,0.5)' : 'color:#8A5A2E; background:linear-gradient(145deg, #EBD9AE, #DfC894); box-shadow:0 4px 10px rgba(140,110,60,0.35)') : 'color:' + faint + '; ' + insBg + 'box-shadow:' + ins),
+      tap: () => this.setState({ cyc: i, sel: CY[i].def, venc: false, dayF: false }) })).reverse();
+    const mk = (r) => ({ e: r[0], tileSt: 'width:44px; height:44px; border-radius:16px; background:' + tile[r[1]] + '; display:flex; align-items:center; justify-content:center; font-size:20px; flex:none', t: r[2], s: r[3], a: r[4] });
+    const dayRow = { e: '🧾', tileSt: 'width:44px; height:44px; border-radius:16px; background:' + tile.mint + '; display:flex; align-items:center; justify-content:center; font-size:20px; flex:none', t: 'Movimientos del día', s: 'filtrado por día seleccionado', a: '−' + gg[0] };
+    const s = {
+      phone: tr + 'width:393px; border-radius:46px; background:' + bg + '; box-shadow:0 34px 80px rgba(8,14,8,0.55); flex:none; font-family:Nunito,sans-serif' + (cur ? '' : '; outline:3px dashed ' + (L ? '#C9A05A' : '#8A6A38') + '; outline-offset:6px'),
+      h1: tr + 'font-size:32px; font-weight:900; color:' + text + '; line-height:1.05',
+      sub13: tr + 'font-size:13px; font-weight:700; color:' + sub + '; margin-top:3px',
+      sub11: tr + 'font-size:11px; font-weight:800; color:' + sub + '; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      arrow: tr + 'width:40px; height:40px; border-radius:50%; background:' + card + '; box-shadow:' + raise + '; display:flex; align-items:center; justify-content:center; color:' + d2 + '; font-size:19px; font-weight:900; cursor:pointer; flex:none',
+      hero: tr + 'position:relative; margin-top:14px; border-radius:32px; background:linear-gradient(155deg, #2E6B33 0%, #3F8746 55%, #57A05C 100%); box-shadow:' + (L ? '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)' : '14px 14px 30px rgba(0,0,0,0.5), -6px -6px 16px rgba(101,152,113,0.14), inset 0 1px 0 rgba(164,227,166,0.18)') + '; padding:18px 18px 16px',
+      calCard: tr + 'animation:mfIn 0.3s cubic-bezier(0.22,0.9,0.3,1) both; margin-top:14px; border-radius:28px; background:' + card + '; box-shadow:' + raise + '; padding:16px 16px 14px',
+      calLab: tr + 'font-size:11px; font-weight:800; letter-spacing:0.14em; color:' + sub,
+      calHint: tr + 'font-size:11px; font-weight:800; color:' + green,
+      dayCard: tr + 'animation:mfIn 0.3s cubic-bezier(0.22,0.9,0.3,1) both; margin-top:14px; border-radius:28px; background:' + card + '; box-shadow:' + raise + '; padding:16px 18px 16px',
+      dayNum: tr + 'font-size:42px; font-weight:900; color:' + text + '; line-height:1',
+      statLab: tr + 'font-size:9.5px; font-weight:800; letter-spacing:0.1em; color:' + faint,
+      statValOr: tr + 'font-size:19px; font-weight:900; color:' + (L ? '#B05E2F' : '#F2A87E') + '; margin-top:2px',
+      statVal: tr + 'font-size:19px; font-weight:900; color:' + text + '; margin-top:2px',
+      cta: tr + 'border-radius:20px; padding:13px; text-align:center; font-size:13.5px; font-weight:900; color:' + (L ? '#F5F2E1' : '#0F1E14') + '; background:radial-gradient(circle at 32% 28%, ' + (L ? '#63B168, #2E7434' : '#9FDC9F, #3E7D46') + ' 85%); box-shadow:0 8px 16px rgba(46,116,52,0.3), inset 0 2px 3px rgba(255,255,255,0.3); margin-top:13px; cursor:pointer',
+      ghost: tr + 'border-radius:20px; padding:12px; text-align:center; font-size:13px; font-weight:800; color:' + d2 + '; ' + insBg + 'box-shadow:' + ins + '; margin-top:9px; cursor:pointer',
+      tgl: tr + 'border-radius:18px; padding:10px 16px; font-size:11.5px; font-weight:900; color:#F1EEDD; background:linear-gradient(145deg, #2A4433, #14241A); box-shadow:6px 6px 14px rgba(0,0,0,0.45), -6px -6px 14px rgba(101,152,113,0.14); cursor:pointer',
+      tglWarn: tr + 'border-radius:18px; padding:10px 16px; font-size:11.5px; font-weight:900; color:' + (venc ? '#FFF3E8' : '#F2A87E') + '; background:' + (venc ? '#C25B33' : 'linear-gradient(145deg, #2A4433, #14241A)') + '; box-shadow:6px 6px 14px rgba(0,0,0,0.45); cursor:pointer',
+      cycSel: 'flex:1; border-radius:20px; padding:10px 14px; text-align:center; ' + (cur ? 'background:radial-gradient(circle at 32% 28%, ' + (L ? '#63B168, #2E7434' : '#9FDC9F, #3E7D46') + ' 85%); box-shadow:0 10px 20px rgba(46,116,52,0.35), inset 0 2px 3px rgba(255,255,255,0.3)' : insBg + 'box-shadow:' + ins),
+      cycDot: 'width:7px; height:7px; border-radius:50%; background:' + (cur ? '#C9F3C6; box-shadow:0 0 8px rgba(201,243,198,0.9)' : (L ? '#C9A05A' : '#D9B36A')),
+      cycLab: 'font-size:9.5px; font-weight:900; letter-spacing:0.12em; color:' + (cur ? 'rgba(240,248,230,0.9)' : (L ? '#8A5A2E' : '#D9B36A')),
+      cycName: 'font-size:13.5px; font-weight:900; margin-top:2px; color:' + (cur ? (L ? '#F5F2E1' : '#0F1E14') : text),
+      arrowL: 'width:40px; height:40px; border-radius:50%; background:' + card + '; box-shadow:' + raise + '; display:flex; align-items:center; justify-content:center; color:' + d2 + '; font-size:19px; font-weight:900; cursor:pointer; flex:none; opacity:' + (cyc === 2 ? '0.35' : '1'),
+      arrowR: 'width:40px; height:40px; border-radius:50%; background:' + card + '; box-shadow:' + raise + '; display:flex; align-items:center; justify-content:center; color:' + d2 + '; font-size:19px; font-weight:900; cursor:pointer; flex:none; opacity:' + (cur ? '0.35' : '1'),
+      closedBar: tr + 'animation:mfIn 0.32s cubic-bezier(0.22,0.9,0.3,1) both; display:flex; align-items:center; gap:9px; margin-top:14px; border-radius:16px; padding:10px 13px; color:' + (L ? '#8A5A2E' : '#E8C88A') + '; background:' + (L ? 'linear-gradient(145deg, #F0E4C4, #E4D4A8)' : 'linear-gradient(145deg, #3A3322, #2A2416)') + '; box-shadow:' + (L ? '6px 6px 14px rgba(140,110,60,0.3), -6px -6px 14px rgba(255,255,255,0.8)' : '6px 6px 14px rgba(0,0,0,0.5)'),
+      closedBtn: tr + 'flex:none; font-size:11px; font-weight:900; text-decoration:underline; cursor:pointer',
+      filtLab: tr + 'font-size:11.5px; font-weight:800; letter-spacing:0.16em; color:' + sub + '; margin-top:20px; padding:0 4px',
+      fade: tr + 'position:absolute; top:6px; right:0; bottom:24px; width:30px; z-index:2; background:linear-gradient(90deg, ' + (L ? 'rgba(233,235,224,0), #E9EBE0' : 'rgba(22,39,28,0), #16271C') + '); pointer-events:none',
+      movChip: tr + 'font-size:12px; font-weight:900; color:' + green + '; cursor:pointer',
+      gHead: tr + 'min-width:0; font-size:11px; font-weight:800; letter-spacing:0.12em; color:' + sub + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      gTot: tr + 'flex:none; margin-left:10px; font-size:13px; font-weight:900; color:' + text,
+      row: tr + 'display:flex; align-items:center; gap:12px; border-radius:22px; background:' + card + '; box-shadow:' + raise + '; padding:12px 14px',
+      rowT: tr + 'font-size:14.5px; font-weight:900; color:' + text + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      rowS: tr + 'font-size:11.5px; font-weight:700; color:' + sub + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      more: tr + 'display:flex; align-items:center; justify-content:center; border-radius:18px; padding:12px; ' + insBg + 'box-shadow:' + ins + '; font-size:11.5px; font-weight:900; color:' + green + '; cursor:pointer',
+      navBar: tr + 'margin:22px 18px 0; border-radius:32px; background:' + (L ? 'linear-gradient(145deg, #F0F2E7, #E1E4D6)' : 'linear-gradient(145deg, #1D3426, #132318)') + '; box-shadow:' + (L ? '10px 10px 22px rgba(151,160,136,0.45), -10px -10px 22px rgba(255,255,255,0.95)' : '10px 10px 22px rgba(0,0,0,0.55), -10px -10px 22px rgba(101,152,113,0.12)') + '; padding:14px 22px; display:flex; align-items:center; justify-content:space-between',
+      navIdle: tr + 'font-size:11px; font-weight:800; color:' + sub,
+      navOn: tr + 'font-size:11px; font-weight:900; color:' + green + '; border-radius:14px; padding:8px 13px; ' + insBg + 'box-shadow:' + ins,
+      fabOuter: tr + 'position:relative; top:-30px; margin-bottom:-30px; width:62px; height:62px; border-radius:50%; background:' + (L ? 'linear-gradient(145deg, #6DBC71, #327E39)' : 'linear-gradient(145deg, #F2F4EA, #DCE0D0)') + '; box-shadow:' + (L ? '7px 7px 15px rgba(120,140,110,0.55), -6px -6px 13px rgba(255,255,255,0.9)' : '0 0 16px rgba(140,225,150,0.22), 7px 7px 15px rgba(0,0,0,0.55)') + '; display:flex; align-items:center; justify-content:center; color:' + (L ? '#F5F2E1' : '#2E7C39'),
+      fabInner: tr + 'width:44px; height:44px; border-radius:50%; box-shadow:' + (L ? 'inset 4px 4px 8px rgba(18,52,24,0.55), inset -4px -4px 8px rgba(170,225,170,0.4)' : 'inset 4px 4px 8px rgba(151,160,136,0.4), inset -4px -4px 8px rgba(255,255,255,0.85)') + '; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:900',
+      homeInd: tr + 'width:132px; height:5px; border-radius:3px; background:' + (L ? '#24382A' : '#F1EEDD') + '; opacity:0.75; margin:14px auto 12px',
+      cycTrig: tr + 'max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-flex; align-items:center; gap:6px; margin-top:6px; font-size:13px; font-weight:800; color:' + (cur ? sub : (L ? '#8A5A2E' : '#D9B36A')) + '; cursor:pointer',
+      cycTrigDot: 'width:7px; height:7px; border-radius:50%; flex:none; background:' + (cur ? (L ? '#2E7C39' : '#A4E3A6') + '; box-shadow:0 0 8px rgba(120,220,130,0.7); animation:mfPulse 2.6s ease-in-out infinite' : (L ? '#C9A05A' : '#D9B36A')),
+      cycCaret: 'font-size:9px; opacity:0.75',
+      brotBtn: 'display:flex; flex-direction:column; align-items:center; cursor:pointer; flex:none; margin-top:-4px',
+      brotBadge: tr + 'margin-top:-7px; border-radius:11px; padding:2.5px 9px; font-size:9.5px; font-weight:900; color:' + green + '; ' + insBg + 'box-shadow:' + ins,
+      dd: 'animation:mfDrop 0.24s cubic-bezier(0.22,0.9,0.3,1) both; transform-origin:top center; margin-top:12px; border-radius:20px; background:' + card + '; box-shadow:' + raise + '; padding:8px; display:flex; flex-direction:column; gap:2px',
+      backBtn: tr + 'flex:1; min-width:0; display:flex; align-items:center; gap:9px; min-height:44px; box-sizing:border-box; border-radius:16px; padding:0 14px 0 7px; background:' + card + '; box-shadow:' + raise + '; cursor:pointer',
+      backIco: tr + 'flex:none; width:30px; height:30px; border-radius:10px; ' + insBg + 'box-shadow:' + ins + '; display:flex; align-items:center; justify-content:center; color:' + green,
+      backTxt: tr + 'min-width:0; font-size:13px; font-weight:900; color:' + text + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      selBadSt: tr + 'flex:none; max-width:40%; border-radius:12px; padding:6px 10px; font-size:10px; font-weight:900; color:' + (L ? '#A84A2F' : '#F2A87E') + '; background:' + (L ? '#F3C9BC' : 'rgba(217,115,85,0.24)') + '; box-shadow:inset 2px 2px 4px rgba(' + (L ? '150,80,50,0.2' : '0,0,0,0.45') + '); white-space:nowrap; overflow:hidden; text-overflow:ellipsis',
+      calLabDay: tr + 'margin-top:14px; font-size:11px; font-weight:800; letter-spacing:0.14em; color:' + sub,
+      outStrip: 'animation:mfIn 0.3s cubic-bezier(0.22,0.9,0.3,1) both; display:flex; align-items:center; gap:10px; margin-top:13px; border-radius:16px; padding:9px 12px; background:' + (L ? '#F5DCCE' : 'rgba(217,115,85,0.14)') + '; box-shadow:inset 2px 2px 5px rgba(150,80,50,0.2)',
+      outStripTxt: 'font-size:11px; font-weight:800; color:' + (L ? '#8A4A30' : '#F2A87E') + '; line-height:1.45',
+    };
+    const ddItems = CY.map((c, i) => ({
+      icon: i === 0 ? '●' : '📁',
+      icSt: 'flex:none; font-size:' + (i === 0 ? '9px' : '12px') + '; color:' + (L ? '#2E7C39' : '#A4E3A6'),
+      name: c.name, nameSt: 'flex:1; font-size:11.5px; font-weight:900; color:' + text,
+      tag: i === 0 ? 'EN CURSO' : c.tag.replace('EDICIÓN CERRADA · ', ''),
+      tagSt: 'flex:none; font-size:10.5px; font-weight:800; color:' + (i === 0 ? green : (L ? '#B05E2F' : '#D9B36A')),
+      st: 'transition:background 0.3s ease, box-shadow 0.3s ease, transform 0.14s ease; display:flex; align-items:center; gap:9px; border-radius:13px; padding:9px 11px; cursor:pointer; ' + (cyc === i ? insBg + 'box-shadow:' + ins : ''),
+      tap: () => this.setState({ cyc: i, sel: CY[i].def, venc: false, dayF: false, dd: false }),
+    }));
+    return {
+      s, cells, chips, dots, ddItems,
+      ddOpen: dd,
+      toggleDd: () => this.setState({ dd: !dd }),
+      goJardin: () => {},
+      brotPose: venc ? 'worried' : (cur ? 'wave' : 'think'),
+      cycTrigLab: cur ? 'Ciclo 20 jun → 19 jul · día 18' : C.name + ' · cerrada',
+      showCal: !dayF, showDay: dayF, outSel: out,
+      themeLabel: D ? '☀️ Ver en claro' : '🌙 Ver en oscuro',
+      vencLabel: venc ? '⚠️ Ciclo vencido ACTIVO' : '⚠️ Simular fin de ciclo sin cobro',
+      toggleTheme: () => this.setState({ dark: !D }),
+      toggleVenc: () => this.setState({ venc: !venc, cyc: 0 }),
+      confirmCobro: () => this.setState({ venc: false }),
+      prevCycle: () => { if (cyc < 2) this.setState({ cyc: cyc + 1, sel: CY[cyc + 1].def, venc: false, dayF: false }); },
+      nextCycle: () => { if (cyc > 0) this.setState({ cyc: cyc - 1, sel: CY[cyc - 1].def, dayF: false }); },
+      prevDay: () => move(-1), nextDay: () => move(1),
+      clearDay: () => this.setState({ dayF: false, sel: C.def }),
+      cycleSub: cur ? 'Ciclo 20 jun → 19 jul' : 'Estás viendo una edición cerrada',
+      cycTag: C.tag, cycName: cur ? C.name + ' · día 18 de 30' : C.name,
+      viewingClosed: !cur, isCurrent: cur, showAlert: cur && venc,
+      heroTag: cur ? 'TOTAL VISIBLE' : 'TOTAL DE LA EDICIÓN', heroChip: C.movs, heroTotal: C.total, heroProm: C.prom,
+      cat1v: C.c1, cat1w: 'width:' + C.w1 + '; height:100%; border-radius:4px; background:linear-gradient(90deg, #C9F3C6, #EFF6E2); transition:width 0.55s cubic-bezier(0.22,0.9,0.3,1)',
+      cat2v: C.c2, cat2w: 'width:' + C.w2 + '; height:100%; border-radius:4px; background:linear-gradient(90deg, #C9F3C6, #EFF6E2); transition:width 0.55s cubic-bezier(0.22,0.9,0.3,1)',
+      cat3v: C.c3, cat3w: 'width:' + C.w3 + '; height:100%; border-radius:4px; background:linear-gradient(90deg, #C9F3C6, #EFF6E2); transition:width 0.55s cubic-bezier(0.22,0.9,0.3,1)',
+      selN: out ? '+' + Math.floor(sel) : String(sel),
+      selSub: out ? 'FUERA DE CICLO · va al próximo al confirmar' : (cur ? 'ciclo 20 jun → 19 jul' : C.name),
+      selG: gg[0], selM: gg[1], selBad: isBad || out, selBadLab: out ? 'Fuera de ciclo' : 'Día de exceso',
+      movChipLab: dayF ? '✕ Día ' + (out ? '+' + Math.floor(sel) : sel) + ' · ver todo' : (cur ? '64 en el ciclo' : 'edición cerrada'),
+      g1Lab: dayF ? 'DÍA ' + (out ? '+' + Math.floor(sel) : sel) + ' SELECCIONADO' : C.g1[0],
+      g1Tot: dayF ? '−' + gg[0] : C.g1[1],
+      r1: dayF ? dayRow : mk(C.r1), r2: dayF ? { e: '', tileSt: 'display:none', t: '', s: '', a: '' } : mk(C.r2),
+      showG2: !dayF, g2Lab: C.g2[0], g2Tot: C.g2[1], r3: mk(C.r3), r4: mk(C.r4),
+    };
+  }
+}
+</script>
+</body>
+</html>

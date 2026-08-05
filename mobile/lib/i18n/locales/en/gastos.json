@@ -10,7 +10,12 @@
     "totalDay": "DAY TOTAL",
     "dailyAverage": "DAILY AVERAGE",
     "lastDays": "· last {{days}}d",
-    "topCategories": "TOP CATEGORIES BY WEIGHT"
+    "topCategories": "TOP CATEGORIES BY WEIGHT",
+    "sublineReadOnly": "📁 Read only",
+    "sublineOutDays_one": "⚠ {{count}} day outside the cycle",
+    "sublineOutDays_other": "⚠ {{count}} days outside the cycle",
+    "emptySub": "You have not logged any expenses in this cycle yet.",
+    "emptyCategories": "Your heaviest categories will show up here 🌱"
   },
   "closed": {
     "currentTag": "CURRENT",
@@ -19,7 +24,10 @@
     "calendarHint": "month summary",
     "sectionChip": "closed edition",
     "movementsTitle": "Movements aren't kept",
-    "movementsSub": "We keep each closed edition's summary —the total, the categories and your month— but the movement-by-movement detail isn't archived."
+    "movementsSub": "We keep each closed edition's summary —the total, the categories and your month— but the movement-by-movement detail isn't archived.",
+    "emptyTitle": "{{month}} closed with no expenses logged",
+    "emptyBody": "A closed edition cannot be edited, but you can review the others.",
+    "backToCurrent": "Back to the current cycle ›"
   },
   "overdue": {
     "title": "Your cycle ended on day {{day}}",
@@ -31,7 +39,12 @@
     "outCellSub": "OUT",
     "outBadge": "Outside cycle",
     "outDaySub": "Outside cycle · moves to the next one once confirmed",
-    "outDayChip": "✕ Day +{{day}} · see all"
+    "outDayChip": "✕ Day +{{day}} · see all",
+    "outNoticeTitle_one": "{{count}} expense outside the cycle",
+    "outNoticeTitle_other": "{{count}} expenses outside the cycle",
+    "outNoticeSub": "They move to the next cycle once you confirm the payment",
+    "outNoticeCta": "See days",
+    "rowNote": "It stays outside the cycle until you confirm the payment."
   },
   "list": {
     "movementsTitle": "Movements",
@@ -53,7 +66,8 @@
       "calendarDescription": "A calendar with your spending days this month.",
       "listTitle": "Your movements",
       "listDescription": "The detail by day, with category and author."
-    }
+    },
+    "ghostSub": "Log your first expense and this list builds itself, grouped by day."
   },
   "smartFilter": {
     "eyebrow": "FILTER BY CATEGORY",
@@ -142,8 +156,24 @@
       "now": "today",
       "fut": "future day",
       "fuera": "outside the cycle",
-      "empty": "no expenses logged"
-    }
+      "empty": "no expenses logged",
+      "none": "not here yet"
+    },
+    "hintTapShort": "tap a day",
+    "hintOverdue_one": "+{{count}} outside the cycle",
+    "hintOverdue_other": "+{{count}} outside the cycle",
+    "hintClosed": "read only",
+    "hintFresh": "day {{day}} of {{total}}",
+    "titleMonth": "{{month}} AT A GLANCE",
+    "freshNote": "It fills in as you log. The ",
+    "freshNoteStrong": "dotted ones",
+    "freshNoteTail": " are days that have not arrived yet.",
+    "backToCalendar": "Back to the calendar",
+    "noActionsFuture": "No actions — future day",
+    "noActionsClosed": "No actions — closed edition",
+    "cleanDayLine": "No-spend day 🌿 you added +1 to your garden",
+    "cleanDayBadge": "Clean day",
+    "futureDaySub": "has not arrived yet"
   },
   "noSpendConfirm": {
     "title": "You already have expenses logged today",
@@ -580,7 +610,60 @@
   "addExpense": {
     "title": "Add expense",
     "formErrorTitle": "We couldn't open the form",
-    "createCategory": "Create category"
+    "createCategory": "Create category",
+    "wizard": {
+      "stepNew": "New expense",
+      "stepReview": "Review the impact",
+      "backToPrevious": "Go back to the previous step",
+      "close": "Close",
+      "cta": {
+        "seeImpact": "See impact →",
+        "completeData": "Complete the details",
+        "seeImpactA11y": "See impact",
+        "completeDataA11y": "Complete the details",
+        "saving": "Saving…",
+        "confirm": "Confirm and save ✓",
+        "confirmA11y": "Confirm and save the expense"
+      },
+      "errors": {
+        "createFailed": "We couldn't save the expense"
+      },
+      "step1": {
+        "amountLabel": "AMOUNT",
+        "categoryLabel": "CATEGORY",
+        "descriptionLabel": "DESCRIPTION",
+        "descriptionPlaceholder": "E.g. Groceries, gas, coffee",
+        "backdatePill": "LOGGING FOR {{date}}",
+        "backdatePillA11y": "You're logging an expense for {{date}}"
+      },
+      "step2": {
+        "impactEyebrow": "IMPACT ON TODAY'S BUDGET",
+        "beforeShort": "BEFORE",
+        "afterShort": "NOW",
+        "pctOfBudget": "{{pct}}% of your budget",
+        "delta": "+{{pp}} points",
+        "exceeds": "You're over by {{amount}}",
+        "exceedsHint": "You can still log it: the overage comes out of what's left this month.",
+        "noBase": "There's no daily budget to compare against yet.",
+        "noIncome": "Add your monthly income to see how each expense lands.",
+        "noIncomeCta": "Set up income",
+        "remainingEyebrow": "LEFT TODAY",
+        "notesLabel": "NOTE",
+        "notesPlaceholder": "Optional",
+        "forDateLabel": "DATE",
+        "forDateToday": "Today",
+        "noCategory": "No category",
+        "summaryFallbackIcon": "🧾",
+        "healthBadge": {
+          "high": "High",
+          "mid": "Medium",
+          "healthy": "Healthy"
+        },
+        "outsideCycleTitle": "Outside the current cycle",
+        "outsideCycleBefore": "This date falls in the previous cycle, so this expense won't come out of today's budget.",
+        "outsideCycleAfter": "This date falls in the next cycle, so this expense won't come out of today's budget."
+      }
+    }
   },
   "addIncome": {
     "title": "Add income",
@@ -608,6 +691,46 @@
       "birthdayGift": "Birthday gift",
       "freelance": "Freelance",
       "refund": "Refund"
+    },
+    "wizard": {
+      "stepNew": "New income",
+      "stepReview": "Review the impact",
+      "backToPrevious": "Go back to the previous step",
+      "close": "Close",
+      "cta": {
+        "seeImpact": "See impact →",
+        "completeData": "Complete the details",
+        "seeImpactA11y": "See impact",
+        "completeDataA11y": "Complete the details",
+        "saving": "Saving…",
+        "confirm": "Confirm and save ✓",
+        "confirmA11y": "Confirm and save the income"
+      },
+      "errors": {
+        "createFailed": "We couldn't save the income"
+      },
+      "step1": {
+        "amountLabel": "AMOUNT",
+        "kindLabel": "WHERE FROM?",
+        "kindFlagged": "Pick where it comes from",
+        "descriptionLabel": "DESCRIPTION",
+        "descriptionPlaceholder": "E.g. Salary, sale, refund"
+      },
+      "step2": {
+        "whenEyebrow": "WHEN?",
+        "impactEyebrow": "IMPACT ON YOUR CYCLE",
+        "availableEyebrow": "AVAILABLE THIS MONTH",
+        "dailyBudgetEyebrow": "DAILY BUDGET",
+        "beforeShort": "BEFORE",
+        "afterShort": "NOW",
+        "dailyBudgetUnchanged": "Your daily budget doesn't change: this income adds to your monthly balance.",
+        "dailyBudgetChanged": "Your daily budget goes to {{amount}} per day.",
+        "outsideCycleTitle": "Outside the current cycle",
+        "outsideCycleBefore": "This date falls in the previous cycle, so this income won't add to today's balance.",
+        "outsideCycleAfter": "This date falls in the next cycle, so this income won't add to today's balance.",
+        "summaryFallbackIcon": "💵"
+      },
+      "habitTagline": "Every income you log makes your month clearer."
     }
   },
   "categoryTemplates": {
@@ -863,5 +986,16 @@
         ]
       }
     }
+  },
+  "filterStatus": {
+    "noResults": "No results",
+    "unused": "Not used yet"
+  },
+  "filterV2": {
+    "eyebrowActive": "ACTIVE FILTER",
+    "ghostHint": "The dotted chips are the categories that turn on once you log expenses in each one.",
+    "emptyTitle": "Nothing in {{category}} this cycle",
+    "prevEditionSpent": "Last edition you spent",
+    "clearCta": "✕ Clear filter"
   }
 }

@@ -28,6 +28,14 @@ import {
   type GastosMode,
   type GastosSpec,
 } from '@/components/redesign/gastos/gastos-spec'
+import { BackToCalendarButton } from '@/components/redesign/gastos/parts/back-to-calendar'
+import {
+  GhostChip,
+  GhostMovRow,
+  GhostOutline,
+  GhostWeekBars,
+  StatusPill,
+} from '@/components/redesign/gastos/parts/ghost'
 import { neoParticlePresets } from '@/theme/neo-tokens'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { usePressScale } from '@/hooks/use-press-scale'
@@ -288,7 +296,10 @@ function gastosReducer(st: GastosState, a: GastosAction): GastosState {
 // CON gasto dentro de presupuesto, sí pintado verde) y de 'fut' (futuro, pozo
 // inset). El demo del kit nunca produce 'empty' (buildCells → ok/bad/now/fut/
 // fuera), así que el render aprobado queda idéntico.
-export type DayKind = 'ok' | 'bad' | 'now' | 'fut' | 'fuera' | 'empty'
+/** `empty` = día pasado sin gastos (celda neutra) · `fut` = día futuro con pozo
+ *  apagado · `none` (v2, D-atom "sin datos") = MOLDE PUNTEADO, para el ciclo
+ *  recién arrancado donde el punteado promete lo que se va a pintar. */
+export type DayKind = 'ok' | 'bad' | 'now' | 'fut' | 'fuera' | 'empty' | 'none'
 
 export interface DayCell {
   key: string
@@ -326,6 +337,9 @@ export interface MovRowVM {
    *  igual que la vieja `IncomeRow`. default/'expense' = tratamiento neutro del
    *  gasto (el demo nunca setea `kind`, así que rinde idéntico al aprobado). */
   kind?: 'expense' | 'income'
+  /** v2 · M-3 — nota bajo la fila ("Queda fuera del ciclo hasta confirmar el
+   *  cobro."). Solo la llevan los movimientos fuera de ciclo. */
+  note?: string
 }
 
 interface MovGroupVM {
@@ -369,6 +383,8 @@ interface GastosDerived {
   dayMovs: string
   isOut: boolean
   showCtas: boolean
+  dayVariant: 'live' | 'future' | 'closed'
+  dayNote: string | undefined
   filterChips: { label: string; count: string; active: boolean; catIcon: string | null }[]
   sectionChipLabel: string
   groups: MovGroupVM[]
@@ -383,9 +399,10 @@ function buildCells(cyc: number, sel: number, venc: boolean, empty = false): Day
   for (const n of ORDER) {
     let kind: DayKind = 'ok'
     if (empty) {
-      // Sin gastos → grilla del mes NEUTRA: todos los días como 'fut' (pozo
-      // inset muted, sin color de gasto), salvo HOY que queda resaltado.
-      kind = n === 7 ? 'now' : 'fut'
+      // v2 · CAL-4/EV2 — sin gastos la grilla va en MOLDE PUNTEADO ('none'),
+      // salvo HOY que queda resaltado. v1 la dejaba en 'fut' (30 pozos
+      // apagados), que se leía como "roto" y no como "todavía no pasó nada".
+      kind = n === 7 ? 'now' : 'none'
     } else if (cur) {
       if (n === 7) kind = 'now'
       else if (n >= 8 && n <= 19) kind = 'fut'
@@ -467,7 +484,9 @@ function deriveGastos(st: GastosState): GastosDerived {
       active: cyc === i,
     })),
     heroTag: cur ? 'TOTAL VISIBLE' : 'TOTAL DE LA EDICIÓN',
-    heroChip: C.movs,
+    // v2 · H-4 — el chip TAMBIÉN va en cero: el molde tiene que ser el mismo
+    // esqueleto que el hero lleno (v1 mostraba "64 mov" sobre un total de $0).
+    heroChip: empty ? '0 mov · Todas' : C.movs,
     heroTotal: empty ? '$0' : C.total,
     heroProm: C.prom,
     categories: [
@@ -488,6 +507,16 @@ function deriveGastos(st: GastosState): GastosDerived {
     isOut: out,
     // [OWNER-D] día FUERA de ciclo → sin CTAs (solo strip Brot-sad + nota).
     showCtas: cur && !out,
+    // v2 · DS-4/DS-6 — el día no admite acciones y lo DICE. `fut` ya existía
+    // como derivado (marca el "— / 0"); v1 igual dibujaba los dos CTAs para un
+    // día que no ocurrió, y en una edición cerrada para uno que no se puede
+    // tocar. La nota reemplaza a los botones, no se suma.
+    dayVariant: fut ? ('future' as const) : cur ? ('live' as const) : ('closed' as const),
+    dayNote: fut
+      ? 'Sin acciones — día futuro'
+      : cur
+        ? undefined
+        : 'Sin acciones — edición cerrada',
     filterChips: CATS.map((c, i) => ({ label: c[0], count: c[1], active: cat === i, catIcon: c[2] })),
     sectionChipLabel: empty
       ? '0 movimientos'
@@ -866,7 +895,10 @@ export interface GastosOverdueBannerProps {
    *  handler el banner queda informativo (título + sub, sin botón de acción),
    *  en paridad con la Home (que rutea al no-owner sin ofrecer confirmar). */
   onConfirm?: () => void
-  /** Anima el Brot `wow` del banner. Default `true` → el preview aprobado del
+  /** v2 · B-1 usa `worried` (el ciclo venció sin confirmar) y B-2 usa `sad`
+   *  (los gastos ya quedaron afuera). v1 usaba `wow` para los dos. */
+  brotPose?: BrotPose
+  /** Anima el Brot del banner. Default `true` → el preview aprobado del
    *  kit queda idéntico. El cableado real lo pasa `false`: este banner se monta
    *  DENTRO del `ListHeaderComponent` de la SectionList del feed, así que su
    *  loop Skia (PictureRecorder + drawBrot cada 16ms en el UI runtime) competía
@@ -881,6 +913,7 @@ export function GastosOverdueBanner({
   confirmLabel = '✓ Confirmar',
   confirmA11yLabel = 'Confirmar cobro',
   onConfirm,
+  brotPose = 'worried',
   animated = true,
 }: GastosOverdueBannerProps) {
   const s = GASTOS_SPEC[mode]
@@ -889,10 +922,10 @@ export function GastosOverdueBanner({
     <RiseView translateY={12} style={styles.blockSpacing}>
       <View style={[styles.banner, { experimental_backgroundImage: s.alertGradientCss, boxShadow: s.alertShadow }]}>
         <View style={styles.bannerBrot}>
-          <BrotMascot pose="wow" size={48} shadow={false} animated={animated} />
+          <BrotMascot pose={brotPose} size={48} shadow={false} animated={animated} />
         </View>
         <View style={styles.bannerTexts}>
-          <Text style={[styles.bannerTitle, { color: s.alertTitleInk }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.bannerTitle, { color: s.alertTitleInk }]}>{title}</Text>
           <Text style={[styles.bannerSub, { color: s.alertSubInk }]}>{subtitle}</Text>
         </View>
         {onConfirm ? (
@@ -1193,12 +1226,31 @@ export interface GastosHeroProps {
    *  aprobado). El pico se marca con `Math.max`; las alturas mapean [0,1] →
    *  [BAR_MIN_H, BAR_MAX_H] sin cambiar el visual. */
   recentDailyBars?: number[]
-  /** Usuario nuevo / ciclo sin movimientos → hero compacto: pozo "$0" + sub
-   *  + fila Brot + CTA crema. Oculta chip, promedio/7 días y categorías. */
+  /** Usuario nuevo / ciclo sin movimientos → H-4/EV1: pozo "$0" + sub + Brot
+   *  `wave`, promedio "—" con las 7 barras en MOLDE PUNTEADO y, en lugar de las
+   *  barras de categoría, la promesa de que van a aparecer.
+   *
+   *  v2 (2026-08-04) CAMBIA el hero vacío aprobado en v1, que ocultaba promedio
+   *  y categorías: el molde punteado le dice al usuario nuevo QUÉ va a ver acá,
+   *  cosa que el hueco en blanco no hacía. */
   empty?: boolean
   emptySub?: string
   emptyCtaLabel?: string
   onPressEmptyCta?: () => void
+  /** v2 · H-2/H-3 — sublínea dentro del pozo, bajo el monto: "📁 Solo lectura"
+   *  (edición cerrada) o "⚠ N días fuera del ciclo" (ciclo vencido). */
+  subline?: string
+  /** `warn` la tiñe de durazno (H-3). Default neutra (H-2/H-4). */
+  sublineTone?: 'neutral' | 'warn'
+  /** v2 · Brot dentro del pozo, anclado al dato que comenta: `think` en edición
+   *  cerrada, `worried` con días fuera, `wave` en el ciclo vacío. Ausente en
+   *  H-1 (ciclo normal: no hay nada que comentar). */
+  brotPose?: BrotPose
+  /** Anima el Brot del pozo. El cableado real lo pasa `false` — el hero vive en
+   *  el `ListHeaderComponent` del feed (ver `GastosOverdueBanner`). */
+  animated?: boolean
+  /** v2 · EV1 — pie del hero vacío, donde irían las barras de categoría. */
+  emptyCategoriesHint?: string
   /** Pausa las partículas del hero. Se mapea a `animated={!paused}` de
    *  `BrotParticles` (el nombre `paused` se conserva porque es el que ya
    *  usan `GastosHeader` y `GastosCalendar` para sus propios loops).
@@ -1225,10 +1277,15 @@ export function GastosHero({
   categories,
   recentDailyBars,
   empty = false,
-  emptySub = 'Cargá tu primer gasto para ver el resumen del ciclo',
+  emptySub = 'Todavía no registras gastos en este ciclo.',
   emptyCtaLabel = '+ Registrar gasto',
   onPressEmptyCta,
   paused = false,
+  subline,
+  sublineTone = 'neutral',
+  brotPose,
+  animated = true,
+  emptyCategoriesHint = 'Tus categorías con más peso van a aparecer aquí 🌱',
 }: GastosHeroProps) {
   const s = GASTOS_SPEC[mode]
   // Una sola lectura de reduced-motion para todo el hero (context read barato),
@@ -1274,10 +1331,11 @@ export function GastosHero({
     if (!empty && categories.length > 0) hasRevealedRef.current = true
   }, [empty, categories.length])
 
-  // Hero VACÍO — compacto: mantiene contenedor/partículas/forest del hero
-  // aprobado, pero solo eyebrow "TOTAL VISIBLE" + pozo "$0" (mismo estilo de
-  // monto) + sub crema, y una fila Brot `wave` + CTA crema. Sin chip de mov.,
-  // sin PROMEDIO DÍA / 7 días, sin top-3 categorías.
+  // Hero VACÍO (H-4 / EV1) — mantiene contenedor/partículas/forest del hero
+  // aprobado y conserva TODA la estructura del hero lleno, pero en molde: chip
+  // "0 mov", pozo "$0" + sub + Brot `wave`, `PROMEDIO DÍA —` con las 7 barras
+  // punteadas (con sus letras de día, la única pista de que el bloque es una
+  // semana) y, cerrando, la promesa de las categorías en vez de sus barras.
   if (empty) {
     return (
       <View style={[styles.hero, { experimental_backgroundImage: s.heroGradientCss, boxShadow: s.heroShadow }]}>
@@ -1290,40 +1348,68 @@ export function GastosHero({
           />
         </View>
         <View>
-          <View style={styles.heroTagRow}>
-            <View style={[styles.heroDot, { backgroundColor: s.heroDot }]} />
-            <Text style={[styles.heroTag, { color: s.heroTagInk }]}>{tag}</Text>
-          </View>
-
-          <View style={[styles.heroWell, { backgroundColor: s.wellBackground, boxShadow: s.wellShadow }]}>
-            <Text
-              style={[
-                styles.heroTotal,
-                {
-                  color: s.amountInk,
-                  textShadowColor: s.amountShadowColor,
-                  textShadowOffset: s.amountShadowOffset,
-                  textShadowRadius: s.amountShadowRadius,
-                },
-              ]}
-            >
-              {total}
-            </Text>
-            <Text style={[styles.heroEmptySub, { color: s.emptyHeroSubInk }]}>{emptySub}</Text>
-          </View>
-
-          <View style={styles.heroEmptyBrotRow}>
-            <View style={styles.heroEmptyBrotSlot}>
-              <BrotMascot pose="wave" size={40} shadow={false} />
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroTagRow}>
+              <View style={[styles.heroDot, { backgroundColor: s.heroDot }]} />
+              <Text style={[styles.heroTag, { color: s.heroTagInk }]}>{tag}</Text>
             </View>
-            <GastosEmptyCta
-              label={emptyCtaLabel}
-              ink={s.ctaCreamInk}
-              gradientCss={s.ctaCreamGradientCss}
-              shadow={s.ctaCreamShadow}
-              onPress={onPressEmptyCta}
-            />
+            {chip ? (
+              <View style={[styles.heroChip, { backgroundColor: s.heroChipBackground, boxShadow: s.heroChipShadow }]}>
+                <Text style={[styles.heroChipText, { color: s.heroChipInk }]}>{chip}</Text>
+              </View>
+            ) : null}
           </View>
+
+          <View style={[styles.heroWell, styles.heroWellRow, { backgroundColor: s.wellBackground, boxShadow: s.wellShadow }]}>
+            <View style={styles.heroWellTexts}>
+              <Text
+                style={[
+                  styles.heroTotal,
+                  {
+                    color: s.amountInk,
+                    textShadowColor: s.amountShadowColor,
+                    textShadowOffset: s.amountShadowOffset,
+                    textShadowRadius: s.amountShadowRadius,
+                  },
+                ]}
+              >
+                {total}
+              </Text>
+              <Text style={[styles.heroEmptySub, { color: s.emptyHeroSubInk }]}>{emptySub}</Text>
+            </View>
+            <View style={styles.heroWellBrot}>
+              <BrotMascot pose={brotPose ?? 'wave'} size={58} shadow={false} animated={animated} />
+            </View>
+          </View>
+
+          <View style={styles.heroStatsRow}>
+            <View>
+              <Text style={[styles.heroStatLabel, { color: s.heroLabelInk }]}>PROMEDIO DÍA</Text>
+              <Text style={[styles.heroStatValue, { color: s.heroValueInk }]}>—</Text>
+            </View>
+            <GhostWeekBars s={s} />
+          </View>
+
+          <View style={[styles.heroEmptyCatFoot, { borderTopColor: s.heroDividerColor }]}>
+            <Text style={[styles.heroEmptyCatText, { color: s.heroSublineInk }]}>{emptyCategoriesHint}</Text>
+          </View>
+
+          {/* EV1 no dibuja CTA en el hero (el "+ Registrar mi primer gasto"
+              vive en el bloque de movimientos, EV6). Se CONSERVA el de v1: es
+              la acción principal de un first-run y sacarla sería un cambio de
+              comportamiento, no de diseño. Queda hugging a la izquierda para no
+              competir con el CTA de abajo. */}
+          {onPressEmptyCta ? (
+            <View style={styles.heroEmptyCtaRow}>
+              <GastosEmptyCta
+                label={emptyCtaLabel}
+                ink={s.ctaCreamInk}
+                gradientCss={s.ctaCreamGradientCss}
+                shadow={s.ctaCreamShadow}
+                onPress={onPressEmptyCta}
+              />
+            </View>
+          ) : null}
         </View>
       </View>
     )
@@ -1382,20 +1468,48 @@ export function GastosHero({
                ~4 fotogramas de dígitos, que se lee como ruido y no como conteo.
             El crossfade cumple el objetivo (que el cambio se sienta suave) sin
             tocar el string final ni el idioma. */}
-        <View style={[styles.heroWell, { backgroundColor: s.wellBackground, boxShadow: s.wellShadow }]}>
-          <SwapText
-            value={total}
-            reduceMotion={reduceMotion}
-            style={[
-              styles.heroTotal,
-              {
-                color: s.amountInk,
-                textShadowColor: s.amountShadowColor,
-                textShadowOffset: s.amountShadowOffset,
-                textShadowRadius: s.amountShadowRadius,
-              },
-            ]}
-          />
+        {/* v2 · H-2/H-3 — el pozo pasa a fila cuando hay algo que comentar: el
+            monto (+ sublínea de contexto) a la izquierda y el Brot a la derecha,
+            anclado AL DATO que comenta (nunca decorativo suelto). Sin `subline`
+            ni `brotPose` el pozo queda exactamente como el aprobado en v1. */}
+        <View
+          style={[
+            styles.heroWell,
+            brotPose ? styles.heroWellRow : null,
+            { backgroundColor: s.wellBackground, boxShadow: s.wellShadow },
+          ]}
+        >
+          <View style={brotPose ? styles.heroWellTexts : null}>
+            <SwapText
+              value={total}
+              reduceMotion={reduceMotion}
+              style={[
+                styles.heroTotal,
+                {
+                  color: s.amountInk,
+                  textShadowColor: s.amountShadowColor,
+                  textShadowOffset: s.amountShadowOffset,
+                  textShadowRadius: s.amountShadowRadius,
+                },
+              ]}
+            />
+            {subline ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.heroSubline,
+                  { color: sublineTone === 'warn' ? s.heroSublineWarnInk : s.heroSublineInk },
+                ]}
+              >
+                {subline}
+              </Text>
+            ) : null}
+          </View>
+          {brotPose ? (
+            <View style={styles.heroWellBrot}>
+              <BrotMascot pose={brotPose} size={58} shadow={false} animated={animated} />
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.heroStatsRow}>
@@ -1543,6 +1657,17 @@ const DayCellView = memo(function DayCellView({
     ink = s.dayFueraInk
     weight = '900'
     stateShadow = s.dayFueraShadow
+  } else if (kind === 'none') {
+    // v2 · D-atom "sin datos" — MOLDE PUNTEADO. Se usa en el calendario recién
+    // arrancado (CAL-4/EV2): los días que todavía no llegaron se dibujan como
+    // el contorno de lo que se va a pintar, no como un pozo apagado. La copy
+    // de EV2 se apoya en esto ("Los punteados son días que todavía no
+    // llegaron"), así que el trazo se dibuja con SVG — un `dashed` de RN se
+    // rinde sólido en Android sobre borderRadius (ver parts/ghost.tsx).
+    bg = undefined
+    ink = s.dashInk
+    weight = '800'
+    stateShadow = '' // no usado: showStateShadow lo omite
   } else {
     bg = s.dayBienBackground
     ink = s.dayBienInk
@@ -1554,9 +1679,10 @@ const DayCellView = memo(function DayCellView({
   // shift; NO borderWidth). Los días FUERA conservan su anillo+glow propio.
   const selected = kind !== 'fuera' && cell.selected
   const shadow = selected ? s.daySelRing : stateShadow
-  // 'empty' (día pasado sin gastos) NO lleva sombra de estado — queda plano.
-  // Salvo seleccionado, donde el anillo (daySelRing) sí se muestra.
-  const showStateShadow = kind !== 'empty' || selected
+  // 'empty' (día pasado sin gastos) y 'none' (molde punteado) NO llevan sombra
+  // de estado — quedan planos. Salvo seleccionado, donde el anillo
+  // (daySelRing) sí se muestra.
+  const showStateShadow = (kind !== 'empty' && kind !== 'none') || selected
 
   const inner = (
     <View
@@ -1567,6 +1693,12 @@ const DayCellView = memo(function DayCellView({
         kind === 'fuera' ? { experimental_backgroundImage: s.dayFueraBackgroundCss } : null,
       ]}
     >
+      {/* v2 · el contorno del molde va DEBAJO del contenido y no come layout
+          (absolute), así que la celda mantiene su alto fijo. Se apaga cuando la
+          celda está seleccionada: ahí manda el anillo. */}
+      {kind === 'none' && !selected ? (
+        <GhostOutline stroke={s.dashStroke} radius={GASTOS_RADII.day} />
+      ) : null}
       {/* Halo de warning (solo días FUERA-DE-CICLO): subcomponente propio que
           monta el pulse solo para estas celdas (FIX A2). */}
       {isFuera ? <FueraGlow s={s} paused={paused} /> : null}
@@ -1666,6 +1798,7 @@ const DEFAULT_CALENDAR_A11Y: CalendarA11yStrings = {
     fut: 'día futuro',
     fuera: 'fuera del ciclo',
     empty: 'sin gastos registrados',
+    none: 'todavía no llegó',
   },
 }
 
@@ -1685,13 +1818,22 @@ export interface GastosCalendarProps {
   cells: DayCell[]
   onSelectDay?: (n: number) => void
   /** Vacío: la grilla se renderiza neutra y el hint invita a cargar en vez
-   *  de "tocá un día". */
+   *  de "toca un día". */
   empty?: boolean
   /** Override del hint del encabezado. El cableado real lo usa en modo
    *  edición CERRADA (solo lectura, sin `onSelectDay`) para explicar que la
    *  grilla es un resumen y no un selector. Ausente → hint por defecto
    *  (idéntico al aprobado). */
   hint?: string
+  /** v2 · CAL-3 — en una edición cerrada el título nombra el mes
+   *  ("MAYO EN UN VISTAZO"): "TU MES" leería como el ciclo en curso. */
+  title?: string
+  /** v2 · EV2 — strip explicativo bajo la grilla (Brot `think` + copy). Solo
+   *  aparece en el calendario recién arrancado, donde el punteado necesita
+   *  traducción. */
+  footNote?: { text: string; strong?: string; tail?: string }
+  /** Anima el Brot del strip de `footNote`. El cableado real lo pasa `false`. */
+  animated?: boolean
   /** Pausa el halo que respira de las celdas FUERA-DE-CICLO. Mismo booleano de
    *  foco que usa el hero para sus partículas. Default `false`. */
   paused?: boolean
@@ -1706,6 +1848,9 @@ export function GastosCalendar({
   onSelectDay,
   empty = false,
   hint,
+  title = 'TU MES EN UN VISTAZO',
+  footNote,
+  animated = true,
   paused = false,
   a11y = DEFAULT_CALENDAR_A11Y,
 }: GastosCalendarProps) {
@@ -1789,9 +1934,9 @@ export function GastosCalendar({
         ]}
       >
         <View style={styles.calHeadRow}>
-          <Text style={[styles.calTitle, { color: s.calTitleInk }]}>TU MES EN UN VISTAZO</Text>
-          <Text style={[styles.calHint, { color: s.calHintInk }]}>
-            {hint ?? (empty ? 'Cargá gastos y tu mes se va pintando' : 'tocá un día')}
+          <Text numberOfLines={1} style={[styles.calTitle, { color: s.calTitleInk }]}>{title}</Text>
+          <Text numberOfLines={1} style={[styles.calHint, { color: s.calHintInk }]}>
+            {hint ?? (empty ? 'Carga gastos y tu mes se va pintando' : 'toca un día')}
           </Text>
         </View>
         <View style={styles.calWeekRow}>
@@ -1832,6 +1977,23 @@ export function GastosCalendar({
             </View>
           ))}
         </Animated.View>
+        {/* v2 · EV2 — el punteado necesita traducción la primera vez que se ve.
+            El strip vive DENTRO de la card (no debajo) para que se lea como pie
+            de la grilla y no como un aviso suelto. */}
+        {footNote ? (
+          <View style={[styles.calFootNote, { boxShadow: s.noticeStripShadow }]}>
+            <View style={styles.calFootNoteBrot}>
+              <BrotMascot pose="think" size={40} shadow={false} animated={animated} />
+            </View>
+            <Text style={[styles.calFootNoteText, { color: s.noticeBodyInk }]}>
+              {footNote.text}
+              {footNote.strong ? (
+                <Text style={[styles.calFootNoteStrong, { color: s.noticeStrongInk }]}>{footNote.strong}</Text>
+              ) : null}
+              {footNote.tail ?? ''}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </RiseView>
   )
@@ -1907,6 +2069,20 @@ export interface GastosDayDetailProps {
   onMarkEmpty?: () => void
   /** Revertir la marca "sin gastos" — presente solo cuando `isMarked`. */
   onUnmark?: () => void
+  /** v2 · DS-4 / DS-6 — el día no admite acciones (todavía no llegó, o vive en
+   *  una edición cerrada). Suprime los CTAs y muestra `noteLine` en su lugar.
+   *  Default `'live'` → idéntico al aprobado. */
+  variant?: 'live' | 'future' | 'closed'
+  /** v2 · Línea muted donde irían los CTAs ("Sin acciones — día futuro"). */
+  noteLine?: string
+  /** v2 · DS-3 / EV3 — el día está marcado sin gastos: línea de logro entre la
+   *  navegación y las stats ("Día sin gastos 🌿 sumaste +1 al jardín"). */
+  cleanLine?: string
+  /** v2 · EV3 — CTA primario del día limpio. Cuando está presente, "Registrar
+   *  gasto olvidado" baja a ghost (el logro manda la jerarquía). */
+  onOpenGarden?: () => void
+  /** v2 · BK — etiqueta del botón de volver (trunca con elipsis). */
+  backLabel?: string
   /** Anima el Brot `sad` del strip fuera-de-ciclo (solo se dibuja con `isOut`).
    *  Default `true` → preview aprobado idéntico. El cableado real lo pasa
    *  `false`: el day-detail REEMPLAZA al calendario dentro del
@@ -1932,17 +2108,25 @@ export function GastosDayDetail({
   onMarkEmpty,
   onUnmark,
   animated = true,
+  variant = 'live',
+  noteLine,
+  cleanLine,
+  onOpenGarden,
+  backLabel,
 }: GastosDayDetailProps) {
   const s = GASTOS_SPEC[mode]
-  const backPress = usePressScale({ pressedScale: 0.94 })
   const ctaPress = usePressScale({ pressedScale: 0.97 })
   const ghostPress = usePressScale({ pressedScale: 0.97 })
-
-  const backChip = (
-    <View style={[styles.backCal, { backgroundColor: s.backCalBackground ?? 'transparent', boxShadow: s.backCalShadow }]}>
-      <Text style={[styles.backCalText, { color: s.backCalInk }]}>📅 Ver mes</Text>
-    </View>
-  )
+  const gardenPress = usePressScale({ pressedScale: 0.97 })
+  const registerPress = usePressScale({ pressedScale: 0.97 })
+  // v2 · DS-4/DS-6: el día no admite mutaciones. `showCtas` sigue existiendo
+  // (el llamador puede apagarlas por su cuenta); esto lo refuerza por variante.
+  const inert = variant !== 'live'
+  // v2 · EV3: en un día ya marcado el logro manda — "Ver mi jardín" pasa a
+  // primario y "Registrar gasto olvidado" baja a ghost. "Revertir marca" NO se
+  // pierde (EV3 no la dibuja, pero sacarla dejaría la marca sin vuelta atrás
+  // fuera de HOY, que es lo único que cubre el FAB de la racha).
+  const gardenIsPrimary = Boolean(onOpenGarden)
 
   return (
     <RiseView translateY={12} style={styles.blockSpacing}>
@@ -1953,35 +2137,20 @@ export function GastosDayDetail({
           s.dayCardGradientCss ? { experimental_backgroundImage: s.dayCardGradientCss } : null,
         ]}
       >
-        <View style={styles.dayHeadRow}>
-          <Text style={[styles.detailLabel, { color: s.detailLabelInk }]}>DÍA SELECCIONADO</Text>
-          <View style={styles.dayHeadRight}>
-            {badge ? (
-              <View style={[styles.detailBadge, { backgroundColor: s.detailBadgeBackground, boxShadow: s.detailBadgeShadow }]}>
-                <Text style={[styles.detailBadgeText, { color: s.detailBadgeInk }]}>{badge}</Text>
-              </View>
-            ) : null}
-            {onBackToMonth ? (
-              <AnimatedPressable
-                accessibilityRole="button"
-                accessibilityLabel="Ver el mes completo"
-                // Este chip es el ÚNICO camino de vuelta del day-detail al
-                // calendario, y dibuja ~23px de alto (paddingVertical 5 + texto
-                // 10.5). Con hitSlop 6 quedaba en 35; 12 lo lleva a ~47. No hay
-                // otro accionable en la fila salvo el badge (no tappable).
-                hitSlop={12}
-                onPress={onBackToMonth}
-                onPressIn={backPress.onPressIn}
-                onPressOut={backPress.onPressOut}
-                style={backPress.animatedStyle}
-              >
-                {backChip}
-              </AnimatedPressable>
-            ) : (
-              backChip
-            )}
-          </View>
+        {/* v2 · BK — el botón de volver ocupa la fila entera (target 44px) y
+            `DÍA SELECCIONADO` baja a la segunda línea. El badge queda a su
+            derecha con tope de 40% para que un texto largo no lo empuje. */}
+        <View style={styles.dayBackRow}>
+          <BackToCalendarButton mode={mode} label={backLabel} onPress={onBackToMonth} />
+          {badge ? (
+            <View style={[styles.detailBadge, styles.detailBadgeCap, { backgroundColor: s.detailBadgeBackground, boxShadow: s.detailBadgeShadow }]}>
+              <Text numberOfLines={1} style={[styles.detailBadgeText, { color: s.detailBadgeInk }]}>{badge}</Text>
+            </View>
+          ) : null}
         </View>
+        <Text style={[styles.detailLabel, styles.detailLabelBelowBack, { color: s.detailLabelInk }]}>
+          DÍA SELECCIONADO
+        </Text>
 
         <View style={styles.dayNav}>
           <DayArrow s={s} dir="prev" onPress={onPrev} />
@@ -1996,6 +2165,13 @@ export function GastosDayDetail({
           </View>
           <DayArrow s={s} dir="next" onPress={onNext} />
         </View>
+
+        {/* v2 · DS-3 — el vacío como logro: un día sin gastos no es un hueco,
+            suma al jardín. Va entre la navegación y las stats para que se lea
+            ANTES del "$0", que si no queda como una carencia. */}
+        {cleanLine ? (
+          <Text style={[styles.cleanLine, { color: s.statusPillInk }]}>{cleanLine}</Text>
+        ) : null}
 
         <View style={[styles.statRow, { borderTopColor: s.statBorder }]}>
           <View style={styles.statCol}>
@@ -2021,24 +2197,61 @@ export function GastosDayDetail({
           </RiseView>
         ) : null}
 
-        {showCtas ? (
+        {/* v2 · DS-4 / DS-6 — donde irían los CTAs va una línea muted que dice
+            POR QUÉ no hay acciones. Sin ella el detalle de un día futuro o de
+            una edición cerrada se lee como si la pantalla se hubiera cortado. */}
+        {inert && noteLine ? (
+          <Text style={[styles.detailNote, { color: s.statLabelInk }]}>{noteLine}</Text>
+        ) : null}
+
+        {showCtas && !inert ? (
           <>
-            {/* Registrar gasto olvidado — el cableado real lo pasa solo en
-                días pasados (hoy usa el + normal). El demo lo pasa siempre
-                (idéntico al aprobado). */}
-            {onRegister ? (
+            {/* v2 · EV3 — día ya marcado sin gastos: el jardín es el primario. */}
+            {onOpenGarden ? (
               <AnimatedPressable
                 accessibilityRole="button"
-                accessibilityLabel="Registrar gasto olvidado"
-                onPress={onRegister}
-                onPressIn={ctaPress.onPressIn}
-                onPressOut={ctaPress.onPressOut}
-                style={[styles.ctaSpacing, ctaPress.animatedStyle]}
+                accessibilityLabel="Ver mi jardín"
+                onPress={onOpenGarden}
+                onPressIn={gardenPress.onPressIn}
+                onPressOut={gardenPress.onPressOut}
+                style={[styles.ctaSpacing, gardenPress.animatedStyle]}
               >
                 <View style={[styles.cta, { experimental_backgroundImage: s.ctaPrimaryGradientCss, boxShadow: s.ctaPrimaryShadow }]}>
-                  <Text style={[styles.ctaText, { color: s.ctaPrimaryInk }]}>+ Registrar gasto olvidado</Text>
+                  <Text style={[styles.ctaText, { color: s.ctaPrimaryInk }]}>🌿 Ver mi jardín</Text>
                 </View>
               </AnimatedPressable>
+            ) : null}
+            {/* Registrar gasto olvidado — el cableado real lo pasa solo en
+                días pasados (hoy usa el + normal). El demo lo pasa siempre
+                (idéntico al aprobado). Con el jardín presente baja a ghost. */}
+            {onRegister ? (
+              gardenIsPrimary ? (
+                <AnimatedPressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Registrar gasto olvidado"
+                  onPress={onRegister}
+                  onPressIn={registerPress.onPressIn}
+                  onPressOut={registerPress.onPressOut}
+                  style={[styles.ghostSpacing, registerPress.animatedStyle]}
+                >
+                  <View style={[styles.ghost, { backgroundColor: s.ghostBackground ?? 'transparent', boxShadow: s.ghostShadow }]}>
+                    <Text style={[styles.ghostText, { color: s.ghostInk }]}>+ Registrar un gasto olvidado</Text>
+                  </View>
+                </AnimatedPressable>
+              ) : (
+                <AnimatedPressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Registrar gasto olvidado"
+                  onPress={onRegister}
+                  onPressIn={ctaPress.onPressIn}
+                  onPressOut={ctaPress.onPressOut}
+                  style={[styles.ctaSpacing, ctaPress.animatedStyle]}
+                >
+                  <View style={[styles.cta, { experimental_backgroundImage: s.ctaPrimaryGradientCss, boxShadow: s.ctaPrimaryShadow }]}>
+                    <Text style={[styles.ctaText, { color: s.ctaPrimaryInk }]}>+ Registrar gasto olvidado</Text>
+                  </View>
+                </AnimatedPressable>
+              )
             ) : null}
             {/* Marcar / Revertir "sin gastos" — mutuamente excluyentes. Marcar
                 solo en días de 0 movimientos aún sin marca; revertir cuando ya
@@ -2170,10 +2383,44 @@ export interface GastosFilterProps {
   mode: GastosMode
   chips: { label: string; count: string; active: boolean; catIcon: string | null }[]
   onSelect?: (i: number) => void
+  /** v2 · eyebrow. Pasa a "FILTRO ACTIVO" cuando hay una categoría aplicada. */
+  eyebrow?: string
+  /** v2 · pill de estado a la derecha del eyebrow (F-1…F-4). */
+  status?: { label: string; tone?: 'data' | 'muted' | 'alert' }
+  /** v2 · F-3 — categorías del catálogo que todavía no tienen movimientos: van
+   *  punteadas y SIN contador (un "0" leería como dato; el molde lee como
+   *  promesa). No son tappables: filtrar por ellas daría siempre vacío. */
+  ghostChips?: string[]
+  ghostHint?: string
+  /** v2 · F-4 — el filtro dejó el ciclo sin resultados. El vacío vive ACÁ (no
+   *  en la lista): así queda pegado al chip que lo causó y el CTA de quitarlo
+   *  está a un dedo del filtro. */
+  emptyResult?: {
+    title: string
+    /** Referencia de la edición pasada. Se omite si no hay dato. */
+    hint?: string
+    hintAmount?: string
+    ctaLabel: string
+    onClear?: () => void
+  }
+  /** Anima el Brot `think` del vacío F-4. El cableado real lo pasa `false`
+   *  (vive en el ListHeaderComponent, ver la nota de `GastosOverdueBanner`). */
+  animated?: boolean
 }
 
-export function GastosFilter({ mode, chips, onSelect }: GastosFilterProps) {
+export function GastosFilter({
+  mode,
+  chips,
+  onSelect,
+  eyebrow = 'FILTRAR POR CATEGORÍA',
+  status,
+  ghostChips,
+  ghostHint,
+  emptyResult,
+  animated = true,
+}: GastosFilterProps) {
   const s = GASTOS_SPEC[mode]
+  const clearPress = usePressScale({ pressedScale: 0.97 })
   // Handlers ref-estables por índice. Sin esto, `onPress={() => onSelect(i)}`
   // creaba una closure NUEVA por chip por render → derrotaba el `React.memo`
   // de FilterChip (todos los chips re-renderizaban en cada tap). Al memoizar el
@@ -2188,7 +2435,10 @@ export function GastosFilter({ mode, chips, onSelect }: GastosFilterProps) {
   )
   return (
     <>
-      <Text style={[styles.filterLabel, { color: s.filterLabelInk }]}>FILTRAR POR CATEGORÍA</Text>
+      <View style={styles.filterHeadRow}>
+        <Text style={[styles.filterLabel, { color: s.filterLabelInk }]}>{eyebrow}</Text>
+        {status ? <StatusPill mode={mode} label={status.label} tone={status.tone} /> : null}
+      </View>
       <View style={styles.filterScrollWrap}>
         <ScrollView
           horizontal
@@ -2206,9 +2456,59 @@ export function GastosFilter({ mode, chips, onSelect }: GastosFilterProps) {
               onPress={handlers?.[i]}
             />
           ))}
+          {/* F-3 · los punteados van DESPUÉS de los activos: el carrusel se lee
+              como "esto ya usás / esto te espera". */}
+          {ghostChips?.map((label) => (
+            <GhostChip key={`ghost-${label}`} s={s} label={label} />
+          ))}
         </ScrollView>
         <View style={[styles.filterFade, { experimental_backgroundImage: s.fadeGradientCss }]} pointerEvents="none" />
       </View>
+      {ghostHint ? (
+        <Text style={[styles.filterGhostHint, { color: s.dashInk }]}>{ghostHint}</Text>
+      ) : null}
+      {emptyResult ? (
+        <RiseView translateY={12}>
+          <View style={[styles.filterEmptyWell, { boxShadow: s.noticeWellShadow }]}>
+            <View style={styles.filterEmptyBrot}>
+              <BrotMascot pose="think" size={48} shadow={false} animated={animated} />
+            </View>
+            <View style={styles.filterEmptyTexts}>
+              <Text numberOfLines={2} style={[styles.filterEmptyTitle, { color: s.noticeTitleInk }]}>
+                {emptyResult.title}
+              </Text>
+              {emptyResult.hint ? (
+                <Text style={[styles.filterEmptyHint, { color: s.noticeBodyInk }]}>
+                  {emptyResult.hint}
+                  {emptyResult.hintAmount ? (
+                    <>
+                      {' '}
+                      <Text style={[styles.filterEmptyHintStrong, { color: s.noticeStrongInk }]}>
+                        {emptyResult.hintAmount}
+                      </Text>
+                    </>
+                  ) : null}
+                  .
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {emptyResult.onClear ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityLabel={emptyResult.ctaLabel}
+              onPress={emptyResult.onClear}
+              onPressIn={clearPress.onPressIn}
+              onPressOut={clearPress.onPressOut}
+              style={[styles.filterClearSpacing, clearPress.animatedStyle]}
+            >
+              <View style={[styles.filterClear, { backgroundColor: s.ghostBackground ?? 'transparent', boxShadow: s.ghostShadow }]}>
+                <Text style={[styles.filterClearText, { color: s.ghostInk }]}>{emptyResult.ctaLabel}</Text>
+              </View>
+            </AnimatedPressable>
+          ) : null}
+        </RiseView>
+      ) : null}
     </>
   )
 }
@@ -2292,7 +2592,7 @@ export function GastosMovRow({
 }) {
   const s = GASTOS_SPEC[mode]
   const amountInk = r.kind === 'income' ? s.green : s.movAmountInk
-  return (
+  const row = (
     <View
       style={[
         styles.movRow,
@@ -2326,6 +2626,16 @@ export function GastosMovRow({
       <Text style={[styles.movAmount, { color: amountInk }]}>{r.amount}</Text>
     </View>
   )
+  // v2 · M-3 — un gasto cargado después del cierre del ciclo no se explica solo
+  // con el sufijo del subtítulo: la nota dice qué le va a pasar. Va FUERA de la
+  // fila para que el `SwipeRow` del cableado real (overflow:hidden) no la clipe.
+  if (!r.note) return row
+  return (
+    <View>
+      {row}
+      <Text style={[styles.movRowNote, { color: s.outNoteInk }]}>{r.note}</Text>
+    </View>
+  )
 }
 
 /** Botón "Ver días anteriores" (footer de paginación). */
@@ -2351,28 +2661,63 @@ export function GastosSeeMore({ mode, onPress }: { mode: GastosMode; onPress?: (
 
 /** Pozo inset del vacío de movimientos (Brot idle + título + sub + CTA verde).
  *  `ctaLabel` opcional: sin él (modo edición CERRADA, donde no hay nada que
- *  registrar) el pozo muestra solo Brot + título + sub, sin pill de acción. */
+ *  registrar) el pozo muestra solo Brot + título + sub, sin pill de acción.
+ *
+ *  v2 · M-4/EV6 (`ghostRows`): antes del pozo se dibujan filas fantasma
+ *  punteadas. El vacío deja de ser un hueco y pasa a ser el MOLDE de la lista
+ *  que se va a armar — mismo lenguaje que el hero vacío y el filtro sin usar. */
 export function GastosMovementsEmptyWell({
   mode,
   title,
   sub,
   ctaLabel,
   onPressCta,
+  ghostRows = 0,
+  animated = true,
 }: {
   mode: GastosMode
   title: string
   sub: string
   ctaLabel?: string
   onPressCta?: () => void
+  /** Cantidad de filas fantasma sobre el pozo. 0 → idéntico al aprobado v1. */
+  ghostRows?: number
+  animated?: boolean
 }) {
   const s = GASTOS_SPEC[mode]
   return (
     <RiseView translateY={12} style={styles.movEmptySpacing}>
-      <View style={[styles.movEmptyWell, { backgroundColor: s.insBg ?? 'transparent', boxShadow: s.ins }]}>
-        <BrotMascot pose="idle" size={56} shadow={false} />
-        <Text style={[styles.movEmptyTitle, { color: s.text }]}>{title}</Text>
-        <Text style={[styles.movEmptySub, { color: s.sub }]}>{sub}</Text>
-        {ctaLabel ? (
+      {ghostRows > 0 ? (
+        <View style={styles.movGhostStack}>
+          {Array.from({ length: ghostRows }, (_, i) => (
+            <GhostMovRow key={i} s={s} />
+          ))}
+        </View>
+      ) : null}
+      <View
+        style={[
+          styles.movEmptyWell,
+          ghostRows > 0 ? styles.movEmptyWellRow : null,
+          { backgroundColor: s.insBg ?? 'transparent', boxShadow: s.ins },
+        ]}
+      >
+        {/* Con molde el vacío es un PIE de la lista fantasma (Brot al lado del
+            texto, como EV6); sin molde conserva el bloque centrado aprobado. */}
+        {ghostRows > 0 ? (
+          <>
+            <View style={styles.movEmptyBrotSlot}>
+              <BrotMascot pose="wave" size={44} shadow={false} animated={animated} />
+            </View>
+            <Text style={[styles.movEmptySubInline, { color: s.noticeBodyInk }]}>{sub}</Text>
+          </>
+        ) : (
+          <>
+            <BrotMascot pose="idle" size={56} shadow={false} animated={animated} />
+            <Text style={[styles.movEmptyTitle, { color: s.text }]}>{title}</Text>
+            <Text style={[styles.movEmptySub, { color: s.sub }]}>{sub}</Text>
+          </>
+        )}
+        {ctaLabel && ghostRows === 0 ? (
           <GastosEmptyCta
             label={ctaLabel}
             ink={s.ctaPrimaryInk}
@@ -2382,6 +2727,17 @@ export function GastosMovementsEmptyWell({
           />
         ) : null}
       </View>
+      {ctaLabel && ghostRows > 0 ? (
+        <View style={styles.movEmptyCtaRow}>
+          <GastosEmptyCta
+            label={ctaLabel}
+            ink={s.ctaPrimaryInk}
+            gradientCss={s.ctaPrimaryGradientCss}
+            shadow={s.ctaPrimaryShadow}
+            onPress={onPressCta}
+          />
+        </View>
+      ) : null}
     </RiseView>
   )
 }
@@ -2397,6 +2753,9 @@ export interface GastosMovementsProps {
   emptyTitle?: string
   emptySub?: string
   emptyCtaLabel?: string
+  /** v2 · M-4/EV6 — filas fantasma punteadas sobre el pozo del vacío. */
+  emptyGhostRows?: number
+  animated?: boolean
   onClearDay?: () => void
   onSeeMore?: () => void
   onPressEmptyCta?: () => void
@@ -2408,9 +2767,11 @@ export function GastosMovements({
   groups,
   showSeeMore,
   empty = false,
-  emptyTitle = 'Todavía no cargaste gastos',
-  emptySub = 'Tus movimientos van a aparecer acá, agrupados por día',
+  emptyTitle = 'Todavía no registras gastos',
+  emptySub = 'Tus movimientos van a aparecer aquí, agrupados por día',
   emptyCtaLabel = '+ Registrar gasto',
+  emptyGhostRows = 0,
+  animated = true,
   onClearDay,
   onSeeMore,
   onPressEmptyCta,
@@ -2427,6 +2788,8 @@ export function GastosMovements({
           sub={emptySub}
           ctaLabel={emptyCtaLabel}
           onPressCta={onPressEmptyCta}
+          ghostRows={emptyGhostRows}
+          animated={animated}
         />
       </>
     )
@@ -2471,6 +2834,14 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
   const s = GASTOS_SPEC[mode]
   const [state, dispatch] = useReducer(gastosReducer, { ...INITIAL_STATE, ...initialState })
   const v = deriveGastos(state)
+  // v2 · F-1/F-2 — la pill de estado del filtro sale del chip activo. El índice
+  // 0 es "Todas" (sin contador en la pill: "Todas · 64" repetiría el badge del
+  // propio chip, que ya está a la vista).
+  const activeChipIndex = v.filterChips.findIndex((c) => c.active)
+  const activeFilterChip =
+    activeChipIndex >= 0
+      ? { ...v.filterChips[activeChipIndex], isAll: activeChipIndex === 0 }
+      : null
 
   return (
     <View style={[styles.shell, { backgroundColor: s.bg }]}>
@@ -2508,6 +2879,18 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               categories={v.categories}
               empty={v.empty}
               onPressEmptyCta={() => {}}
+              // v2 · H-2/H-3 — el demo cubre las dos sublíneas del inventario:
+              // edición cerrada (📁 Solo lectura, Brot `think`) y ciclo vencido
+              // con días fuera (⚠, Brot `worried`).
+              subline={
+                !v.isCurrent
+                  ? '📁 Solo lectura'
+                  : v.showAlert
+                    ? '⚠ 2 días fuera del ciclo'
+                    : undefined
+              }
+              sublineTone={v.showAlert ? 'warn' : 'neutral'}
+              brotPose={!v.isCurrent ? 'think' : v.showAlert ? 'worried' : undefined}
             />
           </View>
 
@@ -2517,6 +2900,22 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               cells={v.cells}
               onSelectDay={(n) => dispatch({ type: 'selectDay', n })}
               empty={v.empty}
+              // v2 · CAL-2/CAL-3/CAL-4 — hint por estado (el resto cae al
+              // default "toca un día" del componente).
+              title={v.isCurrent ? undefined : 'MAYO EN UN VISTAZO'}
+              hint={
+                !v.isCurrent ? 'solo lectura' : v.showAlert ? '+2 fuera del ciclo' : undefined
+              }
+              // v2 · EV2 — el strip que traduce el punteado, solo en el vacío.
+              footNote={
+                v.empty
+                  ? {
+                      text: 'Se va pintando a medida que registras. Los ',
+                      strong: 'punteados',
+                      tail: ' son días que todavía no llegaron.',
+                    }
+                  : undefined
+              }
             />
           ) : (
             <GastosDayDetail
@@ -2528,6 +2927,8 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               movs={v.dayMovs}
               isOut={v.isOut}
               showCtas={v.showCtas}
+              variant={v.dayVariant}
+              noteLine={v.dayNote}
               onPrev={() => dispatch({ type: 'moveDay', dir: -1 })}
               onNext={() => dispatch({ type: 'moveDay', dir: 1 })}
               onBackToMonth={() => dispatch({ type: 'clearDay' })}
@@ -2538,7 +2939,23 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
 
           {/* Filtro oculto en vacío: no hay categorías que filtrar (más limpio). */}
           {v.empty ? null : (
-            <GastosFilter mode={mode} chips={v.filterChips} onSelect={(i) => dispatch({ type: 'selectFilter', i })} />
+            <GastosFilter
+              mode={mode}
+              chips={v.filterChips}
+              onSelect={(i) => dispatch({ type: 'selectFilter', i })}
+              // v2 · F-1/F-2 — la pill de estado a la derecha del eyebrow.
+              // F-3/F-4 no tienen estado en el reducer del demo (dependen de
+              // datos reales: catálogo sin movimientos / edición anterior), se
+              // revisan en el inventario del handoff.
+              eyebrow={activeFilterChip && !activeFilterChip.isAll ? 'FILTRO ACTIVO' : undefined}
+              status={{
+                label: activeFilterChip
+                  ? activeFilterChip.isAll
+                    ? activeFilterChip.label
+                    : `${activeFilterChip.label} · ${activeFilterChip.count}`
+                  : CATS[0][0],
+              }}
+            />
           )}
 
           <GastosMovements
@@ -2547,6 +2964,11 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
             groups={v.groups}
             showSeeMore={v.showSeeMore}
             empty={v.empty}
+            // v2 · M-4/EV6 — el vacío del listado va en molde: 3 filas fantasma
+            // punteadas + Brot al lado del texto + CTA de primer gasto.
+            emptyGhostRows={3}
+            emptySub="Carga tu primer gasto y esta lista se arma sola, agrupada por día."
+            emptyCtaLabel="+ Registrar mi primer gasto"
             onClearDay={() => dispatch({ type: 'clearDay' })}
             onSeeMore={() => {}}
             onPressEmptyCta={() => {}}
@@ -2627,7 +3049,9 @@ const styles = StyleSheet.create({
   bannerTexts: { flex: 1, minWidth: 0 },
   bannerTitle: { fontSize: 12.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   bannerSub: { fontSize: 10.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 1 },
-  confirmBtn: { borderRadius: 13, paddingVertical: 8, paddingHorizontal: 11 },
+  // v2 · el botón nunca se comprime: con un título largo, sin `flexShrink:0`
+  // la etiqueta se partía en dos líneas y el banner crecía de alto.
+  confirmBtn: { flexShrink: 0, borderRadius: 13, paddingVertical: 8, paddingHorizontal: 11 },
   confirmBtnText: { fontSize: 11, fontWeight: '900', fontFamily: nunitoFamily('900') },
 
   // ③ hero
@@ -2645,8 +3069,14 @@ const styles = StyleSheet.create({
   heroTotal: { fontSize: 40, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.8, lineHeight: 46 },
   // hero vacío: sub crema dentro del pozo + fila Brot(40)↔CTA crema.
   heroEmptySub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 6, lineHeight: 16 },
-  heroEmptyBrotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
-  heroEmptyBrotSlot: { width: 40, alignItems: 'center', justifyContent: 'flex-end' },
+  // ─── v2 · pozo con Brot + sublínea (H-2/H-3/H-4) ───
+  heroWellRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  heroWellTexts: { flex: 1, minWidth: 0 },
+  heroWellBrot: { flexShrink: 0, alignItems: 'center', justifyContent: 'flex-end' },
+  heroSubline: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 6 },
+  heroEmptyCatFoot: { marginTop: 13, borderTopWidth: 1.5, paddingTop: 11 },
+  heroEmptyCatText: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), lineHeight: 15 },
+  heroEmptyCtaRow: { marginTop: 14, alignItems: 'flex-start' },
   heroStatsRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: 14 },
   heroStatLabel: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.05 },
   heroStatValue: { fontSize: 21, fontWeight: '900', fontFamily: nunitoFamily('900'), marginTop: 3 },
@@ -2679,9 +3109,16 @@ const styles = StyleSheet.create({
 
   // ④ calendario
   calCard: { borderRadius: GASTOS_RADII.card, paddingTop: 16, paddingHorizontal: 16, paddingBottom: 14 },
-  calHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  calTitle: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.61 },
-  calHint: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  calHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  // v2 · el título cede antes que el hint: con un mes largo, el que tiene que
+  // truncar es "SEPTIEMBRE EN UN VISTAZO", no el "solo lectura" que explica el
+  // modo de la grilla.
+  calTitle: { flexShrink: 1, fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.61 },
+  calHint: { flexShrink: 0, fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  calFootNote: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, marginTop: 12 },
+  calFootNoteBrot: { width: 40, alignItems: 'center' },
+  calFootNoteText: { flex: 1, fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 16 },
+  calFootNoteStrong: { fontWeight: '900', fontFamily: nunitoFamily('900') },
   calWeekRow: { flexDirection: 'row', marginTop: 12 },
   weekday: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
   calGrid: { marginTop: 8 },
@@ -2706,13 +3143,17 @@ const styles = StyleSheet.create({
 
   // ⑤ detalle de día
   dayCard: { borderRadius: GASTOS_RADII.card, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 16 },
-  dayHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   detailLabel: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.61 },
-  dayHeadRight: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   detailBadge: { borderRadius: 12, paddingVertical: 5, paddingHorizontal: 10 },
   detailBadgeText: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
-  backCal: { borderRadius: 12, paddingVertical: 5, paddingHorizontal: 10 },
-  backCalText: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  // ─── v2 · encabezado con botón de volver (BK) ───
+  dayBackRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  /** El badge nunca come más del 40% de la fila: con él suelto, un "Fuera de
+   *  ciclo" comprimía la etiqueta del botón hasta dejarla en "Volver…". */
+  detailBadgeCap: { flexShrink: 0, maxWidth: '40%' },
+  detailLabelBelowBack: { marginTop: 14 },
+  cleanLine: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 10, lineHeight: 16 },
+  detailNote: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 13, textAlign: 'center' },
   dayNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
   dayNavCenter: { alignItems: 'center' },
   arrow: { width: 40, height: 40, borderRadius: GASTOS_RADII.arrow, alignItems: 'center', justifyContent: 'center' },
@@ -2734,14 +3175,31 @@ const styles = StyleSheet.create({
   ghostText: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
 
   // ⑥ filtro
-  filterLabel: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.84, marginTop: 20, paddingHorizontal: 4 },
+  // v2 · el eyebrow comparte fila con la pill de estado. El marginTop 20 se
+  // muda a la fila para que la pill se alinee con la etiqueta.
+  filterHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 20, paddingHorizontal: 4 },
+  filterLabel: { flexShrink: 1, fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.84 },
+  filterGhostHint: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 16, paddingHorizontal: 4, marginTop: -6 },
+  filterEmptyWell: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, paddingVertical: 11, paddingHorizontal: 12, marginTop: 2 },
+  filterEmptyBrot: { width: 42, alignItems: 'center' },
+  filterEmptyTexts: { flex: 1, minWidth: 0 },
+  filterEmptyTitle: { fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  filterEmptyHint: { fontSize: 10.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 2, lineHeight: 15 },
+  filterEmptyHintStrong: { fontWeight: '900', fontFamily: nunitoFamily('900') },
+  filterClearSpacing: { marginTop: 10 },
+  filterClear: { borderRadius: 15, paddingVertical: 11, alignItems: 'center' },
+  filterClearText: { fontSize: 12, fontWeight: '900', fontFamily: nunitoFamily('900') },
   // filterScrollWrap NO clipea (sin overflow): la sombra elevada del chip
   // activo (~16px hacia abajo) fluye libre. El fade a la derecha es un overlay.
   filterScrollWrap: { position: 'relative', marginTop: 4 },
   // paddingBottom generoso para que la sombra del chip activo NO quede cortada
   // por el borde del ScrollView (el contentContainer crece con el padding).
   filterScrollContent: { gap: 9, paddingHorizontal: 6, paddingTop: 8, paddingBottom: 18 },
-  filterFade: { position: 'absolute', top: 0, right: 0, bottom: 0, width: 34 },
+  // v2 · el fade se recorta al ALTO DE LOS CHIPS (mismo top/bottom que el
+  // padding del contenido del scroller): a bordes 0/0 se comía la sombra
+  // proyectada del chip activo y el degradé se leía como un corte. `zIndex:2`
+  // es explícito aunque el orden de hermanos ya lo deje arriba.
+  filterFade: { position: 'absolute', top: 8, right: 0, bottom: 18, width: 30, zIndex: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: GASTOS_RADII.chip, paddingVertical: 9, paddingHorizontal: 13 },
   // Swatch de color de categoría (reemplaza el emoji del chip).
   chipIcon: { width: 17, height: 17, alignItems: 'center', justifyContent: 'center' },
@@ -2752,14 +3210,17 @@ const styles = StyleSheet.create({
   chipBadgeText: { fontSize: 10, fontWeight: '900', fontFamily: nunitoFamily('900') },
 
   // ⑦ movimientos
-  movSectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, paddingHorizontal: 4 },
-  sectionLabel: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.84 },
-  movChip: { fontSize: 12.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  movSectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 20, paddingHorizontal: 4 },
+  sectionLabel: { flexShrink: 1, fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.84 },
+  movChip: { flexShrink: 0, fontSize: 12.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   movList: { marginTop: 12, gap: 10 },
   movGroupGap: { marginTop: 4 },
+  // v2 · textos largos — el encabezado del grupo trunca y el TOTAL nunca se
+  // comprime ni se empuja fuera ("MIÉRCOLES 12 DE SEPTIEMBRE" contra un total
+  // de 7 cifras entraba en conflicto y ganaba el que se dibujara primero).
   movGroupHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 4 },
-  movGroupLabel: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.32 },
-  movGroupTotal: { fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  movGroupLabel: { flexShrink: 1, minWidth: 0, fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.32 },
+  movGroupTotal: { flexShrink: 0, marginLeft: 10, fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900') },
   movRows: { gap: 10, marginTop: 10 },
   movRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: GASTOS_RADII.row, paddingVertical: 12, paddingHorizontal: 14 },
   movTile: { width: 44, height: 44, borderRadius: GASTOS_RADII.tile, alignItems: 'center', justifyContent: 'center' },
@@ -2767,7 +3228,9 @@ const styles = StyleSheet.create({
   movTexts: { flex: 1, minWidth: 0 },
   movTitle: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   movSub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700') },
-  movAmount: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  movAmount: { flexShrink: 0, marginLeft: 8, fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  // v2 · M-3 — nota bajo una fila fuera de ciclo.
+  movRowNote: { fontSize: 10.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 15, marginTop: 6, paddingHorizontal: 4 },
   seeMoreSpacing: { marginTop: 0 },
   seeMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: GASTOS_RADII.chip, paddingVertical: 12 },
   seeMoreText: { fontSize: 12.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
@@ -2777,6 +3240,12 @@ const styles = StyleSheet.create({
   emptyCtaText: { fontSize: 12, fontWeight: '900', fontFamily: nunitoFamily('900') },
   movEmptySpacing: { marginTop: 12 },
   movEmptyWell: { borderRadius: 22, padding: 18, alignItems: 'center', gap: 9 },
+  // ─── v2 · M-4/EV6 con molde punteado ───
+  movGhostStack: { gap: 9, marginBottom: 13 },
+  movEmptyWellRow: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 18, paddingVertical: 11, paddingHorizontal: 13 },
+  movEmptyBrotSlot: { width: 40, alignItems: 'center' },
+  movEmptySubInline: { flex: 1, fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 16 },
+  movEmptyCtaRow: { marginTop: 12 },
   movEmptyTitle: { fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900') },
   movEmptySub: {
     fontSize: 11.5,

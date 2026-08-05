@@ -66,7 +66,6 @@ import {
 import {
   AccessibilityInfo,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   ScrollView,
   SectionList,
@@ -84,6 +83,7 @@ import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/n
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { Screen } from '@/components/ui/screen'
+import { SCROLL_EDGE_THRESHOLD } from '@/components/ui/screen-edge-effect'
 import { ErrorState } from '@/components/ui/error-state'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import {
@@ -193,7 +193,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { confetti } from '@/lib/confetti-bus'
 import { toast } from '@/lib/toast-bus'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
-import { formatMoney } from '@/utils/money'
+import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
 
 // Signo menos del kit (U+2212, no el guión ASCII) — matchea los montos del
@@ -206,8 +206,6 @@ const MINUS = '−'
 // Tiene que ser >=17ms para que Android throttlee de verdad
 // (ReactScrollViewHelper.emitScrollEvent) y >16.6ms para que iOS New Arch no lo
 // colapse a "cada frame" (RCTScrollViewComponentView).
-const SCROLL_IDLE_THROTTLE_MS = 200
-
 // ─── Helpers puros locales ───────────────────────────────────────────
 
 interface BuildCellsParams {
@@ -222,6 +220,11 @@ interface BuildCellsParams {
    *  los días pasados como 'fut' muted, sin brotes), igual que el vacío del
    *  kit. */
   empty: boolean
+  /** v2 · CAL-4/EV2 — el ciclo recién arrancó: los días que todavía no llegaron
+   *  se dibujan como MOLDE PUNTEADO ('none') en lugar del pozo apagado ('fut').
+   *  La copy del strip se apoya en eso ("los punteados son días que todavía no
+   *  llegaron"), así que las dos cosas viajan juntas. */
+  freshCycle: boolean
 }
 
 /**
@@ -244,6 +247,7 @@ function buildNeoCells({
   noSpendMarkedDates,
   selectedDay,
   empty,
+  freshCycle,
 }: BuildCellsParams): DayCell[] {
   const todayNorm = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const todayMs = todayNorm.getTime()
@@ -267,8 +271,10 @@ function buildNeoCells({
     if (isToday) {
       kind = 'now'
     } else if (isFuture || empty) {
-      // Futuro, o cuenta nueva → celda muted (sin color de gasto).
-      kind = 'fut'
+      // Futuro, o cuenta nueva → celda muted (sin color de gasto). v2: con el
+      // ciclo recién arrancado los futuros van en molde punteado ('none'), que
+      // promete lo que se va a pintar en vez de mostrar 30 pozos apagados.
+      kind = freshCycle ? 'none' : 'fut'
     } else {
       const mood = dayMoods[dayNum]
       // Decisión owner (F1): amber (ya > cupo) y red → 'bad' (exceso). green
@@ -303,6 +309,9 @@ function buildNeoCells({
 // ─── Helpers de ediciones CERRADAS (F4, solo lectura) ────────────────
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
+/** v2 · "no hay dato" (día futuro, movimientos de una edición cerrada). NO es
+ *  un cero: un 0 afirma que no se gastó, y acá lo que pasa es que no sabemos. */
+const EM_DASH = '—'
 
 /** Base numérica de las celdas FUERA-DE-CICLO. La celda `fuera` #i lleva
  *  `n = OUT_N_BASE + i` → nunca choca con los day-of-month reales (1..31) del
@@ -402,6 +411,31 @@ function buildClosedCells(edition: MonthlySummaryHistory): DayCell[] {
     })
   }
   return cells
+}
+
+/**
+ * v2 · DS-6 — metadata por día de una edición cerrada, indexada por día del mes
+ * (`n` de la celda). Dentro de un ciclo (≤31 días) el día del mes NO se repite,
+ * así que `n` alcanza como clave sin arrastrar el ISO hasta `DayCell`.
+ *
+ * Solo TOTAL: `daily_totals` persiste `[{day,total}]` y no guarda el conteo de
+ * movimientos ni el detalle fila-por-fila, así que el detalle de un día cerrado
+ * muestra `MOVIMIENTOS —`. Mismo criterio de degradación honesta que
+ * `buildClosedCells` (que tampoco inventa exceso sin cupo histórico).
+ */
+function buildClosedDayMeta(
+  edition: MonthlySummaryHistory,
+): Map<number, { date: Date; total: number }> {
+  const out = new Map<number, { date: Date; total: number }>()
+  const start = parseIsoLocalDate(edition.period_start)
+  if (!start) return out
+  const days = editionDayCount(edition)
+  const spendByIso = parseDailyTotalsByIso(edition.daily_totals)
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
+    out.set(d.getDate(), { date: d, total: spendByIso.get(localIsoKey(d)) ?? 0 })
+  }
+  return out
 }
 
 /** Barras "ÚLTIMOS 7 DÍAS" de una edición cerrada = los 7 últimos días de la
@@ -525,9 +559,20 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
   // propia validación. Envuelve TODAS las ramas (skeleton, feed, vacío, cerrado)
   // porque el provider no dibuja nada — es transparente al layout.
   const reduceMotion = useReducedMotion()
+  // Scroll edge effect · el estado vive ACÁ (el shell) y el overlay lo
+  // monta el <Screen>, así cubre TODAS las ramas de render del content
+  // (feed, ciclo vacío, ciclo cerrado) — antes vivía dentro del árbol
+  // del feed y las ramas vacías retornaban antes de montarlo.
+  const [edgeActive, setEdgeActive] = useState(false)
 
   return (
-    <Screen backgroundColor={s.bg} scrollable={false} contentContainerStyle={styles.screenBody}>
+    <Screen
+      backgroundColor={s.bg}
+      contentContainerStyle={styles.screenBody}
+      edgeActive={edgeActive}
+      ownInsets
+      scrollable={false}
+    >
       <RiseViewGate skip={reduceMotion}>
       {snapshot.error && !snapshot.data ? (
         <View style={styles.errorWrap}>
@@ -551,6 +596,7 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
         <NeoGastosSkeleton mode={mode} label={t('states:loading.expenses')} />
       ) : (
         <NeoGastosContent
+          onEdgeActiveChange={setEdgeActive}
           userId={userId}
           familyId={familyId}
           mode={mode}
@@ -717,6 +763,9 @@ interface NeoGastosContentProps {
   familyId: string
   mode: GastosMode
   preview: boolean
+  /** Reporta al shell si hay contenido pasando por debajo del safe area
+   *  superior (el shell se lo pasa al `Screen`, que monta el material). */
+  onEdgeActiveChange: (active: boolean) => void
   /** Dashboard del hogar (mismo objeto que computa el outer) — lo consumen la
    *  orquestación del cierre y las sheets de confirmación (F5). */
   dashboard: FamilyDashboard
@@ -748,6 +797,10 @@ interface MovementRowProps {
   isDeleting: boolean
   onDeleteExpense: (id: string) => void
   onDeleteIncome: (id: string) => void
+  /** v2 · M-3 — nota bajo la fila cuando el movimiento quedó FUERA del ciclo.
+   *  Sale de `t()` en la pantalla (el kit es `@i18n-ignore-file`) y solo la
+   *  reciben las filas del feed con un día fuera en foco. */
+  outNote?: string
 }
 
 /**
@@ -769,6 +822,7 @@ const MovementRow = memo(function MovementRow({
   isDeleting,
   onDeleteExpense,
   onDeleteIncome,
+  outNote,
 }: MovementRowProps) {
   // FIX E (perf) · `onDelete` y `actions` ERAN literales nuevos en cada render.
   // Aunque la memo de la fila bailara out casi siempre, cuando NO lo hacía
@@ -823,6 +877,7 @@ const MovementRow = memo(function MovementRow({
       amount: `${MINUS}${formatMoney(e.price)}`,
       // rawName CRUDO para el sticker real (CategoryIcon del kit).
       catName: cat?.rawName ?? cat?.name,
+      note: outNote,
     }
     a11yLabel = composeRowA11yLabel({
       title: e.description || cat?.name || t('common:terms.expense'),
@@ -905,7 +960,11 @@ function areMovementRowPropsEqual(
     prev.categoriesById !== next.categoriesById ||
     prev.memberById !== next.memberById ||
     prev.onDeleteExpense !== next.onDeleteExpense ||
-    prev.onDeleteIncome !== next.onDeleteIncome
+    prev.onDeleteIncome !== next.onDeleteIncome ||
+    // v2 · M-3 — sin esto la nota "queda fuera del ciclo" quedaría pegada (o
+    // ausente) al entrar/salir del foco de un día fuera: la memo compara por
+    // contenido y `outNote` no aparecía en ningún lado.
+    prev.outNote !== next.outNote
   ) {
     return false
   }
@@ -949,6 +1008,7 @@ function NeoGastosContent({
   familyId,
   mode,
   preview,
+  onEdgeActiveChange,
   dashboard,
   isSalaryPendingConfirmation,
   confirmCycleStartingBalance,
@@ -1069,14 +1129,30 @@ function NeoGastosContent({
   const handleTourContentSizeChange = useCallback((width: number, height: number) => {
     tourBindingRef.current?.onContentSizeChange(width, height)
   }, [])
+  // Scroll edge effect · el material del safe area superior aparece con
+  // contenido debajo. Este handler va SIEMPRE cableado (a diferencia del
+  // del tour), pero es barato: un setState con bail-out que solo cambia
+  // al cruzar el umbral, así que no re-renderea por frame. Delega al
+  // tour cuando está activo para no montar dos onScroll en la lista
+  // (prop nuevo = lista invalidada, ver nota de perf de abajo).
+  const edgeActiveRef = useRef(false)
+  const isTourActiveRef = useRef(false)
+  const handleListScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = event.nativeEvent.contentOffset.y
+    const next = y > SCROLL_EDGE_THRESHOLD
+    if (edgeActiveRef.current !== next) {
+      edgeActiveRef.current = next
+      onEdgeActiveChange(next)
+    }
+    if (isTourActiveRef.current) tourBindingRef.current?.onScroll(event)
+  }, [onEdgeActiveChange])
   // PERF (jank de scroll) · el `onScroll` del tour se CABLEA solo mientras el
   // tour corre. Antes iba siempre: un callback JS despachado por frame en TODO
   // scroll, de por vida, para mantener un ref que solo lee el TourHost. El
   // booleano lo empuja `GastosTourActiveGate` (único suscripto al contexto) →
   // cambia 2 veces por sesión, no re-renderea nada más.
-  const [isTourActive, setIsTourActive] = useState(false)
   const handleTourActiveChange = useCallback((active: boolean) => {
-    setIsTourActive(active)
+    isTourActiveRef.current = active
   }, [])
 
   // Marcas "sin gastos" del ciclo actual — misma fuente que la vieja
@@ -1197,10 +1273,48 @@ function NeoGastosContent({
         pct: c.pct,
       }))
   }, [selectedEdition, t])
-  const closedCells = useMemo(
-    () => (selectedEdition ? buildClosedCells(selectedEdition) : []),
+  // v2 · DS-6 — el calendario de una edición cerrada pasa a ser TAPPABLE: el
+  // total por día ya estaba persistido en `daily_totals` y hasta v1 la grilla
+  // lo pintaba sin dejar leerlo. El día elegido se guarda por número de día
+  // (único dentro de un ciclo) y se limpia al cambiar de edición.
+  const [selectedClosedDay, setSelectedClosedDay] = useState<number | null>(null)
+  useEffect(() => {
+    setSelectedClosedDay(null)
+  }, [viewedCycleId])
+  const closedDayMeta = useMemo(
+    () => (selectedEdition ? buildClosedDayMeta(selectedEdition) : new Map()),
     [selectedEdition],
   )
+  const closedCells = useMemo(
+    () =>
+      (selectedEdition ? buildClosedCells(selectedEdition) : []).map((c) =>
+        c.blank || c.n == null ? c : { ...c, selected: c.n === selectedClosedDay },
+      ),
+    [selectedEdition, selectedClosedDay],
+  )
+  const closedNavDays = useMemo(
+    () => closedCells.filter((c) => !c.blank && c.n != null).map((c) => c.n as number),
+    [closedCells],
+  )
+  const handleSelectClosedDay = useCallback((n: number) => {
+    setSelectedClosedDay((prev) => (prev === n ? null : n))
+  }, [])
+  const handleClearClosedDay = useCallback(() => setSelectedClosedDay(null), [])
+  const closedNavIndex = selectedClosedDay == null ? -1 : closedNavDays.indexOf(selectedClosedDay)
+  const handlePrevClosedDay = useCallback(() => {
+    setSelectedClosedDay((prev) => {
+      if (prev == null) return prev
+      const i = closedNavDays.indexOf(prev)
+      return i > 0 ? closedNavDays[i - 1] : prev
+    })
+  }, [closedNavDays])
+  const handleNextClosedDay = useCallback(() => {
+    setSelectedClosedDay((prev) => {
+      if (prev == null) return prev
+      const i = closedNavDays.indexOf(prev)
+      return i >= 0 && i < closedNavDays.length - 1 ? closedNavDays[i + 1] : prev
+    })
+  }, [closedNavDays])
   const closedBars = useMemo(
     () => (selectedEdition ? buildClosedRecentBars(selectedEdition) : undefined),
     [selectedEdition],
@@ -1302,6 +1416,16 @@ function NeoGastosContent({
   const selectedOutBucket =
     selectedOutIso == null ? undefined : outWindow.byIso.get(selectedOutIso)
   const handleClearOutDay = useCallback(() => setSelectedOutIso(null), [])
+  const outBucketByIso = outWindow.byIso
+  // v2 · B-2 "Ver días" — el no-owner no confirma nada, pero sí puede mirar qué
+  // quedó afuera: enfoca el PRIMER día fuera (el más viejo, el que más tiempo
+  // lleva sin resolverse). Ref-estable: es dep del `overdueBlock`.
+  const outWindowDaysRef = useRef(outWindow.days)
+  outWindowDaysRef.current = outWindow.days
+  const handleFocusFirstOutDay = useCallback(() => {
+    const first = outWindowDaysRef.current[0]
+    if (first) setSelectedOutIso(first.iso)
+  }, [])
 
   // ── Selección de día (F3) ──────────────────────────────────────────
   // Drive el CONTROLLER (`setSelectedDay`), no un estado local: re-escopa la
@@ -1538,6 +1662,59 @@ function NeoGastosContent({
     ],
     [t, totalCount, categoriesList, controller.selectedCategoryId, controller.expenseCountByCategoryId],
   )
+  // ── v2 · F-1…F-4 — estado del filtro ───────────────────────────────
+  //
+  // F-3 (chips fantasma) se dispara SOLO cuando el ciclo entero está en cero,
+  // no por categoría: si ghostearamos cada categoría sin movimientos, F-4
+  // ("Nada en Mercado este ciclo") quedaría inalcanzable — y el handoff lo
+  // dibuja explícitamente con el chip `🛒 Mercado 0` ACTIVO.
+  const filterCycleEmpty = totalCount === 0
+  const activeCategory =
+    controller.selectedCategoryId == null
+      ? null
+      : (controller.categoriesById.get(controller.selectedCategoryId) ?? null)
+  const filterNoResults = activeCategory != null && movementsCount === 0
+  /** Con el ciclo en cero el carrusel deja solo "Todas": el resto son moldes. */
+  const visibleFilterChips = useMemo(
+    () => (filterCycleEmpty ? filterChips.slice(0, 1) : filterChips),
+    [filterCycleEmpty, filterChips],
+  )
+  const ghostFilterChips = useMemo(
+    () => (filterCycleEmpty ? categoriesList.map((c) => c.name) : undefined),
+    [filterCycleEmpty, categoriesList],
+  )
+  const filterStatus = useMemo(() => {
+    if (filterNoResults) {
+      return { label: t('gastos:filterStatus.noResults'), tone: 'alert' as const }
+    }
+    if (filterCycleEmpty) return { label: t('gastos:filterStatus.unused'), tone: 'muted' as const }
+    if (activeCategory) {
+      return {
+        label: `${activeCategory.name} · ${movementsCount}`,
+        tone: 'data' as const,
+      }
+    }
+    return { label: t('gastos:smartFilter.all'), tone: 'data' as const }
+  }, [filterNoResults, filterCycleEmpty, activeCategory, movementsCount, t])
+
+  // F-4 · referencia de la edición cerrada más reciente para la categoría
+  // filtrada. Sale de su `category_breakdown` (match por id y, si la categoría
+  // se renombró/recreó, por nombre). Sin dato → la línea se omite entera en vez
+  // de mostrar "$0", que leería como "no gastaste" y no como "no sabemos".
+  const prevEditionCategoryAmount = useMemo(() => {
+    if (!filterNoResults || !activeCategory) return null
+    const prev = editions[0]
+    const raw = prev?.category_breakdown
+    if (!Array.isArray(raw)) return null
+    const match = raw.find(
+      (e) =>
+        (e.category_id != null && e.category_id === activeCategory.id) ||
+        (e.name != null && e.name === (activeCategory.rawName ?? activeCategory.name)),
+    )
+    const total = Number(match?.total ?? 0)
+    return Number.isFinite(total) && total > 0 ? formatMoneyShort(total) : null
+  }, [filterNoResults, activeCategory, editions])
+
   // Espejo en ref de los chips: `handleSelectFilter` tiene que ser ref-estable
   // (es dep del `filterBlock`), así que lee label/conteo de acá en vez de
   // cerrar sobre `filterChips`, que es un array nuevo por render.
@@ -1656,6 +1833,26 @@ function NeoGastosContent({
     () => getMondayFirstOffset(controller.cycleStart),
     [controller.cycleStart],
   )
+
+  // v2 · CAL-4/EV2 "recién arrancado". Día 1-based dentro del ciclo; clampeado
+  // por si el ciclo ya venció (el day-index se pasaría de `cycleDays`).
+  const cycleDayIndex = useMemo(() => {
+    const start = startOfLocalDay(controller.cycleStart).getTime()
+    const now = startOfLocalDay(controller.today).getTime()
+    const idx = Math.floor((now - start) / MS_PER_DAY) + 1
+    return Math.min(Math.max(idx, 1), controller.cycleDays)
+  }, [controller.cycleStart, controller.today, controller.cycleDays])
+  // UMBRAL · los primeros 5 días. Es el tramo donde la grilla es mayormente
+  // futuro: con 30 pozos apagados el calendario se lee como "roto" en vez de
+  // "todavía no pasó nada". A partir del 6º ya hay suficiente pintado como para
+  // que el futuro en inset se entienda solo. El ejemplo del handoff (CAL-4,
+  // "día 3 de 30") cae adentro.
+  const FRESH_CYCLE_DAYS = 5
+  // `isEmptyAccount` entra sí o sí: una cuenta sin NADA cargado es el caso
+  // "molde" por definición, aunque el ciclo vaya por el día 20. Sin esto, la
+  // rama vacía dibujaba 30 pozos apagados debajo de un strip que habla de
+  // "punteados" que no existían.
+  const isFreshCycle = (cycleDayIndex <= FRESH_CYCLE_DAYS || isEmptyAccount) && !isOverdue
   const cells = useMemo(
     () =>
       buildNeoCells({
@@ -1667,6 +1864,7 @@ function NeoGastosContent({
         noSpendMarkedDates,
         selectedDay: controller.selectedDay,
         empty: isEmptyAccount,
+        freshCycle: isFreshCycle,
       }),
     [
       controller.cycleStart,
@@ -1677,6 +1875,7 @@ function NeoGastosContent({
       noSpendMarkedDates,
       controller.selectedDay,
       isEmptyAccount,
+      isFreshCycle,
     ],
   )
 
@@ -1725,9 +1924,8 @@ function NeoGastosContent({
       deleteExpenseMutationRef.current.mutate(expenseId, {
         onError: (error: unknown) => {
           void triggerHaptic('error')
-          Alert.alert(
-            t('gastos:errors.deleteTitle'),
-            getErrorMessage(error, t('states:error.server')),
+          toast.error(
+            `${t('gastos:errors.deleteTitle')} · ${getErrorMessage(error, t('states:error.server'))}`,
           )
         },
         onSuccess: () => void triggerHaptic('success'),
@@ -1749,9 +1947,8 @@ function NeoGastosContent({
         {
           onError: (error: unknown) => {
             void triggerHaptic('error')
-            Alert.alert(
-              t('gastos:errors.deleteTitle'),
-              getErrorMessage(error, t('states:error.server')),
+            toast.error(
+              `${t('gastos:errors.deleteTitle')} · ${getErrorMessage(error, t('states:error.server'))}`,
             )
           },
           onSuccess: () => void triggerHaptic('success'),
@@ -1875,6 +2072,14 @@ function NeoGastosContent({
       : null
   const dayIsToday = selectedDate
     ? startOfLocalDay(selectedDate).getTime() === todayStartMs
+    : false
+  // v2 · DS-4 — el día todavía no llegó. Los días futuros ya eran navegables
+  // con ‹ › (la nav clampea al ciclo, no a hoy), pero mostraban "$0 / 0 mov" y
+  // ofrecían "registrar gasto olvidado" y "marcar día sin gastos" para un día
+  // que no ocurrió — la mutación de marcar ya lo rechazaba en el server
+  // (`noSpend.futureDate`), así que el CTA era una promesa falsa.
+  const dayIsFuture = selectedDate
+    ? startOfLocalDay(selectedDate).getTime() > todayStartMs
     : false
   const dayIsMarked = selectedDate
     ? noSpendMarkedDates.has(formatLocalDateKey(selectedDate))
@@ -2347,6 +2552,7 @@ function NeoGastosContent({
         fut: t('gastos:calendar.dayA11y.fut'),
         fuera: t('gastos:calendar.dayA11y.fuera'),
         empty: t('gastos:calendar.dayA11y.empty'),
+        none: t('gastos:calendar.dayA11y.none'),
       },
     }),
     [t],
@@ -2356,15 +2562,32 @@ function NeoGastosContent({
   // prop inestable → la SectionList/ScrollView (PureComponent) no hacía
   // bail-out. Solo dependen del inset inferior, que cambia una vez por rotación.
   const listContentStyle = useMemo(
-    () => [styles.listContent, { paddingBottom: insets.bottom + 96 }],
-    [insets.bottom],
+    // El TOP lleva el inset acá (no en el Screen, que va con `ownInsets`):
+    // así la lista se dibuja de borde a borde y su contenido PASA por
+    // debajo de la isla, que es lo que el edge effect difumina.
+    // `insets.top` PISA el paddingTop 14 de la base (no se suma): así el
+    // contenido arranca a la misma altura que Home/Fijos/Control, que
+    // usan `Math.max(callerTop, insets.top)` en el Screen.
+    () => [styles.listContent, { paddingTop: insets.top, paddingBottom: insets.bottom + 96 }],
+    [insets.top, insets.bottom],
   )
   const emptyScrollContentStyle = useMemo(
-    () => [styles.emptyScroll, { paddingBottom: insets.bottom + 96 }],
-    [insets.bottom],
+    // Mismo inset superior que `listContentStyle`: con `ownInsets` el
+    // Screen ya no aporta padding, así que CADA superficie de scroll de
+    // esta pantalla tiene que aplicarlo. Sin esto el header chocaba con
+    // la isla dinámica en el estado vacío.
+    () => [
+      styles.emptyScroll,
+      { paddingTop: insets.top, paddingBottom: insets.bottom + 96 },
+    ],
+    [insets.top, insets.bottom],
   )
 
   // ── SectionList renderers ──────────────────────────────────────────
+  // v2 · M-3 — con un día FUERA en foco, el feed muestra SOLO ese día, así que
+  // todas sus filas llevan la nota. Un string (o undefined) es prop estable →
+  // no derrota la memo de las filas.
+  const outRowNote = isOutDayFocused ? t('gastos:overdue.rowNote') : undefined
   const keyExtractor = useCallback(
     (item: MovementItem) =>
       item.kind === 'expense' ? `e-${item.expense.id}` : `i-${item.income.id}`,
@@ -2406,6 +2629,7 @@ function NeoGastosContent({
           isDeleting={isDeleting}
           onDeleteExpense={handleDeleteExpense}
           onDeleteIncome={handleDeleteIncome}
+          outNote={outRowNote}
         />
       )
     },
@@ -2419,6 +2643,7 @@ function NeoGastosContent({
       handleDeleteIncome,
       deletingExpenseId,
       deletingIncomeId,
+      outRowNote,
     ],
   )
 
@@ -2502,34 +2727,58 @@ function NeoGastosContent({
     [isDropdownOpen, mode, dropdownItems, handleSelectCycle],
   )
 
-  // ③ Banner VENCIDO (Brot wow): ciclo terminó + cobro sin confirmar. El CTA de
-  //    confirmar es OWNER-ONLY (no-owner → banner informativo sin botón, RLS).
+  // ③ Aviso del ciclo. v2 parte el banner en DOS (Componentes §03):
+  //    · B-1 (Brot `worried`, "Tu ciclo terminó el N" + ✓ Confirmar) → OWNER.
+  //    · B-2 (Brot `sad`, "N gastos fuera del ciclo" + Ver días) → NO-OWNER.
+  //    El no-owner no puede confirmar (RLS), y hasta v1 le quedaba el banner de
+  //    B-1 SIN botón: le anunciaba un problema y no le daba nada que hacer.
+  //    B-2 le cuenta la consecuencia y lo lleva a los días afectados.
   //    Va entre el dropdown y el hero (paridad con el mock).
+  const outMovementsCount = useMemo(
+    () => outWindow.days.reduce((sum, d) => sum + (outBucketByIso.get(d.iso)?.count ?? 0), 0),
+    [outWindow.days, outBucketByIso],
+  )
   const overdueBlock = useMemo(
     () =>
-      isOverdue ? (
+      !isOverdue ? null : isFamilyOwner ? (
         <GastosOverdueBanner
           mode={mode}
           title={t('gastos:overdue.title', { day: overdueTitleDay })}
           subtitle={t('gastos:overdue.subtitle', { count: outWindow.days.length })}
           confirmLabel={t('gastos:overdue.confirmCta')}
           confirmA11yLabel={t('gastos:overdue.confirmA11y')}
-          onConfirm={isFamilyOwner ? handleOpenConfirmSheet : undefined}
+          onConfirm={handleOpenConfirmSheet}
+          brotPose="worried"
           // Este banner vive DENTRO del ListHeaderComponent de la SectionList:
           // su Brot convive con el scroll del feed, así que su loop Skia
           // (PictureRecorder + drawBrot por frame en el UI runtime) competía con
-          // el gesto. Queda en su frame estático — la pose `wow` se lee igual.
+          // el gesto. Queda en su frame estático — la pose se lee igual.
           animated={false}
         />
-      ) : null,
+      ) : (
+        <GastosOverdueBanner
+          mode={mode}
+          title={t('gastos:overdue.outNoticeTitle', { count: outMovementsCount })}
+          subtitle={t('gastos:overdue.outNoticeSub')}
+          confirmLabel={t('gastos:overdue.outNoticeCta')}
+          confirmA11yLabel={t('gastos:overdue.outNoticeCta')}
+          // "Ver días" NO muta nada: enfoca el primer día fuera, que es lo único
+          // que el no-owner puede hacer con esto.
+          onConfirm={outWindow.days.length > 0 ? handleFocusFirstOutDay : undefined}
+          brotPose="sad"
+          animated={false}
+        />
+      ),
     [
       isOverdue,
       mode,
       t,
       overdueTitleDay,
       outWindow.days.length,
+      outMovementsCount,
       isFamilyOwner,
       handleOpenConfirmSheet,
+      handleFocusFirstOutDay,
     ],
   )
 
@@ -2553,6 +2802,17 @@ function NeoGastosContent({
             categories={heroCategories}
             recentDailyBars={controller.recentDailyBars}
             paused={pausedParticles}
+            // v2 · H-3 — con días fuera, el total del hero deja de ser toda la
+            // verdad: la sublínea dice cuántos días quedaron afuera y el Brot
+            // `worried` ancla la preocupación AL DATO (no suelto en el header).
+            subline={
+              isOverdue && outWindow.days.length > 0
+                ? t('gastos:hero.sublineOutDays', { count: outWindow.days.length })
+                : undefined
+            }
+            sublineTone="warn"
+            brotPose={isOverdue && outWindow.days.length > 0 ? 'worried' : undefined}
+            animated={false}
           />
         </GastosTourStep>
       </View>
@@ -2576,6 +2836,8 @@ function NeoGastosContent({
       heroCategories,
       controller.recentDailyBars,
       pausedParticles,
+      isOverdue,
+      outWindow.days.length,
     ],
   )
 
@@ -2613,14 +2875,19 @@ function NeoGastosContent({
           onPrev={navBounds.canGoPrev ? handlePrevDay : undefined}
           onNext={navBounds.canGoNext ? handleNextDay : undefined}
           onBackToMonth={handleClearOutDay}
+          backLabel={t('gastos:calendar.backToCalendar')}
         />
       ) : daySelected ? (
         <GastosDayDetail
           mode={mode}
           dayNum={String(controller.selectedDay)}
-          sub={controller.cycleLabel}
-          badge={dayBadge}
-          gastado={dayGastado}
+          sub={dayIsFuture ? t('gastos:calendar.futureDaySub') : controller.cycleLabel}
+          // v2 · DS-3 — un día ya marcado sin gastos deja de mostrar "Día
+          // tranquilo" y muestra el logro.
+          badge={dayIsMarked ? t('gastos:calendar.cleanDayBadge') : dayBadge}
+          // v2 · DS-4 — un día futuro no tiene "gastado 0", tiene "todavía no
+          // sabemos": em-dash, no cero.
+          gastado={dayIsFuture ? EM_DASH : dayGastado}
           movs={dayMovs}
           isOut={false}
           showCtas
@@ -2628,12 +2895,19 @@ function NeoGastosContent({
           onPrev={navBounds.canGoPrev ? handlePrevDay : undefined}
           onNext={navBounds.canGoNext ? handleNextDay : undefined}
           onBackToMonth={controller.clearDay}
+          backLabel={t('gastos:calendar.backToCalendar')}
           // Registrar olvidado: solo días pasados (hoy usa el + normal).
-          onRegister={selectedDate && !dayIsToday ? handleRegisterSelected : undefined}
+          onRegister={selectedDate && !dayIsToday && !dayIsFuture ? handleRegisterSelected : undefined}
           // Marcar sin-gastos: solo días de 0 movimientos aún sin marca.
-          onMarkEmpty={selectedDate && !dayHasMovs ? handleMarkSelected : undefined}
+          onMarkEmpty={selectedDate && !dayHasMovs && !dayIsFuture ? handleMarkSelected : undefined}
           // Revertir: solo cuando ya está marcado.
           onUnmark={selectedDate && dayIsMarked ? handleUnmarkSelected : undefined}
+          // v2 · DS-4 — día futuro: sin acciones, con el porqué escrito.
+          variant={dayIsFuture ? 'future' : 'live'}
+          noteLine={dayIsFuture ? t('gastos:calendar.noActionsFuture') : undefined}
+          // v2 · DS-3/EV3 — el vacío como logro.
+          cleanLine={dayIsMarked ? t('gastos:calendar.cleanDayLine') : undefined}
+          onOpenGarden={dayIsMarked ? handlePressGarden : undefined}
         />
       ) : (
         // Paso `calendar` (order 2): solo se registra cuando el calendario está
@@ -2655,6 +2929,29 @@ function NeoGastosContent({
             // queda constante y este bloque conserva su identidad.
             paused={pausedFueraGlow}
             a11y={calendarA11y}
+            // v2 · CAL-1/CAL-2/CAL-4 — el hint dice en qué estado está la
+            // grilla. Prioridad: días fuera (lo urgente) > recién arrancado
+            // (explica el punteado) > invitación a tocar.
+            hint={
+              isOverdue && outWindow.days.length > 0
+                ? t('gastos:calendar.hintOverdue', { count: outWindow.days.length })
+                : isFreshCycle
+                  ? t('gastos:calendar.hintFresh', {
+                      day: cycleDayIndex,
+                      total: controller.cycleDays,
+                    })
+                  : t('gastos:calendar.hintTapShort')
+            }
+            footNote={
+              isFreshCycle
+                ? {
+                    text: t('gastos:calendar.freshNote'),
+                    strong: t('gastos:calendar.freshNoteStrong'),
+                    tail: t('gastos:calendar.freshNoteTail'),
+                  }
+                : undefined
+            }
+            animated={false}
           />
         </GastosTourStep>
       ),
@@ -2692,6 +2989,13 @@ function NeoGastosContent({
       handleUnmarkSelected,
       calendarCells,
       handleSelectDay,
+      dayIsFuture,
+      handlePressGarden,
+      isOverdue,
+      outWindow.days.length,
+      isFreshCycle,
+      cycleDayIndex,
+      controller.cycleDays,
     ],
   )
 
@@ -2704,10 +3008,51 @@ function NeoGastosContent({
         text={GASTOS_TOUR_STEPS.filters.text}
         highlight={{ borderRadius: GASTOS_RADII.chip + 6, padding: 8 }}
       >
-        <GastosFilter mode={mode} chips={filterChips} onSelect={handleSelectFilter} />
+        <GastosFilter
+          mode={mode}
+          chips={visibleFilterChips}
+          onSelect={handleSelectFilter}
+          eyebrow={
+            activeCategory
+              ? t('gastos:filterV2.eyebrowActive')
+              : t('gastos:smartFilter.eyebrow')
+          }
+          status={filterStatus}
+          ghostChips={ghostFilterChips}
+          ghostHint={ghostFilterChips ? t('gastos:filterV2.ghostHint') : undefined}
+          // v2 · F-4 — el vacío del filtro vive ACÁ (no en la lista): queda
+          // pegado al chip que lo causó y el CTA de quitarlo a un dedo. Por eso
+          // `ListEmpty` ya no dibuja su variante `filtered` (se duplicaría).
+          emptyResult={
+            filterNoResults && activeCategory
+              ? {
+                  title: t('gastos:filterV2.emptyTitle', { category: activeCategory.name }),
+                  hint: prevEditionCategoryAmount
+                    ? t('gastos:filterV2.prevEditionSpent')
+                    : undefined,
+                  hintAmount: prevEditionCategoryAmount ?? undefined,
+                  ctaLabel: t('gastos:filterV2.clearCta'),
+                  onClear: handleClearFilters,
+                }
+              : undefined
+          }
+          animated={false}
+        />
       </GastosTourStep>
     ),
-    [preview, mode, filterChips, handleSelectFilter],
+    [
+      preview,
+      mode,
+      t,
+      visibleFilterChips,
+      handleSelectFilter,
+      activeCategory,
+      filterStatus,
+      ghostFilterChips,
+      filterNoResults,
+      prevEditionCategoryAmount,
+      handleClearFilters,
+    ],
   )
 
   // ⑦ encabezado "MOVIMIENTOS" (paso `list`, order 4): con `extendToScrollEnd`
@@ -2826,9 +3171,19 @@ function NeoGastosContent({
   ])
 
   // Vacío contextual (dentro de la lista, cuando hay historial pero el scope
-  // actual queda sin filas): filtro → mini-empty "limpiar filtros"; ciclo sin
-  // gastos → "aún sin gastos".
+  // actual queda sin filas).
+  //
+  // v2 · cuando el vacío lo causa un FILTRO DE CATEGORÍA, el bloque del filtro
+  // ya dibuja F-4 ("Nada en X este ciclo" + Brot + ✕ Quitar filtro) justo
+  // debajo de los chips. Renderizar acá el mini-empty de "limpiar filtros"
+  // repetiría el mismo mensaje dos veces en la misma pantalla, así que la lista
+  // no dibuja NADA en ese caso. El resto de los filtros (día en foco) sí
+  // conservan su vacío: no tienen bloque propio que los explique.
+  //
+  // Sin filtro → M-4/EV6: el ciclo vacío se dibuja como MOLDE — 3 filas
+  // fantasma punteadas + Brot + "Registrar mi primer gasto".
   const ListEmpty = useMemo(() => {
+    if (filterNoResults) return null
     const filtered = controller.hasAnyFilter
     return (
       <GastosMovementsEmptyWell
@@ -2841,13 +3196,15 @@ function NeoGastosContent({
         sub={
           filtered
             ? t('gastos:emptyVariants.filtered.secondary')
-            : t('gastos:emptyVariants.cycle.secondary')
+            : t('gastos:emptyState.ghostSub')
         }
         ctaLabel={filtered ? t('gastos:clearFilters.label') : t('gastos:emptyState.addFirstCta')}
         onPressCta={filtered ? handleClearFilters : handlePressAdd}
+        ghostRows={filtered ? 0 : 3}
+        animated={false}
       />
     )
-  }, [controller.hasAnyFilter, mode, t, handleClearFilters, handlePressAdd])
+  }, [filterNoResults, controller.hasAnyFilter, mode, t, handleClearFilters, handlePressAdd])
 
   // Sheet de confirmación del ciclo (CycleBalanceSheet) — reuso EXACTO de la
   // Home. Se monta tanto en el feed como en el vacío (ambos pueden estar
@@ -2888,11 +3245,13 @@ function NeoGastosContent({
     return (
       <ScrollView
         contentContainerStyle={emptyScrollContentStyle}
+        // ÚNICO handler de esta rama: alimenta el umbral del scroll edge
+        // effect (setState con bail-out; no re-renderea por frame). Sigue
+        // sin handlers de tour — esta vista no registra superficie ni
+        // pasos — ni de bordes de gesto.
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        // SIN handlers de scroll: esta rama NO participa del tour (no registra
-        // superficie ni pasos) y, revertida la pausa de partículas por gesto,
-        // no queda nada que sincronizar en los bordes del gesto. Cero callbacks
-        // JS durante el scroll de esta vista.
       >
         <GastosHeader
           mode={mode}
@@ -2922,24 +3281,83 @@ function NeoGastosContent({
             categories={closedCategories}
             recentDailyBars={closedBars}
             paused={pausedParticles}
+            // v2 · H-2 — la sublínea dice que la edición no se toca, y el Brot
+            // `think` la acompaña. Sin esto, el único cartel de "solo lectura"
+            // era la barra ámbar de arriba, que se pierde al scrollear.
+            subline={t('gastos:hero.sublineReadOnly')}
+            brotPose="think"
+            animated={false}
           />
         </View>
-        {/* Calendario de intensidad, SOLO LECTURA (sin onSelectDay → celdas no
-            tappables; hint override que aclara que es un resumen). */}
-        <GastosCalendar
-          mode={mode}
-          cells={closedCells}
-          hint={t('gastos:closed.calendarHint')}
-          a11y={calendarA11y}
-        />
+        {/* v2 · CAL-3 + DS-6 — el calendario de una edición cerrada ahora es
+            tappable y alterna con el detalle del día, igual que el ciclo vivo.
+            El detalle es de SOLO LECTURA: total real de `daily_totals`,
+            MOVIMIENTOS "—" (no se persiste el conteo) y sin CTAs. */}
+        {selectedClosedDay != null ? (
+          <GastosDayDetail
+            mode={mode}
+            dayNum={String(selectedClosedDay)}
+            sub={t('gastos:closed.trigger', { label: selectedEdition.period_label })}
+            badge={null}
+            gastado={formatMoney(closedDayMeta.get(selectedClosedDay)?.total ?? 0)}
+            movs={EM_DASH}
+            isOut={false}
+            showCtas={false}
+            variant="closed"
+            noteLine={t('gastos:calendar.noActionsClosed')}
+            backLabel={t('gastos:calendar.backToCalendar')}
+            onBackToMonth={handleClearClosedDay}
+            onPrev={closedNavIndex > 0 ? handlePrevClosedDay : undefined}
+            onNext={
+              closedNavIndex >= 0 && closedNavIndex < closedNavDays.length - 1
+                ? handleNextClosedDay
+                : undefined
+            }
+            animated={false}
+          />
+        ) : (
+          <GastosCalendar
+            mode={mode}
+            cells={closedCells}
+            // "Mayo 2026" → "MAYO EN UN VISTAZO". El año se saca a propósito:
+            // con él ("MAYO 2026 EN UN VISTAZO") el título no entra al lado del
+            // hint y truncaba justo en la parte que nombra el mes. El año ya
+            // está en el trigger del ciclo y en la barra de solo-lectura.
+            title={t('gastos:calendar.titleMonth', {
+              month: selectedEdition.period_label.replace(/\s+\d{4}$/, '').toUpperCase(),
+            })}
+            hint={t('gastos:calendar.hintClosed')}
+            onSelectDay={handleSelectClosedDay}
+            a11y={calendarA11y}
+            animated={false}
+          />
+        )}
         <GastosMovSectionHead mode={mode} chipLabel={t('gastos:closed.sectionChip')} />
         {/* Movimientos NO listados (no persisten): well honesto, sin CTA de
-            registrar (nada que registrar en un ciclo cerrado). */}
-        <GastosMovementsEmptyWell
-          mode={mode}
-          title={t('gastos:closed.movementsTitle')}
-          sub={t('gastos:closed.movementsSub')}
-        />
+            registrar (nada que registrar en un ciclo cerrado).
+            v2 · EV7 — si la edición cerró SIN gastos, el well cambia de mensaje:
+            no es que el detalle no se conserve, es que no hubo nada. Hoy este
+            caso NO es alcanzable desde el dropdown (`useMonthlyEditions` filtra
+            las ediciones con `expenses_count === 0`, y ese filtro también
+            alimenta el archivo de Wrappeds de Ajustes, así que no se toca acá);
+            queda cubierto por si el filtro cambia o llega por deep-link. */}
+        {(selectedEdition.expenses_count ?? 0) === 0 ? (
+          <GastosMovementsEmptyWell
+            mode={mode}
+            title={t('gastos:closed.emptyTitle', { month: selectedEdition.period_label })}
+            sub={t('gastos:closed.emptyBody')}
+            ctaLabel={t('gastos:closed.backToCurrent')}
+            onPressCta={handleBackToCurrent}
+            animated={false}
+          />
+        ) : (
+          <GastosMovementsEmptyWell
+            mode={mode}
+            title={t('gastos:closed.movementsTitle')}
+            sub={t('gastos:closed.movementsSub')}
+            animated={false}
+          />
+        )}
       </ScrollView>
     )
   }
@@ -3003,12 +3421,12 @@ function NeoGastosContent({
         // activo vuelve a 16ms para que el highlight no caiga off-target. Los
         // handlers de borde mantienen `scrollYRef` fresco con el onScroll
         // por-frame gateado.
-        onScroll={isTourActive ? handleTourScroll : undefined}
+        onScroll={handleListScroll}
         onScrollBeginDrag={handleScrollStart}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         onContentSizeChange={handleTourContentSizeChange}
-        scrollEventThrottle={isTourActive ? 16 : SCROLL_IDLE_THROTTLE_MS}
+        scrollEventThrottle={16}
       >
         {/* Paso `streak` (order 1): resalta el header entero (el kit no expone
             ref del botón Brot/jardín donde vive el badge de racha) — mismo
@@ -3059,18 +3477,26 @@ function NeoGastosContent({
             text={GASTOS_TOUR_STEPS.hero.text}
             highlight={{ borderRadius: GASTOS_RADII.hero, padding: 8 }}
           >
+            {/* v2 · H-4/EV1 — el hero vacío deja de esconder promedio y
+                categorías: las muestra en MOLDE (promedio "—", 7 barras
+                punteadas con sus letras, y la promesa de las categorías). El
+                chip "0 mov" también vuelve: el molde tiene que ser el mismo
+                esqueleto que el hero lleno para que se lea como "todavía no",
+                no como "esta pantalla es distinta". */}
             <GastosHero
               mode={mode}
               tag={t('gastos:hero.totalVisible')}
-              chip=""
+              chip={controller.cycleSummaryChip}
               total={formatMoney(0)}
-              prom=""
+              prom={EM_DASH}
               categories={[]}
               empty
-              emptySub={t('gastos:emptyVariants.global.secondary')}
+              emptySub={t('gastos:hero.emptySub')}
+              emptyCategoriesHint={t('gastos:hero.emptyCategories')}
               emptyCtaLabel={t('gastos:emptyState.addFirstCta')}
               onPressEmptyCta={handlePressAdd}
               paused={pausedParticles}
+              animated={false}
             />
           </GastosTourStep>
         </View>
@@ -3080,12 +3506,26 @@ function NeoGastosContent({
           text={GASTOS_TOUR_STEPS.calendar.text}
           highlight={{ borderRadius: GASTOS_RADII.card, padding: 8 }}
         >
+          {/* v2 · CAL-4/EV2 — cuenta nueva: la grilla va punteada entera (en
+              `empty` buildNeoCells manda TODOS los días por la rama de futuro,
+              y `freshCycle` la vuelve molde) + el strip que traduce el
+              punteado. El hint dice en qué día del ciclo está parado. */}
           <GastosCalendar
             mode={mode}
             cells={cells}
             onSelectDay={handleSelectDay}
             empty
             a11y={calendarA11y}
+            hint={t('gastos:calendar.hintFresh', {
+              day: cycleDayIndex,
+              total: controller.cycleDays,
+            })}
+            footNote={{
+              text: t('gastos:calendar.freshNote'),
+              strong: t('gastos:calendar.freshNoteStrong'),
+              tail: t('gastos:calendar.freshNoteTail'),
+            }}
+            animated={false}
           />
         </GastosTourStep>
         <GastosTourStep
@@ -3094,6 +3534,9 @@ function NeoGastosContent({
           text={GASTOS_TOUR_STEPS.list.text}
           highlight={{ borderRadius: GASTOS_RADII.row, padding: 6 }}
         >
+          {/* v2 · M-4/EV6 — filas fantasma + Brot + "Registrar mi primer gasto".
+              La pill de estado del encabezado ("Ciclo sin cargar") sale del
+              chipLabel, que en cero ya dice "0 gastos en el ciclo". */}
           <GastosMovements
             mode={mode}
             chipLabel={t('gastos:history.cycleMovements', { count: 0 })}
@@ -3101,9 +3544,11 @@ function NeoGastosContent({
             showSeeMore={false}
             empty
             emptyTitle={t('gastos:emptyState.introTitle')}
-            emptySub={t('gastos:emptyVariants.global.secondary')}
+            emptySub={t('gastos:emptyState.ghostSub')}
             emptyCtaLabel={t('gastos:emptyState.addFirstCta')}
             onPressEmptyCta={handlePressAdd}
+            emptyGhostRows={3}
+            animated={false}
           />
         </GastosTourStep>
       </ScrollView>
@@ -3177,7 +3622,7 @@ function NeoGastosContent({
         // el tour arranca en foco/first-run, nunca a mitad de gesto, así que
         // cuando el host lee el ref ya tiene la Y REAL asentada — sin cutout
         // off-target.
-        onScroll={isTourActive ? handleTourScroll : undefined}
+        onScroll={handleListScroll}
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={handleScrollEndDrag}
         onMomentumScrollEnd={handleMomentumScrollEnd}

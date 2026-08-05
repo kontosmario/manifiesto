@@ -10,7 +10,12 @@
     "totalDay": "TOTAL DEL DÍA",
     "dailyAverage": "PROMEDIO DÍA",
     "lastDays": "· últimos {{days}}d",
-    "topCategories": "MÁS PESO POR CATEGORÍA"
+    "topCategories": "MÁS PESO POR CATEGORÍA",
+    "sublineReadOnly": "📁 Solo lectura",
+    "sublineOutDays_one": "⚠ {{count}} día fuera del ciclo",
+    "sublineOutDays_other": "⚠ {{count}} días fuera del ciclo",
+    "emptySub": "Todavía no registras gastos en este ciclo.",
+    "emptyCategories": "Tus categorías con más peso van a aparecer aquí 🌱"
   },
   "closed": {
     "currentTag": "EN CURSO",
@@ -19,7 +24,10 @@
     "calendarHint": "resumen del mes",
     "sectionChip": "edición cerrada",
     "movementsTitle": "Los movimientos no se conservan",
-    "movementsSub": "Guardamos el resumen de cada edición cerrada —el total, las categorías y tu mes—, pero el detalle movimiento por movimiento no queda archivado."
+    "movementsSub": "Guardamos el resumen de cada edición cerrada —el total, las categorías y tu mes—, pero el detalle movimiento por movimiento no queda archivado.",
+    "emptyTitle": "{{month}} cerró sin gastos registrados",
+    "emptyBody": "No se puede editar una edición cerrada, pero puedes revisar las otras.",
+    "backToCurrent": "Volver al ciclo actual ›"
   },
   "overdue": {
     "title": "Tu ciclo terminó el {{day}}",
@@ -31,7 +39,12 @@
     "outCellSub": "FUERA",
     "outBadge": "Fuera de ciclo",
     "outDaySub": "Fuera de ciclo · pasa al próximo al confirmar",
-    "outDayChip": "✕ Día +{{day}} · ver todo"
+    "outDayChip": "✕ Día +{{day}} · ver todo",
+    "outNoticeTitle_one": "{{count}} gasto fuera del ciclo",
+    "outNoticeTitle_other": "{{count}} gastos fuera del ciclo",
+    "outNoticeSub": "Al confirmar el cobro pasan al próximo ciclo",
+    "outNoticeCta": "Ver días",
+    "rowNote": "Queda fuera del ciclo hasta confirmar el cobro."
   },
   "list": {
     "movementsTitle": "Movimientos",
@@ -53,7 +66,8 @@
       "calendarDescription": "Un calendario con tus días de gasto del mes.",
       "listTitle": "Tus movimientos",
       "listDescription": "El detalle por día, con categoría y autor."
-    }
+    },
+    "ghostSub": "Carga tu primer gasto y esta lista se arma sola, agrupada por día."
   },
   "smartFilter": {
     "eyebrow": "FILTRAR POR CATEGORÍA",
@@ -142,8 +156,24 @@
       "now": "hoy",
       "fut": "día futuro",
       "fuera": "fuera del ciclo",
-      "empty": "sin gastos registrados"
-    }
+      "empty": "sin gastos registrados",
+      "none": "todavía no llegó"
+    },
+    "hintTapShort": "toca un día",
+    "hintOverdue_one": "+{{count}} fuera del ciclo",
+    "hintOverdue_other": "+{{count}} fuera del ciclo",
+    "hintClosed": "solo lectura",
+    "hintFresh": "día {{day}} de {{total}}",
+    "titleMonth": "{{month}} EN UN VISTAZO",
+    "freshNote": "Se va pintando a medida que registras. Los ",
+    "freshNoteStrong": "punteados",
+    "freshNoteTail": " son días que todavía no llegaron.",
+    "backToCalendar": "Volver al calendario",
+    "noActionsFuture": "Sin acciones — día futuro",
+    "noActionsClosed": "Sin acciones — edición cerrada",
+    "cleanDayLine": "Día sin gastos 🌿 sumaste +1 al jardín",
+    "cleanDayBadge": "Día limpio",
+    "futureDaySub": "todavía no llegó"
   },
   "noSpendConfirm": {
     "title": "Hoy ya tienes gastos cargados",
@@ -580,7 +610,60 @@
   "addExpense": {
     "title": "Agregar gasto",
     "formErrorTitle": "No pudimos abrir el formulario",
-    "createCategory": "Crear categoría"
+    "createCategory": "Crear categoría",
+    "wizard": {
+      "stepNew": "Nuevo gasto",
+      "stepReview": "Revisa el impacto",
+      "backToPrevious": "Volver al paso anterior",
+      "close": "Cerrar",
+      "cta": {
+        "seeImpact": "Ver impacto →",
+        "completeData": "Completa los datos",
+        "seeImpactA11y": "Ver impacto",
+        "completeDataA11y": "Completa los datos",
+        "saving": "Guardando…",
+        "confirm": "Confirmar y guardar ✓",
+        "confirmA11y": "Confirmar y guardar el gasto"
+      },
+      "errors": {
+        "createFailed": "No pudimos guardar el gasto"
+      },
+      "step1": {
+        "amountLabel": "MONTO",
+        "categoryLabel": "CATEGORÍA",
+        "descriptionLabel": "DESCRIPCIÓN",
+        "descriptionPlaceholder": "Ej: Súper, nafta, café",
+        "backdatePill": "REGISTRANDO PARA {{date}}",
+        "backdatePillA11y": "Estás registrando un gasto para {{date}}"
+      },
+      "step2": {
+        "impactEyebrow": "IMPACTO EN TU CUPO DE HOY",
+        "beforeShort": "ANTES",
+        "afterShort": "AHORA",
+        "pctOfBudget": "{{pct}}% del cupo",
+        "delta": "+{{pp}} puntos",
+        "exceeds": "Te pasas por {{amount}}",
+        "exceedsHint": "Puedes registrarlo igual: el excedente se descuenta de lo que queda del mes.",
+        "noBase": "Todavía no hay un cupo diario para comparar.",
+        "noIncome": "Carga tu ingreso del mes para ver cómo pega cada gasto.",
+        "noIncomeCta": "Configurar ingreso",
+        "remainingEyebrow": "TE QUEDA HOY",
+        "notesLabel": "NOTA",
+        "notesPlaceholder": "Opcional",
+        "forDateLabel": "FECHA",
+        "forDateToday": "Hoy",
+        "noCategory": "Sin categoría",
+        "summaryFallbackIcon": "🧾",
+        "healthBadge": {
+          "high": "Alto",
+          "mid": "Medio",
+          "healthy": "Sano"
+        },
+        "outsideCycleTitle": "Fuera del ciclo actual",
+        "outsideCycleBefore": "Esta fecha cae en el ciclo anterior, así que este gasto no descuenta de tu cupo de hoy.",
+        "outsideCycleAfter": "Esta fecha cae en el ciclo siguiente, así que este gasto no descuenta de tu cupo de hoy."
+      }
+    }
   },
   "addIncome": {
     "title": "Agregar ingreso",
@@ -608,6 +691,46 @@
       "birthdayGift": "Regalo cumple",
       "freelance": "Freelance",
       "refund": "Reintegro"
+    },
+    "wizard": {
+      "stepNew": "Nuevo ingreso",
+      "stepReview": "Revisa el impacto",
+      "backToPrevious": "Volver al paso anterior",
+      "close": "Cerrar",
+      "cta": {
+        "seeImpact": "Ver impacto →",
+        "completeData": "Completa los datos",
+        "seeImpactA11y": "Ver impacto",
+        "completeDataA11y": "Completa los datos",
+        "saving": "Guardando…",
+        "confirm": "Confirmar y guardar ✓",
+        "confirmA11y": "Confirmar y guardar el ingreso"
+      },
+      "errors": {
+        "createFailed": "No pudimos guardar el ingreso"
+      },
+      "step1": {
+        "amountLabel": "MONTO",
+        "kindLabel": "¿DE DÓNDE?",
+        "kindFlagged": "Elige de dónde viene",
+        "descriptionLabel": "DESCRIPCIÓN",
+        "descriptionPlaceholder": "Ej: Sueldo, venta, reintegro"
+      },
+      "step2": {
+        "whenEyebrow": "¿CUÁNDO?",
+        "impactEyebrow": "IMPACTO EN TU CICLO",
+        "availableEyebrow": "DISPONIBLE DEL MES",
+        "dailyBudgetEyebrow": "CUPO DIARIO",
+        "beforeShort": "ANTES",
+        "afterShort": "AHORA",
+        "dailyBudgetUnchanged": "Tu cupo diario no cambia: este ingreso suma al saldo del mes.",
+        "dailyBudgetChanged": "Tu cupo diario pasa a {{amount}} por día.",
+        "outsideCycleTitle": "Fuera del ciclo actual",
+        "outsideCycleBefore": "Esta fecha cae en el ciclo anterior, así que el ingreso no va a sumar al saldo de hoy.",
+        "outsideCycleAfter": "Esta fecha cae en el ciclo siguiente, así que el ingreso no va a sumar al saldo de hoy.",
+        "summaryFallbackIcon": "💵"
+      },
+      "habitTagline": "Cada ingreso que anotas te da una foto más fiel del mes."
     }
   },
   "categoryTemplates": {
@@ -863,5 +986,16 @@
         ]
       }
     }
+  },
+  "filterStatus": {
+    "noResults": "Sin resultados",
+    "unused": "Sin usar aún"
+  },
+  "filterV2": {
+    "eyebrowActive": "FILTRO ACTIVO",
+    "ghostHint": "Los chips punteados son las categorías que se van a activar cuando cargues gastos de cada una.",
+    "emptyTitle": "Nada en {{category}} este ciclo",
+    "prevEditionSpent": "La edición pasada gastaste",
+    "clearCta": "✕ Quitar filtro"
   }
 }
