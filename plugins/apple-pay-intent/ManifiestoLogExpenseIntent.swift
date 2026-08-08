@@ -33,6 +33,17 @@ struct ManifiestoLogExpenseIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
+    // Gate del switch de Ajustes. El atajo del usuario puede seguir
+    // existiendo (y disparándose en cada pago) después de apagar la
+    // captura, así que el "prendido" hay que mirarlo acá y no sólo del
+    // lado de JS: sin esto guardábamos y notificábamos igual, y el
+    // usuario tocaba una notificación que no abría nada porque el host
+    // que la drena no se monta con la feature apagada.
+    //
+    // Sale con `.result()` y no con un error: el atajo es del usuario y
+    // no tiene por qué fallar ruidosamente porque la feature esté apagada.
+    guard ManifiestoCaptureStore.isEnabled() else { return .result() }
+
     ManifiestoCaptureStore.append(merchantRaw: merchant, amountRaw: amount)
     ManifiestoCaptureStore.notify(merchant: merchant, amount: amount)
     return .result()

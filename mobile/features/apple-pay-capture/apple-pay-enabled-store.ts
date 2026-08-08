@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
+import { setCaptureEnabled } from './native'
 
 const KEY = 'apple_pay_capture_enabled'
 
@@ -44,12 +45,34 @@ function publish(next: EnabledSnapshot): void {
  * Una sola lectura del keychain por sesión de app, compartida por todos
  * los consumidores. `getPersistentValue` ya se traga sus propios errores
  * y devuelve `null`, así que la promesa nunca rechaza.
+ *
+ * Al terminar baja el valor al nativo: el keychain es la fuente de verdad
+ * pero el App Intent no lo puede leer (corre en background, sin JS), así
+ * que cada arranque re-espeja el flag en `UserDefaults`.
  */
-function hydrate(): Promise<void> {
+export function hydrateApplePayCaptureEnabled(): Promise<void> {
   hydration ??= getPersistentValue(KEY).then((value) => {
-    publish({ enabled: value === '1', loaded: true })
+    const enabled = value === '1'
+    publish({ enabled, loaded: true })
+    setCaptureEnabled(enabled)
   })
   return hydration
+}
+
+/**
+ * Punto único de escritura del flag: publica al store, persiste en el
+ * keychain y espeja al nativo. Los tres tienen que moverse juntos — si el
+ * nativo quedara atrás, el intent seguiría capturando y notificando con la
+ * feature apagada y nadie drenaría esas capturas.
+ */
+export function setApplePayCaptureEnabled(next: boolean): void {
+  // Optimista: el switch responde en el frame del toque y la escritura
+  // en el keychain va detrás. Si fallara, el valor vuelve al del
+  // keychain recién en el próximo arranque — aceptable para un flag de
+  // UX, y es el mismo criterio del resto de las preferencias locales.
+  publish({ enabled: next, loaded: true })
+  setCaptureEnabled(next)
+  void setPersistentValue(KEY, next ? '1' : '0')
 }
 
 export function useApplePayCaptureEnabled(): EnabledSnapshot & {
@@ -58,16 +81,11 @@ export function useApplePayCaptureEnabled(): EnabledSnapshot & {
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 
   useEffect(() => {
-    void hydrate()
+    void hydrateApplePayCaptureEnabled()
   }, [])
 
   const setEnabled = useCallback((next: boolean) => {
-    // Optimista: el switch responde en el frame del toque y la escritura
-    // en el keychain va detrás. Si fallara, el valor vuelve al del
-    // keychain recién en el próximo arranque — aceptable para un flag de
-    // UX, y es el mismo criterio del resto de las preferencias locales.
-    publish({ enabled: next, loaded: true })
-    void setPersistentValue(KEY, next ? '1' : '0')
+    setApplePayCaptureEnabled(next)
   }, [])
 
   return { enabled: state.enabled, loaded: state.loaded, setEnabled }

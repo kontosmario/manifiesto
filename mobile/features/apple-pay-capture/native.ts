@@ -6,6 +6,7 @@ interface ApplePayCaptureNativeModule {
   getPendingCaptures: () => PendingCapture[]
   clearCaptures: (ids: string[]) => void
   setNotificationCopy: (copy: { title: string; bodyTemplate: string }) => void
+  setCaptureEnabled: (enabled: boolean) => void
 }
 
 // `requireOptionalNativeModule` devuelve null en vez de tirar cuando el
@@ -34,4 +35,14 @@ export function clearCaptures(ids: string[]): void {
 
 export function setNotificationCopy(copy: { title: string; bodyTemplate: string }): void {
   native?.setNotificationCopy(copy)
+}
+
+/**
+ * Baja al nativo el flag que el usuario controla desde Ajustes. El App
+ * Intent corre en background, sin JS vivo, así que el único modo que
+ * tiene de saber si la captura está prendida es este espejo en
+ * `UserDefaults`. Sin él capturaba y notificaba siempre, aún apagado.
+ */
+export function setCaptureEnabled(enabled: boolean): void {
+  native?.setCaptureEnabled(enabled)
 }

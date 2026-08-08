@@ -30,5 +30,12 @@ public class ApplePayCaptureModule: Module {
       else { return }
       UserDefaults.standard.set(json, forKey: ManifiestoCaptureStore.copyKey)
     }
+
+    // Espejo del flag de Ajustes: JS lo guarda en el keychain y lo baja
+    // acá para que el App Intent, que corre sin JS vivo, sepa si tiene
+    // que capturar.
+    Function("setCaptureEnabled") { (enabled: Bool) -> Void in
+      ManifiestoCaptureStore.setEnabled(enabled)
+    }
   }
 }

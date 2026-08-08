@@ -30,9 +30,26 @@ import UserNotifications
 enum ManifiestoCaptureStore {
   static let capturesKey = "manifiesto.applePay.pendingCaptures"
   static let copyKey = "manifiesto.applePay.notificationCopy"
+  static let enabledKey = "manifiesto.applePay.enabled"
   /// Tope para que la lista no crezca sin límite si el usuario nunca
   /// abre la app. Se descartan las más viejas.
   static let maxEntries = 50
+
+  /// El flag que el usuario controla desde Ajustes. Lo espeja el lado JS
+  /// (keychain → acá) en cada arranque y en cada toque del switch.
+  ///
+  /// El default de `bool(forKey:)` cuando la clave no existe es `false`, y
+  /// es justo lo que queremos: apagado hasta que el usuario lo prenda. Sin
+  /// este gate el intent guardaba y notificaba con la captura APAGADA, y la
+  /// notificación quedaba huérfana — nadie la drena, porque el host de JS
+  /// no se monta.
+  static func isEnabled() -> Bool {
+    return UserDefaults.standard.bool(forKey: enabledKey)
+  }
+
+  static func setEnabled(_ enabled: Bool) {
+    UserDefaults.standard.set(enabled, forKey: enabledKey)
+  }
 
   static func read() -> [[String: String]] {
     guard let json = UserDefaults.standard.string(forKey: capturesKey),
