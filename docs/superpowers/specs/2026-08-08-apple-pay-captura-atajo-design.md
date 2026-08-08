@@ -104,8 +104,11 @@ array JSON de:
 ```
 
 `id` es un UUID generado en Swift (idempotencia al drenar). `capturedAt` es
-ISO-8601. **Tope de 50 registros, descartando los más viejos**, para que la
-lista no crezca sin límite si el usuario nunca abre la app.
+ISO-8601 y representa el **instante** del pago: el mapper lo pasa al día LOCAL
+del usuario (`formatLocalDateKey`), nunca corta el string, porque en Argentina
+(UTC-3) toda compra después de las 21:00 cae en el día UTC siguiente. **Tope de
+50 registros, descartando los más viejos**, para que la lista no crezca sin
+límite si el usuario nunca abre la app.
 
 `UserDefaults.standard` alcanza porque el intent corre en el proceso de la app
 principal. Si Apple llegara a moverlo a un proceso de extensión, haría falta un
@@ -164,9 +167,14 @@ Esto cierra el ítem de backlog ya documentado en `docs/sistemas/activity-ocr.md
 Tres funciones puras, todas con tests de vitest:
 
 - `parseShortcutAmount(raw): number | null` — resuelve `$4.500,00`,
-  `4.500,00`, `$4,500.00`, `ARS 4.500`, `US$ 25.00`. Regla del separador
-  decimal: es decimal el **último** separador si va seguido de exactamente dos
-  dígitos; si no, todos son de miles. Monto negativo = devolución: la fila
+  `4.500,00`, `$4,500.00`, `ARS 4.500`, `US$ 25.00`, `4.500,5`. Se valida la
+  **forma completa** del monto contra las gramáticas de moneda (miles
+  agrupados de a 3 con un separador consistente, y 1 o 2 decimales detrás del
+  otro separador); lo que no encaja devuelve `null` en vez de adivinar. Un
+  separador único seguido de 3 dígitos (`$4.500`) es de miles. Casos
+  ambiguos de verdad (`1.234,567`, `4.500.00`) → `null`. Monto negativo =
+  devolución: el signo se detecta por posición (menos antes del primer dígito
+  o paréntesis envolventes al estilo contable, `($ 4.500,00)`), y la fila
   entra marcada como `skip` con warning, no se descarta en silencio.
 - `normalizeMerchant(raw): string` — mayúsculas, NFD sin acentos, se eliminan
   los `#1234` de sucursal y los tokens puramente numéricos, se colapsan
