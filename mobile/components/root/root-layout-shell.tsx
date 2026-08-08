@@ -21,6 +21,7 @@ import { GlobalConnectivityWatcher } from '@/components/root/global-connectivity
 import { InactivityRelockWatcher } from '@/components/root/inactivity-relock-watcher'
 import { InteractionTrackerProvider } from '@/components/root/interaction-tracker-provider'
 import { NotificationRouterBridge } from '@/components/root/notification-router-bridge'
+import { ApplePayNotificationCopyBridge } from '@/features/apple-pay-capture/apple-pay-notification-copy-bridge'
 import { ShareImportListenerBridge } from '@/features/share-import/share-import-listener'
 import { PathnameMirror } from '@/components/root/pathname-mirror'
 import { RootErrorBoundary } from '@/components/root/root-error-boundary'
@@ -162,6 +163,15 @@ export function RootLayoutShell() {
           <NotificationRouterBridge />
           <PathnameMirror />
           <ShareImportListenerBridge />
+          {/*
+            Copy de la notificación local de la captura de Apple Pay. Va
+            acá arriba y no en el layout de tabs porque el App Intent
+            corre con la app en background: si el copy no está escrito,
+            el intent guarda la captura pero no notifica, y la primera
+            captura de una instalación nueva pasaría en silencio.
+            Renderiza null.
+          */}
+          <ApplePayNotificationCopyBridge />
           <NavigationInteractionRecorder />
           <ThemedRootStack />
 

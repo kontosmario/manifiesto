@@ -998,5 +998,9 @@
     "emptyTitle": "Nothing in {{category}} this cycle",
     "prevEditionSpent": "Last edition you spent",
     "clearCta": "✕ Clear filter"
+  },
+  "applePay": {
+    "notificationTitle": "Log this expense?",
+    "notificationBody": "You paid {amount} at {merchant}"
   }
 }

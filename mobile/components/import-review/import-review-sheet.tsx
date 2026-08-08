@@ -43,12 +43,19 @@ interface Props {
    * exit animation + success toast WITHOUT writing anything to the DB.
    * Used by the Settings preview so we can iterate on the wizard UI
    * without burning an IPA build cycle and without polluting real data.
+   *
+   * PRECEDENCIA: gana sobre `onConfirmRows`. Con `previewMode` en true el
+   * confirm se resuelve con el resultado falso y el callback inyectado NO
+   * corre — en silencio, sin warning. Pasar los dos juntos no tiene
+   * sentido; si alguna vez hace falta, hay que decidir cuál manda acá.
    */
   previewMode?: boolean
   /**
    * Destino de la confirmación. Por defecto escribe con `useConfirmImport`
    * (el camino del import por OCR). Apple Pay inyecta el suyo para poder
    * limpiar las capturas nativas drenadas después de insertar.
+   *
+   * `previewMode` tiene precedencia: ver su nota arriba.
    */
   onConfirmRows?: (rows: ReviewRow[]) => Promise<ConfirmResult>
 }

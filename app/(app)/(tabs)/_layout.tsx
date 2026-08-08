@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { ApplePayCaptureHost } from '@/components/apple-pay-capture/apple-pay-capture-host'
 import { AppTabs } from '@/components/navigation/app-tabs'
 import { ShareImportHost } from '@/components/import-review/share-import-host'
 import { SubscriptionGate } from '@/components/billing/subscription-gate'
@@ -33,6 +34,7 @@ export default function TabsLayout() {
     <>
       <AppTabs />
       <ShareImportHost />
+      <ApplePayCaptureHost />
       <SubscriptionGate />
     </>
   )

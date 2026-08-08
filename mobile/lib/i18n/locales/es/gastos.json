@@ -998,5 +998,9 @@
     "emptyTitle": "Nada en {{category}} este ciclo",
     "prevEditionSpent": "La edición pasada gastaste",
     "clearCta": "✕ Quitar filtro"
+  },
+  "applePay": {
+    "notificationTitle": "¿Registrás este gasto?",
+    "notificationBody": "Pagaste {amount} en {merchant}"
   }
 }
