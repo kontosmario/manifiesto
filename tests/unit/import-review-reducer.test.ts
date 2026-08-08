@@ -13,6 +13,7 @@ const mkRow = (id: string, overrides: Partial<ReviewRow> = {}): ReviewRow => ({
   incomeKind: 'other',
   warnings: [],
   source: {
+    origin: 'ocr',
     transaction: {
       merchant: 'Test',
       date: '2026-06-01',
@@ -79,6 +80,7 @@ describe('reviewReducer', () => {
         mkRow('a', {
           kind: 'skip',
           source: {
+            origin: 'ocr',
             transaction: {
               merchant: 'Cashback',
               date: '2026-06-01',

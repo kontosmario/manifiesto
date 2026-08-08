@@ -82,6 +82,7 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     incomeKind: DEFAULT_INCOME_KIND,
     warnings,
     source: {
+      origin: 'ocr',
       transaction: tx,
       originalCurrency: currency,
       appliedRate,

@@ -44,8 +44,12 @@ export function reviewReducer(
       const idx = state.rows.findIndex((r) => r.id === action.id)
       if (idx === -1) return state
       const row = state.rows[idx]
+      // Apple Pay nunca produce un ingreso (un tap NFC siempre es un
+      // gasto o, si es negativo, una devolución que ya quedó en `skip`).
       const restored: ReviewRowKind =
-        row.source.transaction.primaryAmount.sign === 1 ? 'income' : 'expense'
+        row.source.origin === 'ocr' && row.source.transaction.primaryAmount.sign === 1
+          ? 'income'
+          : 'expense'
       const next = state.rows.slice()
       next[idx] = { ...row, kind: restored }
       return { ...state, rows: next }

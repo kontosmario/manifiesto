@@ -9,7 +9,7 @@ interface Props {
   stepIndex: number
   /** Total number of submittable + skipped rows. */
   total: number
-  imageUri: string
+  imageUri?: string
   mode?: 'edit' | 'summary'
 }
 
@@ -37,7 +37,7 @@ export function ImportReviewHeader({
 
   return (
     <Animated.View entering={headingEnter} style={styles.row}>
-      {imageUri !== '' ? (
+      {imageUri !== undefined && imageUri !== '' ? (
         <Image
           source={{ uri: imageUri }}
           style={[

@@ -42,6 +42,7 @@ export function buildPreviewReviewState(): ReviewState {
     incomeKind: 'other',
     warnings: [],
     source: {
+      origin: 'ocr',
       transaction: {
         merchant: overrides.description,
         date: overrides.date,

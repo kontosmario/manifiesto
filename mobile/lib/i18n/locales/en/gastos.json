@@ -101,6 +101,7 @@
     "noCategory": "No category",
     "incomeA11yLabel": "{{title}}, income",
     "swipeToDeleteHint": "Swipe left to delete",
+    "editOrDeleteHint": "Press and hold to edit, or swipe left to delete",
     "a11yLabel": "{{title}}, {{amount}} pesos in {{categoryName}}, logged by {{whoName}} at {{time}}."
   },
   "incomeRow": {
@@ -473,7 +474,8 @@
       "noMerchant": "No description. Fill it in before confirming.",
       "noDate": "No clear date. We assumed today.",
       "valueZero": "Amount is 0. Edit before confirming.",
-      "futureDate": "The date was in the future. We set it to today — review it."
+      "futureDate": "The date was in the future. We set it to today — review it.",
+      "refund": "This is a refund, not an expense"
     },
     "relativeDate": {
       "today": "today",

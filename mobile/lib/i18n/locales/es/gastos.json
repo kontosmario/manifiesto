@@ -101,6 +101,7 @@
     "noCategory": "Sin categoría",
     "incomeA11yLabel": "{{title}}, ingreso",
     "swipeToDeleteHint": "Desliza a la izquierda para eliminar",
+    "editOrDeleteHint": "Mantén presionado para editar o desliza a la izquierda para eliminar",
     "a11yLabel": "{{title}}, {{amount}} pesos en {{categoryName}}, cargado por {{whoName}} a las {{time}}."
   },
   "incomeRow": {
@@ -473,7 +474,8 @@
       "noMerchant": "Sin descripción. Completa antes de confirmar.",
       "noDate": "Sin fecha clara. Asumimos hoy.",
       "valueZero": "Monto 0. Edita antes de confirmar.",
-      "futureDate": "La fecha era futura. La ajustamos a hoy — revisala."
+      "futureDate": "La fecha era futura. La ajustamos a hoy — revisala.",
+      "refund": "Es una devolución, no un gasto"
     },
     "relativeDate": {
       "today": "hoy",

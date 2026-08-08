@@ -210,7 +210,7 @@ export function ImportReviewRow({
           size="compact"
           warning={flagAmount}
         />
-        {row.source.appliedRate !== null ? (
+        {row.source.origin === 'ocr' && row.source.appliedRate !== null ? (
           <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
             {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ $${row.source.appliedRate}`}
           </Text>
@@ -500,6 +500,8 @@ function warningLabel(w: ReviewRow['warnings'][number]): string {
       return i18n.t('gastos:import.warning.valueZero')
     case 'future-date':
       return i18n.t('gastos:import.warning.futureDate')
+    case 'refund':
+      return i18n.t('gastos:import.warning.refund')
   }
 }
 
