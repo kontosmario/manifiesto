@@ -213,7 +213,7 @@ git commit -m "feat(apple-pay): App Intent en el target principal, visible en At
 
 ---
 
-## Task 2: `parseShortcutAmount` — el monto de Atajos a número
+## Task 2: `parseShortcutAmount` — el monto de Atajos a número ✅ HECHA (2026-08-08)
 
 El monto llega como texto de moneda con signo. Es la pieza más frágil de todo el flujo: los separadores argentinos (`$4.500,00`) y los estadounidenses (`$4,500.00`) usan los mismos caracteres con significado invertido.
 
@@ -363,7 +363,7 @@ git commit -m "feat(apple-pay): parseo del monto de Atajos (separadores AR y US)
 
 ---
 
-## Task 3: Comercio → categoría, aprendida del historial
+## Task 3: Comercio → categoría, aprendida del historial ✅ HECHA (2026-08-08)
 
 Sin tabla nueva ni lista de sinónimos: la sugerencia sale del historial de gastos que ya existe. La primera vez de cada comercio la elige el usuario; de ahí en más viene presugerida.
 
@@ -417,13 +417,23 @@ describe('resolveCategoryForMerchant', () => {
     { description: 'Starbucks Palermo', categoryId: 'salidas', createdAt: '2026-08-07T12:00:00Z' },
   ]
 
-  it('hereda la categoría del gasto más reciente que matchea', () => {
-    // "STARBUCKS COFFEE #4521" contiene los tokens de "Starbucks";
-    // gana el más reciente de los dos que matchean.
-    expect(resolveCategoryForMerchant(history, 'STARBUCKS COFFEE #4521')).toBe('salidas')
+  it('hereda la categoría de la entrada cuyos tokens están contenidos', () => {
+    // "STARBUCKS COFFEE" contiene a "Starbucks" → matchea.
+    // NO matchea "Starbucks Palermo", aunque sea más reciente: COFFEE no
+    // está ahí. El match es por subconjunto, a propósito.
+    expect(resolveCategoryForMerchant(history, 'STARBUCKS COFFEE #4521')).toBe('cafe')
   })
 
-  it('matchea cuando el historial es más largo que el comercio', () => {
+  it('el sufijo distinto NO alcanza para matchear', () => {
+    // Semántica conservadora: relajarla a "comparten el primer token"
+    // haría matchear BANCO NACION con BANCO GALICIA. Preferimos no
+    // sugerir antes que sugerir mal.
+    expect(resolveCategoryForMerchant(history, 'STARBUCKS COFFEE')).not.toBe('salidas')
+  })
+
+  it('gana el más reciente entre los que sí matchean', () => {
+    // "Starbucks" está contenido tanto en "Starbucks" como en
+    // "Starbucks Palermo" → desempata la recencia.
     expect(resolveCategoryForMerchant(history, 'Starbucks')).toBe('salidas')
   })
 
@@ -552,7 +562,7 @@ export function resolveCategoryForMerchant(
 source ~/.nvm/nvm.sh && npx vitest run tests/unit/apple-pay-merchant-category.test.ts
 ```
 
-Esperado: PASS, 12 tests.
+Esperado: PASS, 13 tests.
 
 - [ ] **Step 6: Commit**
 
