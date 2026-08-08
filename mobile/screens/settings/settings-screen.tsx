@@ -6,7 +6,7 @@ import {
 } from '@/features/auth-flow/dev-journeys'
 import { resetIntroSeen } from '@/features/onboarding-intro/intro-seen'
 import { useFocusEffect } from '@react-navigation/native'
-import { Alert, Linking, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, Linking, Platform, StyleSheet, Switch, Text, View } from 'react-native'
 import * as StoreReview from 'expo-store-review'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
@@ -1313,6 +1313,24 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 />
               </SettingsGroup>
             </RiseView>
+
+            {/* 6b. GASTOS CON APPLE PAY — sólo iOS. La automatización la
+                arma el usuario en Atajos de Apple y Android no tiene
+                equivalente, así que en Android la fila no existe (no se
+                deshabilita: no hay nada que habilitar). */}
+            {Platform.OS === 'ios' ? (
+              <RiseView delay={420}>
+                <SettingsGroup title={t('settings:applePay.groupTitle')}>
+                  <SettingsRow
+                    helper={t('settings:applePay.rowHelper')}
+                    icon="contactless"
+                    isLast
+                    label={t('settings:applePay.rowLabel')}
+                    onPress={() => router.push('/(app)/settings/apple-pay' as never)}
+                  />
+                </SettingsGroup>
+              </RiseView>
+            ) : null}
 
             {/* 7. NOTIFICACIONES */}
             <RiseView delay={420}>

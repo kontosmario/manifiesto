@@ -68,6 +68,7 @@ Snapshots completos del proyecto verificados contra el código. Foto vigente: **
 | [asistente-llm-augmentation-notes.md](sistemas/asistente-llm-augmentation-notes.md) | ✅ vigente | Plan de augmentation con LLM (deferred) |
 | [activity-ocr.md](sistemas/activity-ocr.md) | ✅ vigente (2026-06-03) | OCR de feeds bancarios + wizard de import. Bancos soportados + recipe para agregar nuevos. |
 | [form-validation-pattern.md](sistemas/form-validation-pattern.md) | ✅ vigente (2026-06-03) | Patrón compartido: no preselect, visual-only disabled CTA, per-field warning glide. |
+| [apple-pay-captura.md](sistemas/apple-pay-captura.md) | ⚠️ código completo (2026-08-08), sin verificar en device | Captura de gastos por Atajo de iOS: App Intent nativo, cola en UserDefaults, drenaje al wizard de revisión. |
 
 ### 🔧 [`operaciones/`](operaciones/) — setup, runbooks, backlog operativo
 

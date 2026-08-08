@@ -995,5 +995,28 @@
     "helper": "Si la app te está sirviendo, tu reseña en App Store nos ayuda muchísimo.",
     "errorTitle": "No pudimos abrir App Store",
     "errorBody": "Intenta de nuevo en un rato, o busca Manifiesto en App Store para dejar tu reseña."
+  },
+  "applePay": {
+    "groupTitle": "Gastos",
+    "rowLabel": "Gastos con Apple Pay",
+    "rowHelper": "Registrá lo que pagás con el celular",
+    "title": "Gastos con Apple Pay",
+    "intro": "Cuando pagues apoyando el celular, Manifiesto te avisa con el monto y el comercio para que lo registres de un toque.",
+    "toggleGroup": "Captura automática",
+    "toggleLabel": "Capturar mis pagos",
+    "gate": {
+      "not-ios": "Por ahora esto sólo funciona en iPhone.",
+      "needs-app-update": "Actualizá Manifiesto para usar esta función.",
+      "needs-ios-17": "Necesitás iOS 17 o más nuevo: los atajos de pago no existen en versiones anteriores."
+    },
+    "stepsTitle": "Cómo configurarlo",
+    "step1": "Abrí Atajos y andá a Automatización → Nueva.",
+    "step2": "Elegí «Transacción» (en iOS 26 se llama «Wallet»).",
+    "step3": "Marcá las tarjetas que quieras seguir y poné «Ejecutar de inmediato».",
+    "step4": "Agregá la acción Manifiesto → Registrar gasto.",
+    "step5": "En Monto y Comercio, insertá las variables de «Entrada del atajo».",
+    "openShortcuts": "Abrir Atajos",
+    "openShortcutsError": "No pudimos abrir Atajos. Buscalo a mano en tu iPhone.",
+    "expectation": "Esto capta los pagos sin contacto con el celular. No llega a los pagos con la tarjeta física, ni a los que hacés dentro de otras apps o en la web, y alguna vez puede saltearse uno."
   }
 }

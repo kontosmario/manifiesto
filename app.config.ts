@@ -277,7 +277,12 @@ const config: ExpoConfig = {
     // convergencia). Sobre build 13 (2026-07-08, v1.1.0): jardín/racha
     // FAMILIAR, modo de INGRESO VARIABLE por ciclos, rating nativo, fix
     // del re-prompt de FaceID, + auditoría backend completa.
-    buildNumber: '14',
+    // Build 15 (2026-08-08): captura de gastos desde Apple Pay vía Atajo de
+    // iOS. App Intent nativo en el target principal (no sale por OTA: el
+    // intent es código nativo). Al pagar con NFC la app guarda la captura en
+    // background y avisa con una notificación local; el gasto se confirma en
+    // el sheet de revisión, con la categoría sugerida a partir del historial.
+    buildNumber: '15',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The

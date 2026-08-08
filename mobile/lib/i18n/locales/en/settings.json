@@ -995,5 +995,28 @@
     "helper": "If the app is helping you, your App Store review helps us a lot.",
     "errorTitle": "Couldn't open the App Store",
     "errorBody": "Try again in a bit, or search for Manifiesto on the App Store to leave your review."
+  },
+  "applePay": {
+    "groupTitle": "Expenses",
+    "rowLabel": "Apple Pay expenses",
+    "rowHelper": "Log what you pay with your phone",
+    "title": "Apple Pay expenses",
+    "intro": "When you pay by tapping your phone, Manifiesto shows you the amount and the merchant so you can log it in one tap.",
+    "toggleGroup": "Automatic capture",
+    "toggleLabel": "Capture my payments",
+    "gate": {
+      "not-ios": "This only works on iPhone for now.",
+      "needs-app-update": "Update Manifiesto to use this feature.",
+      "needs-ios-17": "You need iOS 17 or newer: payment automations don't exist in earlier versions."
+    },
+    "stepsTitle": "How to set it up",
+    "step1": "Open Shortcuts and go to Automation → New.",
+    "step2": "Pick \"Transaction\" (called \"Wallet\" on iOS 26).",
+    "step3": "Select the cards you want to track and choose \"Run Immediately\".",
+    "step4": "Add the Manifiesto → Log expense action.",
+    "step5": "For Amount and Merchant, insert the \"Shortcut Input\" variables.",
+    "openShortcuts": "Open Shortcuts",
+    "openShortcutsError": "We couldn't open Shortcuts. Look for it on your iPhone.",
+    "expectation": "This captures contactless payments made with your phone. It doesn't cover physical card payments or purchases inside other apps or the web, and it may occasionally miss one."
   }
 }
