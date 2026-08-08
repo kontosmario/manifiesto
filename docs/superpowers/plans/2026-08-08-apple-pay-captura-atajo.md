@@ -23,6 +23,8 @@
 - Los tests unitarios viven en `tests/unit/*.test.ts` e importan con ruta relativa (`../../mobile/...`).
 - **Prohibido mencionar a Claude/Anthropic/IA** en commits, ramas, comentarios o docs.
 - Esto **no sale por OTA**: requiere build nativa nueva (`buildNumber` 15).
+- ⚠️ **El árbol de trabajo tiene el rediseño neumórfico SIN COMMITEAR en varios de los archivos que estas tareas tocan** (`import-review-row.tsx`, `import-review-header.tsx`, `import-review-sheet.tsx`, y `import-review-neo.ts` que además está untracked). `git add <archivo>` stagea **todo** lo que ese archivo tiene sin commitear, no sólo tu cambio. Nunca uses `git add <directorio>` ni `git add` sobre un archivo con cambios ajenos: dejá el archivo en su versión de `HEAD`, re-aplicá sólo tu cambio, commiteá, y recién ahí restaurá la versión del working tree. **Verificá siempre con `git diff --cached --stat` antes de commitear**: si un archivo que tocaste en 2 líneas muestra cientos, arrastraste trabajo ajeno.
+- **Todo commit tiene que compilar solo.** Es la consecuencia dura de lo anterior: arrastrar medio rediseño mete imports a archivos que siguen untracked y el commit no levanta desde un checkout limpio. Verificalo con un worktree efímero del commit y `npx tsc --noEmit`.
 
 ---
 
@@ -876,7 +878,17 @@ Esperado: los tests existentes de import-review siguen verdes. Baseline conocido
 - [ ] **Step 8: Commit**
 
 ```bash
-git add mobile/features/import-review mobile/components/import-review mobile/features/apple-pay-capture tests/unit/apple-pay-map-captures-to-review-rows.test.ts
+# Archivos EXPLÍCITOS. Ver la advertencia de árbol sucio en Global Constraints.
+git add mobile/features/apple-pay-capture/types.ts \
+        mobile/features/apple-pay-capture/map-captures-to-review-rows.ts \
+        mobile/features/import-review/types.ts \
+        mobile/features/import-review/map-to-review-rows.ts \
+        mobile/components/import-review/import-review-header.tsx \
+        mobile/components/import-review/import-review-row.tsx \
+        mobile/lib/i18n/locales/es/gastos.json \
+        mobile/lib/i18n/locales/en/gastos.json \
+        tests/unit/apple-pay-map-captures-to-review-rows.test.ts
+git diff --cached --stat   # los .tsx deben mostrar POCAS líneas, no cientos
 git commit -m "feat(apple-pay): ReviewRow generico por origen + mapeo de capturas a filas"
 ```
 
@@ -1177,9 +1189,21 @@ El sheet se monta en tres lugares y ninguno pasa `onConfirmRows`, así que los t
 
 - [ ] **Step 5: Commit**
 
+⚠️ **`import-review-sheet.tsx` tiene el rediseño neumórfico sin commitear** (ver Global Constraints). Un `git add` directo arrastra todo eso y el commit deja de compilar solo, porque el rediseño importa archivos que siguen untracked. Dejá el archivo en su versión de `HEAD`, re-aplicá sólo tu cambio, commiteá, y después restaurá la versión del working tree.
+
 ```bash
 git add mobile/components/import-review/import-review-sheet.tsx
+git diff --cached --stat   # debe mostrar ~10 líneas, NO cientos
 git commit -m "refactor(import-review): confirmacion inyectable en el sheet"
+```
+
+Y confirmá que el commit compila solo:
+
+```bash
+git worktree add /tmp/verif-t6 HEAD
+cd /tmp/verif-t6 && ln -s /Users/mario/apps/manifiesto/node_modules node_modules
+source ~/.nvm/nvm.sh && npx tsc --noEmit
+git worktree remove --force /tmp/verif-t6
 ```
 
 ---
@@ -1437,7 +1461,10 @@ Esperado: todo verde. Si `useRecentExpenses` tiene otra firma o los campos del g
 - [ ] **Step 7: Commit**
 
 ```bash
-git add mobile/features/apple-pay-capture mobile/components/apple-pay-capture app/\(app\)/\(tabs\)/_layout.tsx mobile/lib/i18n/locales
+git add mobile/features/apple-pay-capture mobile/components/apple-pay-capture \
+        app/\(app\)/\(tabs\)/_layout.tsx \
+        mobile/lib/i18n/locales/es/gastos.json mobile/lib/i18n/locales/en/gastos.json
+git diff --cached --stat   # `_layout.tsx` puede traer cambios ajenos: revisalo
 git commit -m "feat(apple-pay): gate, host y drenaje de capturas al sheet de revision"
 ```
 
