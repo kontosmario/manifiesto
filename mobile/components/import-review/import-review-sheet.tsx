@@ -21,7 +21,7 @@ import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useImportReviewController } from '@/features/import-review/use-import-review-controller'
 import { useConfirmImport } from '@/features/import-review/use-confirm-import'
 import { formatISO } from '@/features/import-review/cycle-date-math'
-import type { ReviewState } from '@/features/import-review/types'
+import type { ConfirmResult, ReviewRow, ReviewState } from '@/features/import-review/types'
 import { ImportReviewRow } from './import-review-row'
 import { ImportReviewFooter } from './import-review-footer'
 import { ImportReviewEmpty } from './import-review-empty'
@@ -45,6 +45,12 @@ interface Props {
    * without burning an IPA build cycle and without polluting real data.
    */
   previewMode?: boolean
+  /**
+   * Destino de la confirmación. Por defecto escribe con `useConfirmImport`
+   * (el camino del import por OCR). Apple Pay inyecta el suyo para poder
+   * limpiar las capturas nativas drenadas después de insertar.
+   */
+  onConfirmRows?: (rows: ReviewRow[]) => Promise<ConfirmResult>
 }
 
 const STEP_ENTER_MS = 280
@@ -67,6 +73,7 @@ export function ImportReviewSheet({
   userId,
   onClose,
   previewMode = false,
+  onConfirmRows,
 }: Props) {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
@@ -74,7 +81,8 @@ export function ImportReviewSheet({
   const controller = useImportReviewController(initialState ?? undefined)
   const categoriesQuery = useCategories(familyId, 'expense')
   const categories = categoriesQuery.data ?? []
-  const confirm = useConfirmImport({ familyId, userId })
+  const defaultConfirm = useConfirmImport({ familyId, userId })
+  const confirm = onConfirmRows ?? defaultConfirm
   const payCycle = usePayCycle(familyId)
   const cycleDays = Math.max(
     1,
