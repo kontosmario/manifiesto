@@ -37,7 +37,17 @@ interface Props {
   initialState: ReviewState | null
   familyId: string
   userId: string
-  onClose: () => void
+  /**
+   * Cierre del sheet. Recibe las filas FINALES —como quedaron después de
+   * editarlas/saltearlas— para que el que lo monta pueda actuar sobre lo que
+   * el usuario decidió, aunque no haya confirmado nada. El host de Apple Pay
+   * las usa para descartar las capturas nativas de las filas salteadas; el
+   * resto de los puntos de montaje ignoran el parámetro.
+   *
+   * Viene `undefined` cuando el cierre no lo decidió el usuario sobre un set
+   * de filas (p. ej. el sheet vacío).
+   */
+  onClose: (finalRows?: ReviewRow[]) => void
   /**
    * When true, the sheet mounts a fake confirm that just plays the
    * exit animation + success toast WITHOUT writing anything to the DB.
@@ -217,8 +227,13 @@ export function ImportReviewSheet({
       // user deliberately skipped everything (e.g. the capture was already
       // loaded). The old path lied with "something's incomplete" and left
       // them trapped on an inert CTA with no jump target. Just close.
+      //
+      // Este atajo se saltea `handleConfirm()` entero, así que es el ÚNICO
+      // lugar donde el que monta se entera de lo que pasó: por eso el cierre
+      // viaja con las filas finales. Sin ellas el host de Apple Pay no podía
+      // limpiar nada y las capturas salteadas se re-ofrecían para siempre.
       if (controller.invalidIds.length === 0) {
-        onClose()
+        onClose(controller.state.rows)
         return
       }
       // Jump to the first invalid step so the user lands exactly where
@@ -314,7 +329,7 @@ export function ImportReviewSheet({
           { durationMs: 9000 },
         )
       }
-      onClose()
+      onClose(controller.state.rows)
 
       // Confetti fires AFTER `onClose()` because the host is mounted at
       // the app shell (behind the ModalCard's native Modal). If we fire
@@ -375,7 +390,10 @@ export function ImportReviewSheet({
     <ModalCard
       skin="neo"
       visible={visible}
-      onClose={busy ? () => {} : onClose}
+      // Descartar la hoja (backdrop / botón de cerrar) también es un cierre
+      // del usuario: viaja con las filas finales, así lo que haya salteado a
+      // mano se respeta aunque nunca haya llegado al resumen.
+      onClose={busy ? () => {} : () => onClose(controller.state.rows)}
       title=""
       subtitle=""
       footer={wizardFooter}

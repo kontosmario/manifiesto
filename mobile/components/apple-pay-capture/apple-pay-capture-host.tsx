@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { InteractionManager } from 'react-native'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { useApplePayCaptureEnabled } from '@/features/apple-pay-capture/apple-pay-enabled-store'
+import { capturesToClear } from '@/features/apple-pay-capture/captures-to-clear'
 import { mapCapturesToReviewRows } from '@/features/apple-pay-capture/map-captures-to-review-rows'
 import { clearCaptures, isApplePayCaptureSupported } from '@/features/apple-pay-capture/native'
 import { useApplePayCaptureGate } from '@/features/apple-pay-capture/use-apple-pay-capture-gate'
@@ -101,10 +102,29 @@ function ApplePayCaptureBody() {
     [confirmToDb, draining],
   )
 
-  const handleClose = useCallback(() => {
-    setReviewState(null)
-    setDraining([])
-  }, [])
+  const handleClose = useCallback(
+    (finalRows?: ReviewRow[]) => {
+      // Cerrar sin confirmar NO es "no pasó nada". Las filas que quedaron en
+      // `skip` son una decisión explícita del usuario, así que sus capturas
+      // se descartan acá. Antes no se limpiaba nada en este camino —el CTA
+      // "Cerrar" del resumen todo-salteado se saltea `handleConfirm` entero—
+      // y las capturas se re-ofrecían en cada vuelta a foreground hasta
+      // apilarse (reporte en device: tres Starbucks por un solo pago).
+      //
+      // Lo que NO se toca queda pendiente a propósito: si el usuario descarta
+      // la hoja sin decidir nada, la captura sobrevive y se vuelve a ofrecer.
+      // Un cierre accidental no puede costarle un pago.
+      //
+      // El camino de confirmar ya limpia en `handleConfirm` (y preserva las
+      // que fallaron al insertar), así que después de confirmar esto queda en
+      // no-op. El criterio completo, incluido el borde de las devoluciones,
+      // vive en `capturesToClear`.
+      clearCaptures(capturesToClear(finalRows, draining))
+      setReviewState(null)
+      setDraining([])
+    },
+    [draining],
+  )
 
   return (
     <ImportReviewSheet
