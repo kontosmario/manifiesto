@@ -194,6 +194,12 @@ const config: ExpoConfig = {
     // local plugin copies the two XMLs from plugins/android-backup-rules/
     // into android/app/src/main/res/xml/ on every prebuild.
     './plugins/with-android-backup-rules.cjs',
+    // Apple Pay → Atajos (2026-08-08). El App Intent tiene que vivir en el
+    // target PRINCIPAL, no en un Pod: los intents dentro de una librería
+    // estática pueden no ser indexados por Apple y la acción no aparecería
+    // en Atajos. Este plugin copia los .swift a ios/<App>/ y los agrega al
+    // build phase en cada prebuild. Requiere build nativa (no sale por OTA).
+    './plugins/with-apple-pay-intent.cjs',
   ],
   experiments: {
     typedRoutes: true,

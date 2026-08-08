@@ -29,6 +29,10 @@ dist-ssr
 .expo-shared
 android
 ios
+# El patrón `ios` de arriba no está anclado: matchea CUALQUIER carpeta con
+# ese nombre, no sólo la del prebuild en la raíz. Los módulos Expo locales
+# versionan su Swift en `modules/<módulo>/ios/`, así que se los re-incluye.
+!modules/*/ios/
 *.local
 
 # Editor directories and files
