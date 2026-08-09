@@ -1016,7 +1016,10 @@
       "receivedTitle": "Último pago que nos llegó",
       "receivedBody": "Ver acá un pago tuyo de verdad es la señal de que la automatización quedó bien armada.",
       "receivedMeta": "{{amount}} · {{time}}",
-      "noMerchant": "Sin comercio"
+      "noMerchant": "Sin comercio",
+      "diagnosisSameValue": "Los dos campos de la acción de Manifiesto están trayendo lo mismo: llegó «{{raw}}» como monto y como comercio, así que el gasto te entró en $0. Abrí la automatización, tocá la variable de cada campo y elegí qué dato trae: Monto en el campo Monto, Comercio en el campo Comercio.",
+      "diagnosisUnreadableAmount": "El monto llegó en un formato que no pudimos leer: «{{raw}}». Por eso el gasto te entró en $0. Abrí la automatización y fijate que la variable del campo Monto tenga elegido el dato Monto.",
+      "diagnosisMissingAmount": "El monto llegó vacío, así que el gasto te entró en $0. Abrí la automatización y fijate que el campo Monto tenga la variable y que tenga elegido el dato Monto."
     },
     "stepsTitle": "Cómo configurarlo",
     "steps": {
@@ -1040,8 +1043,8 @@
       },
       "step5": {
         "title": "Llená Monto y Comercio con la entrada del atajo",
-        "body": "Tocá el campo Monto y, en la barra de variables que aparece sobre el teclado, elegí «Entrada del atajo». Hacé lo mismo en Comercio.",
-        "notice": "Los dos campos se llenan con la variable, nunca escribiendo un número o el nombre de un local. Si los tipeás a mano, todos tus pagos se van a registrar con esos mismos valores."
+        "body": "Tocá el campo Monto y, en la barra de variables que aparece sobre el teclado, elegí «Entrada del atajo». Hacé lo mismo en Comercio. Después tocá la variable que quedó en cada campo y elegí qué dato del pago trae: Monto en el primero, Comercio en el segundo.",
+        "notice": "Poner la variable NO alcanza: si no elegís el dato, los dos campos traen lo mismo y el gasto te entra en $0 con el nombre del comercio de descripción. Antes de guardar, mirá los dos campos: tienen que mostrar cosas distintas, uno el monto y el otro el comercio. Y nunca los escribas a mano: todos tus pagos quedarían con esos mismos valores."
       }
     },
     "openShortcuts": "Abrir Atajos",
@@ -1053,6 +1056,8 @@
       "askBody": "En la automatización quedó prendido «Preguntar antes de ejecutar». Abrila, apagá esa opción y dejá «Ejecutar de inmediato».",
       "frozenTitle": "«Siempre me registra el mismo comercio y el mismo monto»",
       "frozenBody": "Tu automatización está corriendo un atajo con valores fijos en vez de la acción de Manifiesto. Borrá el paso «Ejecutar atajo», agregá «Registrar gasto» de Manifiesto y llená Monto y Comercio con «Entrada del atajo».",
+      "sameValueTitle": "«Me llega el monto en $0» o «el monto y el comercio me llegan iguales»",
+      "sameValueBody": "En la acción de Manifiesto pusiste la variable en los dos campos, pero sin elegir qué dato del pago trae cada uno: cuando no elegís, Atajos manda el mismo texto a los dos. Abrí la automatización, tocá la variable del campo Monto y elegí Monto, y hacé lo mismo en Comercio. Los dos campos tienen que quedar mostrando cosas distintas.",
       "silentTitle": "«No me llega nada»",
       "silentBody": "Fijate que en el disparador estén marcadas las tarjetas que usás para pagar. Acordate también de que sólo se captan los pagos sin contacto hechos con el celular: la tarjeta de plástico, las compras dentro de otras apps y las de la web no pasan por acá."
     }

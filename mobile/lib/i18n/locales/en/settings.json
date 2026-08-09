@@ -1016,7 +1016,10 @@
       "receivedTitle": "Last payment we received",
       "receivedBody": "Seeing a real payment of yours here is the proof that the automation was set up correctly.",
       "receivedMeta": "{{amount}} · {{time}}",
-      "noMerchant": "No merchant"
+      "noMerchant": "No merchant",
+      "diagnosisSameValue": "Both fields of the Manifiesto action are bringing in the same thing: \"{{raw}}\" arrived as the amount and as the merchant, so the expense came in as $0. Open the automation, tap the variable in each field and pick which data it brings: Amount in the Amount field, Merchant in the Merchant field.",
+      "diagnosisUnreadableAmount": "The amount arrived in a format we couldn't read: \"{{raw}}\". That's why the expense came in as $0. Open the automation and check that the variable in the Amount field has Amount picked as its data.",
+      "diagnosisMissingAmount": "The amount arrived empty, so the expense came in as $0. Open the automation and check that the Amount field has the variable and that it has Amount picked as its data."
     },
     "stepsTitle": "How to set it up",
     "steps": {
@@ -1040,8 +1043,8 @@
       },
       "step5": {
         "title": "Fill Amount and Merchant with the shortcut input",
-        "body": "Tap the Amount field and, in the variable bar above the keyboard, pick \"Shortcut Input\". Do the same for Merchant.",
-        "notice": "Both fields are filled with the variable, never by typing a number or a store name. If you type them by hand, all your payments get logged with those same values."
+        "body": "Tap the Amount field and, in the variable bar above the keyboard, pick \"Shortcut Input\". Do the same for Merchant. Then tap the variable sitting in each field and pick which payment data it brings: Amount in the first one, Merchant in the second one.",
+        "notice": "Adding the variable is NOT enough: if you don't pick the data, both fields bring the same thing and the expense comes in as $0 with the merchant name as its description. Before saving, look at both fields: they have to show different things, one the amount and the other the merchant. And never type them by hand: all your payments would end up with those same values."
       }
     },
     "openShortcuts": "Open Shortcuts",
@@ -1053,6 +1056,8 @@
       "askBody": "\"Ask Before Running\" is still on in the automation. Open it, turn that option off and leave \"Run Immediately\" selected.",
       "frozenTitle": "\"It always logs the same merchant and the same amount\"",
       "frozenBody": "Your automation is running a shortcut with fixed values instead of the Manifiesto action. Delete the \"Run Shortcut\" step, add Manifiesto's \"Log expense\" and fill Amount and Merchant with \"Shortcut Input\".",
+      "sameValueTitle": "\"The amount comes in as $0\" or \"the amount and the merchant come in the same\"",
+      "sameValueBody": "In the Manifiesto action you added the variable to both fields, but without picking which payment data each one brings: when you don't pick, Shortcuts sends the same text to both. Open the automation, tap the variable in the Amount field and pick Amount, then do the same for Merchant. Both fields have to end up showing different things.",
       "silentTitle": "\"Nothing reaches me\"",
       "silentBody": "Check that the cards you pay with are selected in the trigger. Remember too that only contactless payments made with your phone are captured: physical cards, purchases inside other apps and web checkouts don't go through here."
     }

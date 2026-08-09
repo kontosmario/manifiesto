@@ -11,11 +11,14 @@
 //     mal no falla con un error: falla en silencio, y el usuario se entera
 //     días después, cuando le falta un gasto. El bloque muestra la última
 //     captura RECIBIDA (comercio, monto, hace cuánto): ver ahí un pago
-//     propio es la única prueba de que la automatización quedó bien.
+//     propio es la única prueba de que la automatización quedó bien. Y
+//     cuando esa captura llegó ROTA, el bloque lo DIAGNOSTICA
+//     (`diagnoseLastCapture`) y dice qué tocar: es lo único que convierte
+//     "me falta un gasto" en un arreglo concreto.
 //  2. PASOS — título corto + descripción, con un aviso en los tres pasos
 //     donde Atajos tiene trampa (confirmación previa, acción equivocada,
-//     variables tipeadas a mano). Cada aviso vive EN su paso, no en una
-//     nota al pie que nadie lee a tiempo.
+//     variables sin el dato elegido o tipeadas a mano). Cada aviso vive EN
+//     su paso, no en una nota al pie que nadie lee a tiempo.
 //  3. SI NO TE FUNCIONA — los síntomas exactos que se ven en el teléfono,
 //     con su causa. Es la red que atrapa a quien ya configuró algo mal.
 //
@@ -38,6 +41,10 @@ import {
   useApplePayLastCapture,
   type LastApplePayCapture,
 } from '@/features/apple-pay-capture/apple-pay-last-capture-store'
+import {
+  diagnoseLastCapture,
+  type LastCaptureDiagnosis,
+} from '@/features/apple-pay-capture/diagnose-last-capture'
 import { isApplePayCaptureSupported } from '@/features/apple-pay-capture/native'
 import { parseShortcutAmount } from '@/features/apple-pay-capture/parse-shortcut-amount'
 import { toast } from '@/lib/toast-bus'
@@ -75,8 +82,10 @@ const SHORTCUTS_NEW_AUTOMATION_URL = 'shortcuts://create-automation'
 /**
  * Los cinco pasos. `notice` marca los tres donde Atajos tiene una trampa
  * que ya mordió en device: dejar "Preguntar antes de ejecutar" prendido,
- * meter un "Ejecutar atajo" en vez de la acción de Manifiesto, y escribir
- * el monto y el comercio a mano en vez de tomarlos de la entrada.
+ * meter un "Ejecutar atajo" en vez de la acción de Manifiesto, y llenar
+ * los campos sin que la variable traiga el dato correcto (tipeados a mano,
+ * o con la variable puesta pero sin elegir qué dato del pago trae — que
+ * PARECE bien configurado y manda lo mismo a los dos campos).
  */
 const STEPS: ReadonlyArray<{ key: string; notice: boolean }> = [
   { key: 'step1', notice: false },
@@ -90,8 +99,19 @@ const STEPS: ReadonlyArray<{ key: string; notice: boolean }> = [
 const TROUBLE: ReadonlyArray<{ key: string; icon: IconName }> = [
   { key: 'ask', icon: 'touch-app' },
   { key: 'frozen', icon: 'content-copy' },
+  { key: 'sameValue', icon: 'money-off' },
   { key: 'silent', icon: 'search-off' },
 ]
+
+/**
+ * Cada diagnóstico tiene su copy: la pantalla NO decide nada sobre la
+ * captura, sólo pinta lo que `diagnoseLastCapture` resolvió.
+ */
+const DIAGNOSIS_COPY: Record<Exclude<LastCaptureDiagnosis['kind'], 'ok'>, string> = {
+  'same-value': 'settings:applePay.status.diagnosisSameValue',
+  'unreadable-amount': 'settings:applePay.status.diagnosisUnreadableAmount',
+  'missing-amount': 'settings:applePay.status.diagnosisMissingAmount',
+}
 
 export function ApplePayScreen() {
   const { t } = useTranslation()
@@ -231,14 +251,22 @@ function StatusBlock({ capture }: { capture: LastApplePayCapture | null }) {
   const received = capture !== null
   const merchant = capture?.merchantRaw.trim() ?? ''
 
+  // El diagnóstico se decide afuera, en una función pura: acá sólo se
+  // elige qué copy le corresponde y se pinta con el mismo tratamiento de
+  // aviso que los pasos.
+  const diagnosis = diagnoseLastCapture(capture)
+  const broken = diagnosis.kind !== 'ok'
+
   return (
     <SettingsGroup title={t('settings:applePay.status.title')}>
       <View style={styles.statusBody}>
         <View style={styles.statusHead}>
           <Well>
+            {/* Con una captura rota el tilde verde mentiría: el dato llegó,
+                pero llegó mal. */}
             <MaterialIcons
-              color={received ? ink.accent : neo.textMuted}
-              name={received ? 'check-circle' : 'hourglass-empty'}
+              color={broken ? ink.warn : received ? ink.accent : neo.textMuted}
+              name={broken ? 'error-outline' : received ? 'check-circle' : 'hourglass-empty'}
               size={17}
             />
           </Well>
@@ -262,7 +290,9 @@ function StatusBlock({ capture }: { capture: LastApplePayCapture | null }) {
             <Text numberOfLines={1} style={[styles.captureMerchant, { color: neo.text }]}>
               {merchant === '' ? t('settings:applePay.status.noMerchant') : merchant}
             </Text>
-            <Text style={[styles.captureMeta, { color: ink.accent }]}>
+            {/* Misma lógica que el glifo: el monto que no se pudo leer no
+                se muestra con la tinta de "todo bien". */}
+            <Text style={[styles.captureMeta, { color: broken ? ink.warn : ink.accent }]}>
               {t('settings:applePay.status.receivedMeta', {
                 amount: formatCapturedAmount(capture.amountRaw),
                 time: formatRelativeNotificationTime(capture.capturedAt),
@@ -271,11 +301,22 @@ function StatusBlock({ capture }: { capture: LastApplePayCapture | null }) {
           </View>
         ) : null}
 
-        <Text style={[styles.itemBody, { color: neo.textMuted }]}>
-          {received
-            ? t('settings:applePay.status.receivedBody')
-            : t('settings:applePay.status.waitingBody')}
-        </Text>
+        {/* Con una captura rota, el aviso REEMPLAZA a la prosa: decirle
+            "esto prueba que quedó bien armada" abajo de un diagnóstico que
+            dice lo contrario sería contradecirse. */}
+        {diagnosis.kind === 'ok' ? (
+          <Text style={[styles.itemBody, { color: neo.textMuted }]}>
+            {received
+              ? t('settings:applePay.status.receivedBody')
+              : t('settings:applePay.status.waitingBody')}
+          </Text>
+        ) : (
+          <GuideNotice
+            text={t(DIAGNOSIS_COPY[diagnosis.kind], {
+              raw: 'raw' in diagnosis ? diagnosis.raw : '',
+            })}
+          />
+        )}
       </View>
     </SettingsGroup>
   )
