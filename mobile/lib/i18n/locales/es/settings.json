@@ -1009,14 +1009,52 @@
       "needs-app-update": "Actualizá Manifiesto para usar esta función.",
       "needs-ios-17": "Necesitás iOS 17 o más nuevo: los atajos de pago no existen en versiones anteriores."
     },
+    "status": {
+      "title": "¿Está funcionando?",
+      "waitingTitle": "Todavía no nos llegó ningún pago",
+      "waitingBody": "Apenas capturemos uno, lo vas a ver acá con el comercio y el monto. Si ya armaste la automatización y pagaste apoyando el celular, algo quedó mal: repasá los pasos y mirá «Si no te funciona».",
+      "receivedTitle": "Último pago que nos llegó",
+      "receivedBody": "Ver acá un pago tuyo de verdad es la señal de que la automatización quedó bien armada.",
+      "receivedMeta": "{{amount}} · {{time}}",
+      "noMerchant": "Sin comercio"
+    },
     "stepsTitle": "Cómo configurarlo",
-    "step1": "Abrí Atajos y andá a Automatización → Nueva.",
-    "step2": "Elegí «Transacción» (en iOS 26 se llama «Wallet»).",
-    "step3": "Marcá las tarjetas que quieras seguir y poné «Ejecutar de inmediato».",
-    "step4": "Agregá la acción Manifiesto → Registrar gasto.",
-    "step5": "En Monto y Comercio, insertá las variables de «Entrada del atajo».",
+    "steps": {
+      "step1": {
+        "title": "Creá una automatización nueva",
+        "body": "Abrí la app Atajos, entrá a la pestaña Automatización y tocá el + de arriba a la derecha."
+      },
+      "step2": {
+        "title": "Elegí el disparador «Transacción»",
+        "body": "Buscalo en la lista de disparadores. Si tu iPhone tiene iOS 26, se llama «Wallet»."
+      },
+      "step3": {
+        "title": "Definí cuándo se ejecuta",
+        "body": "Marcá las tarjetas que quieras seguir y elegí «Ejecutar de inmediato».",
+        "notice": "Apagá «Preguntar antes de ejecutar». Si queda prendido, cada pago te pide una confirmación y el gasto no se captura solo."
+      },
+      "step4": {
+        "title": "Agregá la acción de Manifiesto",
+        "body": "Tocá «Nueva acción en blanco», escribí Manifiesto en el buscador y elegí «Registrar gasto».",
+        "notice": "Tiene que ser la acción DE MANIFIESTO. Si en tu automatización ves un paso que dice «Ejecutar atajo», está mal: eso corre un atajo tuyo con valores fijos y todos los pagos te van a entrar iguales."
+      },
+      "step5": {
+        "title": "Llená Monto y Comercio con la entrada del atajo",
+        "body": "Tocá el campo Monto y, en la barra de variables que aparece sobre el teclado, elegí «Entrada del atajo». Hacé lo mismo en Comercio.",
+        "notice": "Los dos campos se llenan con la variable, nunca escribiendo un número o el nombre de un local. Si los tipeás a mano, todos tus pagos se van a registrar con esos mismos valores."
+      }
+    },
     "openShortcuts": "Abrir Atajos",
     "openShortcutsError": "No pudimos abrir Atajos. Buscalo a mano en tu iPhone.",
-    "expectation": "Esto capta los pagos sin contacto con el celular. No llega a los pagos con la tarjeta física, ni a los que hacés dentro de otras apps o en la web, y alguna vez puede saltearse uno."
+    "expectation": "Esto capta los pagos sin contacto con el celular. No llega a los pagos con la tarjeta física, ni a los que hacés dentro de otras apps o en la web, y alguna vez puede saltearse uno.",
+    "troubleTitle": "Si no te funciona",
+    "trouble": {
+      "askTitle": "«Me pide confirmar cada vez que pago»",
+      "askBody": "En la automatización quedó prendido «Preguntar antes de ejecutar». Abrila, apagá esa opción y dejá «Ejecutar de inmediato».",
+      "frozenTitle": "«Siempre me registra el mismo comercio y el mismo monto»",
+      "frozenBody": "Tu automatización está corriendo un atajo con valores fijos en vez de la acción de Manifiesto. Borrá el paso «Ejecutar atajo», agregá «Registrar gasto» de Manifiesto y llená Monto y Comercio con «Entrada del atajo».",
+      "silentTitle": "«No me llega nada»",
+      "silentBody": "Fijate que en el disparador estén marcadas las tarjetas que usás para pagar. Acordate también de que sólo se captan los pagos sin contacto hechos con el celular: la tarjeta de plástico, las compras dentro de otras apps y las de la web no pasan por acá."
+    }
   }
 }

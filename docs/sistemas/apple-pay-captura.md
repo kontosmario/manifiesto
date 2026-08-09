@@ -66,10 +66,11 @@ Descartado a propósito (ver la sección "Fuera de alcance" del [spec](../superp
 | Categoría | [`mobile/features/apple-pay-capture/resolve-category-for-merchant.ts`](../../mobile/features/apple-pay-capture/resolve-category-for-merchant.ts) | Último gasto del mismo comercio → su categoría, o `null` |
 | Map a UI | [`mobile/features/apple-pay-capture/map-captures-to-review-rows.ts`](../../mobile/features/apple-pay-capture/map-captures-to-review-rows.ts) | `PendingCapture[] → ReviewRow[]` con warnings (`value-zero`, `refund`, `no-merchant`, `future-date`) |
 | Flag persistido | [`mobile/features/apple-pay-capture/apple-pay-enabled-store.ts`](../../mobile/features/apple-pay-capture/apple-pay-enabled-store.ts) | Store externo (`useSyncExternalStore`) sobre `persistent-kv` |
+| Recibo de la última captura | [`mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts`](../../mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts) | Mismo patrón de store externo. Guarda la captura RECIBIDA más reciente para el bloque "¿Está funcionando?" |
 | Gate | [`mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts`](../../mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts) | Drena al montar y en cada vuelta a foreground, sólo con auth en `ready` |
 | Copy de la notif | [`mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx`](../../mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx) | Empuja el copy i18n al nativo en el arranque |
 | Host | [`mobile/components/apple-pay-capture/apple-pay-capture-host.tsx`](../../mobile/components/apple-pay-capture/apple-pay-capture-host.tsx) | Su propia instancia de `ImportReviewSheet` + limpieza de capturas |
-| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Switch + gate de plataforma + los 5 pasos + botón a Atajos |
+| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Switch + gate de plataforma + bloque de estado + los 5 pasos con sus avisos + botón a Atajos + "Si no te funciona" |
 
 ---
 
@@ -105,13 +106,22 @@ Si el usuario cierra el wizard sin confirmar, las capturas quedan pendientes y s
 
 ## Runbook: cómo lo configura el usuario
 
-Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Con el switch prendido aparecen los pasos y el botón **Abrir Atajos** (`shortcuts://create-automation`):
+Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Con el switch prendido aparecen el bloque de estado, los pasos, el botón **Abrir Atajos** (`shortcuts://create-automation`) y el diagnóstico:
 
-1. Abrí Atajos y andá a Automatización → Nueva.
-2. Elegí **"Transacción"** (en iOS 26 se llama **"Wallet"**).
-3. Marcá las tarjetas que quieras seguir y poné **"Ejecutar de inmediato"**.
-4. Agregá la acción **Manifiesto → Registrar gasto**.
-5. En **Monto** y **Comercio**, insertá las variables de **"Entrada del atajo"**.
+1. Creá una automatización nueva (Atajos → Automatización → +).
+2. Elegí el disparador **"Transacción"** (en iOS 26 se llama **"Wallet"**).
+3. Marcá las tarjetas y elegí **"Ejecutar de inmediato"** — ⚠️ y **apagá "Preguntar antes de ejecutar"**.
+4. Agregá la acción **de Manifiesto** "Registrar gasto" — ⚠️ si aparece un paso **"Ejecutar atajo"**, está mal.
+5. Llená **Monto** y **Comercio** con la variable **"Entrada del atajo"** — ⚠️ nunca tipeándolos a mano.
+
+### Por qué la pantalla se reescribió así (2026-08-08)
+
+La primera versión eran cinco líneas de texto corrido y un botón. En la prueba en device del owner falló en dos puntos, y los dos son ahora piezas de UI:
+
+- **Se enteró tarde y por casualidad.** Configuró el atajo, hizo una compra real y no pasó nada; la pantalla no tenía forma de decir "esto anda" ni "todavía no me llegó nada". De ahí el bloque **"¿Está funcionando?"**, lo primero después del switch: muestra la última captura RECIBIDA (comercio, monto, hace cuánto) o el estado de espera. Ver ahí un pago propio es la única prueba de que la automatización quedó bien.
+- **Las dos trampas de Atajos.** Dejó *"Preguntar antes de ejecutar"* prendido (la automatización pedía confirmación en vez de correr sola), y su automatización terminó ejecutando **un atajo suelto con valores fijos** en vez de tener la acción de Manifiesto adentro: una compra de $8.160 en Merpago se registró como "$4.400 en STARBUCKS", los valores de prueba. Las dos ahora están advertidas **en el paso donde ocurren**, con tratamiento de aviso, y repetidas como síntoma en **"Si no te funciona"**.
+
+El recibo se guarda **al recibir** la captura, no al confirmarla (`recordApplePayCaptures` se llama en `handleCaptures` del host, antes de abrir el sheet): la pregunta que el bloque responde es *"¿llega el dato?"*, no *"¿lo registraste?"*. Una captura salteada o descartada prueba igual que Atajos quedó bien armado. El registro es **monótono** — una captura sin resolver se re-ofrece en cada foreground, y sin esa guarda la pantalla retrocedería a un pago viejo justo después de pagar.
 
 El gate de la pantalla distingue tres motivos de indisponibilidad, porque cada uno pide una acción distinta del usuario:
 

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { InteractionManager } from 'react-native'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { useApplePayCaptureEnabled } from '@/features/apple-pay-capture/apple-pay-enabled-store'
+import { recordApplePayCaptures } from '@/features/apple-pay-capture/apple-pay-last-capture-store'
 import { capturesToClear } from '@/features/apple-pay-capture/captures-to-clear'
 import { mapCapturesToReviewRows } from '@/features/apple-pay-capture/map-captures-to-review-rows'
 import { clearCaptures, isApplePayCaptureSupported } from '@/features/apple-pay-capture/native'
@@ -63,6 +64,11 @@ function ApplePayCaptureBody() {
 
   const handleCaptures = useCallback(
     (captures: PendingCapture[]) => {
+      // Recibo para la pantalla de Ajustes, ANTES de que el usuario
+      // decida nada: lo que ese bloque responde es "¿el dato llega?", no
+      // "¿lo registraste?". Una captura que se saltea o se descarta
+      // prueba igual que la automatización de Atajos quedó bien armada.
+      recordApplePayCaptures(captures)
       const rows = mapCapturesToReviewRows(captures, {
         today: formatISO(new Date()),
         history,

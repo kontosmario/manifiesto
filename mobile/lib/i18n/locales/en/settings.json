@@ -1009,14 +1009,52 @@
       "needs-app-update": "Update Manifiesto to use this feature.",
       "needs-ios-17": "You need iOS 17 or newer: payment automations don't exist in earlier versions."
     },
+    "status": {
+      "title": "Is it working?",
+      "waitingTitle": "No payment has reached us yet",
+      "waitingBody": "As soon as we capture one, you'll see it here with the merchant and the amount. If you already built the automation and paid by tapping your phone, something went wrong: go over the steps and check \"If it isn't working\".",
+      "receivedTitle": "Last payment we received",
+      "receivedBody": "Seeing a real payment of yours here is the proof that the automation was set up correctly.",
+      "receivedMeta": "{{amount}} · {{time}}",
+      "noMerchant": "No merchant"
+    },
     "stepsTitle": "How to set it up",
-    "step1": "Open Shortcuts and go to Automation → New.",
-    "step2": "Pick \"Transaction\" (called \"Wallet\" on iOS 26).",
-    "step3": "Select the cards you want to track and choose \"Run Immediately\".",
-    "step4": "Add the Manifiesto → Log expense action.",
-    "step5": "For Amount and Merchant, insert the \"Shortcut Input\" variables.",
+    "steps": {
+      "step1": {
+        "title": "Create a new automation",
+        "body": "Open the Shortcuts app, go to the Automation tab and tap the + in the top right."
+      },
+      "step2": {
+        "title": "Pick the \"Transaction\" trigger",
+        "body": "Look for it in the list of triggers. If your iPhone runs iOS 26, it's called \"Wallet\"."
+      },
+      "step3": {
+        "title": "Set when it runs",
+        "body": "Select the cards you want to track and choose \"Run Immediately\".",
+        "notice": "Turn off \"Ask Before Running\". If it stays on, every payment asks you to confirm and the expense isn't captured on its own."
+      },
+      "step4": {
+        "title": "Add the Manifiesto action",
+        "body": "Tap \"New Blank Action\", type Manifiesto in the search field and pick \"Log expense\".",
+        "notice": "It has to be the MANIFIESTO action. If your automation shows a step that says \"Run Shortcut\", it's wrong: that runs a shortcut of yours with fixed values and every payment comes in identical."
+      },
+      "step5": {
+        "title": "Fill Amount and Merchant with the shortcut input",
+        "body": "Tap the Amount field and, in the variable bar above the keyboard, pick \"Shortcut Input\". Do the same for Merchant.",
+        "notice": "Both fields are filled with the variable, never by typing a number or a store name. If you type them by hand, all your payments get logged with those same values."
+      }
+    },
     "openShortcuts": "Open Shortcuts",
     "openShortcutsError": "We couldn't open Shortcuts. Look for it on your iPhone.",
-    "expectation": "This captures contactless payments made with your phone. It doesn't cover physical card payments or purchases inside other apps or the web, and it may occasionally miss one."
+    "expectation": "This captures contactless payments made with your phone. It doesn't cover physical card payments or purchases inside other apps or the web, and it may occasionally miss one.",
+    "troubleTitle": "If it isn't working",
+    "trouble": {
+      "askTitle": "\"It asks me to confirm every time I pay\"",
+      "askBody": "\"Ask Before Running\" is still on in the automation. Open it, turn that option off and leave \"Run Immediately\" selected.",
+      "frozenTitle": "\"It always logs the same merchant and the same amount\"",
+      "frozenBody": "Your automation is running a shortcut with fixed values instead of the Manifiesto action. Delete the \"Run Shortcut\" step, add Manifiesto's \"Log expense\" and fill Amount and Merchant with \"Shortcut Input\".",
+      "silentTitle": "\"Nothing reaches me\"",
+      "silentBody": "Check that the cards you pay with are selected in the trigger. Remember too that only contactless payments made with your phone are captured: physical cards, purchases inside other apps and web checkouts don't go through here."
+    }
   }
 }
