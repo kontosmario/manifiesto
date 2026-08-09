@@ -1043,8 +1043,8 @@
       },
       "step5": {
         "title": "Fill Amount and Merchant with the shortcut input",
-        "body": "Tap the Amount field and, in the variable bar above the keyboard, pick \"Shortcut Input\". Do the same for Merchant. Then tap the variable sitting in each field and pick which payment data it brings: Amount in the first one, Merchant in the second one.",
-        "notice": "Adding the variable is NOT enough: if you don't pick the data, both fields bring the same thing and the expense comes in as $0 with the merchant name as its description. Before saving, look at both fields: they have to show different things, one the amount and the other the merchant. And never type them by hand: all your payments would end up with those same values."
+        "body": "Tap the Amount field and, in the variable bar above the keyboard, pick \"Shortcut Input\". Do the same for Merchant. Then tap the variable sitting in each field: a list headed \"Type\" opens. Pick \"Amount\" for the amount field and \"Merchant\" for the other one.",
+        "notice": "Adding the variable is NOT enough. It arrives as \"Type: Transaction\", the whole payment, so both fields bring the same thing: the expense comes in as $0 with the merchant name as its description. Before saving, look at both fields: they have to show different things. And never type them by hand, or every payment would end up with those same values."
       }
     },
     "openShortcuts": "Open Shortcuts",

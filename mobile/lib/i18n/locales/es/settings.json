@@ -1043,8 +1043,8 @@
       },
       "step5": {
         "title": "Llená Monto y Comercio con la entrada del atajo",
-        "body": "Tocá el campo Monto y, en la barra de variables que aparece sobre el teclado, elegí «Entrada del atajo». Hacé lo mismo en Comercio. Después tocá la variable que quedó en cada campo y elegí qué dato del pago trae: Monto en el primero, Comercio en el segundo.",
-        "notice": "Poner la variable NO alcanza: si no elegís el dato, los dos campos traen lo mismo y el gasto te entra en $0 con el nombre del comercio de descripción. Antes de guardar, mirá los dos campos: tienen que mostrar cosas distintas, uno el monto y el otro el comercio. Y nunca los escribas a mano: todos tus pagos quedarían con esos mismos valores."
+        "body": "Tocá el campo Monto y, en la barra de variables que aparece sobre el teclado, elegí «Entrada del atajo». Hacé lo mismo en Comercio. Después tocá la variable que quedó en cada campo: se abre una lista con «Tipo». Ahí elegí «Cantidad» en el campo del monto y «Comercio» en el otro. Ojo que Apple al monto lo llama CANTIDAD, no «Monto».",
+        "notice": "Poner la variable NO alcanza. Viene con «Tipo: Transacción», que es el pago entero, y así los dos campos traen lo mismo: el gasto te entra en $0 con el nombre del comercio de descripción. Antes de guardar, mirá los dos campos: tienen que mostrar cosas distintas. Y nunca los escribas a mano, o todos tus pagos quedarían con esos mismos valores."
       }
     },
     "openShortcuts": "Abrir Atajos",
