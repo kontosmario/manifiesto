@@ -2,8 +2,9 @@
 
 > El usuario paga apoyando el iPhone; una automatización de Atajos dispara un App Intent de Manifiesto que guarda el pago (monto crudo + comercio) y avisa con una notificación local. Al abrir la app, el gasto se confirma en el mismo wizard de revisión que usa el import por OCR, con la categoría ya sugerida a partir del historial.
 >
-> **Estado:** ✅ código completo 2026-08-08 (branch `feat/ui-redesign`, build 15). ⚠️ **Sin verificar en device**: que la acción aparezca en Atajos sigue pendiente de una corrida real en iPhone.
+> **Estado:** ✅ código completo 2026-08-08 (branch `feat/ui-redesign`, build 15) y ✅ **verificado en device** con un pago real: la acción aparece en Atajos, la automatización dispara y el gasto entra con monto y comercio correctos.
 > **Compatibilidad:** iOS 17+ y build nativa. El App Intent es código nativo: **no sale por OTA**. Android no tiene equivalente y la fila de Ajustes ni siquiera se muestra.
+> **Camino principal:** el **atajo pre-armado** que se distribuye como link de iCloud (`APPLE_PAY_SHORTCUT_ICLOUD_URL`). Mientras esa constante sea `null`, la pantalla cae sola al armado manual.
 
 ---
 
@@ -23,7 +24,9 @@ Además, Apple documenta que el disparador es **best-effort**: con el teléfono 
 
 Registrar un gasto a mano justo después de pagar es el momento de mayor fricción del producto: el usuario está en la calle, con el celular en la mano y apurado. Apple no expone ninguna API para leer el Wallet ni para crear la automatización por nosotros — el único gancho disponible es el disparador **"Transacción"** de Atajos (iOS 17+; en iOS 26 se llama "Wallet"), que el usuario arma a mano.
 
-Consecuencia de diseño: **la pantalla de Ajustes ES el producto**. Lo único que la app puede hacer es prender la captura, explicar los cinco pasos y abrir Atajos. Lo demás lo configura el usuario.
+Consecuencia de diseño: **la pantalla de Ajustes ES el producto**. Lo único que la app puede hacer es prender la captura, guiar el armado y abrir Atajos. Lo demás lo configura el usuario.
+
+Lo que sí se puede hacer es **entregarle el atajo ya cableado**: un atajo de Atajos se comparte como link de iCloud, y al agregarlo el usuario recibe la acción de Manifiesto con las variables **Cantidad** y **Comercio** ya puestas y con su propiedad elegida. Eso borra de un saque las tres trampas del armado manual (la acción equivocada, la variable sin propiedad, los campos tipeados a mano) y deja la configuración en tres pasos sin teclado. El armado manual sigue documentado y disponible en la pantalla, colapsado, como salida de emergencia.
 
 Descartado a propósito (ver la sección "Fuera de alcance" del [spec](../superpowers/specs/2026-08-08-apple-pay-captura-atajo-design.md)): deep link `manifiesto://` como camino alternativo, webhook a una Edge Function, modos de comportamiento configurables, monto mínimo, semilla de sinónimos comercio→categoría, y Android.
 
@@ -70,7 +73,8 @@ Descartado a propósito (ver la sección "Fuera de alcance" del [spec](../superp
 | Gate | [`mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts`](../../mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts) | Drena al montar y en cada vuelta a foreground, sólo con auth en `ready` |
 | Copy de la notif | [`mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx`](../../mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx) | Empuja el copy i18n al nativo en el arranque |
 | Host | [`mobile/components/apple-pay-capture/apple-pay-capture-host.tsx`](../../mobile/components/apple-pay-capture/apple-pay-capture-host.tsx) | Su propia instancia de `ImportReviewSheet` + limpieza de capturas |
-| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Switch + gate de plataforma + bloque de estado + los 5 pasos con sus avisos + botón a Atajos + "Si no te funciona" |
+| Link del atajo | [`mobile/features/apple-pay-capture/shortcut-link.ts`](../../mobile/features/apple-pay-capture/shortcut-link.ts) | `APPLE_PAY_SHORTCUT_ICLOUD_URL`: el link de iCloud del atajo pre-armado, o `null` mientras no esté publicado. **Es el switch entre los dos modos de la pantalla** |
+| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Switch + gate de plataforma + bloque de estado + guía (3 pasos con el atajo, o los 5 manuales) + botones a Atajos + "Si no te funciona" |
 
 ---
 
@@ -106,13 +110,25 @@ Si el usuario cierra el wizard sin confirmar, las capturas quedan pendientes y s
 
 ## Runbook: cómo lo configura el usuario
 
-Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Con el switch prendido aparecen el bloque de estado, los pasos, el botón **Abrir Atajos** (`shortcuts://create-automation`) y el diagnóstico:
+Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Con el switch prendido aparecen el bloque de estado, la guía y el diagnóstico. **Cuál guía** depende de `APPLE_PAY_SHORTCUT_ICLOUD_URL`.
+
+### Camino principal — con el atajo pre-armado (3 pasos, verificado en device)
+
+1. Tocar **"Agregar el atajo listo"**: abre el link de iCloud, iOS muestra la vista previa y el usuario confirma con **"Agregar atajo"**. El atajo **"Manifiesto"** queda en su biblioteca con la acción y las variables Cantidad/Comercio ya cableadas.
+2. Atajos → **Automatización** → **+** → disparador **"Transacción"** (en iOS 26, **"Wallet"**) → marcar las tarjetas → **"Ejecutar de inmediato"** — ⚠️ y **apagar "Preguntar antes de ejecutar"**. La pantalla trae el botón **Abrir Atajos** (`shortcuts://create-automation`).
+3. En la pantalla **"Siguiente"**, elegir el atajo **"Manifiesto"** de la lista de atajos existentes.
+
+Cero teclado, cero variables. La única trampa que sobrevive es la del paso 2 ("Ejecutar de inmediato"), porque esa decisión es de la automatización, no del atajo.
+
+### Camino manual — sin atajo publicado, o por elección del usuario
+
+Con la constante en `null` estos cinco pasos son el camino principal de la pantalla, sin nada colapsado. Con el atajo publicado quedan detrás de la fila **"Prefiero armarlo a mano"**.
 
 1. Creá una automatización nueva (Atajos → Automatización → +).
 2. Elegí el disparador **"Transacción"** (en iOS 26 se llama **"Wallet"**).
 3. Marcá las tarjetas y elegí **"Ejecutar de inmediato"** — ⚠️ y **apagá "Preguntar antes de ejecutar"**.
 4. Agregá la acción **de Manifiesto** "Registrar gasto" — ⚠️ si aparece un paso **"Ejecutar atajo"**, está mal.
-5. Llená **Monto** y **Comercio** con la variable **"Entrada del atajo"** — ⚠️ nunca tipeándolos a mano.
+5. Llená **Monto** y **Comercio** con la variable **"Entrada del atajo"** y elegí su propiedad (**Cantidad** en el monto, **Comercio** en el otro) — ⚠️ nunca tipeándolos a mano.
 
 ### Por qué la pantalla se reescribió así (2026-08-08)
 
@@ -133,9 +149,46 @@ El gate de la pantalla distingue tres motivos de indisponibilidad, porque cada u
 
 ---
 
+## Runbook de mantenimiento: el atajo canónico
+
+El atajo "Manifiesto" que se distribuye es un **artefacto de producto**: no vive en el repo, vive en la biblioteca de Atajos del owner y se publica como link de iCloud. Este es el procedimiento completo.
+
+### Cómo se crea (y por qué no se puede armar de cero)
+
+Un atajo suelto **no deja elegir "Transacción" como tipo de entrada**: esa opción no está en la UI de Atajos: sólo aparece cuando el atajo la trae horneada en su archivo. Sin ese tipo de entrada, las variables Cantidad/Comercio no existen y no hay nada que cablear.
+
+La salida es partir de un atajo que ya lo tenga:
+
+1. Importar el **Transaction Handler** público de gluebyte: `icloud.com/shortcuts/510c6d15f4d844d69f64180c69f54589`. Trae el tipo de entrada "Transacción" ya definido.
+2. Vaciarle las acciones propias y dejar una sola: **Manifiesto → Registrar gasto**.
+3. Llenar sus dos campos con la variable **"Entrada del atajo"** y elegir la propiedad de cada uno: **Cantidad** en el campo Monto, **Comercio** en el campo Comercio. (Apple al monto lo llama **Cantidad**, no "Monto" — nombrarlo mal en la guía fue un bug real.)
+4. Renombrar el atajo a **"Manifiesto"**. Ese nombre es el que el usuario busca en la pantalla "Siguiente" de la automatización, y es el que nombra la guía de Ajustes.
+5. Verificarlo con un pago real antes de compartirlo.
+
+### Cómo se publica
+
+Compartir el atajo → **Copiar enlace de iCloud** → pegar el link en `APPLE_PAY_SHORTCUT_ICLOUD_URL` (`mobile/features/apple-pay-capture/shortcut-link.ts`). Con la constante distinta de `null`, la pantalla de Ajustes cambia sola de modo.
+
+### ⚠️ El link de iCloud es un snapshot INMUTABLE
+
+Compartir un atajo sube una **copia congelada** en ese instante. Editar el atajo de la biblioteca **no** actualiza el link ya publicado, y quien lo agregó antes se queda con la versión vieja para siempre.
+
+Consecuencias operativas:
+
+- Cambiar el atajo canónico obliga a **compartirlo de nuevo** y a **actualizar la constante**, y hoy eso significa **build nueva**: el OTA está bloqueado en este branch.
+- Los usuarios que ya lo agregaron **no se enteran**. Un cambio incompatible los deja rotos en silencio, exactamente el modo de falla que el bloque "¿Está funcionando?" existe para atrapar.
+- Por eso: **mantener el atajo canónico estable**. Es una sola acción con dos campos; no hay razón para tocarlo salvo que cambie el propio App Intent, y eso ya exige build nueva de todos modos.
+
+### Qué pasa si el usuario lo borra o lo renombra
+
+La automatización guarda una **referencia** al atajo, no una copia. Borrado o renombrado, la automatización queda apuntando a la nada y los pagos dejan de registrarse **sin ningún error visible**. Está documentado como síntoma en "Si no te funciona" (`settings:applePay.trouble.missingShortcut*`): volver a agregar el atajo desde la pantalla de Ajustes y re-elegirlo en la automatización.
+
+---
+
 ## Gotchas operativos
 
-- **No sale por OTA.** El intent es código nativo: cualquier cambio en `plugins/apple-pay-intent/` o `modules/apple-pay-capture/` exige build nativa y un envío a App Store.
+- **No sale por OTA.** El intent es código nativo: cualquier cambio en `plugins/apple-pay-intent/` o `modules/apple-pay-capture/` exige build nativa y un envío a App Store. `APPLE_PAY_SHORTCUT_ICLOUD_URL` sí es JS, pero con el OTA bloqueado también viaja en una build.
+- **El link de iCloud del atajo es inmutable.** Editar el atajo canónico no actualiza el link ya compartido: hay que volver a compartirlo y actualizar la constante (ver el runbook de mantenimiento).
 - **`ios/build-device` rompe `pod install`.** El hook de React Native parsea plists binarios de ahí. Hay que sacarlo del camino antes de un prebuild (son ~3 GB de caché del usuario: moverlo, no borrarlo a ciegas).
 - **El `.podspec` es obligatorio.** Sin él, el autolinking descarta el módulo entero y `isApplePayCaptureSupported()` devuelve `false` en una build que debería soportarlo.
 - **El `.gitignore` se comía `modules/apple-pay-capture/ios/`** porque el patrón `ios` no estaba anclado. Si aparecen archivos nativos "que nadie borró", chequear eso primero.
@@ -143,14 +196,19 @@ El gate de la pantalla distingue tres motivos de indisponibilidad, porque cada u
 
 ---
 
-## Verificación pendiente en device
+## Verificación en device
 
-El recorrido completo todavía **no se corrió en un iPhone real**. Criterios de aceptación:
+El recorrido se corrió en un iPhone real con un pago de verdad (2026-08-08). Verificado:
 
-1. La acción **Manifiesto → Registrar gasto** aparece en Atajos (el gate de la decisión #1).
-2. Pagar con NFC → llega la notificación local con monto y comercio correctos.
-3. Tocarla → la app abre en Gastos y sube el sheet precargado.
-4. Confirmar → el gasto aparece en el feed con el monto exacto.
-5. Pagar de nuevo en el **mismo comercio** → la categoría viene presugerida sola.
-6. Volver a foreground → una captura ya confirmada **no reaparece**.
-7. Apagar el switch, pagar → no llega notificación ni se abre nada.
+1. La acción **Manifiesto → Registrar gasto** aparece en Atajos (el gate de la decisión #1). ✅
+2. Pagar con NFC → llega la notificación local con monto y comercio correctos. ✅
+3. Tocarla → la app abre en Gastos y sube el sheet precargado. ✅
+4. Confirmar → el gasto aparece en el feed con el monto exacto. ✅
+5. El armado con el **atajo pre-armado** (agregar el link → automatización → elegir "Manifiesto") deja los dos campos bien cableados sin tocar el teclado. ✅
+
+Sigue sin correrse en device:
+
+- Pagar de nuevo en el **mismo comercio** → la categoría presugerida.
+- Volver a foreground → una captura ya confirmada **no reaparece**.
+- Apagar el switch, pagar → no llega notificación ni se abre nada.
+- El modo **con link publicado** de la pantalla de Ajustes: hoy la constante es `null`, así que la UI de 3 pasos todavía no se vio en device.

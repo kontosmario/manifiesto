@@ -1021,6 +1021,27 @@
       "diagnosisUnreadableAmount": "El monto llegó en un formato que no pudimos leer: «{{raw}}». Por eso el gasto te entró en $0. Abrí la automatización y fijate que la variable del campo Monto tenga elegido el dato Monto.",
       "diagnosisMissingAmount": "El monto llegó vacío, así que el gasto te entró en $0. Abrí la automatización y fijate que el campo Monto tenga la variable y que tenga elegido el dato Monto."
     },
+    "quickTitle": "Cómo configurarlo en 3 pasos",
+    "quick": {
+      "step1": {
+        "title": "Agrega el atajo listo",
+        "body": "Toca el botón: iOS te muestra una vista previa y confirmas con «Agregar atajo». El atajo «Manifiesto» queda en tu biblioteca con todo cableado, así que no hace falta que lo abras ni que toques nada adentro."
+      },
+      "step2": {
+        "title": "Crea la automatización",
+        "body": "Abre Atajos, entra a la pestaña Automatización y toca el +. Elige el disparador «Transacción» (si tu iPhone tiene iOS 26 se llama «Wallet»), marca las tarjetas que quieras seguir y elige «Ejecutar de inmediato».",
+        "notice": "Apaga «Preguntar antes de ejecutar». Si queda prendido, cada pago te pide una confirmación y el gasto no se captura solo."
+      },
+      "step3": {
+        "title": "Elige el atajo «Manifiesto»",
+        "body": "En la pantalla «Siguiente» no armes nada: busca «Manifiesto» en la lista de atajos que ya tienes y tócalo. Listo, sin teclado y sin variables."
+      }
+    },
+    "addShortcut": "Agregar el atajo listo",
+    "addShortcutError": "No pudimos abrir el atajo listo. Revisa que tengas Atajos instalado y prueba de nuevo.",
+    "manualGroup": "Otra forma",
+    "manualToggle": "Prefiero armarlo a mano",
+    "manualToggleHelper": "Los pasos para armar la acción por tu cuenta, sin el atajo listo.",
     "stepsTitle": "Cómo configurarlo",
     "steps": {
       "step1": {
@@ -1059,7 +1080,9 @@
       "sameValueTitle": "«Me llega el monto en $0» o «el monto y el comercio me llegan iguales»",
       "sameValueBody": "En la acción de Manifiesto pusiste la variable en los dos campos, pero sin elegir qué dato del pago trae cada uno: cuando no elegís, Atajos manda el mismo texto a los dos. Abrí la automatización, tocá la variable del campo Monto y elegí Monto, y hacé lo mismo en Comercio. Los dos campos tienen que quedar mostrando cosas distintas.",
       "silentTitle": "«No me llega nada»",
-      "silentBody": "Fijate que en el disparador estén marcadas las tarjetas que usás para pagar. Acordate también de que sólo se captan los pagos sin contacto hechos con el celular: la tarjeta de plástico, las compras dentro de otras apps y las de la web no pasan por acá."
+      "silentBody": "Fijate que en el disparador estén marcadas las tarjetas que usás para pagar. Acordate también de que sólo se captan los pagos sin contacto hechos con el celular: la tarjeta de plástico, las compras dentro de otras apps y las de la web no pasan por acá.",
+      "missingShortcutTitle": "«Borré o renombré el atajo Manifiesto»",
+      "missingShortcutBody": "La automatización guarda una referencia al atajo, así que queda apuntando a la nada y tus pagos dejan de registrarse. Vuelve a agregar el atajo listo desde esta pantalla y después abre la automatización para elegirlo de nuevo en la pantalla «Siguiente»."
     }
   }
 }

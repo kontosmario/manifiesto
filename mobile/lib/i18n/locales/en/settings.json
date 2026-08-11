@@ -1021,6 +1021,27 @@
       "diagnosisUnreadableAmount": "The amount arrived in a format we couldn't read: \"{{raw}}\". That's why the expense came in as $0. Open the automation and check that the variable in the Amount field has Amount picked as its data.",
       "diagnosisMissingAmount": "The amount arrived empty, so the expense came in as $0. Open the automation and check that the Amount field has the variable and that it has Amount picked as its data."
     },
+    "quickTitle": "How to set it up in 3 steps",
+    "quick": {
+      "step1": {
+        "title": "Add the ready-made shortcut",
+        "body": "Tap the button: iOS shows you a preview and you confirm with \"Add Shortcut\". The \"Manifiesto\" shortcut lands in your library fully wired, so you don't have to open it or change anything inside."
+      },
+      "step2": {
+        "title": "Create the automation",
+        "body": "Open Shortcuts, go to the Automation tab and tap the +. Pick the \"Transaction\" trigger (if your iPhone runs iOS 26 it's called \"Wallet\"), select the cards you want to track and choose \"Run Immediately\".",
+        "notice": "Turn off \"Ask Before Running\". If it stays on, every payment asks you to confirm and the expense isn't captured on its own."
+      },
+      "step3": {
+        "title": "Pick the \"Manifiesto\" shortcut",
+        "body": "On the \"Next\" screen don't build anything: look for \"Manifiesto\" in the list of shortcuts you already have and tap it. That's it, no keyboard and no variables."
+      }
+    },
+    "addShortcut": "Add the ready-made shortcut",
+    "addShortcutError": "We couldn't open the ready-made shortcut. Check that Shortcuts is installed and try again.",
+    "manualGroup": "Another way",
+    "manualToggle": "I'd rather build it myself",
+    "manualToggleHelper": "The steps to build the action on your own, without the ready-made shortcut.",
     "stepsTitle": "How to set it up",
     "steps": {
       "step1": {
@@ -1059,7 +1080,9 @@
       "sameValueTitle": "\"The amount comes in as $0\" or \"the amount and the merchant come in the same\"",
       "sameValueBody": "In the Manifiesto action you added the variable to both fields, but without picking which payment data each one brings: when you don't pick, Shortcuts sends the same text to both. Open the automation, tap the variable in the Amount field and pick Amount, then do the same for Merchant. Both fields have to end up showing different things.",
       "silentTitle": "\"Nothing reaches me\"",
-      "silentBody": "Check that the cards you pay with are selected in the trigger. Remember too that only contactless payments made with your phone are captured: physical cards, purchases inside other apps and web checkouts don't go through here."
+      "silentBody": "Check that the cards you pay with are selected in the trigger. Remember too that only contactless payments made with your phone are captured: physical cards, purchases inside other apps and web checkouts don't go through here.",
+      "missingShortcutTitle": "\"I deleted or renamed the Manifiesto shortcut\"",
+      "missingShortcutBody": "The automation stores a reference to the shortcut, so it ends up pointing at nothing and your payments stop being logged. Add the ready-made shortcut again from this screen, then open the automation and pick it again on the \"Next\" screen."
     }
   }
 }

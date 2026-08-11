@@ -5,20 +5,31 @@
 // hacer es prender la captura, explicar cómo se arma y abrir Atajos. El
 // resto lo hace el usuario a mano, en otra app, sin que podamos verlo.
 //
-// De ahí las tres piezas de acá, en este orden:
+// La guía tiene DOS MODOS, y los decide una sola constante
+// (`APPLE_PAY_SHORTCUT_ICLOUD_URL`):
 //
-//  1. ESTADO — lo primero después del switch. Una configuración que quedó
-//     mal no falla con un error: falla en silencio, y el usuario se entera
-//     días después, cuando le falta un gasto. El bloque muestra la última
-//     captura RECIBIDA (comercio, monto, hace cuánto): ver ahí un pago
-//     propio es la única prueba de que la automatización quedó bien. Y
-//     cuando esa captura llegó ROTA, el bloque lo DIAGNOSTICA
-//     (`diagnoseLastCapture`) y dice qué tocar: es lo único que convierte
-//     "me falta un gasto" en un arreglo concreto.
-//  2. PASOS — título corto + descripción, con un aviso en los tres pasos
-//     donde Atajos tiene trampa (confirmación previa, acción equivocada,
-//     variables sin el dato elegido o tipeadas a mano). Cada aviso vive EN
-//     su paso, no en una nota al pie que nadie lee a tiempo.
+//  · CON link publicado — camino principal: agregar el atajo ya cableado
+//    desde su link de iCloud, crear la automatización y elegirlo en la
+//    pantalla "Siguiente". Cero teclado, cero variables. El armado manual
+//    sigue disponible, pero COLAPSADO: es la salida de emergencia, no la
+//    instrucción.
+//  · SIN link (`null`) — el atajo todavía no se publicó, así que el
+//    armado manual vuelve a ser el camino principal, tal cual estaba.
+//
+// De ahí las piezas de acá, en este orden:
+//
+//  1. ESTADO — lo primero después del switch, y vale para los dos modos.
+//     Una configuración que quedó mal no falla con un error: falla en
+//     silencio, y el usuario se entera días después, cuando le falta un
+//     gasto. El bloque muestra la última captura RECIBIDA (comercio,
+//     monto, hace cuánto): ver ahí un pago propio es la única prueba de
+//     que la automatización quedó bien. Y cuando esa captura llegó ROTA,
+//     el bloque lo DIAGNOSTICA (`diagnoseLastCapture`) y dice qué tocar:
+//     es lo único que convierte "me falta un gasto" en un arreglo
+//     concreto.
+//  2. PASOS — título corto + descripción, con un aviso en cada paso donde
+//     Atajos tiene trampa. Cada aviso vive EN su paso, no en una nota al
+//     pie que nadie lee a tiempo.
 //  3. SI NO TE FUNCIONA — los síntomas exactos que se ven en el teléfono,
 //     con su causa. Es la red que atrapa a quien ya configuró algo mal.
 //
@@ -27,8 +38,8 @@
 // con el vocabulario neumórfico (`neoInk` / `neoTokens`, cero
 // `theme.colors`).
 
-import { useCallback, type ReactNode } from 'react'
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 
@@ -47,6 +58,8 @@ import {
 } from '@/features/apple-pay-capture/diagnose-last-capture'
 import { isApplePayCaptureSupported } from '@/features/apple-pay-capture/native'
 import { parseShortcutAmount } from '@/features/apple-pay-capture/parse-shortcut-amount'
+import { APPLE_PAY_SHORTCUT_ICLOUD_URL } from '@/features/apple-pay-capture/shortcut-link'
+import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import { formatMoney } from '@/utils/money'
 import { formatRelativeNotificationTime } from '@/utils/notifications'
@@ -80,12 +93,13 @@ export function resolveApplePayGate(): ApplePayGate {
 const SHORTCUTS_NEW_AUTOMATION_URL = 'shortcuts://create-automation'
 
 /**
- * Los cinco pasos. `notice` marca los tres donde Atajos tiene una trampa
- * que ya mordió en device: dejar "Preguntar antes de ejecutar" prendido,
- * meter un "Ejecutar atajo" en vez de la acción de Manifiesto, y llenar
- * los campos sin que la variable traiga el dato correcto (tipeados a mano,
- * o con la variable puesta pero sin elegir qué dato del pago trae — que
- * PARECE bien configurado y manda lo mismo a los dos campos).
+ * Los cinco pasos del armado MANUAL. `notice` marca los tres donde Atajos
+ * tiene una trampa que ya mordió en device: dejar "Preguntar antes de
+ * ejecutar" prendido, meter un "Ejecutar atajo" en vez de la acción de
+ * Manifiesto, y llenar los campos sin que la variable traiga el dato
+ * correcto (tipeados a mano, o con la variable puesta pero sin elegir qué
+ * dato del pago trae — que PARECE bien configurado y manda lo mismo a los
+ * dos campos).
  */
 const STEPS: ReadonlyArray<{ key: string; notice: boolean }> = [
   { key: 'step1', notice: false },
@@ -95,6 +109,25 @@ const STEPS: ReadonlyArray<{ key: string; notice: boolean }> = [
   { key: 'step5', notice: true },
 ]
 
+/**
+ * Los tres pasos del camino con el atajo ya cableado, verificado en device
+ * con un pago real. `action` dice qué botón lleva el paso: agregar el
+ * atajo desde su link de iCloud, o abrir Atajos en la pantalla de
+ * automatización nueva. El tercero no tiene botón — se resuelve dentro de
+ * Atajos, sin volver acá. El aviso del segundo es la única trampa que
+ * sobrevive a este camino: el atajo viene armado, pero "Ejecutar de
+ * inmediato" lo elige el usuario.
+ */
+const QUICK_STEPS: ReadonlyArray<{
+  key: string
+  notice: boolean
+  action: 'add-shortcut' | 'open-shortcuts' | null
+}> = [
+  { key: 'step1', notice: false, action: 'add-shortcut' },
+  { key: 'step2', notice: true, action: 'open-shortcuts' },
+  { key: 'step3', notice: false, action: null },
+]
+
 /** Síntomas tal como se ven en el teléfono, cada uno con su causa. */
 const TROUBLE: ReadonlyArray<{ key: string; icon: IconName }> = [
   { key: 'ask', icon: 'touch-app' },
@@ -102,6 +135,17 @@ const TROUBLE: ReadonlyArray<{ key: string; icon: IconName }> = [
   { key: 'sameValue', icon: 'money-off' },
   { key: 'silent', icon: 'search-off' },
 ]
+
+/**
+ * Síntoma exclusivo del camino con atajo: la automatización guarda una
+ * REFERENCIA al atajo, así que borrarlo o renombrarlo la deja apuntando a
+ * la nada. Sin el link publicado no hay atajo suelto que borrar, y el
+ * ítem sería ruido.
+ */
+const TROUBLE_SHORTCUT: { key: string; icon: IconName } = {
+  key: 'missingShortcut',
+  icon: 'link-off',
+}
 
 /**
  * Cada diagnóstico tiene su copy: la pantalla NO decide nada sobre la
@@ -126,16 +170,42 @@ export function ApplePayScreen() {
 
   const lastCapture = useApplePayLastCapture()
 
+  // El link del atajo ya cableado. `null` = todavía no publicado, y la
+  // pantalla entera cae al armado manual como camino principal.
+  const shortcutUrl = APPLE_PAY_SHORTCUT_ICLOUD_URL
+
   const handleOpenShortcuts = useCallback(() => {
     Linking.openURL(SHORTCUTS_NEW_AUTOMATION_URL).catch(() => {
       toast.error(t('settings:applePay.openShortcutsError'))
     })
   }, [t])
 
+  const handleAddShortcut = useCallback(() => {
+    if (shortcutUrl === null) return
+    Linking.openURL(shortcutUrl).catch(() => {
+      toast.error(t('settings:applePay.addShortcutError'))
+    })
+  }, [shortcutUrl, t])
+
+  // El armado manual arranca cerrado: con el atajo publicado es la salida
+  // de emergencia, no la instrucción.
+  const [manualOpen, setManualOpen] = useState(false)
+  const toggleManual = useCallback(() => {
+    void triggerHaptic('selection')
+    setManualOpen((open) => !open)
+  }, [])
+
   // La guía entera (estado + pasos + diagnóstico) sólo con la captura
   // prendida y disponible. Apagada es ruido: el usuario todavía no
   // decidió usar la función.
   const showGuide = enabled && gate === 'ok'
+
+  // El síntoma del atajo borrado va PRIMERO cuando existe: es el modo de
+  // falla propio del camino que la pantalla acaba de recomendar.
+  const trouble = useMemo(
+    () => (shortcutUrl === null ? TROUBLE : [TROUBLE_SHORTCUT, ...TROUBLE]),
+    [shortcutUrl],
+  )
 
   return (
     <Screen
@@ -180,29 +250,94 @@ export function ApplePayScreen() {
         </RiseView>
       ) : null}
 
-      {/* 3. Los pasos + el atajo a Atajos. */}
-      {showGuide ? (
+      {/* 3a. CON atajo publicado: los tres pasos del camino corto, cada
+          uno con su botón. */}
+      {showGuide && shortcutUrl !== null ? (
         <RiseView delay={140} style={styles.block}>
-          <SettingsGroup title={t('settings:applePay.stepsTitle')}>
-            {STEPS.map((step, index) => (
+          <SettingsGroup title={t('settings:applePay.quickTitle')}>
+            {QUICK_STEPS.map((step, index) => (
               <GuideItem
+                action={
+                  step.action === 'add-shortcut' ? (
+                    <NeoButton
+                      block
+                      label={t('settings:applePay.addShortcut')}
+                      onPress={handleAddShortcut}
+                    />
+                  ) : step.action === 'open-shortcuts' ? (
+                    <NeoButton
+                      block
+                      label={t('settings:applePay.openShortcuts')}
+                      onPress={handleOpenShortcuts}
+                      variant="ghost"
+                    />
+                  ) : undefined
+                }
                 badge={
                   <Text style={[styles.stepNumber, { color: neo.text }]}>{String(index + 1)}</Text>
                 }
-                body={t(`settings:applePay.steps.${step.key}.body`)}
-                isLast={index === STEPS.length - 1}
+                body={t(`settings:applePay.quick.${step.key}.body`)}
+                isLast={index === QUICK_STEPS.length - 1}
                 key={step.key}
-                notice={step.notice ? t(`settings:applePay.steps.${step.key}.notice`) : undefined}
-                title={t(`settings:applePay.steps.${step.key}.title`)}
+                notice={step.notice ? t(`settings:applePay.quick.${step.key}.notice`) : undefined}
+                title={t(`settings:applePay.quick.${step.key}.title`)}
               />
             ))}
           </SettingsGroup>
+        </RiseView>
+      ) : null}
 
-          <NeoButton
-            block
-            label={t('settings:applePay.openShortcuts')}
-            onPress={handleOpenShortcuts}
-          />
+      {/* 3b. Los cinco pasos manuales. Sin atajo publicado son el camino
+          principal —la pantalla queda tal cual estaba—; con el atajo
+          publicado quedan detrás de una fila que los despliega. */}
+      {showGuide ? (
+        <RiseView delay={shortcutUrl === null ? 140 : 190} style={styles.block}>
+          <SettingsGroup
+            title={t(
+              shortcutUrl === null
+                ? 'settings:applePay.stepsTitle'
+                : 'settings:applePay.manualGroup',
+            )}
+          >
+            {shortcutUrl === null ? null : (
+              <DisclosureRow
+                expanded={manualOpen}
+                helper={t('settings:applePay.manualToggleHelper')}
+                isLast={!manualOpen}
+                label={t('settings:applePay.manualToggle')}
+                onPress={toggleManual}
+              />
+            )}
+            {shortcutUrl !== null && !manualOpen
+              ? null
+              : STEPS.map((step, index) => (
+                  <GuideItem
+                    badge={
+                      <Text style={[styles.stepNumber, { color: neo.text }]}>
+                        {String(index + 1)}
+                      </Text>
+                    }
+                    body={t(`settings:applePay.steps.${step.key}.body`)}
+                    isLast={index === STEPS.length - 1}
+                    key={step.key}
+                    notice={
+                      step.notice ? t(`settings:applePay.steps.${step.key}.notice`) : undefined
+                    }
+                    title={t(`settings:applePay.steps.${step.key}.title`)}
+                  />
+                ))}
+          </SettingsGroup>
+
+          {shortcutUrl !== null && !manualOpen ? null : (
+            <NeoButton
+              block
+              label={t('settings:applePay.openShortcuts')}
+              onPress={handleOpenShortcuts}
+              // Con el atajo publicado la acción primaria de la pantalla es
+              // "Agregar el atajo listo": dos bandas verdes competirían.
+              variant={shortcutUrl === null ? 'primary' : 'ghost'}
+            />
+          )}
         </RiseView>
       ) : null}
 
@@ -210,13 +345,13 @@ export function ApplePayScreen() {
           primera vez sigue los pasos, y quien vuelve porque algo salió
           mal baja hasta acá buscando su síntoma. */}
       {showGuide ? (
-        <RiseView delay={190} style={styles.block}>
+        <RiseView delay={shortcutUrl === null ? 190 : 240} style={styles.block}>
           <SettingsGroup title={t('settings:applePay.troubleTitle')}>
-            {TROUBLE.map((item, index) => (
+            {trouble.map((item, index) => (
               <GuideItem
                 badge={<TroubleGlyph name={item.icon} />}
                 body={t(`settings:applePay.trouble.${item.key}Body`)}
-                isLast={index === TROUBLE.length - 1}
+                isLast={index === trouble.length - 1}
                 key={item.key}
                 title={t(`settings:applePay.trouble.${item.key}Title`)}
               />
@@ -365,22 +500,27 @@ function GuideNotice({ text }: { text: string }) {
 }
 
 /**
- * Ítem de las dos listas largas (pasos y síntomas): insignia + título
- * corto + descripción, más el aviso opcional. La geometría es la de
+ * Ítem de las listas largas (pasos y síntomas): insignia + título corto +
+ * descripción, más el aviso y el botón opcionales. La geometría es la de
  * `SettingsRow` —mismo padding, mismo hairline de 1.5px entre ítems— para
  * que la pantalla no se sienta de otro sistema.
+ *
+ * `action` va DENTRO del paso, no al pie de la lista: en el camino corto
+ * cada paso tiene su propio botón y un pie común no diría cuál es cuál.
  */
 function GuideItem({
   badge,
   title,
   body,
   notice,
+  action,
   isLast,
 }: {
   badge: ReactNode
   title: string
   body: string
   notice?: string
+  action?: ReactNode
   isLast: boolean
 }) {
   const { theme } = useAppTheme()
@@ -398,8 +538,65 @@ function GuideItem({
         <Text style={[styles.itemTitle, { color: neo.text }]}>{title}</Text>
         <Text style={[styles.itemBody, { color: neo.textMuted }]}>{body}</Text>
         {notice === undefined ? null : <GuideNotice text={notice} />}
+        {action === undefined ? null : <View style={styles.itemAction}>{action}</View>}
       </View>
     </View>
+  )
+}
+
+/**
+ * Fila que despliega el armado manual. Ajustes no tiene todavía un patrón
+ * de sección expandible, así que se arma con el material que ya existe:
+ * la geometría de `GuideItem`, el mismo pozo de insignia y el chevrón de
+ * `SettingsRow` girado a vertical. No hay animación de alto — el bloque
+ * son cinco pasos largos y una apertura animada de ese tamaño se lee como
+ * un salto, no como un despliegue.
+ */
+function DisclosureRow({
+  expanded,
+  helper,
+  isLast,
+  label,
+  onPress,
+}: {
+  expanded: boolean
+  helper: string
+  isLast: boolean
+  label: string
+  onPress: () => void
+}) {
+  const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={onPress}
+      style={({ pressed }) => [{ opacity: pressed ? 0.94 : 1 }]}
+    >
+      <View
+        style={[
+          styles.item,
+          styles.disclosure,
+          isLast ? null : { borderBottomColor: neo.sheetDivider, borderBottomWidth: 1.5 },
+        ]}
+      >
+        <Well>
+          <MaterialIcons color={neo.textMuted} name="build" size={16} />
+        </Well>
+        <View style={styles.itemCopy}>
+          <Text style={[styles.itemTitle, { color: neo.text }]}>{label}</Text>
+          <Text style={[styles.itemBody, { color: neo.textMuted }]}>{helper}</Text>
+        </View>
+        <MaterialIcons
+          color={neo.textMuted}
+          name={expanded ? 'expand-less' : 'expand-more'}
+          size={22}
+        />
+      </View>
+    </Pressable>
   )
 }
 
@@ -419,6 +616,13 @@ const styles = StyleSheet.create({
   itemCopy: { flex: 1, gap: 4 },
   itemTitle: { fontSize: 14.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   itemBody: { fontSize: 13, lineHeight: 19, fontFamily: nunitoFamily('600') },
+  // El botón del paso respira más que el aviso: es un objeto táctil, no
+  // una línea de texto más.
+  itemAction: { marginTop: 6 },
+
+  // La fila que despliega el manual lleva una línea de ayuda, no un
+  // párrafo: centrada se lee como cabecera y no como paso.
+  disclosure: { alignItems: 'center' },
 
   well: {
     width: 28,
