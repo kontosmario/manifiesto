@@ -71,6 +71,16 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // insights es directo; este entry existe para que el índice dev liste
   // el preview con datos reales.
   'control': 'aprobada',
+  // JARDÍN (handoff design/jardin-2026-08, 2026-08-11): la sección entera
+  // en tres pantallas —Mi jardín (hero 2a–2f + aros de crecimiento +
+  // semana pasada + acceso a Logros), cierre de semana ×4 y Logros—, más
+  // los desvíos que el owner ordenó sobre el handoff ([OWNER-1]…[OWNER-6]:
+  // tuteo neutro, fondo global de la app, mix Brot/íconos en las medallas,
+  // día en calma con identidad propia, BrotParticles y el aro como
+  // CRECIMIENTO en vez de "riego"). La réplica ya está en el preview con
+  // los seeds de la matriz; NINGUNA pantalla live se toca hasta el flip a
+  // 'aprobada'. PENDIENTE.
+  'jardin': 'pendiente',
   // EDGE-TO-EDGE + scroll edge effect (2026-08-04): no es una vista del
   // rediseño sino un banco de tuning. Queda en 'pendiente' porque el
   // veredicto del degradé sale del iPhone y todavía no se miró en device.

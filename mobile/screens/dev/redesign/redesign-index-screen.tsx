@@ -26,6 +26,12 @@ interface PreviewEntry {
 
 const ENTRIES: PreviewEntry[] = [
   {
+    label: 'Jardín · aros de crecimiento',
+    detail: 'Handoff jardin-2026-08: hero 2a–2f + fila de 7 aros de crecimiento + cierre de semana ×4 + Logros · 27 seeds de la matriz · claro/oscuro',
+    route: '/(app)/settings/dev/redesign-jardin',
+    statusKey: 'jardin',
+  },
+  {
     label: 'FIJOS (rediseño)',
     detail: 'Pantalla completa + hero (8 estados E1–E8) + Avisos (6 estados A1–A6) + tabs/categorías · claro/oscuro',
     route: '/(app)/settings/dev/redesign-fijos',
