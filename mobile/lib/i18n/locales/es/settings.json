@@ -1045,7 +1045,7 @@
     "addShortcutError": "No pudimos abrir el atajo listo. Revisa que tengas Atajos instalado y prueba de nuevo.",
     "configGroup": "Configuración",
     "configToggle": "Volver a ver la configuración",
-    "configToggleHelper": "Los 3 pasos, por si tienes que rehacerla.",
+    "configToggleHelper": "Los {{steps}} pasos, por si tienes que rehacerla.",
     "manualGroup": "Otra forma",
     "manualToggle": "Prefiero armarlo a mano",
     "manualToggleHelper": "Los pasos para armar la acción por tu cuenta.",

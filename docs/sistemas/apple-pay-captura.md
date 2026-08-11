@@ -134,7 +134,9 @@ Con la constante en `null` estos cinco pasos **son** la guía de la pantalla, si
 
 ### La pantalla es DIRIGIDA POR ESTADO (rediseño 2026-08-11)
 
-La versión anterior era **estática**: mostraba la guía, los avisos, el bloque de estado y el diagnóstico **siempre**, sin importar en qué momento del camino estaba quien la abría. En la segunda prueba con usuarios el diagnóstico fue exactamente ése: quien venía a descubrir la función leía advertencias de fallas que no le pasaban, y quien venía porque le faltaba un gasto tenía que bajar cuatro bloques para encontrar la suya.
+La versión anterior era **estática**: mostraba la guía, los avisos, el bloque de estado y el diagnóstico **siempre**, sin importar en qué momento del camino estaba quien la abría. Quien venía a descubrir la función leía advertencias de fallas que no le pasaban, y quien venía porque le faltaba un gasto tenía que bajar cuatro bloques para encontrar la suya.
+
+La evidencia de que eso era un problema **no** salió de una prueba con usuarios —no hubo ninguna—: salió del uso del owner en su propio iPhone, entre el 2026-08-09 y el 2026-08-11, configurando la captura de punta a punta y tropezando con las tres trampas de Atajos que hoy están advertidas paso por paso.
 
 `resolveApplePaySetupPhase` (función pura, con tests en `tests/unit/apple-pay-resolve-setup-phase.test.ts`) resuelve la fase a partir de cuatro entradas —gate, switch, último recibo y diagnóstico— y la pantalla monta **un solo protagonista** por fase:
 
@@ -142,13 +144,13 @@ La versión anterior era **estática**: mostraba la guía, los avisos, el bloque
 |---|---|---|
 | `unavailable` | `gate != 'ok'` | El switch deshabilitado + el motivo en el footer. **Nada más** |
 | `off` | switch apagado | Tarjeta de una línea que vende la idea + el switch. Sin guía ni avisos |
-| `waiting-first` | prendida, jamás llegó una captura | La guía de 3 pasos como protagonista + una línea sutil "Esperando tu primer pago…". Manual y síntomas, plegados |
+| `waiting-first` | prendida, jamás llegó una captura | La guía desplegada como protagonista (3 pasos con el atajo publicado, 5 en el modo manual) + una línea sutil "Esperando tu primer pago…". Manual y síntomas, plegados |
 | `working` | prendida, última captura sana | Héroe de éxito: tilde grande en un pozo + el recibo (comercio, monto formateado, "hace X"). La guía se pliega detrás de "Volver a ver la configuración" |
-| `broken-capture` | prendida, la última captura llegó mal | El diagnóstico al frente con su arreglo puntual y el botón que lo resuelve (re-agregar el atajo cableado). La guía queda visible debajo |
+| `broken-capture` | prendida, la última captura llegó mal | El diagnóstico al frente con su arreglo puntual y el botón que lo resuelve (re-agregar el atajo cableado). La guía también se pliega: el héroe YA trae ese botón, y desplegarla repetiría la misma CTA en el paso 1 |
 
-Precedencias, todas deliberadas: `unavailable` gana a todo (el flag persistido puede venir de otro iPhone), `off` gana a un recibo viejo, sin recibo manda `waiting-first` (no hay nada roto que arreglar) y **`broken-capture` gana a `working`** — el dato llegó, así que un tilde verde dejaría al usuario tranquilo mientras sus gastos entran en $0.
+Precedencias, todas deliberadas: `unavailable` gana a todo (manda el gate y no el flag persistido, porque sin plataforma no hay guía que se pueda completar ni captura que pueda llegar; el flag vive en el keychain de ese mismo teléfono con `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, así que no migra por backup), `off` gana a un recibo viejo, sin recibo manda `waiting-first` (no hay nada roto que arreglar) y **`broken-capture` gana a `working`** — el dato llegó, así que un tilde verde dejaría al usuario tranquilo mientras sus gastos entran en $0.
 
-La fase espera a que **los dos** stores del keychain hidraten (flag + recibo). Sin esa espera, alguien que lleva semanas capturando vería "Esperando tu primer pago…" durante un frame.
+La pantalla **no monta nada** hasta que hidraten **los dos** stores del keychain (flag + recibo). Sin esa espera, alguien que lleva semanas capturando vería "Esperando tu primer pago…" durante un frame — y además los delays del stagger se eligen por fase, así que con una fase provisoria el orden de entrada dependería de cuánto tardó el keychain.
 
 Las dos fallas de la primera prueba en device siguen cubiertas, pero ahora cada una aparece **sólo cuando toca**:
 

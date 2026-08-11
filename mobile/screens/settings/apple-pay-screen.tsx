@@ -16,12 +16,20 @@
 //
 //  · `unavailable`    → el switch apagado y deshabilitado + el motivo. Nada más.
 //  · `off`            → la tarjeta que vende la idea en una línea + el switch.
-//  · `waiting-first`  → la guía de 3 pasos como protagonista, con una línea
-//                       sutil de espera. Lo demás, plegado.
+//  · `waiting-first`  → la guía como protagonista, con una línea sutil de
+//                       espera. Lo demás, plegado.
 //  · `working`        → el ÉXITO: tilde grande en un pozo + el recibo de la
 //                       última captura. La guía se pliega detrás de una fila.
 //  · `broken-capture` → el diagnóstico al frente, con su arreglo puntual y
-//                       el botón que lo resuelve. La guía queda visible debajo.
+//                       el botón que lo resuelve. La guía también se pliega:
+//                       el héroe YA trae el arreglo, y repetir su mismo botón
+//                       en el paso 1 dejaría dos CTA primarias idénticas
+//                       compitiendo en la misma pantalla.
+//
+// La pantalla entera espera a que los stores del keychain hidraten
+// (`phaseReady`) antes de montar nada: así el stagger de entrada sale
+// siempre en el mismo orden y ningún bloque se dibuja con una fase
+// provisoria.
 //
 // La guía tiene DOS MODOS, y los decide una sola constante
 // (`APPLE_PAY_SHORTCUT_ICLOUD_URL`):
@@ -78,14 +86,16 @@ import { nunitoFamily } from '@/theme/typography'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
 
-export type { ApplePayGate }
-
 /**
  * Los tres motivos por los que la captura NO está disponible le dicen
  * cosas DISTINTAS al usuario ("cambiá de teléfono" / "actualizá la app" /
  * "actualizá iOS"), así que se resuelven por separado y en este orden.
+ *
+ * Interno: el único consumidor es esta pantalla. El TIPO en cambio vive en
+ * `resolve-setup-phase.ts`, que sí lo comparte con la función pura y sus
+ * tests.
  */
-export function resolveApplePayGate(): ApplePayGate {
+function resolveApplePayGate(): ApplePayGate {
   if (Platform.OS !== 'ios') return 'not-ios'
   // `isApplePayCaptureSupported` sólo dice si el módulo nativo existe,
   // o sea si la build es lo bastante nueva.
@@ -178,9 +188,13 @@ export function ApplePayScreen() {
 
   const gate = resolveApplePayGate()
   const { enabled, loaded, setEnabled } = useApplePayCaptureEnabled()
-  // `loaded` evita que el switch parpadee de apagado a prendido mientras
-  // se lee el valor persistido del keychain.
   const switchDisabled = gate !== 'ok' || !loaded
+  // Con el gate cerrado el flag persistido puede seguir en `true` —se
+  // prendió cuando la captura sí estaba disponible y después la build o el
+  // iOS dejaron de soportarla—. Pintar el switch prendido Y bloqueado diría
+  // "esto está andando y no lo podés apagar", que es falso de las dos
+  // puntas: no está capturando nada.
+  const switchValue = gate === 'ok' && enabled
 
   const lastCapture = useApplePayLastCapture()
 
@@ -198,10 +212,13 @@ export function ApplePayScreen() {
   })
 
   // La fase se calcula con DOS valores que vienen del keychain (el flag y
-  // el último recibo). Publicarla antes de tenerlos mostraría "esperando
-  // tu primer pago" durante un frame a alguien que lleva semanas
-  // capturando — justo el mensaje que no queremos dar por error. Sin gate
-  // no hace falta esperar nada: la fase ya está decidida.
+  // el último recibo), y NADA se monta hasta tenerlos. Dos motivos:
+  //  · publicarla antes mostraría "esperando tu primer pago" durante un
+  //    frame a alguien que lleva semanas capturando;
+  //  · los delays del stagger se eligen por fase, así que con una fase
+  //    provisoria el ORDEN de entrada dependería de cuánto tardó el
+  //    keychain — la misma pantalla animaría distinto en cada apertura.
+  // Sin gate no hace falta esperar nada: la fase ya está decidida.
   const phaseReady = gate !== 'ok' || (loaded && lastCapture.loaded)
 
   const handleOpenShortcuts = useCallback(() => {
@@ -226,8 +243,7 @@ export function ApplePayScreen() {
 
   const capture = lastCapture.capture
   const showsGuide =
-    phaseReady &&
-    (phase === 'waiting-first' || phase === 'working' || phase === 'broken-capture')
+    phase === 'waiting-first' || phase === 'working' || phase === 'broken-capture'
 
   return (
     <Screen
@@ -236,80 +252,90 @@ export function ApplePayScreen() {
       title={t('settings:applePay.title')}
       titleColor={neo.text}
     >
-      {/* La venta va SÓLO con la captura apagada: prendida, el usuario ya
-          compró la idea y la línea sería ruido sobre su estado real. */}
-      {phaseReady && phase === 'off' ? (
-        <RiseView delay={40} style={styles.block}>
-          <PitchCard />
-        </RiseView>
-      ) : null}
+      {/* Nada se monta con una fase provisoria: ver `phaseReady`. */}
+      {!phaseReady ? null : (
+        <>
+          {/* La venta va SÓLO con la captura apagada: prendida, el usuario
+              ya compró la idea y la línea sería ruido sobre su estado
+              real. */}
+          {phase === 'off' ? (
+            <RiseView delay={40} style={styles.block}>
+              <PitchCard />
+            </RiseView>
+          ) : null}
 
-      {/* El interruptor. El footer carga la nota de expectativa —
-          obligatoria: Apple documenta que el disparador es best-effort y
-          se saltea pagos, así que el copy NO promete captura perfecta.
-          Cuando la captura no está disponible, el footer explica por qué
-          en vez de prometer nada. */}
-      <RiseView delay={phase === 'off' ? 90 : 40} style={styles.block}>
-        <SettingsGroup
-          footer={
-            gate === 'ok'
-              ? t('settings:applePay.expectation')
-              : t(`settings:applePay.gate.${gate}`)
-          }
-          title={t('settings:applePay.toggleGroup')}
-        >
-          <SettingsSwitchRow
-            disabled={switchDisabled}
-            icon="contactless"
-            isLast
-            label={t('settings:applePay.toggleLabel')}
-            onValueChange={setEnabled}
-            value={enabled}
-          />
-        </SettingsGroup>
-      </RiseView>
+          {/* El interruptor. El footer carga la nota de expectativa —
+              obligatoria: Apple documenta que el disparador es best-effort
+              y se saltea pagos, así que el copy NO promete captura
+              perfecta. Cuando la captura no está disponible, el footer
+              explica por qué en vez de prometer nada. */}
+          <RiseView delay={phase === 'off' ? 90 : 40} style={styles.block}>
+            <SettingsGroup
+              footer={
+                gate === 'ok'
+                  ? t('settings:applePay.expectation')
+                  : t(`settings:applePay.gate.${gate}`)
+              }
+              title={t('settings:applePay.toggleGroup')}
+            >
+              <SettingsSwitchRow
+                disabled={switchDisabled}
+                icon="contactless"
+                isLast
+                label={t('settings:applePay.toggleLabel')}
+                onValueChange={setEnabled}
+                value={switchValue}
+              />
+            </SettingsGroup>
+          </RiseView>
 
-      {/* El protagonista de la fase. Sólo uno se monta a la vez. */}
-      {phaseReady && phase === 'working' && capture !== null ? (
-        <RiseView delay={90} style={styles.block}>
-          <SuccessHero capture={capture} />
-        </RiseView>
-      ) : null}
+          {/* El protagonista de la fase. Sólo uno se monta a la vez. */}
+          {phase === 'working' && capture !== null ? (
+            <RiseView delay={90} style={styles.block}>
+              <SuccessHero capture={capture} />
+            </RiseView>
+          ) : null}
 
-      {phaseReady && phase === 'broken-capture' ? (
-        <RiseView delay={90} style={styles.block}>
-          <BrokenHero
-            diagnosis={diagnosis}
-            hasShortcut={hasShortcut}
-            onAddShortcut={handleAddShortcut}
-          />
-        </RiseView>
-      ) : null}
+          {phase === 'broken-capture' ? (
+            <RiseView delay={90} style={styles.block}>
+              <BrokenHero
+                diagnosis={diagnosis}
+                hasShortcut={hasShortcut}
+                onAddShortcut={handleAddShortcut}
+              />
+            </RiseView>
+          ) : null}
 
-      {phaseReady && phase === 'waiting-first' ? (
-        <RiseView delay={90} style={styles.block}>
-          <WaitingLine />
-        </RiseView>
-      ) : null}
+          {phase === 'waiting-first' ? (
+            <RiseView delay={90} style={styles.block}>
+              <WaitingLine />
+            </RiseView>
+          ) : null}
 
-      {showsGuide ? (
-        <SetupGroups
-          // En `working` la configuración ya está hecha: los pasos pasan a
-          // ser material de consulta y arrancan plegados.
-          collapsed={phase === 'working'}
-          hasShortcut={hasShortcut}
-          onAddShortcut={handleAddShortcut}
-          onOpenShortcuts={handleOpenShortcuts}
-        />
-      ) : null}
+          {showsGuide ? (
+            <SetupGroups
+              // La guía se despliega sola SÓLO cuando es el protagonista,
+              // o sea en `waiting-first`. En `working` la configuración ya
+              // está hecha y los pasos son material de consulta; en
+              // `broken-capture` el héroe ya trae el arreglo con su botón,
+              // y desplegar la guía repetiría ese mismo botón en el paso 1.
+              collapsed={phase !== 'waiting-first'}
+              hasShortcut={hasShortcut}
+              onAddShortcut={handleAddShortcut}
+              onOpenShortcuts={handleOpenShortcuts}
+            />
+          ) : null}
 
-      {/* Los síntomas quedan plegados en todas las fases: son la red que
-          atrapa a quien ya configuró algo mal, no una lectura previa. */}
-      {showsGuide ? (
-        <RiseView delay={240} style={styles.block}>
-          <HelpGroup items={trouble} />
-        </RiseView>
-      ) : null}
+          {/* Los síntomas quedan plegados en todas las fases: son la red
+              que atrapa a quien ya configuró algo mal, no una lectura
+              previa. */}
+          {showsGuide ? (
+            <RiseView delay={240} style={styles.block}>
+              <HelpGroup items={trouble} />
+            </RiseView>
+          ) : null}
+        </>
+      )}
     </Screen>
   )
 }
@@ -359,11 +385,17 @@ function WaitingLine() {
 }
 
 /**
- * El monto viaja como TEXTO crudo de Atajos ("$ 8.160,00"). Si
- * `parseShortcutAmount` lo entiende se muestra con el formato de moneda
- * de la app; si no, se muestra tal cual llegó — ver el string raro es
- * justamente el dato que necesita quien vino a diagnosticar por qué su
- * gasto se registró mal.
+ * El monto viaja como TEXTO crudo de Atajos ("$ 8.160,00") y acá se
+ * muestra con el formato de moneda de la app.
+ *
+ * El único llamador es `SuccessHero`, y ahí el parseo NO puede fallar:
+ * la fase `working` exige que el diagnóstico sea `ok`, y
+ * `diagnoseLastCapture` sólo devuelve `ok` cuando `parseShortcutAmount`
+ * leyó el monto. La rama del crudo es defensa en profundidad —el tipo
+ * obliga a contemplar el `null`, y si esa cadena se rompiera alguna vez
+ * es mejor mostrar el texto tal cual llegó que reventar formateando—.
+ * Quien vino a diagnosticar un monto ilegible ve ese crudo en el héroe
+ * de `broken-capture`, no acá.
  */
 function formatCapturedAmount(raw: string): string {
   const parsed = parseShortcutAmount(raw)
@@ -469,10 +501,11 @@ function BrokenHero({
  * dos caminos numeran sus pasos desde 1: metidos en la misma card, un
  * "1" abajo de un "3" se lee como un error, no como otra lista.
  *
- * `collapsed` es la fase `working`: los pasos ya se hicieron y pasan a
- * ser material de consulta detrás de una fila. El armado manual sólo
- * existe cuando hay atajo publicado; sin él, los cinco pasos manuales SON
- * la guía y no hay nada que plegar.
+ * `collapsed` son las fases en las que la guía NO es el protagonista
+ * (`working` y `broken-capture`): los pasos quedan detrás de una fila,
+ * como material de consulta. El armado manual sólo existe cuando hay
+ * atajo publicado; sin él, los cinco pasos manuales SON la guía y no hay
+ * nada que plegar.
  */
 function SetupGroups({
   collapsed,
@@ -534,7 +567,12 @@ function SetupGroups({
           {collapsed ? (
             <DisclosureRow
               expanded={configOpen}
-              helper={t('settings:applePay.configToggleHelper')}
+              // Cuántos pasos se pliegan detrás de la fila depende del modo,
+              // igual que el título del grupo: 3 con el atajo publicado, 5
+              // en el armado manual. Un helper fijo mentiría en un modo.
+              helper={t('settings:applePay.configToggleHelper', {
+                steps: hasShortcut ? QUICK_STEPS.length : MANUAL_STEPS.length,
+              })}
               icon="checklist"
               isLast={!configOpen}
               label={t('settings:applePay.configToggle')}
@@ -755,6 +793,11 @@ function GuideItem({
  * `SettingsRow` girado a vertical. No hay animación de alto — lo que se
  * abre son cinco pasos largos, y una apertura animada de ese tamaño se
  * lee como un salto, no como un despliegue.
+ *
+ * El helper viaja como `accessibilityHint` y no se deja al lector de
+ * pantalla: `accessibilityLabel` en el Pressable PISA el texto de los
+ * hijos, así que con VoiceOver la fila se anunciaría sólo con su título y
+ * la línea de ayuda —la que dice qué hay adentro— se perdería.
  */
 function DisclosureRow({
   expanded,
@@ -776,6 +819,7 @@ function DisclosureRow({
 
   return (
     <Pressable
+      accessibilityHint={helper}
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ expanded }}

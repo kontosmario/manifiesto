@@ -70,8 +70,11 @@ describe('resolveApplePaySetupPhase', () => {
   })
 
   it('`unavailable` gana aunque el flag persistido esté prendido y haya capturas', () => {
-    // El flag vive en el keychain: puede venir de un iPhone anterior o de
-    // antes de que el gate se endureciera.
+    // El flag persistido puede seguir prendido de antes de que el gate se
+    // cerrara (vive en el keychain de ESTE teléfono: `persistent-kv` usa
+    // `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, así que nunca migra por backup).
+    // Da igual lo que diga: sin plataforma no hay guía que completar ni
+    // captura que pueda llegar.
     expect(
       phase({ gate: 'needs-ios-17', enabled: true, lastCapture: CAPTURE, diagnosis: SAME_VALUE }),
     ).toBe('unavailable')

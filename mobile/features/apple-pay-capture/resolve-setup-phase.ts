@@ -49,10 +49,15 @@ export interface ApplePaySetupInput {
 /**
  * Precedencias, todas deliberadas:
  *
- *  1. `unavailable` gana a TODO. El flag persistido puede estar en `true`
- *     de un iPhone anterior, o de antes de que el gate se endureciera:
- *     prometerle una guía a alguien que no puede completarla es peor que
- *     no mostrarla.
+ *  1. `unavailable` gana a TODO. Manda el gate y no el flag persistido
+ *     —que igual puede seguir en `true` de antes de que el gate se
+ *     cerrara— porque las otras cuatro fases dan por sentada una
+ *     plataforma que acá no existe: sin el módulo nativo y sin el
+ *     disparador de iOS 17 no hay guía que se pueda completar ni captura
+ *     que pueda llegar, así que el resto no describiría nada.
+ *     (El flag NO viaja entre teléfonos: `persistent-kv` lo guarda con
+ *     `WHEN_UNLOCKED_THIS_DEVICE_ONLY` justamente para que no migre por
+ *     backup de iCloud.)
  *  2. `off` gana a cualquier captura vieja. Un recibo de la semana pasada
  *     no es un estado actual si la captura está apagada.
  *  3. Sin captura mandan las ganas de configurar (`waiting-first`), aunque

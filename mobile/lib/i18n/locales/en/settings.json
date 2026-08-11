@@ -1045,7 +1045,7 @@
     "addShortcutError": "We couldn't open the ready-made shortcut. Check that Shortcuts is installed and try again.",
     "configGroup": "Setup",
     "configToggle": "See the setup again",
-    "configToggleHelper": "The 3 steps, in case you have to redo it.",
+    "configToggleHelper": "The {{steps}} steps, in case you have to redo it.",
     "manualGroup": "Another way",
     "manualToggle": "I'd rather build it myself",
     "manualToggleHelper": "The steps to build the action on your own.",
