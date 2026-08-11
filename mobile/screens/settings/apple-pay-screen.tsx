@@ -5,38 +5,41 @@
 // hacer es prender la captura, explicar cómo se arma y abrir Atajos. El
 // resto lo hace el usuario a mano, en otra app, sin que podamos verlo.
 //
+// DIRIGIDA POR ESTADO (2026-08-11). La versión anterior era ESTÁTICA:
+// mostraba la guía, los avisos y el diagnóstico SIEMPRE, sin importar en
+// qué momento del camino estaba quien la abría. Quien venía a descubrir la
+// función leía un diagnóstico que no le pasaba, y quien venía porque le
+// falta un gasto tenía que bajar cuatro bloques para encontrar el suyo.
+//
+// Ahora cada momento tiene UN protagonista, y quién es lo decide
+// `resolveApplePaySetupPhase` (función pura, con tests):
+//
+//  · `unavailable`    → el switch apagado y deshabilitado + el motivo. Nada más.
+//  · `off`            → la tarjeta que vende la idea en una línea + el switch.
+//  · `waiting-first`  → la guía de 3 pasos como protagonista, con una línea
+//                       sutil de espera. Lo demás, plegado.
+//  · `working`        → el ÉXITO: tilde grande en un pozo + el recibo de la
+//                       última captura. La guía se pliega detrás de una fila.
+//  · `broken-capture` → el diagnóstico al frente, con su arreglo puntual y
+//                       el botón que lo resuelve. La guía queda visible debajo.
+//
 // La guía tiene DOS MODOS, y los decide una sola constante
 // (`APPLE_PAY_SHORTCUT_ICLOUD_URL`):
 //
 //  · CON link publicado — camino principal: agregar el atajo ya cableado
 //    desde su link de iCloud, crear la automatización y elegirlo en la
 //    pantalla "Siguiente". Cero teclado, cero variables. El armado manual
-//    sigue disponible, pero COLAPSADO: es la salida de emergencia, no la
-//    instrucción.
-//  · SIN link (`null`) — el atajo todavía no se publicó, así que el
-//    armado manual vuelve a ser el camino principal, tal cual estaba.
+//    sigue disponible, pero COLAPSADO: es la salida de emergencia.
+//  · SIN link (`null`) — el atajo todavía no se publicó, así que los cinco
+//    pasos manuales SON la guía, sin fila de plegado.
 //
-// De ahí las piezas de acá, en este orden:
-//
-//  1. ESTADO — lo primero después del switch, y vale para los dos modos.
-//     Una configuración que quedó mal no falla con un error: falla en
-//     silencio, y el usuario se entera días después, cuando le falta un
-//     gasto. El bloque muestra la última captura RECIBIDA (comercio,
-//     monto, hace cuánto): ver ahí un pago propio es la única prueba de
-//     que la automatización quedó bien. Y cuando esa captura llegó ROTA,
-//     el bloque lo DIAGNOSTICA (`diagnoseLastCapture`) y dice qué tocar:
-//     es lo único que convierte "me falta un gasto" en un arreglo
-//     concreto.
-//  2. PASOS — título corto + descripción, con un aviso en cada paso donde
-//     Atajos tiene trampa. Cada aviso vive EN su paso, no en una nota al
-//     pie que nadie lee a tiempo.
-//  3. SI NO TE FUNCIONA — los síntomas exactos que se ven en el teléfono,
-//     con su causa. Es la red que atrapa a quien ya configuró algo mal.
+// Cada paso lleva su botón ADENTRO (agregar el atajo, abrir Atajos): con un
+// botón al pie de la lista no se sabe a qué paso pertenece.
 //
 // Construida sobre el sistema agrupado de Ajustes (SettingsGroup /
 // SettingsSwitchRow) para que se vea y se comporte igual que sus vecinas,
-// con el vocabulario neumórfico (`neoInk` / `neoTokens`, cero
-// `theme.colors`).
+// con el vocabulario neumórfico (`neoInk` / `neoTokens` / `NeoSurface`,
+// cero `theme.colors`).
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
@@ -46,6 +49,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { SettingsGroup, SettingsSwitchRow } from '@/components/settings/settings-grouped-list'
 import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
 import { Screen } from '@/components/ui/screen'
 import { useApplePayCaptureEnabled } from '@/features/apple-pay-capture/apple-pay-enabled-store'
 import {
@@ -58,6 +62,10 @@ import {
 } from '@/features/apple-pay-capture/diagnose-last-capture'
 import { isApplePayCaptureSupported } from '@/features/apple-pay-capture/native'
 import { parseShortcutAmount } from '@/features/apple-pay-capture/parse-shortcut-amount'
+import {
+  resolveApplePaySetupPhase,
+  type ApplePayGate,
+} from '@/features/apple-pay-capture/resolve-setup-phase'
 import { APPLE_PAY_SHORTCUT_ICLOUD_URL } from '@/features/apple-pay-capture/shortcut-link'
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
@@ -70,7 +78,7 @@ import { nunitoFamily } from '@/theme/typography'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
 
-export type ApplePayGate = 'ok' | 'not-ios' | 'needs-app-update' | 'needs-ios-17'
+export type { ApplePayGate }
 
 /**
  * Los tres motivos por los que la captura NO está disponible le dicen
@@ -92,6 +100,31 @@ export function resolveApplePayGate(): ApplePayGate {
 // nueva. Si el usuario borró Atajos, `openURL` rechaza y cae al toast.
 const SHORTCUTS_NEW_AUTOMATION_URL = 'shortcuts://create-automation'
 
+/** Qué botón lleva un paso adentro. `null` = el paso se resuelve sin volver acá. */
+type StepAction = 'add-shortcut' | 'open-shortcuts' | null
+
+interface GuideStep {
+  key: string
+  /** Trampa de Atajos que ya mordió en device: va como aviso DENTRO del paso. */
+  notice: boolean
+  action: StepAction
+}
+
+/**
+ * Los tres pasos del camino con el atajo ya cableado, verificado en device
+ * con un pago real. El tercero no tiene botón —se resuelve dentro de
+ * Atajos— y en cambio muestra el NOMBRE del atajo como chip: es lo único
+ * que el usuario tiene que reconocer en la lista de la pantalla
+ * "Siguiente". El aviso del segundo es la única trampa que sobrevive a
+ * este camino: el atajo viene armado, pero "Ejecutar de inmediato" lo
+ * elige el usuario.
+ */
+const QUICK_STEPS: ReadonlyArray<GuideStep & { chip: boolean }> = [
+  { key: 'step1', notice: false, chip: false, action: 'add-shortcut' },
+  { key: 'step2', notice: true, chip: false, action: 'open-shortcuts' },
+  { key: 'step3', notice: false, chip: true, action: null },
+]
+
 /**
  * Los cinco pasos del armado MANUAL. `notice` marca los tres donde Atajos
  * tiene una trampa que ya mordió en device: dejar "Preguntar antes de
@@ -101,31 +134,12 @@ const SHORTCUTS_NEW_AUTOMATION_URL = 'shortcuts://create-automation'
  * dato del pago trae — que PARECE bien configurado y manda lo mismo a los
  * dos campos).
  */
-const STEPS: ReadonlyArray<{ key: string; notice: boolean }> = [
-  { key: 'step1', notice: false },
-  { key: 'step2', notice: false },
-  { key: 'step3', notice: true },
-  { key: 'step4', notice: true },
-  { key: 'step5', notice: true },
-]
-
-/**
- * Los tres pasos del camino con el atajo ya cableado, verificado en device
- * con un pago real. `action` dice qué botón lleva el paso: agregar el
- * atajo desde su link de iCloud, o abrir Atajos en la pantalla de
- * automatización nueva. El tercero no tiene botón — se resuelve dentro de
- * Atajos, sin volver acá. El aviso del segundo es la única trampa que
- * sobrevive a este camino: el atajo viene armado, pero "Ejecutar de
- * inmediato" lo elige el usuario.
- */
-const QUICK_STEPS: ReadonlyArray<{
-  key: string
-  notice: boolean
-  action: 'add-shortcut' | 'open-shortcuts' | null
-}> = [
-  { key: 'step1', notice: false, action: 'add-shortcut' },
-  { key: 'step2', notice: true, action: 'open-shortcuts' },
-  { key: 'step3', notice: false, action: null },
+const MANUAL_STEPS: ReadonlyArray<GuideStep> = [
+  { key: 'step1', notice: false, action: 'open-shortcuts' },
+  { key: 'step2', notice: false, action: null },
+  { key: 'step3', notice: true, action: null },
+  { key: 'step4', notice: true, action: null },
+  { key: 'step5', notice: true, action: null },
 ]
 
 /** Síntomas tal como se ven en el teléfono, cada uno con su causa. */
@@ -152,9 +166,9 @@ const TROUBLE_SHORTCUT: { key: string; icon: IconName } = {
  * captura, sólo pinta lo que `diagnoseLastCapture` resolvió.
  */
 const DIAGNOSIS_COPY: Record<Exclude<LastCaptureDiagnosis['kind'], 'ok'>, string> = {
-  'same-value': 'settings:applePay.status.diagnosisSameValue',
-  'unreadable-amount': 'settings:applePay.status.diagnosisUnreadableAmount',
-  'missing-amount': 'settings:applePay.status.diagnosisMissingAmount',
+  'same-value': 'settings:applePay.broken.sameValue',
+  'unreadable-amount': 'settings:applePay.broken.unreadableAmount',
+  'missing-amount': 'settings:applePay.broken.missingAmount',
 }
 
 export function ApplePayScreen() {
@@ -173,6 +187,22 @@ export function ApplePayScreen() {
   // El link del atajo ya cableado. `null` = todavía no publicado, y la
   // pantalla entera cae al armado manual como camino principal.
   const shortcutUrl = APPLE_PAY_SHORTCUT_ICLOUD_URL
+  const hasShortcut = shortcutUrl !== null
+
+  const diagnosis = diagnoseLastCapture(lastCapture.capture)
+  const phase = resolveApplePaySetupPhase({
+    gate,
+    enabled,
+    lastCapture: lastCapture.capture,
+    diagnosis,
+  })
+
+  // La fase se calcula con DOS valores que vienen del keychain (el flag y
+  // el último recibo). Publicarla antes de tenerlos mostraría "esperando
+  // tu primer pago" durante un frame a alguien que lleva semanas
+  // capturando — justo el mensaje que no queremos dar por error. Sin gate
+  // no hace falta esperar nada: la fase ya está decidida.
+  const phaseReady = gate !== 'ok' || (loaded && lastCapture.loaded)
 
   const handleOpenShortcuts = useCallback(() => {
     Linking.openURL(SHORTCUTS_NEW_AUTOMATION_URL).catch(() => {
@@ -187,40 +217,39 @@ export function ApplePayScreen() {
     })
   }, [shortcutUrl, t])
 
-  // El armado manual arranca cerrado: con el atajo publicado es la salida
-  // de emergencia, no la instrucción.
-  const [manualOpen, setManualOpen] = useState(false)
-  const toggleManual = useCallback(() => {
-    void triggerHaptic('selection')
-    setManualOpen((open) => !open)
-  }, [])
-
-  // La guía entera (estado + pasos + diagnóstico) sólo con la captura
-  // prendida y disponible. Apagada es ruido: el usuario todavía no
-  // decidió usar la función.
-  const showGuide = enabled && gate === 'ok'
-
   // El síntoma del atajo borrado va PRIMERO cuando existe: es el modo de
   // falla propio del camino que la pantalla acaba de recomendar.
   const trouble = useMemo(
-    () => (shortcutUrl === null ? TROUBLE : [TROUBLE_SHORTCUT, ...TROUBLE]),
-    [shortcutUrl],
+    () => (hasShortcut ? [TROUBLE_SHORTCUT, ...TROUBLE] : TROUBLE),
+    [hasShortcut],
   )
+
+  const capture = lastCapture.capture
+  const showsGuide =
+    phaseReady &&
+    (phase === 'waiting-first' || phase === 'working' || phase === 'broken-capture')
 
   return (
     <Screen
       backgroundColor={neo.bg}
       canGoBack
-      subtitle={t('settings:applePay.intro')}
       title={t('settings:applePay.title')}
       titleColor={neo.text}
     >
-      {/* 1. El interruptor. El footer carga la nota de expectativa —
+      {/* La venta va SÓLO con la captura apagada: prendida, el usuario ya
+          compró la idea y la línea sería ruido sobre su estado real. */}
+      {phaseReady && phase === 'off' ? (
+        <RiseView delay={40} style={styles.block}>
+          <PitchCard />
+        </RiseView>
+      ) : null}
+
+      {/* El interruptor. El footer carga la nota de expectativa —
           obligatoria: Apple documenta que el disparador es best-effort y
           se saltea pagos, así que el copy NO promete captura perfecta.
           Cuando la captura no está disponible, el footer explica por qué
           en vez de prometer nada. */}
-      <RiseView delay={40} style={styles.block}>
+      <RiseView delay={phase === 'off' ? 90 : 40} style={styles.block}>
         <SettingsGroup
           footer={
             gate === 'ok'
@@ -240,130 +269,94 @@ export function ApplePayScreen() {
         </SettingsGroup>
       </RiseView>
 
-      {/* 2. ¿Está funcionando? Se espera a `loaded` por el mismo motivo
-          que el switch: sin eso el bloque diría "todavía no llegó nada"
-          durante un frame y recién después mostraría el pago, que es
-          justo el mensaje que no queremos dar por error. */}
-      {showGuide && lastCapture.loaded ? (
+      {/* El protagonista de la fase. Sólo uno se monta a la vez. */}
+      {phaseReady && phase === 'working' && capture !== null ? (
         <RiseView delay={90} style={styles.block}>
-          <StatusBlock capture={lastCapture.capture} />
+          <SuccessHero capture={capture} />
         </RiseView>
       ) : null}
 
-      {/* 3a. CON atajo publicado: los tres pasos del camino corto, cada
-          uno con su botón. */}
-      {showGuide && shortcutUrl !== null ? (
-        <RiseView delay={140} style={styles.block}>
-          <SettingsGroup title={t('settings:applePay.quickTitle')}>
-            {QUICK_STEPS.map((step, index) => (
-              <GuideItem
-                action={
-                  step.action === 'add-shortcut' ? (
-                    <NeoButton
-                      block
-                      label={t('settings:applePay.addShortcut')}
-                      onPress={handleAddShortcut}
-                    />
-                  ) : step.action === 'open-shortcuts' ? (
-                    <NeoButton
-                      block
-                      label={t('settings:applePay.openShortcuts')}
-                      onPress={handleOpenShortcuts}
-                      variant="ghost"
-                    />
-                  ) : undefined
-                }
-                badge={
-                  <Text style={[styles.stepNumber, { color: neo.text }]}>{String(index + 1)}</Text>
-                }
-                body={t(`settings:applePay.quick.${step.key}.body`)}
-                isLast={index === QUICK_STEPS.length - 1}
-                key={step.key}
-                notice={step.notice ? t(`settings:applePay.quick.${step.key}.notice`) : undefined}
-                title={t(`settings:applePay.quick.${step.key}.title`)}
-              />
-            ))}
-          </SettingsGroup>
+      {phaseReady && phase === 'broken-capture' ? (
+        <RiseView delay={90} style={styles.block}>
+          <BrokenHero
+            diagnosis={diagnosis}
+            hasShortcut={hasShortcut}
+            onAddShortcut={handleAddShortcut}
+          />
         </RiseView>
       ) : null}
 
-      {/* 3b. Los cinco pasos manuales. Sin atajo publicado son el camino
-          principal —la pantalla queda tal cual estaba—; con el atajo
-          publicado quedan detrás de una fila que los despliega. */}
-      {showGuide ? (
-        <RiseView delay={shortcutUrl === null ? 140 : 190} style={styles.block}>
-          <SettingsGroup
-            title={t(
-              shortcutUrl === null
-                ? 'settings:applePay.stepsTitle'
-                : 'settings:applePay.manualGroup',
-            )}
-          >
-            {shortcutUrl === null ? null : (
-              <DisclosureRow
-                expanded={manualOpen}
-                helper={t('settings:applePay.manualToggleHelper')}
-                isLast={!manualOpen}
-                label={t('settings:applePay.manualToggle')}
-                onPress={toggleManual}
-              />
-            )}
-            {shortcutUrl !== null && !manualOpen
-              ? null
-              : STEPS.map((step, index) => (
-                  <GuideItem
-                    badge={
-                      <Text style={[styles.stepNumber, { color: neo.text }]}>
-                        {String(index + 1)}
-                      </Text>
-                    }
-                    body={t(`settings:applePay.steps.${step.key}.body`)}
-                    isLast={index === STEPS.length - 1}
-                    key={step.key}
-                    notice={
-                      step.notice ? t(`settings:applePay.steps.${step.key}.notice`) : undefined
-                    }
-                    title={t(`settings:applePay.steps.${step.key}.title`)}
-                  />
-                ))}
-          </SettingsGroup>
-
-          {shortcutUrl !== null && !manualOpen ? null : (
-            <NeoButton
-              block
-              label={t('settings:applePay.openShortcuts')}
-              onPress={handleOpenShortcuts}
-              // Con el atajo publicado la acción primaria de la pantalla es
-              // "Agregar el atajo listo": dos bandas verdes competirían.
-              variant={shortcutUrl === null ? 'primary' : 'ghost'}
-            />
-          )}
+      {phaseReady && phase === 'waiting-first' ? (
+        <RiseView delay={90} style={styles.block}>
+          <WaitingLine />
         </RiseView>
       ) : null}
 
-      {/* 4. Diagnóstico. Va al final a propósito: quien configura por
-          primera vez sigue los pasos, y quien vuelve porque algo salió
-          mal baja hasta acá buscando su síntoma. */}
-      {showGuide ? (
-        <RiseView delay={shortcutUrl === null ? 190 : 240} style={styles.block}>
-          <SettingsGroup title={t('settings:applePay.troubleTitle')}>
-            {trouble.map((item, index) => (
-              <GuideItem
-                badge={<TroubleGlyph name={item.icon} />}
-                body={t(`settings:applePay.trouble.${item.key}Body`)}
-                isLast={index === trouble.length - 1}
-                key={item.key}
-                title={t(`settings:applePay.trouble.${item.key}Title`)}
-              />
-            ))}
-          </SettingsGroup>
+      {showsGuide ? (
+        <SetupGroups
+          // En `working` la configuración ya está hecha: los pasos pasan a
+          // ser material de consulta y arrancan plegados.
+          collapsed={phase === 'working'}
+          hasShortcut={hasShortcut}
+          onAddShortcut={handleAddShortcut}
+          onOpenShortcuts={handleOpenShortcuts}
+        />
+      ) : null}
+
+      {/* Los síntomas quedan plegados en todas las fases: son la red que
+          atrapa a quien ya configuró algo mal, no una lectura previa. */}
+      {showsGuide ? (
+        <RiseView delay={240} style={styles.block}>
+          <HelpGroup items={trouble} />
         </RiseView>
       ) : null}
     </Screen>
   )
 }
 
-// ─── ¿Está funcionando? ──────────────────────────────────────────────
+// ─── Protagonistas por fase ──────────────────────────────────────────
+
+/**
+ * Fase `off`: una sola línea que dice para qué sirve esto. Sin guía, sin
+ * avisos y sin diagnóstico — el usuario todavía no decidió usar la
+ * función, y todo lo demás son instrucciones para una decisión que no
+ * tomó.
+ */
+function PitchCard() {
+  const { t } = useTranslation()
+  const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+
+  return (
+    <NeoSurface radius={neoRadii.card} style={styles.pitch} variant="raisedLg">
+      <View style={[styles.pitchWell, { backgroundColor: neo.well, boxShadow: neo.shadows.insetMd }]}>
+        <MaterialIcons color={ink.accent} name="contactless" size={22} />
+      </View>
+      <Text style={[styles.pitchText, { color: neo.text }]}>{t('settings:applePay.pitch')}</Text>
+    </NeoSurface>
+  )
+}
+
+/**
+ * Fase `waiting-first`: la guía manda, y esto es sólo el recordatorio de
+ * que el resultado todavía no llegó. Una línea, sin card: si tuviera
+ * relieve competiría con los pasos, que son lo único accionable.
+ */
+function WaitingLine() {
+  const { t } = useTranslation()
+  const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+
+  return (
+    <View style={styles.waitingLine}>
+      <MaterialIcons color={neo.textMuted} name="hourglass-empty" size={15} />
+      <Text style={[styles.waitingText, { color: neo.textMuted }]}>
+        {t('settings:applePay.waitingStatus')}
+      </Text>
+    </View>
+  )
+}
 
 /**
  * El monto viaja como TEXTO crudo de Atajos ("$ 8.160,00"). Si
@@ -377,92 +370,289 @@ function formatCapturedAmount(raw: string): string {
   return parsed === null ? raw.trim() : formatMoney(parsed.value)
 }
 
-function StatusBlock({ capture }: { capture: LastApplePayCapture | null }) {
+/**
+ * Fase `working`: el héroe es la PRUEBA. Una configuración que quedó mal
+ * no falla con un error, falla en silencio, así que ver un pago propio
+ * acá es lo único que confirma que la automatización quedó bien armada —
+ * y por eso el recibo va en un pozo aparte, separado de la prosa.
+ */
+function SuccessHero({ capture }: { capture: LastApplePayCapture }) {
   const { t } = useTranslation()
   const { theme } = useAppTheme()
   const neo = neoTokens(theme.mode)
   const ink = neoInk(theme.mode)
 
-  const received = capture !== null
-  const merchant = capture?.merchantRaw.trim() ?? ''
-
-  // El diagnóstico se decide afuera, en una función pura: acá sólo se
-  // elige qué copy le corresponde y se pinta con el mismo tratamiento de
-  // aviso que los pasos.
-  const diagnosis = diagnoseLastCapture(capture)
-  const broken = diagnosis.kind !== 'ok'
+  const merchant = capture.merchantRaw.trim()
 
   return (
-    <SettingsGroup title={t('settings:applePay.status.title')}>
-      <View style={styles.statusBody}>
-        <View style={styles.statusHead}>
-          <Well>
-            {/* Con una captura rota el tilde verde mentiría: el dato llegó,
-                pero llegó mal. */}
-            <MaterialIcons
-              color={broken ? ink.warn : received ? ink.accent : neo.textMuted}
-              name={broken ? 'error-outline' : received ? 'check-circle' : 'hourglass-empty'}
-              size={17}
-            />
-          </Well>
-          <Text style={[styles.itemTitle, styles.statusTitle, { color: neo.text }]}>
-            {received
-              ? t('settings:applePay.status.receivedTitle')
-              : t('settings:applePay.status.waitingTitle')}
-          </Text>
-        </View>
-
-        {capture !== null ? (
-          // El dato crudo va en un POZO, separado de la prosa: es LA
-          // prueba que el usuario vino a buscar y tiene que poder
-          // encontrarla de un vistazo.
-          <View
-            style={[
-              styles.captureWell,
-              { backgroundColor: neo.well, boxShadow: neo.shadows.insetMd },
-            ]}
-          >
-            <Text numberOfLines={1} style={[styles.captureMerchant, { color: neo.text }]}>
-              {merchant === '' ? t('settings:applePay.status.noMerchant') : merchant}
-            </Text>
-            {/* Misma lógica que el glifo: el monto que no se pudo leer no
-                se muestra con la tinta de "todo bien". */}
-            <Text style={[styles.captureMeta, { color: broken ? ink.warn : ink.accent }]}>
-              {t('settings:applePay.status.receivedMeta', {
-                amount: formatCapturedAmount(capture.amountRaw),
-                time: formatRelativeNotificationTime(capture.capturedAt),
-              })}
-            </Text>
-          </View>
-        ) : null}
-
-        {/* Con una captura rota, el aviso REEMPLAZA a la prosa: decirle
-            "esto prueba que quedó bien armada" abajo de un diagnóstico que
-            dice lo contrario sería contradecirse. */}
-        {diagnosis.kind === 'ok' ? (
-          <Text style={[styles.itemBody, { color: neo.textMuted }]}>
-            {received
-              ? t('settings:applePay.status.receivedBody')
-              : t('settings:applePay.status.waitingBody')}
-          </Text>
-        ) : (
-          <GuideNotice
-            text={t(DIAGNOSIS_COPY[diagnosis.kind], {
-              raw: 'raw' in diagnosis ? diagnosis.raw : '',
-            })}
-          />
-        )}
+    <NeoSurface radius={neoRadii.card} style={styles.hero} variant="raisedXl">
+      <View style={[styles.heroWell, { backgroundColor: neo.well, boxShadow: neo.shadows.insetLg }]}>
+        <MaterialIcons color={ink.accent} name="check" size={34} />
       </View>
+      <Text style={[styles.heroTitle, { color: neo.text }]}>
+        {t('settings:applePay.working.title')}
+      </Text>
+      <Text style={[styles.heroBody, { color: neo.textMuted }]}>
+        {t('settings:applePay.working.body')}
+      </Text>
+      <View style={[styles.receipt, { backgroundColor: neo.well, boxShadow: neo.shadows.insetMd }]}>
+        <Text numberOfLines={1} style={[styles.receiptMerchant, { color: neo.text }]}>
+          {merchant === '' ? t('settings:applePay.working.noMerchant') : merchant}
+        </Text>
+        <Text style={[styles.receiptMeta, { color: ink.accent }]}>
+          {t('settings:applePay.working.meta', {
+            amount: formatCapturedAmount(capture.amountRaw),
+            time: formatRelativeNotificationTime(capture.capturedAt),
+          })}
+        </Text>
+      </View>
+    </NeoSurface>
+  )
+}
+
+/**
+ * Fase `broken-capture`: el dato LLEGÓ, pero llegó mal, y el usuario no
+ * tiene forma de enterarse solo (el gasto le entra en $0 y sigue su vida).
+ * Por eso el diagnóstico es el héroe y trae su arreglo puntual.
+ *
+ * Los tres diagnósticos tienen la MISMA raíz —el campo Monto no está
+ * trayendo la propiedad Cantidad del pago— así que con el atajo publicado
+ * los tres se resuelven igual: volver a agregar el atajo ya cableado y
+ * re-elegirlo en la automatización. Sin link publicado no hay botón que
+ * arregle nada, y el texto dice qué tocar a mano.
+ */
+function BrokenHero({
+  diagnosis,
+  hasShortcut,
+  onAddShortcut,
+}: {
+  diagnosis: LastCaptureDiagnosis
+  hasShortcut: boolean
+  onAddShortcut: () => void
+}) {
+  const { t } = useTranslation()
+  const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+
+  if (diagnosis.kind === 'ok') return null
+
+  return (
+    <NeoSurface radius={neoRadii.card} style={styles.hero} variant="raisedXl">
+      <View style={[styles.heroWell, { backgroundColor: neo.well, boxShadow: neo.shadows.insetLg }]}>
+        <MaterialIcons color={ink.warn} name="error-outline" size={34} />
+      </View>
+      <Text style={[styles.heroTitle, { color: neo.text }]}>
+        {t('settings:applePay.broken.title')}
+      </Text>
+      <Text style={[styles.heroBody, { color: neo.textMuted }]}>
+        {t(DIAGNOSIS_COPY[diagnosis.kind], { raw: 'raw' in diagnosis ? diagnosis.raw : '' })}
+      </Text>
+      <GuideNotice
+        text={t(
+          hasShortcut
+            ? 'settings:applePay.broken.fixShortcut'
+            : 'settings:applePay.broken.fixManual',
+        )}
+      />
+      {hasShortcut ? (
+        <NeoButton block label={t('settings:applePay.addShortcut')} onPress={onAddShortcut} />
+      ) : null}
+    </NeoSurface>
+  )
+}
+
+// ─── La guía ─────────────────────────────────────────────────────────
+
+/**
+ * La guía y su salida de emergencia. Dos grupos y no uno solo porque los
+ * dos caminos numeran sus pasos desde 1: metidos en la misma card, un
+ * "1" abajo de un "3" se lee como un error, no como otra lista.
+ *
+ * `collapsed` es la fase `working`: los pasos ya se hicieron y pasan a
+ * ser material de consulta detrás de una fila. El armado manual sólo
+ * existe cuando hay atajo publicado; sin él, los cinco pasos manuales SON
+ * la guía y no hay nada que plegar.
+ */
+function SetupGroups({
+  collapsed,
+  hasShortcut,
+  onAddShortcut,
+  onOpenShortcuts,
+}: {
+  collapsed: boolean
+  hasShortcut: boolean
+  onAddShortcut: () => void
+  onOpenShortcuts: () => void
+}) {
+  const { t } = useTranslation()
+
+  const [configOpen, setConfigOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
+
+  const toggleConfig = useCallback(() => {
+    void triggerHaptic('selection')
+    setConfigOpen((open) => !open)
+  }, [])
+  const toggleManual = useCallback(() => {
+    void triggerHaptic('selection')
+    setManualOpen((open) => !open)
+  }, [])
+
+  const stepsVisible = !collapsed || configOpen
+
+  const buttonFor = useCallback(
+    (action: StepAction): ReactNode => {
+      if (action === 'add-shortcut') {
+        return <NeoButton block label={t('settings:applePay.addShortcut')} onPress={onAddShortcut} />
+      }
+      if (action === 'open-shortcuts') {
+        return (
+          <NeoButton
+            block
+            label={t('settings:applePay.openShortcuts')}
+            onPress={onOpenShortcuts}
+            // Con el atajo publicado la acción primaria de la guía es
+            // "Agregar el atajo listo": dos bandas verdes competirían.
+            variant={hasShortcut ? 'ghost' : 'primary'}
+          />
+        )
+      }
+      return undefined
+    },
+    [hasShortcut, onAddShortcut, onOpenShortcuts, t],
+  )
+
+  const groupTitle = collapsed
+    ? t('settings:applePay.configGroup')
+    : t(hasShortcut ? 'settings:applePay.quickTitle' : 'settings:applePay.stepsTitle')
+
+  return (
+    <>
+      <RiseView delay={140} style={styles.block}>
+        <SettingsGroup title={groupTitle}>
+          {collapsed ? (
+            <DisclosureRow
+              expanded={configOpen}
+              helper={t('settings:applePay.configToggleHelper')}
+              icon="checklist"
+              isLast={!configOpen}
+              label={t('settings:applePay.configToggle')}
+              onPress={toggleConfig}
+            />
+          ) : null}
+          {!stepsVisible
+            ? null
+            : hasShortcut
+              ? QUICK_STEPS.map((step, index) => (
+                  <GuideItem
+                    action={buttonFor(step.action)}
+                    badge={<StepNumber value={index + 1} />}
+                    body={t(`settings:applePay.quick.${step.key}.body`)}
+                    chip={step.chip ? t('settings:applePay.shortcutName') : undefined}
+                    isLast={index === QUICK_STEPS.length - 1}
+                    key={step.key}
+                    notice={
+                      step.notice ? t(`settings:applePay.quick.${step.key}.notice`) : undefined
+                    }
+                    title={t(`settings:applePay.quick.${step.key}.title`)}
+                  />
+                ))
+              : MANUAL_STEPS.map((step, index) => (
+                  <GuideItem
+                    action={buttonFor(step.action)}
+                    badge={<StepNumber value={index + 1} />}
+                    body={t(`settings:applePay.steps.${step.key}.body`)}
+                    isLast={index === MANUAL_STEPS.length - 1}
+                    key={step.key}
+                    notice={
+                      step.notice ? t(`settings:applePay.steps.${step.key}.notice`) : undefined
+                    }
+                    title={t(`settings:applePay.steps.${step.key}.title`)}
+                  />
+                ))}
+        </SettingsGroup>
+      </RiseView>
+
+      {hasShortcut && stepsVisible ? (
+        <RiseView delay={190} style={styles.block}>
+          <SettingsGroup title={t('settings:applePay.manualGroup')}>
+            <DisclosureRow
+              expanded={manualOpen}
+              helper={t('settings:applePay.manualToggleHelper')}
+              icon="build"
+              isLast={!manualOpen}
+              label={t('settings:applePay.manualToggle')}
+              onPress={toggleManual}
+            />
+            {manualOpen
+              ? MANUAL_STEPS.map((step, index) => (
+                  <GuideItem
+                    action={buttonFor(step.action)}
+                    badge={<StepNumber value={index + 1} />}
+                    body={t(`settings:applePay.steps.${step.key}.body`)}
+                    isLast={index === MANUAL_STEPS.length - 1}
+                    key={step.key}
+                    notice={
+                      step.notice ? t(`settings:applePay.steps.${step.key}.notice`) : undefined
+                    }
+                    title={t(`settings:applePay.steps.${step.key}.title`)}
+                  />
+                ))
+              : null}
+          </SettingsGroup>
+        </RiseView>
+      ) : null}
+    </>
+  )
+}
+
+/**
+ * Los síntomas, siempre plegados. Es la red que atrapa a quien ya
+ * configuró algo mal: quien viene a configurar por primera vez no tiene
+ * ningún síntoma todavía, y desplegarlos le pondría cinco problemas
+ * ajenos entre él y los pasos.
+ */
+function HelpGroup({ items }: { items: ReadonlyArray<{ key: string; icon: IconName }> }) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+
+  const toggle = useCallback(() => {
+    void triggerHaptic('selection')
+    setOpen((value) => !value)
+  }, [])
+
+  return (
+    <SettingsGroup title={t('settings:applePay.helpGroup')}>
+      <DisclosureRow
+        expanded={open}
+        helper={t('settings:applePay.troubleHelper')}
+        icon="help-outline"
+        isLast={!open}
+        label={t('settings:applePay.troubleTitle')}
+        onPress={toggle}
+      />
+      {open
+        ? items.map((item, index) => (
+            <GuideItem
+              badge={<TroubleGlyph name={item.icon} />}
+              body={t(`settings:applePay.trouble.${item.key}Body`)}
+              isLast={index === items.length - 1}
+              key={item.key}
+              title={t(`settings:applePay.trouble.${item.key}Title`)}
+            />
+          ))
+        : null}
     </SettingsGroup>
   )
 }
 
-// ─── Piezas compartidas por los pasos y el diagnóstico ───────────────
+// ─── Piezas compartidas ──────────────────────────────────────────────
 
 /**
  * Pozo circular: el mismo sub-relieve que los tiles de ícono de las filas
- * de Ajustes. Lleva el número del paso, el glifo del síntoma o el del
- * estado, para que las tres listas se lean como una sola familia.
+ * de Ajustes. Lleva el número del paso, el glifo del síntoma o el de la
+ * fila plegable, para que las tres listas se lean como una sola familia.
  */
 function Well({ children }: { children: ReactNode }) {
   const { theme } = useAppTheme()
@@ -474,6 +664,12 @@ function Well({ children }: { children: ReactNode }) {
   )
 }
 
+function StepNumber({ value }: { value: number }) {
+  const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+  return <Text style={[styles.stepNumber, { color: neo.text }]}>{String(value)}</Text>
+}
+
 function TroubleGlyph({ name }: { name: IconName }) {
   const { theme } = useAppTheme()
   const ink = neoInk(theme.mode)
@@ -481,11 +677,11 @@ function TroubleGlyph({ name }: { name: IconName }) {
 }
 
 /**
- * Aviso dentro de un paso: pozo neutro + tinta de advertencia + glifo.
- * Es el mismo tratamiento que ya usan los avisos blandos del rediseño
- * (`OnbSheetNotice`, los warnings de la hoja de import), así que no
- * inventa material nuevo — y `ink.warn` sobre `neo.well` está auditado a
- * 4.73:1 en claro y 8.2:1 en oscuro.
+ * Aviso dentro de un paso o de un héroe: pozo neutro + tinta de
+ * advertencia + glifo. Es el mismo tratamiento que ya usan los avisos
+ * blandos del rediseño (`OnbSheetNotice`, los warnings de la hoja de
+ * import), así que no inventa material nuevo — y `ink.warn` sobre
+ * `neo.well` está auditado a 4.73:1 en claro y 8.21:1 en oscuro.
  */
 function GuideNotice({ text }: { text: string }) {
   const { theme } = useAppTheme()
@@ -500,18 +696,19 @@ function GuideNotice({ text }: { text: string }) {
 }
 
 /**
- * Ítem de las listas largas (pasos y síntomas): insignia + título corto +
- * descripción, más el aviso y el botón opcionales. La geometría es la de
- * `SettingsRow` —mismo padding, mismo hairline de 1.5px entre ítems— para
- * que la pantalla no se sienta de otro sistema.
+ * Ítem de las listas (pasos y síntomas): insignia + título corto + UNA
+ * línea de descripción, más el aviso, el chip y el botón opcionales. La
+ * geometría es la de `SettingsRow` —mismo padding, mismo hairline de
+ * 1.5px entre ítems— para que la pantalla no se sienta de otro sistema.
  *
- * `action` va DENTRO del paso, no al pie de la lista: en el camino corto
- * cada paso tiene su propio botón y un pie común no diría cuál es cuál.
+ * `action` va DENTRO del paso, no al pie de la lista: cada paso tiene su
+ * propio botón y un pie común no diría cuál es cuál.
  */
 function GuideItem({
   badge,
   title,
   body,
+  chip,
   notice,
   action,
   isLast,
@@ -519,6 +716,8 @@ function GuideItem({
   badge: ReactNode
   title: string
   body: string
+  /** Dato que el usuario tiene que reconocer literalmente (el nombre del atajo). */
+  chip?: string
   notice?: string
   action?: ReactNode
   isLast: boolean
@@ -537,6 +736,11 @@ function GuideItem({
       <View style={styles.itemCopy}>
         <Text style={[styles.itemTitle, { color: neo.text }]}>{title}</Text>
         <Text style={[styles.itemBody, { color: neo.textMuted }]}>{body}</Text>
+        {chip === undefined ? null : (
+          <NeoSurface radius={neoRadii.chip} style={styles.chip} variant="raisedSm">
+            <Text style={[styles.chipText, { color: neo.text }]}>{chip}</Text>
+          </NeoSurface>
+        )}
         {notice === undefined ? null : <GuideNotice text={notice} />}
         {action === undefined ? null : <View style={styles.itemAction}>{action}</View>}
       </View>
@@ -545,22 +749,24 @@ function GuideItem({
 }
 
 /**
- * Fila que despliega el armado manual. Ajustes no tiene todavía un patrón
- * de sección expandible, así que se arma con el material que ya existe:
- * la geometría de `GuideItem`, el mismo pozo de insignia y el chevrón de
- * `SettingsRow` girado a vertical. No hay animación de alto — el bloque
- * son cinco pasos largos y una apertura animada de ese tamaño se lee como
- * un salto, no como un despliegue.
+ * Fila que despliega una sección. Ajustes no tiene todavía un patrón de
+ * sección expandible, así que se arma con el material que ya existe: la
+ * geometría de `GuideItem`, el mismo pozo de insignia y el chevrón de
+ * `SettingsRow` girado a vertical. No hay animación de alto — lo que se
+ * abre son cinco pasos largos, y una apertura animada de ese tamaño se
+ * lee como un salto, no como un despliegue.
  */
 function DisclosureRow({
   expanded,
   helper,
+  icon,
   isLast,
   label,
   onPress,
 }: {
   expanded: boolean
   helper: string
+  icon: IconName
   isLast: boolean
   label: string
   onPress: () => void
@@ -584,7 +790,7 @@ function DisclosureRow({
         ]}
       >
         <Well>
-          <MaterialIcons color={neo.textMuted} name="build" size={16} />
+          <MaterialIcons color={neo.textMuted} name={icon} size={16} />
         </Well>
         <View style={styles.itemCopy}>
           <Text style={[styles.itemTitle, { color: neo.text }]}>{label}</Text>
@@ -604,8 +810,79 @@ const styles = StyleSheet.create({
   // Separación entre bloques (cada RiseView). Se suma al gap del Screen.
   block: { marginTop: 6, gap: 12 },
 
+  // Tarjeta de venta (fase `off`): una fila, un glifo y una línea.
+  pitch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  pitchWell: {
+    width: 40,
+    height: 40,
+    borderRadius: neoRadii.chip,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  pitchText: {
+    flex: 1,
+    fontSize: 14.5,
+    lineHeight: 21,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
+
+  // Línea de espera (fase `waiting-first`): sin relieve, para no competir
+  // con los pasos, que son lo único accionable de la pantalla.
+  waitingLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 4,
+  },
+  waitingText: { fontSize: 13, fontWeight: '700', fontFamily: nunitoFamily('700') },
+
+  // Héroe de fase (`working` / `broken-capture`): columna centrada sobre
+  // el relieve de card protagonista.
+  hero: {
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+  },
+  heroWell: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  heroTitle: { fontSize: 19, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  heroBody: {
+    fontSize: 13.5,
+    lineHeight: 20,
+    textAlign: 'center',
+    fontFamily: nunitoFamily('600'),
+  },
+
+  // El recibo va en un POZO, separado de la prosa: es LA prueba que el
+  // usuario vino a buscar y tiene que encontrarla de un vistazo.
+  receipt: {
+    alignSelf: 'stretch',
+    borderRadius: neoRadii.chip,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 3,
+    marginTop: 2,
+  },
+  receiptMerchant: { fontSize: 17, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  receiptMeta: { fontSize: 13.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
+
   // Ítem de lista: el padding de `SettingsRow`, con la insignia alineada
-  // al tope porque acá la copia son dos o tres líneas, no una.
+  // al tope porque acá la copia son dos líneas, no una.
   item: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -620,7 +897,7 @@ const styles = StyleSheet.create({
   // una línea de texto más.
   itemAction: { marginTop: 6 },
 
-  // La fila que despliega el manual lleva una línea de ayuda, no un
+  // La fila que despliega una sección lleva una línea de ayuda, no un
   // párrafo: centrada se lee como cabecera y no como paso.
   disclosure: { alignItems: 'center' },
 
@@ -635,7 +912,18 @@ const styles = StyleSheet.create({
   },
   stepNumber: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
 
+  // Chip del nombre del atajo: relieve de chip, para que se lea como un
+  // objeto que hay que reconocer y no como una palabra en negrita.
+  chip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    marginTop: 2,
+  },
+  chipText: { fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900') },
+
   notice: {
+    alignSelf: 'stretch',
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 7,
@@ -654,16 +942,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: nunitoFamily('700'),
   },
-
-  statusBody: { gap: 10, paddingHorizontal: 14, paddingVertical: 14 },
-  statusHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  statusTitle: { flex: 1 },
-  captureWell: {
-    borderRadius: neoRadii.chip,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    gap: 3,
-  },
-  captureMerchant: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
-  captureMeta: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })

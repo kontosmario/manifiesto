@@ -1000,7 +1000,7 @@
     "clearCta": "✕ Quitar filtro"
   },
   "applePay": {
-    "notificationTitle": "¿Registrás este gasto?",
+    "notificationTitle": "¿Registras este gasto?",
     "notificationBody": "Pagaste {amount} en {merchant}"
   }
 }

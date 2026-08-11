@@ -69,12 +69,14 @@ Descartado a propósito (ver la sección "Fuera de alcance" del [spec](../superp
 | Categoría | [`mobile/features/apple-pay-capture/resolve-category-for-merchant.ts`](../../mobile/features/apple-pay-capture/resolve-category-for-merchant.ts) | Último gasto del mismo comercio → su categoría, o `null` |
 | Map a UI | [`mobile/features/apple-pay-capture/map-captures-to-review-rows.ts`](../../mobile/features/apple-pay-capture/map-captures-to-review-rows.ts) | `PendingCapture[] → ReviewRow[]` con warnings (`value-zero`, `refund`, `no-merchant`, `future-date`) |
 | Flag persistido | [`mobile/features/apple-pay-capture/apple-pay-enabled-store.ts`](../../mobile/features/apple-pay-capture/apple-pay-enabled-store.ts) | Store externo (`useSyncExternalStore`) sobre `persistent-kv` |
-| Recibo de la última captura | [`mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts`](../../mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts) | Mismo patrón de store externo. Guarda la captura RECIBIDA más reciente para el bloque "¿Está funcionando?" |
+| Recibo de la última captura | [`mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts`](../../mobile/features/apple-pay-capture/apple-pay-last-capture-store.ts) | Mismo patrón de store externo. Guarda la captura RECIBIDA más reciente, que es la prueba de que la automatización quedó bien armada |
+| Diagnóstico | [`mobile/features/apple-pay-capture/diagnose-last-capture.ts`](../../mobile/features/apple-pay-capture/diagnose-last-capture.ts) | Función pura: qué se puede concluir de la última captura (`ok` / `same-value` / `unreadable-amount` / `missing-amount`) |
+| Fase de la pantalla | [`mobile/features/apple-pay-capture/resolve-setup-phase.ts`](../../mobile/features/apple-pay-capture/resolve-setup-phase.ts) | Función pura: gate + switch + recibo + diagnóstico → `unavailable` / `off` / `waiting-first` / `working` / `broken-capture`. **Decide qué dibuja la pantalla** |
 | Gate | [`mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts`](../../mobile/features/apple-pay-capture/use-apple-pay-capture-gate.ts) | Drena al montar y en cada vuelta a foreground, sólo con auth en `ready` |
 | Copy de la notif | [`mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx`](../../mobile/features/apple-pay-capture/apple-pay-notification-copy-bridge.tsx) | Empuja el copy i18n al nativo en el arranque |
 | Host | [`mobile/components/apple-pay-capture/apple-pay-capture-host.tsx`](../../mobile/components/apple-pay-capture/apple-pay-capture-host.tsx) | Su propia instancia de `ImportReviewSheet` + limpieza de capturas |
 | Link del atajo | [`mobile/features/apple-pay-capture/shortcut-link.ts`](../../mobile/features/apple-pay-capture/shortcut-link.ts) | `APPLE_PAY_SHORTCUT_ICLOUD_URL`: el link de iCloud del atajo pre-armado, o `null` mientras no esté publicado. **Es el switch entre los dos modos de la pantalla** |
-| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Switch + gate de plataforma + bloque de estado + guía (3 pasos con el atajo, o los 5 manuales) + botones a Atajos + "Si no te funciona" |
+| Pantalla | [`mobile/screens/settings/apple-pay-screen.tsx`](../../mobile/screens/settings/apple-pay-screen.tsx) | Dirigida por estado: resuelve el gate, calcula la fase y monta UN protagonista por fase (ver abajo) |
 
 ---
 
@@ -110,7 +112,7 @@ Si el usuario cierra el wizard sin confirmar, las capturas quedan pendientes y s
 
 ## Runbook: cómo lo configura el usuario
 
-Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Con el switch prendido aparecen el bloque de estado, la guía y el diagnóstico. **Cuál guía** depende de `APPLE_PAY_SHORTCUT_ICLOUD_URL`.
+Ajustes → **Gastos con Apple Pay** → prender *Capturar mis pagos*. Lo que aparece después depende de la **fase** (`resolveApplePaySetupPhase`), no del scroll. **Cuál guía** depende de `APPLE_PAY_SHORTCUT_ICLOUD_URL`.
 
 ### Camino principal — con el atajo pre-armado (3 pasos, verificado en device)
 
@@ -122,29 +124,49 @@ Cero teclado, cero variables. La única trampa que sobrevive es la del paso 2 ("
 
 ### Camino manual — sin atajo publicado, o por elección del usuario
 
-Con la constante en `null` estos cinco pasos son el camino principal de la pantalla, sin nada colapsado. Con el atajo publicado quedan detrás de la fila **"Prefiero armarlo a mano"**.
+Con la constante en `null` estos cinco pasos **son** la guía de la pantalla, sin fila de plegado. Con el atajo publicado quedan detrás de la fila **"Prefiero armarlo a mano"**.
 
-1. Creá una automatización nueva (Atajos → Automatización → +).
-2. Elegí el disparador **"Transacción"** (en iOS 26 se llama **"Wallet"**).
-3. Marcá las tarjetas y elegí **"Ejecutar de inmediato"** — ⚠️ y **apagá "Preguntar antes de ejecutar"**.
-4. Agregá la acción **de Manifiesto** "Registrar gasto" — ⚠️ si aparece un paso **"Ejecutar atajo"**, está mal.
-5. Llená **Monto** y **Comercio** con la variable **"Entrada del atajo"** y elegí su propiedad (**Cantidad** en el monto, **Comercio** en el otro) — ⚠️ nunca tipeándolos a mano.
+1. Crea una automatización nueva (Atajos → Automatización → +). El botón **Abrir Atajos** vive dentro de este paso.
+2. Elige el disparador **"Transacción"** (en iOS 26 se llama **"Wallet"**).
+3. Marca las tarjetas y elige **"Ejecutar de inmediato"** — ⚠️ y **apaga "Preguntar antes de ejecutar"**.
+4. Agrega la acción **de Manifiesto** "Registrar gasto" — ⚠️ si aparece un paso **"Ejecutar atajo"**, está mal.
+5. Llena **Monto** y **Comercio** con la variable **"Entrada del atajo"** y elige su propiedad (**Cantidad** en el monto, **Comercio** en el otro) — ⚠️ nunca tipeándolos a mano.
 
-### Por qué la pantalla se reescribió así (2026-08-08)
+### La pantalla es DIRIGIDA POR ESTADO (rediseño 2026-08-11)
 
-La primera versión eran cinco líneas de texto corrido y un botón. En la prueba en device del owner falló en dos puntos, y los dos son ahora piezas de UI:
+La versión anterior era **estática**: mostraba la guía, los avisos, el bloque de estado y el diagnóstico **siempre**, sin importar en qué momento del camino estaba quien la abría. En la segunda prueba con usuarios el diagnóstico fue exactamente ése: quien venía a descubrir la función leía advertencias de fallas que no le pasaban, y quien venía porque le faltaba un gasto tenía que bajar cuatro bloques para encontrar la suya.
 
-- **Se enteró tarde y por casualidad.** Configuró el atajo, hizo una compra real y no pasó nada; la pantalla no tenía forma de decir "esto anda" ni "todavía no me llegó nada". De ahí el bloque **"¿Está funcionando?"**, lo primero después del switch: muestra la última captura RECIBIDA (comercio, monto, hace cuánto) o el estado de espera. Ver ahí un pago propio es la única prueba de que la automatización quedó bien.
-- **Las dos trampas de Atajos.** Dejó *"Preguntar antes de ejecutar"* prendido (la automatización pedía confirmación en vez de correr sola), y su automatización terminó ejecutando **un atajo suelto con valores fijos** en vez de tener la acción de Manifiesto adentro: una compra de $8.160 en Merpago se registró como "$4.400 en STARBUCKS", los valores de prueba. Las dos ahora están advertidas **en el paso donde ocurren**, con tratamiento de aviso, y repetidas como síntoma en **"Si no te funciona"**.
+`resolveApplePaySetupPhase` (función pura, con tests en `tests/unit/apple-pay-resolve-setup-phase.test.ts`) resuelve la fase a partir de cuatro entradas —gate, switch, último recibo y diagnóstico— y la pantalla monta **un solo protagonista** por fase:
 
-El recibo se guarda **al recibir** la captura, no al confirmarla (`recordApplePayCaptures` se llama en `handleCaptures` del host, antes de abrir el sheet): la pregunta que el bloque responde es *"¿llega el dato?"*, no *"¿lo registraste?"*. Una captura salteada o descartada prueba igual que Atajos quedó bien armado. El registro es **monótono** — una captura sin resolver se re-ofrece en cada foreground, y sin esa guarda la pantalla retrocedería a un pago viejo justo después de pagar.
+| Fase | Cuándo | Qué muestra |
+|---|---|---|
+| `unavailable` | `gate != 'ok'` | El switch deshabilitado + el motivo en el footer. **Nada más** |
+| `off` | switch apagado | Tarjeta de una línea que vende la idea + el switch. Sin guía ni avisos |
+| `waiting-first` | prendida, jamás llegó una captura | La guía de 3 pasos como protagonista + una línea sutil "Esperando tu primer pago…". Manual y síntomas, plegados |
+| `working` | prendida, última captura sana | Héroe de éxito: tilde grande en un pozo + el recibo (comercio, monto formateado, "hace X"). La guía se pliega detrás de "Volver a ver la configuración" |
+| `broken-capture` | prendida, la última captura llegó mal | El diagnóstico al frente con su arreglo puntual y el botón que lo resuelve (re-agregar el atajo cableado). La guía queda visible debajo |
+
+Precedencias, todas deliberadas: `unavailable` gana a todo (el flag persistido puede venir de otro iPhone), `off` gana a un recibo viejo, sin recibo manda `waiting-first` (no hay nada roto que arreglar) y **`broken-capture` gana a `working`** — el dato llegó, así que un tilde verde dejaría al usuario tranquilo mientras sus gastos entran en $0.
+
+La fase espera a que **los dos** stores del keychain hidraten (flag + recibo). Sin esa espera, alguien que lleva semanas capturando vería "Esperando tu primer pago…" durante un frame.
+
+Las dos fallas de la primera prueba en device siguen cubiertas, pero ahora cada una aparece **sólo cuando toca**:
+
+- **Se enteró tarde y por casualidad.** Configuró el atajo, hizo una compra real y no pasó nada; la pantalla no tenía forma de decir "esto anda" ni "todavía no me llegó nada". Hoy eso es la diferencia entre `waiting-first` y `working`, y el recibo del héroe es la única prueba de que la automatización quedó bien.
+- **Las dos trampas de Atajos.** Dejó *"Preguntar antes de ejecutar"* prendido (la automatización pedía confirmación en vez de correr sola), y su automatización terminó ejecutando **un atajo suelto con valores fijos** en vez de tener la acción de Manifiesto adentro: una compra de $8.160 en Merpago se registró como "$4.400 en STARBUCKS", los valores de prueba. Las dos siguen advertidas **en el paso donde ocurren** (aviso compacto con tratamiento `ink.warn`, dentro del paso, no en una nota al pie) y repetidas como síntoma en **"Si no te funciona"**, ahora plegado.
+
+Cada paso lleva su botón **adentro** (agregar el atajo en el 1, abrir Atajos en el 2 del camino corto y en el 1 del manual): antes flotaban al pie de la lista y no se sabía a qué paso pertenecían. El paso 3 no tiene botón y en cambio muestra el nombre del atajo como **chip** — es lo único que el usuario tiene que reconocer en la lista de la pantalla "Siguiente".
+
+El recibo se guarda **al recibir** la captura, no al confirmarla (`recordApplePayCaptures` se llama en `handleCaptures` del host, antes de abrir el sheet): la pregunta que la pantalla responde es *"¿llega el dato?"*, no *"¿lo registraste?"*. Una captura salteada o descartada prueba igual que Atajos quedó bien armado. El registro es **monótono** — una captura sin resolver se re-ofrece en cada foreground, y sin esa guarda la pantalla retrocedería a un pago viejo justo después de pagar.
+
+El copy del bloque `settings:applePay` está en **tuteo neutro Latam** (el estándar de la app desde 2026-06); quedaba en voseo hasta el rediseño, y se neutralizó entero junto con las dos keys de `gastos:applePay` (incluida la notificación "¿Registras este gasto?").
 
 El gate de la pantalla distingue tres motivos de indisponibilidad, porque cada uno pide una acción distinta del usuario:
 
 | Valor | Cuándo | Qué le decimos |
 |---|---|---|
 | `not-ios` | Android / web | "Por ahora esto sólo funciona en iPhone." |
-| `needs-app-update` | iOS pero el módulo nativo no existe (build vieja) | "Actualizá Manifiesto para usar esta función." |
+| `needs-app-update` | iOS pero el módulo nativo no existe (build vieja) | "Actualiza Manifiesto para usar esta función." |
 | `needs-ios-17` | iOS < 17 | El disparador "Transacción" no existe todavía |
 
 ---
@@ -176,7 +198,7 @@ Compartir un atajo sube una **copia congelada** en ese instante. Editar el atajo
 Consecuencias operativas:
 
 - Cambiar el atajo canónico obliga a **compartirlo de nuevo** y a **actualizar la constante**, y hoy eso significa **build nueva**: el OTA está bloqueado en este branch.
-- Los usuarios que ya lo agregaron **no se enteran**. Un cambio incompatible los deja rotos en silencio, exactamente el modo de falla que el bloque "¿Está funcionando?" existe para atrapar.
+- Los usuarios que ya lo agregaron **no se enteran**. Un cambio incompatible los deja rotos en silencio, exactamente el modo de falla que la fase `broken-capture` de la pantalla existe para atrapar.
 - Por eso: **mantener el atajo canónico estable**. Es una sola acción con dos campos; no hay razón para tocarlo salvo que cambie el propio App Intent, y eso ya exige build nueva de todos modos.
 
 ### Qué pasa si el usuario lo borra o lo renombra
@@ -211,4 +233,4 @@ Sigue sin correrse en device:
 - Pagar de nuevo en el **mismo comercio** → la categoría presugerida.
 - Volver a foreground → una captura ya confirmada **no reaparece**.
 - Apagar el switch, pagar → no llega notificación ni se abre nada.
-- El modo **con link publicado** de la pantalla de Ajustes: hoy la constante es `null`, así que la UI de 3 pasos todavía no se vio en device.
+- La pantalla **dirigida por estado** (rediseño 2026-08-11): las cinco fases se cubren con tests de la función pura, pero ninguna se miró todavía en device — es 100% JS, así que entra por reload.
