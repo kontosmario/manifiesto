@@ -24,6 +24,9 @@ interface AppButtonProps extends Omit<PressableProps, 'style'> {
   lookDisabled?: boolean
 }
 
+/**
+ * @deprecated Las superficies neo montan `NeoButton` (`components/ui/neo-button`).
+ */
 export function AppButton({
   label,
   loading = false,

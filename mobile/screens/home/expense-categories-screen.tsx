@@ -26,6 +26,7 @@ import { neoConfirm } from '@/lib/confirm-bus'
 import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getIntlLocale } from '@/lib/i18n/active-locale'
+import { neoInk } from '@/theme/neo-ink'
 import {
   neoCategoryPastels,
   neoRadii,
@@ -62,14 +63,9 @@ export function ExpenseCategoriesScreen({ familyId }: ExpenseCategoriesScreenPro
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
   const isDark = theme.mode === 'dark'
-  // `neo.green` es el verde de MATERIAL. Como TINTA a 11-15pt sobre el pozo
-  // claro da 4.29:1 y sobre el tile seleccionado 3.97:1 — los dos bajo AA;
-  // `greenDeep` ahí da 7.4:1 / 6.8:1. En oscuro el verde claro ya cumple y
-  // `greenDeep` sería ilegible, así que la tinta es mode-aware.
-  const accentInk = isDark ? neo.green : neo.greenDeep
-  // Alerta blanda: `neo.warm` (#C96F3F) sobre el pozo claro da 2.99:1 a 12pt.
-  // Se usa el rojo-tierra de exceso del propio rediseño (4.72:1).
-  const warnInk = isDark ? neo.warm : '#A84A2F'
+  const ink = neoInk(theme.mode)
+  const accentInk = ink.accent
+  const warnInk = ink.warn
   const categoriesQuery = useCategories(familyId)
   const expensesQuery = useExpenses(familyId)
   // userId via sesión activa — habilita la invalidación de home_snapshot

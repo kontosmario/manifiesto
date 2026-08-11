@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useRef, type FC, type ReactNode } from 'react'
+import { useEffect, useRef, type FC, type ReactNode } from 'react'
 import {
   ScrollView,
   StyleSheet,
   Text,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, {
-  Easing,
   Extrapolation,
   cancelAnimation,
   interpolate,
@@ -23,18 +23,29 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated'
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg'
-import { FijosHeroCard } from '@/components/fijos/fijos-hero-card'
 import { FernLogo } from '@/components/auth/fern-logo'
-import { CardParticles } from '@/components/ui/card-particles'
-import { Sprout } from '@/components/garden/sprout'
+import { BrotMascot, BrotParticles, type BrotPose } from '@/components/brot'
 import { BroteFireflies } from '@/components/garden/brote-fireflies'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { GastoRow } from '@/components/gastos/gasto-row'
-import { IncomeRow } from '@/components/gastos/income-row'
-import { HomeHeroCard } from '@/components/home/home-hero-card'
-import { computeSavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
-import { NeoWelcomeScreen } from '@/screens/auth/neo/neo-welcome-screen'
+import { DayBrot, poseForDay } from '@/components/garden/week-close-celebration'
 import { RiseView } from '@/components/home/animated/rise-view'
+import { AUTH_SPEC, type AuthMode } from '@/components/redesign/auth/auth-spec'
+import { FijosHero } from '@/components/redesign/fijos/fijos-screen'
+import { GastosMovRow, type MovRowVM } from '@/components/redesign/gastos/gastos-screen'
+import { HomeHero } from '@/components/redesign/home/home-screen'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { buildHeroContent } from '@/features/fijos/neo-fijos-view-model'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import {
+  decorativeDurations,
+  motionDurations,
+  motionEasings,
+  motionSprings,
+} from '@/lib/motion/tokens'
+import { NeoWelcomeScreen } from '@/screens/auth/neo/neo-welcome-screen'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { formatMoney } from '@/utils/money'
 import {
   INTRO_FIJOS_PROPS,
   INTRO_GASTO_PROPS,
@@ -45,6 +56,8 @@ import {
 
 export interface IntroSlideProps {
   width: number
+  /** Tema resuelto de la app — el pager entero (incluido el slide 5) lo sigue. */
+  mode: AuthMode
   /** True when this is the slide currently centered in the pager. */
   active: boolean
   /** Offset horizontal del pager (px) — para la transición ligada al scroll. */
@@ -53,8 +66,72 @@ export interface IntroSlideProps {
   index: number
 }
 
-const CREAM = '#FDFEF9'
-const CREAM_DIM = '#AEC7A6'
+/**
+ * Tintas del intro por tema. Se arman UNA vez por modo al cargar el módulo
+ * (los dos objetos son inmutables), así el render solo elige uno: nada se
+ * recalcula por frame y las referencias de estilo quedan estables para los
+ * `memo` de los kits.
+ */
+interface IntroInk {
+  backdrop: ViewStyle
+  aura: string
+  particleColors: readonly string[]
+  fernPalette: 'dark' | 'light'
+  eyebrow: TextStyle
+  title: TextStyle
+  titleAccent: TextStyle
+  subtitle: TextStyle
+  panel: ViewStyle
+  chip: ViewStyle
+  chipText: TextStyle
+  letterOn: TextStyle
+  letterOff: TextStyle
+}
+
+function buildInk(mode: AuthMode): IntroInk {
+  const s = AUTH_SPEC[mode]
+  const neo = neoTokens(mode)
+  // Acento para TEXTO CHICO (eyebrow 12px, letras de día 11px). En claro el
+  // verde del spec da 4.29:1 sobre el fondo de bienvenida y 4.01:1 sobre el
+  // stop oscuro del material raised — bajo el 4.5:1 que AA exige a ese
+  // tamaño. `greenDeep` es el mismo verde un escalón más profundo y llega a
+  // 6.90:1 en el peor par. En oscuro el menta ya da ≥8.98:1 y se conserva.
+  const accentInk = mode === 'light' ? neo.greenDeep : s.linkAccent
+  return {
+    backdrop: { backgroundColor: s.welcomeBg },
+    aura: s.linkAccent,
+    particleColors: s.particleColors,
+    fernPalette: s.fernPalette,
+    eyebrow: { color: accentInk },
+    title: { color: s.text },
+    // Display 42px/900: texto grande, el acento de marca del spec pasa AA
+    // (4.29:1 ≥ 3:1) y mantiene el contraste de color con el resto del título.
+    titleAccent: { color: s.linkAccent },
+    subtitle: { color: s.textSoft },
+    panel: neoMaterial(mode, 'raisedLg'),
+    // Pozo hundido. En Android sin soporte de inset el pozo se aplana en
+    // silencio: un hairline lo mantiene delimitado.
+    chip: {
+      backgroundColor: neo.well,
+      boxShadow: neo.shadows.insetSm,
+      borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+      borderColor: neo.sheetDivider,
+    },
+    chipText: { color: neo.text },
+    letterOn: { color: accentInk },
+    // `textTertiary` da 1.97:1 sobre el stop oscuro del panel claro: la letra
+    // del día sin registrar necesita el nivel de texto, no el de relleno.
+    letterOff: { color: neo.textMuted },
+  }
+}
+
+const INK: Record<AuthMode, IntroInk> = {
+  light: buildInk('light'),
+  dark: buildInk('dark'),
+}
+
+/** Relación ancho/alto del viewBox de Brot fuera de la pose `peek`. */
+const BROT_ASPECT = 84 / 108
 
 /**
  * Devuelve un key que es 0 hasta que la slide se activa por PRIMERA vez, y a
@@ -81,7 +158,7 @@ function usePlayOnActive(active: boolean): number {
  * está a opacidad/escala plena; al deslizar, las adyacentes se desvanecen y
  * encogen levemente (crossfade + zoom). Va atada al gesto (no es una animación
  * discreta) → no "reinicia" nada al volver. Se aplica al CONTENIDO, no al
- * fondo, para que el verde no parpadee entre slides.
+ * fondo, para que el fondo no parpadee entre slides.
  */
 function useSlideTransition(scrollX: SharedValue<number>, index: number, width: number) {
   return useAnimatedStyle(() => {
@@ -111,24 +188,17 @@ const SvgStop = Stop as unknown as FC<{
 }>
 
 /**
- * Fondo de marca EXACTO al handoff: radial `#1C4A2C` (centro-arriba, 50% 8%) →
- * `#0E2A19`, + luciérnagas (14, mitad frías `#B2E08A`, mitad cálidas `#F0B488`).
- * Compartido por los slides oscuros (1 · Marca, 4 · Jardín, 5 · CTA).
+ * Fondo del pager: el MISMO material de la Bienvenida (`welcomeBg` plano +
+ * campo de partículas de la paleta del spec) para que el paso del slide 4 al
+ * 5 —que monta la Bienvenida real— no tenga costura.
+ *
+ * `active` gatea el loop de Skia: las 5 slides quedan montadas a la vez y sin
+ * el gate los 4 campos invisibles seguirían grabando a 60fps.
  */
-function BrandBackdrop() {
+function BrandBackdrop({ ink, active }: { ink: IntroInk; active: boolean }) {
   return (
-    <View style={[StyleSheet.absoluteFill, styles.brandBase]} pointerEvents="none">
-      <Svg style={[styles.brandSvg]} width="100%" height="100%">
-        <SvgDefs>
-          <SvgRadial id="introBrandBg" cx="50%" cy="8%" r="92%">
-            <SvgStop offset="0%" stopColor="#1C4A2C" />
-            <SvgStop offset="70%" stopColor="#0E2A19" />
-            <SvgStop offset="100%" stopColor="#0E2A19" />
-          </SvgRadial>
-        </SvgDefs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#introBrandBg)" />
-      </Svg>
-      <CardParticles count={28} color="#B2E08A" peachColor="#F0B488" />
+    <View style={[StyleSheet.absoluteFill, ink.backdrop]} pointerEvents="none">
+      <BrotParticles colors={ink.particleColors} count={18} animated={active} />
     </View>
   )
 }
@@ -137,23 +207,25 @@ const FERN_GLOW = 300
 /**
  * Aura verde detrás del helecho — un radial SVG que desvanece a transparente
  * (suave, SIN bordes ni "zonas" como tenían los discos de boxShadow) y respira
- * lento (~6s, seno) vía un wrapper Animated. UI thread; reduce-motion lo aparca.
+ * lento (seno). UI thread; reduce-motion lo aparca, igual que salir del slide.
  */
-function FernAura() {
+function FernAura({ color, play }: { color: string; play: boolean }) {
   const reduced = useReducedMotion()
-  const breath = useSharedValue(reduced ? 0.6 : 0)
+  const on = play && !reduced
+  const breath = useSharedValue(on ? 0 : 0.6)
   useEffect(() => {
-    if (reduced) {
+    if (!on) {
+      cancelAnimation(breath)
       breath.value = 0.6
       return
     }
     breath.value = withRepeat(
-      withTiming(1, { duration: 6000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(1, { duration: decorativeDurations.ambient, easing: motionEasings.warm }),
       -1,
       true,
     )
     return () => cancelAnimation(breath)
-  }, [reduced, breath])
+  }, [on, breath])
   const style = useAnimatedStyle(() => ({
     opacity: 0.55 + breath.value * 0.45,
     transform: [{ scale: 0.92 + breath.value * 0.16 }],
@@ -163,9 +235,9 @@ function FernAura() {
       <Svg width={FERN_GLOW} height={FERN_GLOW}>
         <SvgDefs>
           <SvgRadial id="fernAura" cx="50%" cy="50%" r="50%">
-            <SvgStop offset="0%" stopColor="#9FE08A" stopOpacity="0.42" />
-            <SvgStop offset="42%" stopColor="#9FE08A" stopOpacity="0.16" />
-            <SvgStop offset="100%" stopColor="#9FE08A" stopOpacity="0" />
+            <SvgStop offset="0%" stopColor={color} stopOpacity="0.42" />
+            <SvgStop offset="42%" stopColor={color} stopOpacity="0.16" />
+            <SvgStop offset="100%" stopColor={color} stopOpacity="0" />
           </SvgRadial>
         </SvgDefs>
         <Rect width={FERN_GLOW} height={FERN_GLOW} fill="url(#fernAura)" />
@@ -175,16 +247,17 @@ function FernAura() {
 }
 
 /**
- * Entrada del helecho: "crece desde la base" — escala 0.5 → overshoot 1.06 y
- * asienta con spring (el `obGrow` del handoff, pulido). El arte va estático
- * (FernLogo animate=false) para que el grow lea limpio. Respeta reduce-motion.
+ * Entrada "crece desde la base" — escala 0.5 → overshoot y asienta con spring
+ * (el `obGrow` del handoff, pulido). Respeta reduce-motion.
  */
 function GrowIn({
   play,
+  delay = motionDurations.micro,
   children,
   style,
 }: {
   play: boolean
+  delay?: number
   children: ReactNode
   style?: StyleProp<ViewStyle>
 }) {
@@ -201,18 +274,21 @@ function GrowIn({
     scale.value = 0.5
     opacity.value = 0
     scale.value = withDelay(
-      80,
+      delay,
       withSequence(
-        withTiming(1.06, { duration: 520, easing: Easing.out(Easing.cubic) }),
-        withSpring(1, { damping: 11, stiffness: 150, mass: 0.9 }),
+        withTiming(1.06, { duration: motionDurations.slow, easing: motionEasings.decelerate }),
+        withSpring(1, motionSprings.celebrate),
       ),
     )
-    opacity.value = withDelay(80, withTiming(1, { duration: 360, easing: Easing.out(Easing.quad) }))
+    opacity.value = withDelay(
+      delay,
+      withTiming(1, { duration: motionDurations.deliberate, easing: motionEasings.standard }),
+    )
     return () => {
       cancelAnimation(scale)
       cancelAnimation(opacity)
     }
-  }, [on, scale, opacity])
+  }, [on, delay, scale, opacity])
   const aStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
@@ -220,36 +296,93 @@ function GrowIn({
   return <Animated.View style={[style, aStyle]}>{children}</Animated.View>
 }
 
+/**
+ * Brot dentro del pager. Dos gates distintos:
+ *   · `mounted` (latch de la slide) — hasta que la slide se ve por primera
+ *     vez no se monta el canvas de Skia; queda un hueco del mismo tamaño para
+ *     que el layout no salte al aparecer.
+ *   · `animated` (slide centrada) — con las 5 slides montadas, los Brot de
+ *     las que no se ven no deben grabar frames.
+ */
+function IntroBrot({
+  pose,
+  size,
+  mounted,
+  animated,
+  delay,
+  shadow = false,
+  style,
+}: {
+  pose: BrotPose
+  size: number
+  mounted: boolean
+  animated: boolean
+  delay?: number
+  shadow?: boolean
+  style?: StyleProp<ViewStyle>
+}) {
+  if (!mounted) {
+    return <View pointerEvents="none" style={[{ width: size * BROT_ASPECT, height: size }, style]} />
+  }
+  return (
+    <GrowIn play delay={delay} style={style}>
+      <BrotMascot pose={pose} size={size} animated={animated} shadow={shadow} />
+    </GrowIn>
+  )
+}
+
 // ── Slide 1 · Marca ────────────────────────────────────────────────────
-export function SlideBrand({ width, active, scrollX, index }: IntroSlideProps) {
+export function SlideBrand({ width, mode, active, scrollX, index }: IntroSlideProps) {
   const { t } = useTranslation()
+  const ink = INK[mode]
   const n = usePlayOnActive(active)
   const skip = n === 0
   const tStyle = useSlideTransition(scrollX, index, width)
   return (
     <View style={[styles.slide, { width }]}>
-      <BrandBackdrop />
-      {/* Composición CENTRADA: helecho + texto como un solo bloque, centrado
-          verticalmente — sin el gap grande de fern-arriba / texto-pegado-abajo. */}
+      <BrandBackdrop ink={ink} active={active} />
+      {/* Composición CENTRADA: helecho + Brot + texto como un solo bloque,
+          centrado verticalmente — sin el gap grande de fern-arriba /
+          texto-pegado-abajo. */}
       <Animated.View key={n} style={[styles.brandStack, tStyle]}>
-        <View style={styles.fernBox}>
-          <FernAura />
-          <GrowIn play={!skip}>
-            <FernLogo size={210} palette="light" animate={false} />
-          </GrowIn>
+        <View style={styles.fernRow}>
+          <View style={styles.fernBox}>
+            <FernAura color={ink.aura} play={active} />
+            <GrowIn play={!skip}>
+              <FernLogo size={186} palette={ink.fernPalette} animate={false} />
+            </GrowIn>
+          </View>
+          {/* Brot PROTAGONISTA del saludo: parado al pie del helecho, con su
+              sombra apoyada. Entra después del helecho (el orden del handoff:
+              primero crece la marca, después aparece quien te acompaña). */}
+          <IntroBrot
+            pose="wave"
+            size={104}
+            mounted={!skip}
+            animated={active}
+            delay={motionDurations.deliberate}
+            shadow
+            style={styles.brandBrot}
+          />
         </View>
         <View style={styles.brandText}>
           <RiseView skipEntering={skip} delay={420}>
-            <Text style={styles.eyebrow}>{t('onboarding:intro.slide1.eyebrow')}</Text>
+            <Text style={[styles.eyebrow, ink.eyebrow]}>
+              {t('onboarding:intro.slide1.eyebrow')}
+            </Text>
           </RiseView>
           <RiseView skipEntering={skip} delay={520}>
-            <Text style={styles.titleBrand}>
+            <Text style={[styles.titleBrand, ink.title]}>
               {t('onboarding:intro.slide1.titleLead')}{' '}
-              <Text style={styles.titleAccent}>{t('onboarding:intro.slide1.titleAccent')}</Text>
+              <Text style={[styles.titleAccent, ink.titleAccent]}>
+                {t('onboarding:intro.slide1.titleAccent')}
+              </Text>
             </Text>
           </RiseView>
           <RiseView skipEntering={skip} delay={660}>
-            <Text style={styles.subtitleLight}>{t('onboarding:intro.slide1.subtitle')}</Text>
+            <Text style={[styles.subtitleLight, ink.subtitle]}>
+              {t('onboarding:intro.slide1.subtitle')}
+            </Text>
           </RiseView>
         </View>
       </Animated.View>
@@ -262,12 +395,22 @@ export function SlideBrand({ width, active, scrollX, index }: IntroSlideProps) {
  * contenido se CENTRA cuando entra y SCROLLEA si es más alto que la pantalla,
  * así la card real NUNCA queda recortada por el chrome ni por la altura del
  * device. `paddingHorizontal: 20` = mismo ancho de card que la Home (Screen
- * body). El BrandBackdrop (radial + partículas) va detrás, fijo.
+ * body). El BrandBackdrop va detrás, fijo.
  */
-function FeatureSlide({ width, children }: { width: number; children: ReactNode }) {
+function FeatureSlide({
+  width,
+  ink,
+  active,
+  children,
+}: {
+  width: number
+  ink: IntroInk
+  active: boolean
+  children: ReactNode
+}) {
   return (
     <View style={[styles.featureSlide, { width }]}>
-      <BrandBackdrop />
+      <BrandBackdrop ink={ink} active={active} />
       <ScrollView
         style={StyleSheet.absoluteFill}
         contentContainerStyle={styles.featureScroll}
@@ -280,86 +423,62 @@ function FeatureSlide({ width, children }: { width: number; children: ReactNode 
   )
 }
 
-const noop = () => {}
-
-// ── Slide 2 · Un número claro (HomeHeroCard real) ──────────────────────
-export function SlideNumber({ width, active, scrollX, index }: IntroSlideProps) {
+// ── Slide 2 · Un número claro (hero de la Home neo) ────────────────────
+export function SlideNumber({ width, mode, active, scrollX, index }: IntroSlideProps) {
   const { t } = useTranslation()
+  const ink = INK[mode]
   const n = usePlayOnActive(active)
   const skip = n === 0
   const tStyle = useSlideTransition(scrollX, index, width)
-  // Mismo chip que muestra la Home cuando hay meta de ahorro configurada
-  // (computeSavingsHeroChip arma el label/a11y reales). Datos ilustrativos.
-  const savingsChip = useMemo(
-    () =>
-      computeSavingsHeroChip({
-        savingsGoal: 150_000,
-        savingsRemaining: 120_000,
-        savingsGoalPercent: 12,
-        incomeConfigured: true,
-      }),
-    [],
-  )
   return (
-    <FeatureSlide width={width}>
+    <FeatureSlide width={width} ink={ink} active={active}>
       <Animated.View key={n} style={[styles.featureStack, tStyle]}>
-        {/* Montada EXACTAMENTE como en home-dashboard (mismas props: trend,
-            savingsChip, usdConversion, onPressConfigureIncome) → se ve la card
-            COMPLETA, idéntica a la Home, no una versión recortada. */}
-        <HomeHeroCard
-          data={INTRO_HERO_METRICS}
-          projectedCloseTrend={-0.08}
-          savingsChip={savingsChip}
-          usdConversion={null}
-          onPressConfigureIncome={noop}
-        />
+        <View style={styles.cardWithBrot}>
+          {/* Brot SUB-PROTAGONISTA: asoma detrás del borde superior de la
+              card (va primero en el árbol y la card lleva zIndex → queda
+              apoyado en ella en iOS y en Android por igual). `zen` es la
+              lectura del slide: un número y nada de ruido. */}
+          <IntroBrot
+            pose="zen"
+            size={62}
+            mounted={!skip}
+            animated={active}
+            delay={motionDurations.standard}
+            style={styles.brotOnCardRight}
+          />
+          <View style={styles.cardLayer}>
+            {/* El hero de la Home con los mismos datos ilustrativos y las
+                mismas claves de copy que el cableado real. Sin medidor de
+                cupo ni chips: el dataset ilustrativo no tiene gasto promedio
+                ni eventos de ciclo, y el kit oculta los bloques completos
+                cuando faltan. */}
+            <HomeHero
+              mode={mode}
+              balanceLabel={t('home:hero.balanceLabel')}
+              balance={formatMoney(INTRO_HERO_METRICS.availableToday)}
+              balanceValue={INTRO_HERO_METRICS.availableToday}
+              formatBalance={formatMoney}
+              usdLine={null}
+              dayPill={t('home:hero.cycleDay', {
+                day: INTRO_HERO_METRICS.cycleDay,
+                total: INTRO_HERO_METRICS.cycleTotalDays,
+              })}
+              eventChip={null}
+              fixedChip={null}
+              gauge={null}
+            />
+          </View>
+        </View>
         <View style={styles.brandText}>
           <RiseView skipEntering={skip} delay={420}>
-            <Text style={styles.titleFeature}>{t('onboarding:intro.slide2.title')}</Text>
+            <Text style={[styles.titleFeature, ink.title]}>
+              {t('onboarding:intro.slide2.title')}
+            </Text>
           </RiseView>
           <RiseView skipEntering={skip} delay={520}>
-            <Text style={styles.subtitleLight}>{t('onboarding:intro.slide2.subtitle')}</Text>
-          </RiseView>
-        </View>
-      </Animated.View>
-    </FeatureSlide>
-  )
-}
-
-// ── Slide 3 · Fijos, ingresos y el día a día (FijosHeroCard + IncomeRow) ─
-export function SlideMovements({ width, active, scrollX, index }: IntroSlideProps) {
-  const { t } = useTranslation()
-  const n = usePlayOnActive(active)
-  const skip = n === 0
-  const tStyle = useSlideTransition(scrollX, index, width)
-  return (
-    <FeatureSlide width={width}>
-      <Animated.View key={n} style={[styles.featureStack, tStyle]}>
-        {/* Los 3 tipos de movimiento con sus componentes REALES: el hero de
-            Fijos (overview + % del sueldo), una fila de gasto del día y una de
-            ingreso. Las filas (GastoRow/IncomeRow) traen esquinas redondeadas
-            solo a la izquierda (esperan el SwipeRow del listado) → las
-            envolvemos en un rowCard (overflow hidden) para que queden como
-            tarjeta completa, igual que se ven en la sección real. */}
-        <RiseView skipEntering={skip}>
-          <FijosHeroCard {...INTRO_FIJOS_PROPS} />
-        </RiseView>
-        <RiseView skipEntering={skip} delay={140} style={styles.rowFrame}>
-          <View style={styles.rowClip}>
-            <GastoRow {...INTRO_GASTO_PROPS} />
-          </View>
-        </RiseView>
-        <RiseView skipEntering={skip} delay={220} style={styles.rowFrame}>
-          <View style={styles.rowClip}>
-            <IncomeRow {...INTRO_INCOME_PROPS} />
-          </View>
-        </RiseView>
-        <View style={styles.brandText}>
-          <RiseView skipEntering={skip} delay={340}>
-            <Text style={styles.titleFeature}>{t('onboarding:intro.slide3.title')}</Text>
-          </RiseView>
-          <RiseView skipEntering={skip} delay={440}>
-            <Text style={styles.subtitleLight}>{t('onboarding:intro.slide3.subtitle')}</Text>
+            <Text style={[styles.subtitleLight, ink.subtitle]}>
+              {t('onboarding:intro.slide2.subtitle')}
+            </Text>
           </RiseView>
         </View>
       </Animated.View>
@@ -368,43 +487,185 @@ export function SlideMovements({ width, active, scrollX, index }: IntroSlideProp
 }
 
 /**
- * Preview acotado de la celebración "Cierre de semana" (la real): los 7 brotes
- * (Sprout en estado fern) que CRECEN escalonados, con luciérnagas (BroteFireflies)
- * ORBITANDO cada uno + un campo ambiente de luciérnagas (CardParticles) — los
- * MISMOS componentes que monta week-close-celebration.tsx, acá en un panel
- * acotado (sin el scrim full-screen, sin háptica ni botón). Eso ES la floración:
- * 7 helechos rodeados de luciérnagas. El eyebrow y el conteo usan el copy
- * localizado de la celebración real (es+en).
+ * Ciclo del dataset ilustrativo (10 jun → 10 jul). De las dos fechas el hero
+ * de Fijos sólo lee el NOMBRE DEL MES del último día (eyebrow).
  */
-function WeekCloseCelebrationPreview({ play }: { play: boolean }) {
+const INTRO_CYCLE_LAST_DAY = new Date(2026, 6, 9)
+const INTRO_CYCLE_START = new Date(2026, 5, 10)
+const INTRO_FIJOS_ACTIVE_COUNT =
+  INTRO_FIJOS_PROPS.cantidadPagados +
+  INTRO_FIJOS_PROPS.cantidadPendientes +
+  INTRO_FIJOS_PROPS.cantidadVencidos
+
+// ── Slide 3 · Fijos, ingresos y el día a día ───────────────────────────
+export function SlideMovements({ width, mode, active, scrollX, index }: IntroSlideProps) {
+  const { t } = useTranslation()
+  const ink = INK[mode]
+  const n = usePlayOnActive(active)
+  const skip = n === 0
+  const tStyle = useSlideTransition(scrollX, index, width)
+
+  // Mismo builder que la vista viva: la copy del hero sale de las claves
+  // reales de Fijos, alimentado con los montos ilustrativos.
+  const fijosContent = buildHeroContent({
+    variant: 'E2',
+    isEmptyNoFijos: false,
+    cycleLastDay: INTRO_CYCLE_LAST_DAY,
+    cycleStart: INTRO_CYCLE_START,
+    daysIntoCycle: INTRO_FIJOS_PROPS.cycleDayIndex,
+    salaryPaymentDay: 1,
+    paidCount: INTRO_FIJOS_PROPS.cantidadPagados,
+    pendingCount: INTRO_FIJOS_PROPS.cantidadPendientes,
+    overdueCount: INTRO_FIJOS_PROPS.cantidadVencidos,
+    cycleActiveCount: INTRO_FIJOS_ACTIVE_COUNT,
+    paidAmount: INTRO_FIJOS_PROPS.montoPagado,
+    pendingAmount: INTRO_FIJOS_PROPS.totalFijos - INTRO_FIJOS_PROPS.montoPagado,
+    overdueAmount: 0,
+    total: INTRO_FIJOS_PROPS.totalFijos,
+    paidPct: Math.round(
+      (INTRO_FIJOS_PROPS.montoPagado / Math.max(1, INTRO_FIJOS_PROPS.totalFijos)) * 100,
+    ),
+    hasIncome: true,
+    monthlyIncome: INTRO_HERO_METRICS.monthlyIncome,
+    availableRaw: INTRO_FIJOS_PROPS.dineroLibre,
+    pctOfIncome: INTRO_FIJOS_PROPS.porcentajeSueldo,
+    segmentToday: false,
+  })
+
+  const gastoRow: MovRowVM = {
+    kind: 'expense',
+    emoji: '🧾',
+    tile: 'mint',
+    title: INTRO_GASTO_PROPS.title ?? '',
+    sub: `${INTRO_GASTO_PROPS.whoName ?? ''} · ${INTRO_GASTO_PROPS.categoryName ?? ''}`,
+    amount: `−${formatMoney(Math.abs(INTRO_GASTO_PROPS.amount ?? 0))}`,
+    catName: INTRO_GASTO_PROPS.categoryRawName,
+  }
+  const incomeMeta = INCOME_KIND_BY_KEY[INTRO_INCOME_PROPS.kind]
+  const incomeRow: MovRowVM = {
+    kind: 'income',
+    emoji: incomeMeta.emoji,
+    tile: 'mint',
+    title: INTRO_INCOME_PROPS.title ?? '',
+    sub: `${t(incomeMeta.labelKey)} · ${INTRO_INCOME_PROPS.time ?? ''}`,
+    amount: `+${formatMoney(INTRO_INCOME_PROPS.amount ?? 0)}`,
+  }
+
+  return (
+    <FeatureSlide width={width} ink={ink} active={active}>
+      <Animated.View key={n} style={[styles.featureStack, tStyle]}>
+        {/* Los 3 tipos de movimiento con las piezas vivas: el hero de Fijos
+            (pozo + peso sobre el sueldo) y las filas del feed de Gastos, un
+            gasto del día y un ingreso a favor. */}
+        <RiseView skipEntering={skip}>
+          <View style={styles.cardWithBrot}>
+            {/* Brot SUB-PROTAGONISTA, del lado opuesto al del slide 2 para
+                que las dos vitrinas informativas no se lean calcadas.
+                `coach` = está explicando la card sobre la que se apoya. */}
+            <IntroBrot
+              pose="coach"
+              size={62}
+              mounted={!skip}
+              animated={active}
+              delay={motionDurations.standard}
+              style={styles.brotOnCardLeft}
+            />
+            <View style={styles.cardLayer}>
+              <FijosHero
+                {...fijosContent}
+                mode={mode}
+                variant="E2"
+                animated={false}
+                paused={!active}
+              />
+            </View>
+          </View>
+        </RiseView>
+        <RiseView skipEntering={skip} delay={140}>
+          <GastosMovRow mode={mode} row={gastoRow} />
+        </RiseView>
+        <RiseView skipEntering={skip} delay={220}>
+          <GastosMovRow mode={mode} row={incomeRow} />
+        </RiseView>
+        <View style={styles.brandText}>
+          <RiseView skipEntering={skip} delay={340}>
+            <Text style={[styles.titleFeature, ink.title]}>
+              {t('onboarding:intro.slide3.title')}
+            </Text>
+          </RiseView>
+          <RiseView skipEntering={skip} delay={440}>
+            <Text style={[styles.subtitleLight, ink.subtitle]}>
+              {t('onboarding:intro.slide3.subtitle')}
+            </Text>
+          </RiseView>
+        </View>
+      </Animated.View>
+    </FeatureSlide>
+  )
+}
+
+/**
+ * Preview acotado de la celebración "Cierre de semana" (la real): el Brot que
+ * festeja + los 7 mini-Brots que entran escalonados, con luciérnagas
+ * (BroteFireflies) ORBITANDO cada uno y un campo ambiente de partículas — los
+ * MISMOS componentes que monta week-close-celebration.tsx, acá en un panel
+ * acotado (sin el scrim full-screen, sin háptica ni botón). El eyebrow y el
+ * conteo usan el copy localizado de la celebración real (es+en).
+ */
+function WeekCloseCelebrationPreview({
+  ink,
+  play,
+  active,
+}: {
+  ink: IntroInk
+  play: boolean
+  active: boolean
+}) {
   const { t } = useTranslation()
   const wc = INTRO_WEEK_CLOSE
   return (
-    <View style={styles.weekClosePanel}>
-      {/* Campo de luciérnagas ambiente, acotado al panel (overflow hidden). */}
-      <CardParticles count={9} color="#FFFBF2" accentColor="#F0B488" />
-      <Text style={styles.eyebrow}>{t('garden:weekCloseCelebration.eyebrow')}</Text>
-      <View style={styles.wcChip}>
-        <Text style={styles.wcChipCount}>
+    <View style={[styles.weekClosePanel, ink.panel]}>
+      {/* Campo de partículas ambiente, acotado al panel (clip por radio). */}
+      <BrotParticles
+        colors={ink.particleColors}
+        count={9}
+        borderRadius={neoRadii.card}
+        animated={active}
+      />
+      <Text style={[styles.eyebrow, ink.eyebrow]}>{t('garden:weekCloseCelebration.eyebrow')}</Text>
+      <View style={[styles.wcChip, ink.chip]}>
+        <Text style={[styles.wcChipCount, ink.chipText]}>
           {t('garden:weekCloseCelebration.count', { score: wc.score })}
         </Text>
       </View>
+      {/* Brot PROTAGONISTA del hito, como en la celebración real (que lo pone
+          a 150 entre el chip y la fila de días); acá a escala de panel. */}
+      <IntroBrot
+        pose="cheer"
+        size={78}
+        mounted={play}
+        animated={active}
+        delay={motionDurations.quick}
+        style={styles.wcHeroBrot}
+      />
       <View style={styles.wcBrotesRow}>
         {wc.days.map((day, i) => (
           <View key={i} style={styles.wcBroteCol}>
             <View style={styles.wcBroteSlot}>
-              <Sprout
-                stage={day.registered ? 'fern' : 'missed'}
-                fernSize={40}
-                tone="dark"
-                animateIn={play}
-                animateInDelay={i * 70}
-              />
-              {/* Luciérnagas que orbitan este brote (entran escalonadas con el growIn). */}
-              {day.registered && <BroteFireflies delay={i * 70 + 240} />}
+              {play ? (
+                <>
+                  <DayBrot pose={poseForDay(day.registered, day.recovered)} delay={i * 70} />
+                  {/* Luciérnagas que orbitan este brote (entran escalonadas
+                      con el growIn). Sólo mientras la slide está centrada: son
+                      7 órbitas × 4 partículas en loop infinito y el pager deja
+                      las 5 slides montadas. Al volver re-entran con su fade —
+                      los brotes, que sí son estructura, no se remontan. */}
+                  {day.registered && active && <BroteFireflies delay={i * 70 + 240} />}
+                </>
+              ) : null}
             </View>
             <Text
-              style={[styles.wcBroteLetter, { color: day.registered ? '#9FE08A' : '#8CA285' }]}
+              style={[styles.wcBroteLetter, day.registered ? ink.letterOn : ink.letterOff]}
             >
               {day.letter}
             </Text>
@@ -415,25 +676,28 @@ function WeekCloseCelebrationPreview({ play }: { play: boolean }) {
   )
 }
 
-// ── Slide 4 · Tu jardín (cierre de semana real: 7 brotes + luciérnagas) ──
-// Fondo oscuro de marca (handoff + slides 1/5): el panel translúcido del cierre
-// despega los brotes del verde en ambos temas.
-export function SlideGarden({ width, active, scrollX, index }: IntroSlideProps) {
+// ── Slide 4 · Tu jardín (cierre de semana real: Brot + 7 brotes) ────────
+export function SlideGarden({ width, mode, active, scrollX, index }: IntroSlideProps) {
   const { t } = useTranslation()
+  const ink = INK[mode]
   const n = usePlayOnActive(active)
   const skip = n === 0
   const tStyle = useSlideTransition(scrollX, index, width)
   return (
-    <FeatureSlide width={width}>
+    <FeatureSlide width={width} ink={ink} active={active}>
       <Animated.View key={n} style={[styles.featureStack, tStyle]}>
         <RiseView skipEntering={skip}>
-          <WeekCloseCelebrationPreview play={!skip} />
+          <WeekCloseCelebrationPreview ink={ink} play={!skip} active={active} />
         </RiseView>
         <RiseView skipEntering={skip} delay={360}>
-          <Text style={styles.titleFeature}>{t('onboarding:intro.slide4.title')}</Text>
+          <Text style={[styles.titleFeature, ink.title]}>
+            {t('onboarding:intro.slide4.title')}
+          </Text>
         </RiseView>
         <RiseView skipEntering={skip} delay={440}>
-          <Text style={styles.subtitleLight}>{t('onboarding:intro.slide4.subtitle')}</Text>
+          <Text style={[styles.subtitleLight, ink.subtitle]}>
+            {t('onboarding:intro.slide4.subtitle')}
+          </Text>
         </RiseView>
       </Animated.View>
     </FeatureSlide>
@@ -446,26 +710,29 @@ interface SlideCtaProps extends IntroSlideProps {
   onLogin: () => void
 }
 
-export function SlideCta({ width, active, scrollX, index, onCreate, onLogin }: SlideCtaProps) {
+export function SlideCta({ width, mode, active, scrollX, index, onCreate, onLogin }: SlideCtaProps) {
   const n = usePlayOnActive(active)
   const tStyle = useSlideTransition(scrollX, index, width)
   return (
     <View style={[styles.featureSlide, { width }]}>
       {/* Slide 5 = la Bienvenida REAL del rediseño (NeoWelcomeScreen →
           réplica 3a neumórfica) → correlatividad total con la pantalla
-          que ve el usuario al llegar a la bienvenida live (review r2:
-          antes montaba la WelcomeScreen VIEJA, un diseño distinto al que
-          sigue en el flujo). Mismos CTA "Empezar"/"Ya tengo cuenta" y
-          fineprint de Términos/Privacidad. El key={n} la monta/anima la
-          PRIMERA vez que se llega (latch, no se reinicia al volver);
-          tStyle le da el crossfade+zoom ligado al scroll en la entrada. */}
+          que ve el usuario al llegar a la bienvenida live. Mismos CTA
+          "Empezar"/"Ya tengo cuenta" y fineprint de Términos/Privacidad.
+          El key={n} la monta/anima la PRIMERA vez que se llega (latch, no
+          se reinicia al volver); tStyle le da el crossfade+zoom ligado al
+          scroll en la entrada.
+
+          `forceMode` recibe el MISMO modo que el resto del pager: la
+          bienvenida y las 4 vitrinas anteriores tienen que compartir fondo
+          y status bar (la 3a pide la suya con `mode === 'dark' ? 'light' :
+          'dark'`, igual que el pager).
+
+          SIN Brot encima: la 3a se aprobó sin mascota (decisión del owner
+          2026-07-17) y este slide es esa misma pantalla — meterle uno acá
+          rompería la continuidad con la bienvenida live que sigue. */}
       <Animated.View key={n} style={[styles.welcomeHost, tStyle]}>
-        {/* forceMode="dark": el intro es un pager SIEMPRE verde oscuro
-            con StatusBar global 'light'; sin forzar el tema, la
-            bienvenida theme-aware mostraría bg crema + su propia
-            StatusBar 'dark' en light mode, ilegible sobre este pager y
-            en conflicto con la barra global (review r3). */}
-        <NeoWelcomeScreen forceMode="dark" onCreate={onCreate} onLogin={onLogin} />
+        <NeoWelcomeScreen forceMode={mode} onCreate={onCreate} onLogin={onLogin} />
       </Animated.View>
     </View>
   )
@@ -478,8 +745,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   // Slides feature: el contenedor ocupa toda la pantalla; el centrado + padding
-  // que despeja el chrome (Saltar arriba, footer abajo) vive en el contentContainer
-  // del ScrollView (featureScroll) para que la card pueda scrollear si no entra.
+  // que despeja el chrome (footer abajo) vive en el contentContainer del
+  // ScrollView (featureScroll) para que la card pueda scrollear si no entra.
   featureSlide: { flex: 1 },
   welcomeHost: { flex: 1 },
   featureScroll: {
@@ -489,27 +756,28 @@ const styles = StyleSheet.create({
     paddingTop: 72,
     paddingBottom: 108,
   },
-  slideBrand: {
-    justifyContent: 'flex-end',
-    paddingBottom: 140,
-  },
-  brandBase: { backgroundColor: '#0E2A19' },
-  brandSvg: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   brandStack: { gap: 30, alignItems: 'stretch' },
   brandText: { gap: 14, alignItems: 'flex-start' },
-  // Helecho: caja que se autocentra en el bloque; la aura (auraWrap) la llena
-  // y centra el radial SVG sobre el helecho.
-  fernBox: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
+  // Helecho + Brot al pie: se centran como bloque. `flex-end` alinea los dos
+  // sobre la misma línea de piso.
+  fernRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center' },
+  // La caja del helecho no crece: en 320pt el bloque (186 + 81 − 22) entra sin
+  // empujar a Brot fuera del padding de 28.
+  fernBox: { alignItems: 'center', justifyContent: 'center' },
+  brandBrot: { marginLeft: -22, marginBottom: 6 },
   auraWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   featureStack: { gap: 18 },
-  // Panel del cierre de semana: translúcido (despega los brotes del verde en
-  // ambos temas) + overflow hidden para acotar las luciérnagas ambiente al panel.
+  // Brot apoyado en la card: la card va en su propia capa con zIndex por
+  // encima, así el Brot asoma sólo por arriba del borde en las dos plataformas.
+  cardWithBrot: { position: 'relative' },
+  cardLayer: { zIndex: 1 },
+  brotOnCardRight: { position: 'absolute', top: -46, right: 18, zIndex: 0 },
+  brotOnCardLeft: { position: 'absolute', top: -46, left: 18, zIndex: 0 },
+  // Panel del cierre de semana: card raised del vocabulario neo. `overflow`
+  // acota las partículas ambiente al panel.
   weekClosePanel: {
     alignSelf: 'stretch',
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: neoRadii.card,
     paddingTop: 16,
     paddingBottom: 14,
     paddingHorizontal: 16,
@@ -518,78 +786,66 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   wcChip: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 30,
+    borderRadius: neoRadii.pill,
     paddingHorizontal: 12,
     paddingVertical: 5,
     marginTop: 8,
   },
-  wcChipCount: { fontSize: 12.5, fontWeight: '700', color: '#C4D6BC' },
+  wcChipCount: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+  },
+  wcHeroBrot: { marginTop: 10 },
   wcBrotesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignSelf: 'stretch',
-    marginTop: 18,
+    marginTop: 14,
   },
   wcBroteCol: { alignItems: 'center', gap: 8, flex: 1 },
   wcBroteSlot: {
-    height: 52,
+    // Mismo alto que la fila de la celebración real: mini-Brot (34) + aire.
+    height: 40,
     alignItems: 'center',
     justifyContent: 'flex-end',
     position: 'relative',
   },
-  wcBroteLetter: { fontSize: 11, fontWeight: '700' },
+  wcBroteLetter: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
   eyebrow: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 2.6,
     textTransform: 'uppercase',
-    color: '#9FCB93',
   },
-  // Slide 1 · Marca: título grande (handoff 42/900/-.03em/lh1.04, blanco puro).
+  // Slide 1 · Marca: título grande (handoff 42/900/-.03em/lh1.04).
   titleBrand: {
     fontSize: 42,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1.3,
     lineHeight: 44,
-    color: '#FFFFFF',
   },
   titleAccent: {
-    color: '#9FE08A',
-    fontStyle: 'italic',
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   subtitleLight: {
     fontSize: 15.5,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     lineHeight: 23,
-    color: CREAM_DIM,
     maxWidth: 320,
   },
-  // Título de slides feature (2 · Número, 3 · Movimientos, 4 · Jardín) — claro
-  // sobre fondo de marca, mismo lenguaje que el slide 1 pero más chico (hay una
-  // card arriba). Handoff ≈ 29-31px.
+  // Título de slides feature (2 · Número, 3 · Movimientos, 4 · Jardín) — mismo
+  // lenguaje que el slide 1 pero más chico (hay una card arriba).
+  // Handoff ≈ 29-31px.
   titleFeature: {
     fontSize: 31,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.8,
     lineHeight: 36,
-    color: CREAM,
   },
-  // GastoRow/IncomeRow vienen con esquinas redondeadas SOLO a la izquierda
-  // (esperan el SwipeRow del listado). Las clippeamos en una tarjeta completa
-  // (overflow hidden redondea las 4 esquinas) → se ven como en la sección real.
-  // Las filas (GastoRow/IncomeRow) en DARK son surfaceMuted (#0F2E1F) ≈ el fondo
-  // verde (#0E2A19) → casi invisibles (1.05:1). Mismo recurso que el StreakWeekWidget:
-  // un panel translúcido (frame de 5px + borde) las despega del fondo en dark; en
-  // light la card cream ya resalta y el frame queda sutil. rowClip redondea las 4
-  // esquinas (las filas vienen redondeadas solo a la izquierda).
-  rowFrame: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    padding: 5,
-  },
-  rowClip: { borderRadius: 16, overflow: 'hidden' },
 })

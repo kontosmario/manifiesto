@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Tab label — bold + V1 primary when focused, muted otherwise.
@@ -40,8 +41,10 @@ const styles = StyleSheet.create({
   },
   labelIdle: {
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   labelFocused: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

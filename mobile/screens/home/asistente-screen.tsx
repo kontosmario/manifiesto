@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -16,27 +15,23 @@ import {
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import Animated, {
-  Easing,
   FadeIn,
   FadeOut,
   Keyframe,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
   ZoomIn,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { BrotMascot } from '@/components/brot'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
-import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
-  decorativeDurations,
   motionDurations,
   motionEasings,
   motionSprings,
@@ -58,8 +53,14 @@ import {
   bubbleHeadline,
   bubbleType,
   impactChipLabel,
-  type BubbleType,
 } from '@/components/control-v2/asesor-bubble-meta'
+import {
+  positiveInk,
+  starColors,
+  starOpacityScale,
+  typeTileBackground,
+} from '@/components/control-v2/asesor-neo-meta'
+import { AsesorStarField } from '@/components/control-v2/asesor-star-field'
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
 import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-action-meta'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
@@ -67,11 +68,8 @@ import type { ControlAction, ControlSectionAnchor } from '@/features/insights/co
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import {
   cssGradient,
-  neoCategoryPastels,
-  neoParticlePresets,
   neoRadii,
   neoTokens,
-  pastelDark,
   type NeoTokens,
 } from '@/theme/neo-tokens'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -80,62 +78,6 @@ import { nunitoFamily } from '@/theme/typography'
 interface AsistenteScreenProps {
   familyId: string
   userId: string
-}
-
-/**
- * Rediseño 2026-07 — esta pantalla dejó de tener su propio set de
- * tokens. `features/insights/asistente-theme.ts` (V1 "Mint Saturado":
- * #A6EF8F / #297811 / #12211A / #305A47…) era un SEGUNDO design system
- * paralelo y ya no se consume desde acá: todo el material sale de
- * `neoTokens(mode)`. Lo mismo con `TYPE_TONES` de `asesor-bubble-meta`
- * —otra paleta V1 entera— que acá se reemplaza por los pasteles de
- * categoría del handoff (`TYPE_PASTEL`, abajo). Ninguno de los dos
- * módulos se BORRA en este cambio: `asesor-bubble-meta` lo consumen
- * también las cards de Control, que todavía no migraron.
- */
-
-/**
- * Tile de ícono por tipo de burbuja. El handoff pinta los tiles de
- * ícono como pastel de categoría plano (`screens/3c.html` L44-62); acá
- * se elige el pastel cuyo matiz codifica el tipo: salmón para crítico,
- * durazno para advertencia, verde para refuerzo, verde agua para
- * insight. En oscuro el mismo pastel va translúcido (`pastelDark`).
- */
-const TYPE_PASTEL: Record<BubbleType, string> = {
-  critical: neoCategoryPastels.transferencia,
-  warning: neoCategoryPastels.comida,
-  positive: neoCategoryPastels.hogar,
-  insight: neoCategoryPastels.mascotas,
-}
-
-/**
- * Tinta del acento positivo. En claro NO se usa `neo.green` (#2E7C39):
- * sobre el tinte de selección da 4.06:1 y estos son valores de 13-16px
- * en negrita, que necesitan 4.5:1. `greenDeep` es un token del mismo
- * sistema y llega a ~7:1. En oscuro el par se invierte y `green`
- * (#A4E3A6) es el correcto.
- */
-function positiveInk(neo: NeoTokens, isDark: boolean): string {
-  return isDark ? neo.green : neo.greenDeep
-}
-
-/** Opacidad base de las partículas de fondo, por tema (valor V1 conservado). */
-function starOpacityScale(isDark: boolean): number {
-  return isDark ? 0.55 : 0.45
-}
-
-/**
- * Partículas del fondo. En oscuro es literal el preset `hero` del
- * handoff; en claro NO se puede usar el mismo, porque esos tres tonos
- * (#C9F3C6 / #FBD9BC / #EFF6E2) están pensados para caer sobre el hero
- * verde y sobre la hoja crema (#F0EFE3) desaparecerían. La versión
- * clara usa los acentos del MISMO sistema, que sí contrastan contra la
- * hoja.
- */
-function starColors(neo: NeoTokens, isDark: boolean): readonly string[] {
-  return isDark
-    ? neoParticlePresets.hero.colors
-    : [neo.green, neo.warm, neo.textTertiary]
 }
 
 /**
@@ -343,7 +285,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           proyecta la tarjeta; un radio propio de 32 dejaría ver el
           vacío del presentador en las esquinas. */}
       <View style={[styles.root, { backgroundColor: neo.sheet }]}>
-        <TwinklingStars
+        <AsesorStarField
           count={18}
           colors={starColors(neo, isDark)}
           opacityScale={starOpacityScale(isDark)}
@@ -382,7 +324,7 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
               // desaparecen").
               <LoadingState neo={neo} />
             ) : visible.length === 0 ? (
-              <EmptyState usingMock={usingMock} neo={neo} isDark={isDark} />
+              <EmptyState usingMock={usingMock} neo={neo} />
             ) : (
               visible.map((task, i) => (
                 <Animated.View
@@ -484,9 +426,22 @@ function Header({
   return (
     <View style={styles.header}>
       <View style={styles.headerTopRow}>
-        <Text style={[styles.headerTitle, { color: neo.text }]} numberOfLines={1}>
-          {translate('insights:asistente.header.title')}
-        </Text>
+        <View style={styles.headerBrot} pointerEvents="none">
+          <BrotMascot pose="idle" size={44} shadow={false} />
+        </View>
+        <View style={styles.headerTitleBlock}>
+          <Text style={[styles.headerTitle, { color: neo.text }]} numberOfLines={1}>
+            {translate('insights:asistente.header.title')}
+          </Text>
+          <Text
+            style={[styles.headerSubtitle, { color: neo.textMuted }]}
+            numberOfLines={1}
+          >
+            {count > 0
+              ? translate('insights:asistente.header.subtitle', { count })
+              : translate('insights:asistente.header.subtitleIdle')}
+          </Text>
+        </View>
         {totalImpact > 0 ? (
           // Chip del rediseño: tinte de selección + relieve `raisedSm`.
           // Sin borde — los chips neo se separan por relieve.
@@ -509,14 +464,6 @@ function Header({
           </View>
         ) : null}
       </View>
-      <Text
-        style={[styles.headerSubtitle, { color: neo.textMuted }]}
-        numberOfLines={1}
-      >
-        {count > 0
-          ? translate('insights:asistente.header.subtitle', { count })
-          : translate('insights:asistente.header.subtitleIdle')}
-      </Text>
     </View>
   )
 }
@@ -595,8 +542,7 @@ function InsightCard({
 }) {
   const { t: translate } = useTranslation()
   const type = bubbleType(task)
-  const pastel = TYPE_PASTEL[type]
-  const tileBg = isDark ? pastelDark(pastel) : pastel
+  const tileBg = typeTileBackground(type, isDark)
   const isCritical = task.urgency === 'alta'
   const icon = iconForSignal(task.id)
   const ctaLabel = resolveCtaLabel(task.cta, task.action)
@@ -626,7 +572,7 @@ function InsightCard({
   const lift = useSharedValue(isActive ? 1 : 0)
   useEffect(() => {
     lift.value = withTiming(isActive ? 1 : 0, {
-      duration: 200,
+      duration: motionDurations.quick,
       easing: motionEasings.standard,
     })
   }, [isActive, lift])
@@ -885,11 +831,9 @@ function InsightCard({
 function EmptyState({
   usingMock,
   neo,
-  isDark,
 }: {
   usingMock: boolean
   neo: NeoTokens
-  isDark: boolean
 }) {
   const copy = selectAsistenteEmptyCopy({ usingMock })
   return (
@@ -897,23 +841,26 @@ function EmptyState({
       entering={FadeIn.duration(220)}
       style={styles.emptyState}
     >
-      {/* Disco de "todo en orden": tinte de selección + relieve chico y
-          el check en el verde del sistema (antes heredaba el fill
-          saturado del set V1). */}
       <View
         style={[
-          styles.emptyCheck,
-          {
-            backgroundColor: neo.selectedTint,
-            boxShadow: neo.shadows.raisedSm,
-          },
+          styles.emptyPedestal,
+          cssGradient(neo.raisedGradientCss, neo.surface),
+          { boxShadow: neo.shadows.raisedLg },
         ]}
       >
-        <MaterialIcons
-          name="check"
-          size={20}
-          color={positiveInk(neo, isDark)}
-        />
+        <View
+          style={[
+            styles.emptyWell,
+            {
+              backgroundColor: neo.well,
+              boxShadow: neo.shadows.insetMd,
+              borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+              borderColor: neo.sheetDivider,
+            },
+          ]}
+        >
+          <BrotMascot pose="zen" size={92} shadow={false} />
+        </View>
       </View>
       <Text style={[styles.emptyTitle, { color: neo.text }]}>
         {copy.title}
@@ -931,104 +878,11 @@ function LoadingState({ neo }: { neo: NeoTokens }) {
   const { t: translate } = useTranslation()
   return (
     <Animated.View entering={FadeIn.duration(220)} style={styles.emptyState}>
-      <ActivityIndicator color={neo.textMuted} />
-      <Text style={[styles.emptyBody, { color: neo.textMuted, marginTop: 12 }]}>
+      <BrotMascot pose="think" size={72} shadow={false} />
+      <Text style={[styles.emptyBody, { color: neo.textMuted }]}>
         {translate('insights:asistente.loading')}
       </Text>
     </Animated.View>
-  )
-}
-
-// ─── Twinkling Stars ──────────────────────────────────────────────────────
-
-function TwinklingStars({
-  count,
-  colors,
-  opacityScale,
-}: {
-  count: number
-  colors: readonly string[]
-  opacityScale: number
-}) {
-  const reduced = useReducedMotion()
-  const phase = useSharedValue(0)
-  useLoopAnimation(
-    () => {
-      if (reduced) return
-      phase.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: decorativeDurations.pulseSlow, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        false,
-      )
-    },
-    [phase],
-    [reduced],
-  )
-  return (
-    <View style={styles.starsBg} pointerEvents="none">
-      {Array.from({ length: count }).map((_, i) => {
-        const left = ((i * 73 + i * 17) % 100) / 100
-        const top = ((i * 41 + 7) % 100) / 100
-        const sz = 1 + (i % 3)
-        const baseOpacity = (0.18 + (i % 5) * 0.06) * opacityScale
-        const offset = (i % 6) * 0.16
-        return (
-          <BgStar
-            key={i}
-            left={left}
-            top={top}
-            size={sz}
-            baseOpacity={baseOpacity}
-            phaseOffset={offset}
-            phase={phase}
-            color={colors[i % colors.length] ?? colors[0]}
-          />
-        )
-      })}
-    </View>
-  )
-}
-
-function BgStar({
-  left,
-  top,
-  size,
-  baseOpacity,
-  phaseOffset,
-  phase,
-  color,
-}: {
-  left: number
-  top: number
-  size: number
-  baseOpacity: number
-  phaseOffset: number
-  phase: { value: number }
-  color: string
-}) {
-  const a = useAnimatedStyle(() => {
-    const v = (phase.value + phaseOffset) % 1
-    const wave = Math.sin(v * Math.PI)
-    return { opacity: baseOpacity + wave * 0.32 }
-  })
-  return (
-    <Animated.View
-      style={[
-        styles.bgStar,
-        {
-          left: `${left * 100}%`,
-          top: `${top * 100}%`,
-          width: size,
-          height: size,
-          borderRadius: size,
-          backgroundColor: color,
-        },
-        a,
-      ]}
-    />
   )
 }
 
@@ -1037,12 +891,6 @@ function BgStar({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  starsBg: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  bgStar: {
-    position: 'absolute',
   },
   // Grab handle (telegraphs swipe-down dismiss on iOS modals)
   grabHandleArea: {
@@ -1062,19 +910,24 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: neoRadii.pill,
   },
-  // Header — minimal title row + aggregate impact pill, then a
-  // hedged subtitle. No avatar, no pulse dot, no two-row layout.
+  // Header — Brot + bloque de título/subtítulo + pill de impacto
+  // agregado.
   header: {
     paddingHorizontal: 14,
     paddingTop: 4,
     paddingBottom: 14,
-    gap: 6,
   },
   headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
+  },
+  headerBrot: {
+    flexShrink: 0,
+  },
+  headerTitleBlock: {
+    flex: 1,
+    gap: 4,
   },
   // Header — layout/typography only. Los colores salen de `neo` y se
   // aplican inline en el call site.
@@ -1110,7 +963,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     fontFamily: nunitoFamily('500'),
-    paddingLeft: 2,
   },
   // Cards
   cardsList: {
@@ -1265,12 +1117,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 12,
   },
-  emptyCheck: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  // Pedestal extruido + pozo hundido con Brot adentro (mismo bloque que
+  // el vacío de Notificaciones).
+  emptyPedestal: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyWell: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 10,
   },
   emptyTitle: {
     fontSize: 16,

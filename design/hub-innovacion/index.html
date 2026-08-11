@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub de acciones — tres direcciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#DCDFCD; --sheet:#F0EFE3; --surface:#E9EBE0;
+    --text:#24382A; --muted:#54644F; --green:#1F5429;
+    --font:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:var(--font);color:var(--text);
+       padding:46px 24px 90px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+           color:var(--muted);margin:0 0 10px}
+  h1{font-size:34px;font-weight:900;letter-spacing:-.8px;margin:0 0 10px;line-height:1.2}
+  .lede{font-size:15.5px;font-weight:700;color:var(--muted);margin:0 0 6px;max-width:68ch;line-height:1.55}
+
+  .grid{display:flex;flex-wrap:wrap;gap:18px;margin-top:34px}
+  a.card{
+    flex:1 1 290px;min-width:280px;text-decoration:none;color:inherit;
+    background:var(--sheet);border-radius:26px;padding:26px 24px 22px;
+    box-shadow:8px 8px 18px rgba(151,160,136,.42),-8px -8px 18px rgba(255,255,255,.92);
+    transition:transform .18s cubic-bezier(.32,.72,0,1), box-shadow .18s;
+    display:flex;flex-direction:column;
+  }
+  a.card:hover{transform:translateY(-3px);
+    box-shadow:10px 10px 24px rgba(151,160,136,.5),-10px -10px 24px rgba(255,255,255,.95)}
+  a.card:active{box-shadow:inset 4px 4px 9px rgba(151,160,136,.4),inset -4px -4px 9px rgba(255,255,255,.95);
+    transform:translateY(0)}
+  .num{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--muted)}
+  .name{font-size:23px;font-weight:900;letter-spacing:-.5px;margin:6px 0 8px}
+  .what{font-size:13.5px;font-weight:700;color:var(--muted);line-height:1.55;flex:1}
+  .tag{display:inline-block;margin-top:16px;font-size:11px;font-weight:800;letter-spacing:.06em;
+       padding:6px 12px;border-radius:999px;background:#DCEBD8;color:var(--green);align-self:flex-start}
+  .tag.warm{background:#F7E3CF;color:#8A4A1B}
+  .tag.cool{background:#D6E4F0;color:#1F4A6B}
+
+  .note{margin-top:38px;background:var(--surface);border-radius:22px;padding:22px 24px;
+        font-size:14px;font-weight:700;color:var(--muted);line-height:1.6}
+  .note strong{color:var(--text)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Hub de acciones · exploración</p>
+  <h1>Tres direcciones nuevas</h1>
+  <p class="lede">No son tres pieles del mismo sheet: cada una parte de una idea distinta de qué debería
+  ser el momento de cargar algo. Abrí las tres, reproducí la animación y probá la interacción con el
+  mouse. Abajo de cada prototipo está lo que gana y lo que arriesga, sin maquillar.</p>
+
+  <div class="grid">
+    <a class="card" href="./1-brote.html">
+      <span class="num">01</span>
+      <span class="name">Brote</span>
+      <span class="what">Del FAB crece un tallo y las acciones se despliegan como hojas. La app ES un
+      jardín —la racha, Brot, las plantitas— y el hub no usaba nada de eso. Cargar algo pasa a ser
+      plantar algo.</span>
+      <span class="tag">Identidad de marca</span>
+    </a>
+    <a class="card" href="./2-arco.html">
+      <span class="num">02</span>
+      <span class="name">Arco</span>
+      <span class="what">La mano no se mueve: mantenés el "+", las acciones se abren en abanico bajo el
+      pulgar y elegís deslizando y soltando. Un solo gesto continuo, la vía más rápida a la acción
+      dominante.</span>
+      <span class="tag cool">Ergonomía</span>
+    </a>
+    <a class="card" href="./3-directo.html">
+      <span class="num">03</span>
+      <span class="name">Directo</span>
+      <span class="what">El hub deja de ser un paso. Abrís y el pad de monto ya está listo con "Gasto"
+      elegido: tipeás en el instante cero. Las otras cuatro son modos que re-etiquetan el mismo pad.</span>
+      <span class="tag warm">Flujo · mata un tap</span>
+    </a>
+  </div>
+
+  <p class="note">Hoy el camino más usado son <strong>dos taps y una transición</strong> antes de poder
+  escribir el primer número (FAB → Gasto → aparece el teclado). Las tres direcciones atacan eso desde
+  ángulos distintos: <strong>Brote</strong> desde la identidad, <strong>Arco</strong> desde el gesto y
+  <strong>Directo</strong> desde el flujo. No son excluyentes —el acento de Brote puede vivir dentro de
+  Directo, por ejemplo—, así que si te gustan piezas de varias, decime cuáles y las combino.</p>
+</div>
+</body>
+</html>

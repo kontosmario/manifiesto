@@ -14,6 +14,7 @@ import {
   parsePrice,
   serializePrice,
 } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ReserveBlockProps {
   familyId: string
@@ -284,6 +285,7 @@ const styles = StyleSheet.create({
   reserveLabel: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.2,
     flexShrink: 1,
   },
@@ -291,6 +293,7 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     // El label (reserveLabel flexShrink:1) cede primero; el monto entero se
     // mantiene aunque la reserva acumulada llegue a millones.
@@ -314,6 +317,7 @@ const styles = StyleSheet.create({
   reserveActionText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
 })

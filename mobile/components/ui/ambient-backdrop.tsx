@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 type AmbientBackdropVariant = 'home' | 'form' | 'history' | 'commitments' | 'control'
@@ -16,6 +17,16 @@ interface AmbientGlowConfig {
   width: number
 }
 
+/**
+ * Halos de ambiente detrás del contenido, sólo en claro (en oscuro el
+ * canvas ya es profundo y cualquier halo se lee como una mancha).
+ *
+ * La paleta sale del vocabulario neo: verde del sistema para los dos
+ * halos de peso y el naranja de alerta para el calor de abajo. Las alfas
+ * (3–7%) y la geometría son las mismas de siempre — sobre el canvas
+ * salvia el tinte baja ~4% de luminosidad, que es exactamente el
+ * gradiente de profundidad que estos halos existen para dar.
+ */
 export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { variant: AmbientBackdropVariant }) {
   const { theme } = useAppTheme()
 
@@ -23,6 +34,7 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
     return null
   }
 
+  const neo = neoTokens('light')
   const variantGlows: Record<AmbientBackdropVariant, AmbientGlowConfig[]> = {
     control: [
       {
@@ -30,21 +42,21 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
         height: 228,
         top: 8,
         right: -88,
-        backgroundColor: withAlpha(theme.colors.primary, 0.06),
+        backgroundColor: withAlpha(neo.green, 0.06),
       },
       {
         width: 188,
         height: 188,
         left: -92,
         top: 236,
-        backgroundColor: withAlpha(theme.colors.success, 0.04),
+        backgroundColor: withAlpha(neo.greenDeep, 0.04),
       },
       {
         width: 166,
         height: 166,
         right: -32,
         bottom: 118,
-        backgroundColor: withAlpha(theme.colors.warning, 0.035),
+        backgroundColor: withAlpha(neo.warm, 0.035),
       },
     ],
     commitments: [
@@ -53,21 +65,21 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
         height: 220,
         top: -92,
         right: -58,
-        backgroundColor: withAlpha(theme.colors.primary, 0.07),
+        backgroundColor: withAlpha(neo.green, 0.07),
       },
       {
         width: 180,
         height: 180,
         left: -64,
         top: 220,
-        backgroundColor: withAlpha(theme.colors.primaryStrong, 0.045),
+        backgroundColor: withAlpha(neo.greenDeep, 0.045),
       },
       {
         width: 240,
         height: 240,
         right: -112,
         bottom: 54,
-        backgroundColor: withAlpha(theme.colors.warning, 0.05),
+        backgroundColor: withAlpha(neo.warm, 0.05),
       },
     ],
     form: [
@@ -76,21 +88,21 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
         height: 214,
         top: 16,
         right: -84,
-        backgroundColor: withAlpha(theme.colors.primary, 0.05),
+        backgroundColor: withAlpha(neo.green, 0.05),
       },
       {
         width: 168,
         height: 168,
         left: -78,
         top: 278,
-        backgroundColor: withAlpha(theme.colors.success, 0.04),
+        backgroundColor: withAlpha(neo.greenDeep, 0.04),
       },
       {
         width: 140,
         height: 140,
         right: -22,
         bottom: 122,
-        backgroundColor: withAlpha(theme.colors.warning, 0.035),
+        backgroundColor: withAlpha(neo.warm, 0.035),
       },
     ],
     history: [
@@ -99,49 +111,48 @@ export const AmbientBackdrop = memo(function AmbientBackdrop({ variant }: { vari
         height: 220,
         top: 18,
         right: -90,
-        backgroundColor: withAlpha(theme.colors.primary, 0.05),
+        backgroundColor: withAlpha(neo.green, 0.05),
       },
       {
         width: 176,
         height: 176,
         left: -82,
         top: 298,
-        backgroundColor: withAlpha(theme.colors.success, 0.04),
+        backgroundColor: withAlpha(neo.greenDeep, 0.04),
       },
       {
         width: 142,
         height: 142,
         right: -26,
         bottom: 138,
-        backgroundColor: withAlpha(theme.colors.warning, 0.03),
+        backgroundColor: withAlpha(neo.warm, 0.03),
       },
     ],
     home: [
-      // Top-right: V1 mint primary glow.
+      // Arriba-derecha: verde de acción, el halo de más peso.
       {
         width: 220,
         height: 220,
         top: 34,
         right: -92,
-        backgroundColor: withAlpha(theme.colors.primary, 0.045),
+        backgroundColor: withAlpha(neo.green, 0.045),
       },
-      // Mid-left: V1 coral glow (was success/green; switched to peach
-      // so the page background carries coral character instead of
-      // doubling up on green with the primary blob).
+      // Medio-izquierda: naranja de alerta en lugar de un segundo verde,
+      // para que el fondo no se lea monocromo a lo alto de la página.
       {
         width: 190,
         height: 190,
         left: -98,
         top: 328,
-        backgroundColor: withAlpha(theme.colors.peach, 0.04),
+        backgroundColor: withAlpha(neo.warm, 0.04),
       },
-      // Bottom-right: warning yellow — kept for atmospheric warmth.
+      // Abajo-derecha: verde profundo, el ancla de la composición.
       {
         width: 140,
         height: 140,
         right: -24,
         bottom: 84,
-        backgroundColor: withAlpha(theme.colors.warning, 0.03),
+        backgroundColor: withAlpha(neo.greenDeep, 0.03),
       },
     ],
   }

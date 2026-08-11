@@ -170,7 +170,7 @@
   },
   "addFab": {
     "label": "Agregar gasto",
-    "hint": "Abre el menú para registrar un gasto, ingreso, gasto fijo, importar y más",
+    "hint": "Mantén presionado y desliza para elegir, o toca para abrir el arco de acciones.",
     "registered": "Día sin gastos registrado",
     "markFailed": "No se pudo marcar. Reintenta en un momento.",
     "needSession": "Necesitas estar en sesión para importar.",
@@ -179,6 +179,74 @@
     "preparingAccount": "Estamos preparando tu cuenta, intenta de nuevo en un instante.",
     "unmarked": "Marca de día sin gastos removida.",
     "unmarkFailed": "No se pudo revertir. Reintenta en un momento."
+  },
+  "arcHub": {
+    "short": {
+      "fixed": "Fijo",
+      "import": "Importar",
+      "expense": "Gasto",
+      "noSpend": "Sin gasto",
+      "noSpendMarked": "Marcado",
+      "income": "Ingreso"
+    },
+    "eyebrow": {
+      "dragPointed": "Suelta para elegir",
+      "tapPointed": "Toca para elegir"
+    },
+    "cancel": "Cancelar",
+    "a11y": {
+      "opened": "Arco de acciones abierto. Cinco opciones, Gasto es la principal.",
+      "hint": {
+        "expense": "Abre el alta de gasto.",
+        "import": "Elige una captura para leer el ticket.",
+        "noSpend": "Marca el día de hoy como día sin gastos.",
+        "noSpendMarked": "Quita la marca de día sin gastos de hoy.",
+        "income": "Abre el alta de ingreso.",
+        "fixed": "Abre el alta de gasto fijo."
+      }
+    },
+    "brot": {
+      "que-bueno-verte": "¡Qué bueno verte!",
+      "raiz-dormida": "Se me durmió una raíz",
+      "sin-prisa": "Sin prisa",
+      "tu-fotosintetizas": "¿Tú también fotosintetizas?",
+      "anota-con-calma": "Anota con calma",
+      "caracol-saludo": "Un caracol me saludó",
+      "aqui-estoy-sin-juzgar": "Aquí estoy, sin juzgar",
+      "modo-jardin": "Modo jardín",
+      "me-regue-encima": "Me regué encima",
+      "dia-pesado": "¿Día pesado?",
+      "dos-hojas-energia": "Dos hojas y mucha energía",
+      "maceta-grande": "La maceta me queda grande",
+      "pensaba-en-la-lluvia": "Pensaba en la lluvia",
+      "hola-otra-vez": "Hola, soy yo otra vez",
+      "somos-dos-y-uno-es-planta": "Somos dos, y uno es planta",
+      "sol-aqui-adentro": "Hoy hay sol aquí adentro",
+      "toca-sin-miedo": "Toca sin miedo",
+      "hoja-izquierda-bosteza": "Mi hoja izquierda bosteza",
+      "crecer-cosquillas": "Crecer da cosquillas",
+      "tierra-tibia": "La tierra está tibia hoy",
+      "no-se-sumar-soy-planta": "No sé sumar, soy planta",
+      "que-plantamos-hoy": "¿Qué plantamos hoy?",
+      "viento-despeino": "El viento me despeinó",
+      "nadie-te-pide-nada": "Nadie te pide nada",
+      "casi-todo-agua": "Soy casi todo agua",
+      "seguimos-cuando-quieras": "Seguimos cuando quieras",
+      "sombra-un-rato": "¿Te hago sombra un rato?",
+      "recien-salgo-tierra": "Recién salgo de la tierra",
+      "practique-este-saludo": "Practiqué este saludo",
+      "hojas-contentas": "¡Tengo las hojas contentas!",
+      "pesa-el-globo-o-soy-yo": "¿Pesa el globo o soy yo?",
+      "tu-ritmo-tu-manera": "Tu ritmo, tu manera",
+      "poquito-de-agua": "Un poquito de agua y listo",
+      "ningun-gasto-te-define": "Ningún gasto te define",
+      "me-estire-saludar": "Me estiré para saludarte",
+      "risa-una-hormiga": "Una hormiga me hizo reír",
+      "regamos-el-jardin": "¿Regamos el jardín?",
+      "hoy-basta-estar-aqui": "Hoy basta con estar aquí",
+      "elige-yo-espero": "Elige, yo espero aquí",
+      "cinco-caminos-un-brote": "Cinco caminos, un brote"
+    }
   },
   "permissions": {
     "notifications": {

@@ -5,8 +5,6 @@ import { useRouter } from 'expo-router'
 import { toast } from '@/lib/toast-bus'
 import { neoConfirm } from '@/lib/confirm-bus'
 import { Screen } from '@/components/ui/screen'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoTokens } from '@/theme/neo-tokens'
 import { triggerHaptic } from '@/lib/haptics'
@@ -332,8 +330,6 @@ export function BillingScreen({
             />
           }
         >
-          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
           <View style={styles.body}>
             <ManageView
               snap={snap}

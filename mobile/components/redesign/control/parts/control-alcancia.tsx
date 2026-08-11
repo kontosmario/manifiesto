@@ -786,7 +786,9 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('900'),
     fontSize: 26,
     fontWeight: '900',
-    lineHeight: 26,
+    // Headroom sobre el fontSize (mismo motivo que el `amount` del hero): con
+    // `lineHeight == fontSize` iOS rebana el tope del `$` y de las cifras.
+    lineHeight: 26 * 1.2,
   },
   amountSpacing: {
     marginTop: 3,

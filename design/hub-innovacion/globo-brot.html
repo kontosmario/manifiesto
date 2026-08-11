@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Globo de Brot — opciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    --page:#12180F; --ink:#EDEFE2; --ink-dim:#9FAE97; --line:rgba(200,215,190,.16);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font);
+       padding:44px 28px 90px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto}
+  .eyebrow{font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;
+           color:var(--ink-dim);margin:0 0 10px}
+  h1{font-size:32px;font-weight:900;letter-spacing:-.6px;margin:0 0 12px}
+  .lede{font-size:15px;font-weight:600;color:var(--ink-dim);margin:0;max-width:76ch;line-height:1.6}
+  .lede b{color:var(--ink);font-weight:800}
+
+  .controls{display:flex;gap:10px;align-items:center;margin:26px 0 8px;flex-wrap:wrap}
+  button{font-family:var(--font);font-size:13px;font-weight:800;cursor:pointer;
+         background:#1E2A18;color:var(--ink);border:1px solid var(--line);
+         border-radius:999px;padding:9px 16px}
+  button:hover{background:#26331F}
+  button.on{background:#DCEBD8;color:#14210F;border-color:transparent}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(376px,1fr));gap:22px;margin-top:22px}
+  .opt{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#181F14}
+  .opt-hd{padding:15px 18px 13px;border-bottom:1px solid var(--line)}
+  .opt-k{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--ink-dim)}
+  .opt-n{font-size:18px;font-weight:900;margin:3px 0 5px;letter-spacing:-.3px}
+  .opt-d{font-size:12.5px;font-weight:600;color:var(--ink-dim);line-height:1.5}
+  .opt-rn{font-size:11.5px;font-weight:800;margin-top:9px;display:inline-block;
+          padding:4px 9px;border-radius:8px}
+  .rn-ok{background:#1E3A22;color:#A4E3A6}
+  .rn-warn{background:#3A3220;color:#E9C46F}
+  .pair{display:grid;grid-template-columns:1fr 1fr}
+
+  /* ── El escenario: fondo de la app + scrim, como en el hub ── */
+  .band{position:relative;height:206px;overflow:hidden;display:flex;
+        align-items:flex-end;justify-content:center;padding-bottom:6px}
+  .band .blob{position:absolute;border-radius:50%;filter:blur(26px);opacity:.85}
+  .band .scrim{position:absolute;inset:0}
+  .band .card{position:absolute;left:16px;right:16px;top:22px;height:74px;border-radius:22px}
+
+  .band[data-theme="light"]{--sheet:#F0EFE3;--on-scrim:#24382A;--rim:#24382A;--green:#2E7C39;
+    --raised-md:6px 6px 14px rgba(151,160,136,.42), -6px -6px 14px rgba(255,255,255,.9);
+    --raised-sm:5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    background:#DCDFCD}
+  .band[data-theme="light"] .scrim{background:rgba(185,190,172,.84)}
+  .band[data-theme="light"] .card{background:#E9EBE0;box-shadow:var(--raised-md)}
+  .band[data-theme="dark"]{--sheet:#1B2F22;--on-scrim:#F1EEDD;--rim:#93A78F;--green:#A4E3A6;
+    --raised-md:6px 6px 14px rgba(0,0,0,.5), -6px -6px 14px rgba(101,152,113,.1);
+    --raised-sm:5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    background:#0F1A13}
+  .band[data-theme="dark"] .scrim{background:rgba(10,19,13,.84)}
+  .band[data-theme="dark"] .card{background:#1D3426;box-shadow:var(--raised-md)}
+
+  .stack{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:22px}
+  .stack.side{flex-direction:row;align-items:flex-end;gap:10px}
+  .host{height:92px;display:flex;align-items:flex-end;justify-content:center}
+
+  /* ══════════════════════════════════════════════════════════
+     LAS OPCIONES. Base común y luego lo propio de cada una.
+     ══════════════════════════════════════════════════════════ */
+  .glo{position:relative;background:var(--sheet);color:var(--on-scrim);
+       font-size:12.5px;font-weight:800;line-height:17px;letter-spacing:.01em;
+       white-space:nowrap;padding:9px 14px;border-radius:16px;box-shadow:var(--raised-md)}
+
+  /* A · aro + relieve + colita cuadrada (lo aplicado hoy) */
+  .a .glo{border:1.5px solid var(--rim)}
+  .a .glo::after{content:'';position:absolute;bottom:-5.5px;left:50%;margin-left:-5.5px;
+    width:11px;height:11px;background:var(--sheet);
+    border-right:1.5px solid var(--rim);border-bottom:1.5px solid var(--rim);
+    transform:rotate(45deg)}
+
+  /* B · sin aro: puro relieve neumórfico */
+  .b .glo::after{content:'';position:absolute;bottom:-5.5px;left:50%;margin-left:-5.5px;
+    width:11px;height:11px;background:var(--sheet);transform:rotate(45deg)}
+
+  /* C · cápsula */
+  .c .glo{border-radius:999px;padding:8px 18px;border:1.5px solid var(--rim)}
+  .c .glo::after{content:'';position:absolute;bottom:-5px;left:50%;margin-left:-5px;
+    width:10px;height:10px;background:var(--sheet);
+    border-right:1.5px solid var(--rim);border-bottom:1.5px solid var(--rim);
+    transform:rotate(45deg)}
+
+  /* D · sin colita */
+  .d .glo{border:1.5px solid var(--rim)}
+  .d .stack{gap:14px}
+
+  /* E · colita orgánica (curva, tipo mensajería) */
+  .e .glo{border:1.5px solid var(--rim);border-bottom-left-radius:16px}
+  .e .tailsvg{position:absolute;bottom:-13px;left:50%;margin-left:-9px;width:18px;height:15px}
+
+  /* F · globo de pensamiento */
+  .f .glo{border:1.5px solid var(--rim)}
+  .f .puffs{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .f .puff{background:var(--sheet);border:1.5px solid var(--rim);border-radius:50%;
+           box-shadow:var(--raised-sm)}
+  .f .p1{width:13px;height:13px}
+  .f .p2{width:7px;height:7px}
+  .f .stack{gap:9px}
+
+  /* G · hoja: una punta, tres esquinas redondas */
+  .g .glo{border:1.5px solid var(--rim);
+    border-radius:18px 18px 18px 4px}
+  .g .glo::after{content:'';position:absolute;bottom:-5.5px;left:50%;margin-left:-5.5px;
+    width:11px;height:11px;background:var(--sheet);
+    border-right:1.5px solid var(--rim);border-bottom:1.5px solid var(--rim);
+    transform:rotate(45deg)}
+
+  /* H · al costado, como historieta */
+  .h .glo{border:1.5px solid var(--rim);margin-bottom:34px}
+  .h .glo::after{content:'';position:absolute;bottom:14px;left:-6px;
+    width:11px;height:11px;background:var(--sheet);
+    border-left:1.5px solid var(--rim);border-bottom:1.5px solid var(--rim);
+    transform:rotate(45deg)}
+
+  .foot{margin-top:34px;border:1px solid var(--line);border-radius:18px;padding:20px 22px;
+        font-size:13.5px;font-weight:600;color:var(--ink-dim);line-height:1.65;background:#181F14}
+  .foot b{color:var(--ink);font-weight:800}
+  .foot code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:#C9E4C4}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Hub Arco · globo de Brot</p>
+  <h1>Ocho maneras de que Brot hable</h1>
+  <p class="lede">Todas sobre el <b>scrim real</b> del hub y con los tokens del proyecto, en los dos temas.
+  Cambian en tres ejes: el <b>material</b> (aro o sólo relieve), la <b>forma</b> y el <b>conector</b> con Brot.
+  Debajo de cada una, lo que cuesta en React Native — que no es lo mismo que lo que cuesta en CSS.</p>
+
+  <div class="controls">
+    <button id="btn-msg" class="on">Cambiar mensaje</button>
+    <button id="btn-pose">Cambiar pose</button>
+    <button id="btn-long">Mensaje largo</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <p class="foot">
+    <b>Lo que hay que saber para elegir.</b> El globo da <b>1,56:1</b> contra el scrim en claro y
+    <b>1,32:1</b> en oscuro: el relleno solo NO lo recorta, lo recorta el relieve — y el aro lo asegura.
+    Por eso las opciones sin aro (<b>B</b>) dependen enteras de la sombra: en oscuro es donde más se juega.
+    <br><br>
+    La <b>E</b> necesita <code>react-native-svg</code> para la curva, y ahí se pierde el
+    <code>boxShadow</code> neumórfico (los filtros SVG en RN no degradan: directamente no dibujan).
+    La <b>D</b> es la única sin conector, o sea la única sin ningún riesgo de desalineación.
+    La <b>H</b> cambia la composición: el globo deja de tapar el arco pero se corre del eje.
+  </p>
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+  var OPTS = [
+    ['A','Aro + relieve','Lo aplicado hoy: superficie de hoja, aro de definición de 1,5 y colita cuadrada. Es el mismo par que usan los pucks del arco.','ok','Directo'],
+    ['B','Sólo relieve','Sin aro: puro neumorfismo, más suave y más nativo del sistema. Se apoya entero en la sombra para separarse del scrim.','ok','Directo'],
+    ['C','Cápsula','Radio completo y padding más ajustado. Se lee como chip, no como diálogo: más liviano, menos protagonista.','ok','Directo'],
+    ['D','Sin colita','El globo flota y la cercanía hace el trabajo. Lo más limpio, y el único sin conector que pueda desalinearse.','ok','Directo · sin riesgo'],
+    ['E','Colita curva','La colita sale del globo con una curva, como en las apps de mensajería. Más orgánico, menos geométrico.','warn','Necesita SVG · pierde relieve'],
+    ['F','Pensamiento','Dos circulitos en vez de colita. Brot no habla: piensa. El más de mascota de todos.','ok','Directo'],
+    ['G','Hoja','Tres esquinas redondas y una en punta, tomando el lenguaje del brote. La punta mira hacia Brot.','ok','Directo'],
+    ['H','Al costado','Globo a la derecha de Brot, colita lateral, como historieta. Libera el eje vertical sobre el arco.','ok','Directo · cambia composición']
+  ];
+
+  var MSGS = ['Modo jardín','Crecer da cosquillas','Se me durmió una raíz','Sin prisa',
+              'Nadie te pide nada','¿Regamos el jardín?','Hola, soy yo otra vez','Soy casi todo agua'];
+  var LONG = 'La maceta me queda grande';
+  var POSES = ['wave','laugh','shy','zen','love','sprout','idle','cool','radiant','think'];
+  var mi = 0, pi = 0, longOn = false;
+
+  var TAIL_SVG =
+    '<svg class="tailsvg" viewBox="0 0 18 15">' +
+    '<path d="M0.8 0.8 H17.2 C13 3 11.5 8.5 9 14.2 C7.5 8.5 4.5 3.4 0.8 0.8 Z"' +
+    ' fill="var(--sheet)" stroke="var(--rim)" stroke-width="1.5" stroke-linejoin="round"/>' +
+    '<path d="M0.8 0.8 H17.2" stroke="var(--sheet)" stroke-width="3"/>' +
+    '</svg>';
+
+  var grid = document.getElementById('grid');
+
+  OPTS.forEach(function (o) {
+    var k = o[0], name = o[1], desc = o[2], rn = o[3], rnTxt = o[4];
+    var el = document.createElement('div');
+    el.className = 'opt ' + k.toLowerCase();
+    var bands = ['light','dark'].map(function (t) {
+      var extra = k === 'E' ? TAIL_SVG : '';
+      var puffs = k === 'F'
+        ? '<div class="puffs"><div class="puff p1"></div><div class="puff p2"></div></div>' : '';
+      var stackCls = k === 'H' ? 'stack side' : 'stack';
+      var glo = '<div class="glo">' + MSGS[0] + extra + '</div>';
+      var host = '<div class="host"></div>';
+      var inner = k === 'H' ? host + glo : glo + puffs + host;
+      return '<div class="band" data-theme="' + t + '">' +
+        '<div class="card"></div>' +
+        '<div class="blob" style="left:-10px;top:-30px;width:150px;height:150px;background:' +
+          (t === 'light' ? 'rgba(180,205,170,.5)' : 'rgba(60,120,75,.35)') + '"></div>' +
+        '<div class="blob" style="right:-20px;bottom:-20px;width:170px;height:170px;background:' +
+          (t === 'light' ? 'rgba(210,220,190,.6)' : 'rgba(40,80,55,.4)') + '"></div>' +
+        '<div class="scrim"></div>' +
+        '<div class="' + stackCls + '">' + inner + '</div>' +
+      '</div>';
+    }).join('');
+
+    el.innerHTML =
+      '<div class="opt-hd">' +
+        '<div class="opt-k">' + k + '</div>' +
+        '<div class="opt-n">' + name + '</div>' +
+        '<div class="opt-d">' + desc + '</div>' +
+        '<span class="opt-rn ' + (rn === 'ok' ? 'rn-ok' : 'rn-warn') + '">En RN: ' + rnTxt + '</span>' +
+      '</div>' +
+      '<div class="pair">' + bands + '</div>';
+    grid.appendChild(el);
+  });
+
+  // Brot se monta después, para no pelear con el innerHTML de arriba.
+  [].forEach.call(document.querySelectorAll('.host'), function (h) {
+    var b = document.createElement('brot-mascot');
+    b.setAttribute('pose', POSES[0]);
+    b.setAttribute('size', '92');
+    b.setAttribute('shadow', 'false');
+    h.appendChild(b);
+  });
+
+  function setMsg(txt) {
+    [].forEach.call(document.querySelectorAll('.glo'), function (g) {
+      var svg = g.querySelector('.tailsvg');
+      g.textContent = txt;
+      if (svg) g.appendChild(svg);
+    });
+  }
+  document.getElementById('btn-msg').onclick = function () {
+    longOn = false; mi = (mi + 1) % MSGS.length; setMsg(MSGS[mi]);
+  };
+  document.getElementById('btn-long').onclick = function () {
+    longOn = !longOn; setMsg(longOn ? LONG : MSGS[mi]);
+  };
+  document.getElementById('btn-pose').onclick = function () {
+    pi = (pi + 1) % POSES.length;
+    [].forEach.call(document.querySelectorAll('brot-mascot'), function (b) {
+      b.setAttribute('pose', POSES[pi]);
+    });
+  };
+</script>
+</body>
+</html>

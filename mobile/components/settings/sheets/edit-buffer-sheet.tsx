@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import type { BufferMode } from '@/features/settings/settings-form.model'
-import {
-  currencyFormatter,
-  formatPriceInputValue,
-  parsePrice,
-  serializePrice,
-} from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
-import { neoInk } from '@/theme/neo-ink'
-import { neoTokens } from '@/theme/neo-tokens'
-import { radii } from '@/theme/palette'
+import { currencyFormatter } from '@/utils/money'
+import {
+  OnbSheetAmountCard,
+  OnbSheetBody,
+  OnbSheetHelper,
+  OnbSheetPercentCard,
+  OnbSheetTileGrid,
+  type OnbSheetTile,
+} from './onb-sheet-parts'
 
 interface EditBufferSheetProps {
   visible: boolean
@@ -25,7 +24,15 @@ interface EditBufferSheetProps {
 }
 
 const MODE_KEYS: BufferMode[] = ['none', 'fixed', 'percent']
+const MAX_BUFFER_PERCENT = 100
+/** Mismos atajos que el paso de ahorro del onboarding. */
+const PERCENT_CHIPS = [0, 5, 10, 20, 30] as const
 
+/**
+ * El onboarding no tiene un paso de colchón diario, así que la hoja se
+ * compone con sus mismas primitivas: tiles de elección del paso de
+ * ingresos + la card de monto / el panel de % con su numpad.
+ */
 export function EditBufferSheet({
   visible,
   currentMode,
@@ -34,154 +41,97 @@ export function EditBufferSheet({
   onClose,
   onSave,
 }: EditBufferSheetProps) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [mode, setMode] = useState<BufferMode>(currentMode)
-  const [draft, setDraft] = useState(() => serializePrice(currentValue))
+  const [draft, setDraft] = useState(() => Math.max(0, Math.round(currentValue)))
 
   useEffect(() => {
     if (visible) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate draft when sheet opens
       setMode(currentMode)
-      setDraft(serializePrice(currentValue))
+      setDraft(Math.max(0, Math.round(currentValue)))
     }
   }, [visible, currentMode, currentValue])
 
-  const parsed = useMemo(() => {
-    if (mode === 'none') return 0
-    if (mode === 'percent') {
-      const numeric = Number(draft.replace(/[^\d]/g, ''))
-      return Number.isFinite(numeric) ? numeric : Number.NaN
-    }
-    return parsePrice(draft)
-  }, [mode, draft])
-
-  const isValid =
-    mode === 'none'
-      ? true
-      : Number.isFinite(parsed) &&
-        parsed >= 0 &&
-        (mode !== 'percent' || parsed <= 100)
-
-  const hasChanged = mode !== currentMode || (isValid && parsed !== currentValue)
+  const value = mode === 'none' ? 0 : draft
+  const isValid = mode !== 'percent' || (draft >= 0 && draft <= MAX_BUFFER_PERCENT)
+  const hasChanged = mode !== currentMode || value !== currentValue
   const canSave = isValid && hasChanged
+
+  const tiles = useMemo<Array<OnbSheetTile<BufferMode>>>(
+    () =>
+      MODE_KEYS.map((key) => ({
+        id: key,
+        title: t(`settings:buffer.mode.${key}.label`),
+        subtitle: t(`settings:buffer.mode.${key}.hint`),
+      })),
+    [t],
+  )
 
   const helper = useMemo(() => {
     if (mode === 'none') return t('settings:buffer.helperNone')
-    if (!isValid) {
-      return mode === 'percent'
-        ? t('settings:buffer.helperInvalidPercent')
-        : t('settings:buffer.helperInvalidAmount')
-    }
-    if (mode === 'percent') return t('settings:buffer.helperPercent', { percent: parsed })
-    return t('settings:buffer.helperFixed', { amount: currencyFormatter.format(parsed) })
-  }, [mode, isValid, parsed, t])
-
-  const showError = mode !== 'none' && !isValid && draft.length > 0
-  const errorText =
-    showError && mode === 'percent'
-      ? t('settings:buffer.errorPercent')
-      : showError
-        ? t('settings:buffer.errorAmount')
-        : undefined
-
-  const handleMode = (next: BufferMode) => {
-    void triggerHaptic('selection')
-    setMode(next)
-  }
+    if (!isValid) return t('settings:buffer.helperInvalidPercent')
+    if (mode === 'percent') return t('settings:buffer.helperPercent', { percent: draft })
+    return t('settings:buffer.helperFixed', { amount: currencyFormatter.format(draft) })
+  }, [mode, isValid, draft, t])
 
   return (
-    <NumericEditSheet
-      visible={visible}
-      title={t('settings:buffer.sheetTitle')}
-      subtitle={t('settings:buffer.sheetSubtitle')}
-      rawValue={mode === 'none' ? '' : draft}
-      onChangeRawValue={setDraft}
-      formatDisplay={(raw) => {
-        if (mode === 'none') return t('settings:buffer.none')
-        if (mode === 'percent') return raw ? `${raw}%` : ''
-        return formatPriceInputValue(raw, false)
-      }}
-      displayEyebrow={
-        mode === 'none'
-          ? t('settings:buffer.eyebrowNone')
-          : mode === 'percent'
-            ? t('settings:buffer.eyebrowPercent')
-            : t('settings:buffer.eyebrowFixed')
-      }
-      displayPlaceholder={mode === 'percent' ? '0%' : '$ 0'}
-      helper={helper}
-      errorText={errorText}
-      maxIntegerDigits={mode === 'percent' ? 3 : undefined}
-      maxDecimalDigits={mode === 'percent' ? 0 : undefined}
-      numpadDisabled={mode === 'none'}
-      saveLabel={t('settings:buffer.saveLabel')}
-      saveDisabled={!canSave}
-      isSaving={isSaving}
-      onSave={() => {
-        if (!canSave || !isValid) return
-        onSave(mode, mode === 'none' ? 0 : parsed)
-      }}
+    <ModalCard
+      skin="neo"
       onClose={onClose}
-      headerExtra={
-        <View style={styles.modeGrid}>
-          {MODE_KEYS.map((modeKey) => {
-            const isOn = modeKey === mode
-            return (
-              <Pressable
-                key={modeKey}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isOn }}
-                onPress={() => handleMode(modeKey)}
-                style={[
-                  styles.modeCard,
-                  {
-                    backgroundColor: isOn ? ink.accent : neo.well,
-                    borderColor: isOn ? ink.accent : neo.sheetDivider,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.modeLabel,
-                    { color: isOn ? '#FFFFFF' : neo.text },
-                  ]}
-                >
-                  {t(`settings:buffer.mode.${modeKey}.label`)}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.modeHint,
-                    { color: isOn ? '#FFFFFF' : neo.textMuted },
-                  ]}
-                >
-                  {t(`settings:buffer.mode.${modeKey}.hint`)}
-                </Text>
-              </Pressable>
-            )
-          })}
-        </View>
+      subtitle={t('settings:buffer.sheetSubtitle')}
+      title={t('settings:buffer.sheetTitle')}
+      visible={visible}
+      footer={
+        <NeoButton
+          block
+          disabled={!canSave}
+          haptic="light"
+          label={t('settings:buffer.saveLabel')}
+          loading={isSaving}
+          onPress={() => {
+            if (!canSave) return
+            onSave(mode, value)
+          }}
+        />
       }
-    />
+    >
+      <OnbSheetBody>
+        <OnbSheetTileGrid
+          columns={3}
+          items={tiles}
+          onSelect={(next) => {
+            void triggerHaptic('selection')
+            setMode(next)
+            // El draft es uno solo para los dos modos con número: un monto
+            // en pesos leído como porcentaje quedaría fuera de rango.
+            if (next === 'percent') {
+              setDraft((prev) => Math.min(prev, MAX_BUFFER_PERCENT))
+            }
+          }}
+          selected={mode}
+        />
+
+        {mode === 'fixed' ? (
+          <OnbSheetAmountCard
+            kicker={t('settings:buffer.eyebrowFixed')}
+            onChange={setDraft}
+            value={draft}
+          />
+        ) : null}
+
+        {mode === 'percent' ? (
+          <OnbSheetPercentCard
+            chips={PERCENT_CHIPS}
+            eyebrow={t('settings:buffer.eyebrowPercent')}
+            max={MAX_BUFFER_PERCENT}
+            onChange={setDraft}
+            percent={draft}
+          />
+        ) : null}
+
+        <OnbSheetHelper>{helper}</OnbSheetHelper>
+      </OnbSheetBody>
+    </ModalCard>
   )
 }
-
-const styles = StyleSheet.create({
-  modeGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  modeCard: {
-    flex: 1,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    gap: 2,
-  },
-  modeLabel: { fontSize: 13, fontWeight: '800' },
-  modeHint: { fontSize: 11 },
-})

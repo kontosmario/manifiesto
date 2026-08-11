@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Empty-state twin del card "Próximos a pagar". Mismo frame + header +
@@ -73,6 +74,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.6,
   },
   rule: {

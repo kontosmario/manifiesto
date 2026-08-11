@@ -174,7 +174,7 @@ export function AddFixedQuickSheet({
                           borderWidth: isActive ? 2.5 : 1,
                           borderColor: isActive
                             ? neo.green
-                            : theme.colors.border,
+                            : neo.sheetDivider,
                         },
                     { opacity: pressed ? 0.7 : 1 },
                   ]}

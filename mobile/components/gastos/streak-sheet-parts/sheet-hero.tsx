@@ -8,6 +8,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { StreakData, StreakDerived } from '@/features/streaks/use-streak'
 import type { StatusTone } from './streak-sheet-tone'
+import { nunitoFamily } from '@/theme/typography'
 
 interface SheetHeroProps {
   data: StreakData
@@ -170,11 +171,12 @@ const styles = StyleSheet.create({
   heroDays: {
     fontSize: 44,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -2,
     lineHeight: 48,
   },
-  heroDaysLabel: { fontSize: 15, fontWeight: '600' },
-  heroHeadline: { fontSize: 13, fontWeight: '700', marginTop: 2 },
+  heroDaysLabel: { fontSize: 15, fontWeight: '600', fontFamily: nunitoFamily('600') },
+  heroHeadline: { fontSize: 13, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 2 },
   levelBadge: {
     borderRadius: 12,
     borderWidth: 1,
@@ -182,8 +184,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     alignItems: 'center',
   },
-  levelBadgeSuper: { fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
-  levelBadgeText: { fontSize: 14, fontWeight: '800', marginTop: 2 },
+  levelBadgeSuper: { fontSize: 9, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.8 },
+  levelBadgeText: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 2 },
   shieldChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -205,6 +207,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shieldChipLabel: { fontSize: 12, fontWeight: '800' },
+  shieldChipLabel: { fontSize: 12, fontWeight: '800', fontFamily: nunitoFamily('800') },
   shieldChipHint: { fontSize: 11, marginTop: 2, lineHeight: 14 },
 })

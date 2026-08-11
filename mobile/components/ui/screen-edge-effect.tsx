@@ -9,23 +9,36 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { withAlpha } from '@/theme/color-utils'
 
 /**
- * SCROLL EDGE EFFECT — la franja del safe area superior (status bar /
- * isla dinámica) deja de ser una banda opaca y pasa a ser un material
- * translúcido que SOLO aparece cuando hay contenido pasando por debajo.
+ * SCROLL EDGE EFFECT — la franja del safe area (arriba la status bar /
+ * isla dinámica, abajo el home indicator) deja de ser una banda opaca y
+ * pasa a ser un material translúcido que SOLO aparece cuando hay
+ * contenido pasando por detrás de ella.
  *
  * Es el patrón `scrollEdgeAppearance` de UIKit (iOS 26 lo renombró
  * "scroll edge effect" dentro de Liquid Glass), y el mismo que usan
- * Instagram/Apple: arriba del todo el chrome es invisible; al scrollear
- * el material difumina lo que pasa por detrás para que la hora y los
- * íconos del sistema no se mezclen con el contenido.
+ * Instagram/Apple: sin contenido que cruce el borde el chrome es
+ * invisible; al scrollear el material difumina lo que pasa por detrás
+ * para que la hora, los íconos del sistema y el home indicator no se
+ * mezclen con el contenido.
+ *
+ * ── LAS DOS VARIANTES SON EL MISMO MATERIAL ────────────────────────
+ * `edge` elige el borde, no un efecto distinto. Toda la geometría se
+ * expresa contra `u` = DISTANCIA NORMALIZADA AL BORDE, así que la
+ * curva, la tabla de capas y el velo son literalmente los mismos
+ * números en las dos variantes; lo único que cambia es el anclaje
+ * (`top: 0` / `bottom: 0`) y el eje del velo. El eje se invierte con
+ * `start`/`end` del gradiente y NO dando vuelta los arrays: si se
+ * invirtieran los arrays, `u` significaría "distancia al borde" en una
+ * variante y "distancia al pie" en la otra, y la fórmula dejaría de
+ * poder leerse una sola vez.
  *
  * ── POR QUÉ SE APILAN CAPAS ────────────────────────────────────────
  * `expo-blur` NO expone máscara de opacidad (la superficie entera es
  * `tint` + `intensity`), y `@react-native-masked-view/masked-view` no
- * está instalado. Sin máscara, un blur que se desvanece hacia abajo
- * solo se puede aproximar APILANDO capas de alturas decrecientes: cada
- * capa suma desenfoque sobre las de abajo, así que el material
- * ACUMULADO decrece a medida que se va cortando cada capa.
+ * está instalado. Sin máscara, un blur que se desvanece hacia adentro
+ * de la pantalla solo se puede aproximar APILANDO capas de alturas
+ * decrecientes: cada capa suma desenfoque sobre las de abajo, así que
+ * el material ACUMULADO decrece a medida que se va cortando cada capa.
  *
  * ── POR QUÉ SE VEÍAN ESCALINATAS (y qué las mata) ───────────────────
  * El borde inferior de cada capa es un corte DURO: el nativo hace
@@ -63,7 +76,9 @@ import { withAlpha } from '@/theme/color-utils'
  *    construcción, el material acumulado en ese punto— y el corte se
  *    reparte en unos pocos pt de rampa. Por eso `EDGE_BLUR_LAYERS`
  *    está ordenada ASCENDENTE por altura y se mapea en ese orden:
- *    reordenarla cambia el resultado visual.
+ *    reordenarla cambia el resultado visual. El argumento no depende
+ *    de la dirección —"más alta" es la que cubre más franja MEDIDA
+ *    DESDE EL BORDE—, así que el orden vale igual en las dos variantes.
  *
  * Efectos laterales asumidos: el radio de blur compone en CUADRATURA
  * (√Σσ²) mientras el tinte compone casi lineal, así que repartir el
@@ -78,14 +93,16 @@ import { withAlpha } from '@/theme/color-utils'
  * Android mantiene el gradiente (el blur real exige
  * `experimentalBlurMethod` con coste GPU no justificado en gama media,
  * mismo trade-off que `TabBarBackground`), que además ya desvanece
- * hacia abajo por definición y por lo tanto no tiene escalones.
+ * hacia adentro por definición y por lo tanto no tiene escalones.
  *
  * `pointerEvents="none"`: es decoración, nunca intercepta toques.
  */
 
-/** Scroll (px) a partir del cual el material aparece. Un umbral chico
- *  para que acompañe al primer gesto, pero > 0 para que el rebote
- *  elástico de iOS en el tope no lo haga parpadear. */
+/** Contenido oculto (px) del lado de afuera del borde a partir del cual
+ *  el material aparece. Un umbral chico para que acompañe al primer
+ *  gesto, pero > 0 para que el rebote elástico de iOS —que en los dos
+ *  extremos del recorrido despega el contenido unos px— no lo haga
+ *  parpadear. */
 export const SCROLL_EDGE_THRESHOLD = 6
 
 /** Una capa del degradé: alto relativo a la franja + intensidad de blur. */
@@ -96,11 +113,14 @@ export interface EdgeLayer {
   intensity: number
 }
 
+/** Borde de la pantalla que materializa el efecto. */
+export type ScreenEdgeSide = 'top' | 'bottom'
+
 /** Velo tonal: alfas del color de fondo en posiciones normalizadas. */
 export interface EdgeVeil {
   /** Alfa del color de fondo en cada stop. */
   alphas: readonly number[]
-  /** Posición de cada stop (0 = tope de la franja, 1 = pie). */
+  /** Posición de cada stop (0 = pegado al borde, 1 = pie de la franja). */
   locations: readonly number[]
 }
 
@@ -121,8 +141,9 @@ export interface EdgeCurve {
  */
 export const EDGE_CURVE: EdgeCurve = { count: 7, density: 30, falloff: 2 }
 
-/** Alfa del velo tonal arriba del todo (legibilidad de la hora). */
-const VEIL_TOP_ALPHA = 0.55
+/** Alfa del velo tonal pegado al borde (legibilidad del chrome del
+ *  sistema que se dibuja ahí: la hora arriba, el home indicator abajo). */
+const VEIL_EDGE_ALPHA = 0.55
 
 /**
  * Piso de intensidad. expo-blur documenta el rango 1-100; hoy valores
@@ -133,8 +154,8 @@ const VEIL_TOP_ALPHA = 0.55
 const MIN_INTENSITY = 1.5
 
 /**
- * Crecimiento del espaciado entre bordes. > 1 DENSIFICA hacia arriba,
- * que es donde la curva cae más rápido y donde por lo tanto los
+ * Crecimiento del espaciado entre bordes. > 1 DENSIFICA contra el
+ * borde, que es donde la curva cae más rápido y donde por lo tanto los
  * escalones serían más grandes si el espaciado fuera uniforme.
  */
 const SPACING_GROWTH = 1.25
@@ -148,7 +169,7 @@ function roundTo(value: number, decimals: number) {
   return Math.round(value * factor) / factor
 }
 
-/** Bordes inferiores de cada capa (ascendente, el último siempre 1). */
+/** Borde interior de cada capa (ascendente, el último siempre 1). */
 function buildLayerRatios(count: number): number[] {
   const widths: number[] = []
   let width = 1
@@ -180,8 +201,8 @@ function buildBandMidpoints(ratios: readonly number[]): number[] {
 export function buildEdgeLayers({ count, density, falloff }: EdgeCurve): EdgeLayer[] {
   const ratios = buildLayerRatios(count)
   const midpoints = buildBandMidpoints(ratios)
-  // Normalizado contra la primera banda para que el acumulado arriba
-  // del todo dé exactamente `density` sin importar N ni p.
+  // Normalizado contra la primera banda para que el acumulado pegado al
+  // borde dé exactamente `density` sin importar N ni p.
   const head = falloffAt(midpoints[0], falloff)
   const accumulated = midpoints.map((mid) => (density * falloffAt(mid, falloff)) / head)
   return ratios.map((heightRatio, index) => {
@@ -208,8 +229,8 @@ export function buildEdgeVeil(curve: EdgeCurve): EdgeVeil {
   const midpoints = buildBandMidpoints(buildLayerRatios(curve.count))
   const locations = [0, ...midpoints, 1]
   const alphas = [
-    VEIL_TOP_ALPHA,
-    ...midpoints.map((mid) => roundTo(VEIL_TOP_ALPHA * falloffAt(mid, curve.falloff), 3)),
+    VEIL_EDGE_ALPHA,
+    ...midpoints.map((mid) => roundTo(VEIL_EDGE_ALPHA * falloffAt(mid, curve.falloff), 3)),
     0,
   ]
   return { alphas, locations }
@@ -263,13 +284,36 @@ function toGradientLocations(
   return [first, second, ...rest]
 }
 
+/**
+ * Eje del velo. El alfa máximo va SIEMPRE pegado al borde: para la
+ * variante de abajo se invierte el eje del gradiente en vez de dar
+ * vuelta `alphas`/`locations` (ver el docblock de arriba).
+ */
+const VEIL_AXIS: Record<
+  ScreenEdgeSide,
+  { start: { x: number; y: number }; end: { x: number; y: number } }
+> = {
+  top: { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } },
+  bottom: { start: { x: 0.5, y: 1 }, end: { x: 0.5, y: 0 } },
+}
+
 interface ScreenEdgeEffectProps {
-  /** Alto de la franja = inset superior del dispositivo. */
+  /** Alto de la franja = inset del dispositivo en ese borde. */
   height: number
-  /** true = hay contenido por debajo (el usuario scrolleó). */
+  /** true = hay contenido cruzando por detrás de la franja. */
   active: boolean
   /** Fondo de la pantalla — base del gradiente en Android. */
   backgroundColor: string
+  /** Borde que se materializa. Mismo material, espejado. */
+  edge?: ScreenEdgeSide
+  /**
+   * Permiso para CREAR las capas de blur (ver el latch). El caller lo
+   * apaga mientras la pantalla no está a la vista: con las tabs
+   * pre-montadas, sin esto el borde inferior crearía las capas de todas
+   * en el arranque. Default `true` (el borde superior no lo necesita:
+   * su `active` ya nace en false).
+   */
+  mountable?: boolean
   /**
    * Solo para el banco de pruebas: tabla alternativa, ASCENDENTE por
    * altura (el orden del array ES el orden de pintado). `[]` apaga el
@@ -287,6 +331,8 @@ export function ScreenEdgeEffect({
   height,
   active,
   backgroundColor,
+  edge = 'top',
+  mountable = true,
   layers,
   veil,
 }: ScreenEdgeEffectProps) {
@@ -300,8 +346,18 @@ export function ScreenEdgeEffect({
   // pero las capas de backdrop existen igual. Se latchea en el render
   // (no en un efecto) para que el subárbol monte en el MISMO commit en
   // el que arranca el fade — si montara un frame después habría pop.
-  const hasBeenActive = useRef(active)
-  if (active) hasBeenActive.current = true
+  //
+  // Abajo el latch por sí solo NO alcanza: `active` nace en true en
+  // cualquier pantalla cuyo contenido desborde (es la definición del
+  // efecto), así que con las tabs pre-montadas el arranque crearía las
+  // capas de las 4 de una — 3 de ellas invisibles. Que vayan DETACHED
+  // acota el sampleo por frame, no la CREACIÓN de las vistas nativas,
+  // que es justo lo que el latch existe para evitar. Por eso el montaje
+  // se gatea además con `mountable`: el caller lo apaga mientras la
+  // pantalla no está enfocada. Al enfocarse, monta con `active` ya en
+  // true y `progress` arranca en 1 → aparece sin fade ni pop.
+  const hasBeenActive = useRef(active && mountable)
+  if (active && mountable) hasBeenActive.current = true
 
   useEffect(() => {
     const target = active ? 1 : 0
@@ -319,18 +375,26 @@ export function ScreenEdgeEffect({
   // materializar: no montamos nada.
   if (height <= 0) return null
 
-  // El degradé se extiende un poco MÁS ABAJO del inset para que la capa
-  // más suave muera fuera de la zona de la hora — si terminara justo en
-  // el inset, el propio final de la capa volvería a leerse como borde.
+  // El degradé se extiende un poco MÁS ADENTRO que el inset para que la
+  // capa más suave muera fuera de la zona del chrome del sistema — si
+  // terminara justo en el inset, el propio final de la capa volvería a
+  // leerse como borde.
   const fadeHeight = Math.round(height * 1.35)
   const blurLayers = layers ?? EDGE_BLUR_LAYERS
   const resolvedVeil =
     veil === undefined ? (Platform.OS === 'ios' ? EDGE_VEIL : ANDROID_VEIL) : veil
+  const isBottom = edge === 'bottom'
+  const veilAxis = VEIL_AXIS[edge]
 
   return (
     <Animated.View
       pointerEvents="none"
-      style={[styles.container, { height: fadeHeight }, animatedStyle]}
+      style={[
+        styles.container,
+        isBottom ? styles.containerBottom : styles.containerTop,
+        { height: fadeHeight },
+        animatedStyle,
+      ]}
     >
       {Platform.OS === 'ios' && hasBeenActive.current
         ? blurLayers.map((layer) => (
@@ -339,6 +403,7 @@ export function ScreenEdgeEffect({
               key={layer.heightRatio}
               style={[
                 styles.layer,
+                isBottom ? styles.layerBottom : styles.layerTop,
                 // Redondeo a la grilla de píxeles: con alturas
                 // fraccionarias el recorte queda antialiaseado y deja
                 // su propia costura de 1px, que es justo lo que
@@ -349,14 +414,19 @@ export function ScreenEdgeEffect({
             />
           ))
         : null}
-      {/* Velo tonal del color de fondo, desvaneciendo hacia abajo sobre
-          la misma curva que el blur: en iOS refuerza la legibilidad de
-          la hora sobre contenido claro sin tapar lo de atrás; en
-          Android ES el material (sin blur real). */}
+      {/* Velo tonal del color de fondo, desvaneciendo hacia adentro
+          sobre la misma curva que el blur: en iOS refuerza la
+          legibilidad del chrome del sistema sobre contenido claro sin
+          tapar lo de atrás; en Android ES el material (sin blur real).
+          `locations` se mide sobre el eje `start → end`, así que
+          invertir el eje reubica los stops solo — el array sigue
+          expresando "distancia al borde". */}
       {resolvedVeil ? (
         <LinearGradient
           colors={toGradientColors(backgroundColor, resolvedVeil.alphas)}
+          end={veilAxis.end}
           locations={toGradientLocations(resolvedVeil.locations)}
+          start={veilAxis.start}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
@@ -369,15 +439,24 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
-    top: 0,
     // Sobre el contenido scrolleable, debajo de sheets/modales (que
-    // montan en su propio host por encima del árbol del Screen).
+    // montan en su propio host por encima del árbol del Screen). En las
+    // tab-screens la barra flotante también queda por encima: la
+    // renderiza el navegador como hermana POSTERIOR a la escena, así que
+    // este zIndex no la alcanza — que es lo que se quiere (el material
+    // no puede ensuciar el glass de la barra).
     zIndex: 10,
   },
+  containerTop: { top: 0 },
+  containerBottom: { bottom: 0 },
   layer: {
     left: 0,
     position: 'absolute',
     right: 0,
-    top: 0,
   },
+  // Cada capa se ancla AL BORDE y crece hacia adentro: es lo que hace
+  // que su corte duro caiga siempre del lado interior, donde lo suavizan
+  // las capas más altas.
+  layerTop: { top: 0 },
+  layerBottom: { bottom: 0 },
 })

@@ -28,7 +28,8 @@
     "reviveLabel": "Revivir edición {{label}}, {{tone}}",
     "toneMargin": "margen",
     "toneExceeded": "excedido",
-    "toneEven": "empatado"
+    "toneEven": "empatado",
+    "outroCaption": "Cada ciclo cerrado queda en paz."
   },
   "paywall": {
     "lockChip": "ACCESO PAUSADO",

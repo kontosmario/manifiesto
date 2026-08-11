@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Línea info del expand panel — icon + label en una fila. Mirror del
@@ -68,6 +69,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     lineHeight: 18,
   },
 })

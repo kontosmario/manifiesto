@@ -3,6 +3,7 @@ import type { ControlMood } from '@/features/insights/control-model'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function ControlMoodOrb({ mood }: { mood: ControlMood }) {
   const { theme } = useAppTheme()
@@ -65,11 +66,13 @@ const styles = StyleSheet.create({
   moodOrbScore: {
     fontSize: 34,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1.2,
   },
   moodOrbLabel: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   moodOrbDetail: {
     fontSize: 11,

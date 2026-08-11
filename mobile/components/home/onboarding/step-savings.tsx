@@ -17,6 +17,7 @@ import { formatMoney, parsePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StepSavingsProps {
   monthlyIncome: number
@@ -375,9 +376,9 @@ function MonthChip({ months, selected, onPress, theme }: MonthChipProps) {
 
 const styles = StyleSheet.create({
   stack: { gap: 16 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 4 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6 },
+  eyebrow: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.6 },
   percentCard: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -390,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  percentValue: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6 },
+  percentValue: { fontSize: 28, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   percentChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   percentChip: {
     paddingHorizontal: 12,
@@ -398,10 +399,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
   },
-  percentChipText: { fontSize: 12, fontWeight: '700' },
+  percentChipText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   percentHint: { fontSize: 12, marginTop: 2 },
   hintRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 2 },
-  hintStrong: { fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  hintStrong: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800'), fontVariant: ['tabular-nums'] },
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,7 +420,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  toggleTitle: { fontSize: 14, fontWeight: '800' },
+  toggleTitle: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
   toggleMeta: { fontSize: 12, marginTop: 2 },
   goalForm: { gap: 12 },
   emojiSection: { gap: 10 },
@@ -445,5 +446,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthChipText: { fontSize: 14, fontWeight: '700' },
+  monthChipText: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
 })

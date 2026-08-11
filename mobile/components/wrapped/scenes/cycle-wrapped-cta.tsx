@@ -15,6 +15,8 @@ import Animated, {
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
+import { cssGradient, neoRadii } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import type { ApplyDecisionInput } from '@/features/month-close/use-month-close-decision'
 import { EXPO_OUT } from '../wrapped-constants'
@@ -25,7 +27,11 @@ import type { LeftoverOption } from './types'
 // Reemplaza el Pressable inline previo. Maneja:
 // 1. Opacity transition cuando va de disabled → enabled (CTA emerge
 //    al elegir una opción): 0.55 → 1.
-// 2. Shadow bloom: 0 → 8px 22px -6px rgba(166,239,143,0.45).
+// 2. Fill radial + sombra del CTA del sistema (`ctaGradient` + `shadows.cta`),
+//    provistos por el tono de la escena. La sombra es ESTÁTICA: la de antes se
+//    animaba con `shadowColor`/`shadowRadius` porque Reanimated no interpola
+//    strings de `boxShadow`, y era un halo lima que no existe en el sistema.
+//    Lo que emerge al habilitarse es la opacidad del bloque entero.
 // 3. Idle pulse cuando enabled: scale 1 → 1.012 → 1 cada 1.8s.
 // 4. Press scale 0.97 via usePressScale combinado con el idle pulse.
 // 5. Confetti dispatch al confirmar decisión REAL (no en flow vanilla
@@ -38,6 +44,8 @@ export function CycleWrappedCta({
   onDismiss,
   fireConfetti,
   ctaBg,
+  ctaGradientCss,
+  ctaShadow,
   ctaFg,
   reduced,
 }: {
@@ -48,6 +56,8 @@ export function CycleWrappedCta({
   onDismiss: () => void
   fireConfetti: () => void
   ctaBg: string
+  ctaGradientCss: string
+  ctaShadow: string
   ctaFg: string
   reduced: boolean
 }) {
@@ -105,10 +115,6 @@ export function CycleWrappedCta({
   const wrapperStyle = useAnimatedStyle(() => ({
     opacity: interpolate(enabledProgress.value, [0, 1], [0.55, 1]),
     transform: [{ scale: idlePulse.value }],
-    shadowColor: '#A6EF8F',
-    shadowOpacity: 0.45 * enabledProgress.value,
-    shadowRadius: 22 * enabledProgress.value,
-    shadowOffset: { width: 0, height: 8 * enabledProgress.value },
   }))
 
   const handlePress = useCallback(async () => {
@@ -185,7 +191,11 @@ export function CycleWrappedCta({
           onPress={() => void handlePress()}
           onPressIn={disabled ? undefined : press.onPressIn}
           onPressOut={disabled ? undefined : press.onPressOut}
-          style={[ctaStyles.cta, { backgroundColor: ctaBg }]}
+          style={[
+            ctaStyles.cta,
+            cssGradient(ctaGradientCss, ctaBg),
+            { boxShadow: ctaShadow },
+          ]}
         >
           <Text style={[ctaStyles.ctaText, { color: ctaFg }]}>{label}</Text>
           <MaterialIcons name="arrow-forward" size={18} color={ctaFg} />
@@ -202,11 +212,12 @@ const ctaStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingVertical: 16,
-    borderRadius: 18,
+    borderRadius: neoRadii.input,
   },
   ctaText: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.2,
   },
 })

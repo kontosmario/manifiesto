@@ -127,15 +127,13 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
 import { FreePeriodNudge } from '@/components/billing/free-period-nudge'
 import { PushPermissionPrompt } from '@/components/permissions/push-permission-prompt'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { ListRowSkeleton } from '@/components/ui/skeleton-layouts'
 import { Screen } from '@/components/ui/screen'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 import { MonthCloseDecisionSheet } from '@/components/home/sheets/month-close-decision-sheet'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
-import { StartingBalanceCta } from '@/components/home/starting-balance-cta'
-import { CollapsingReveal } from '@/components/home/collapsing-reveal'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { computeSavingsHeroChip } from '@/components/home/home-hero-savings-helpers'
 import {
@@ -531,12 +529,15 @@ export function NeoHomeScreen({ userId, familyId, preview = false }: NeoHomeScre
         />
       )}
       {shouldShowDashboardError ? (
-        <ErrorState
+        <NeoStateBlock
+          icon="error-outline"
           description={getErrorMessage(
             dashboard.dashboardError,
             t('states:error.server'),
           )}
           title={t('home:homeScreen.dashboardError')}
+          actionLabel={t('states:errorState.action')}
+          tone="error"
           onAction={() => {
             void dashboard.refetchAll()
           }}
@@ -865,6 +866,14 @@ function NeoHomeDashboard({
     trackTap('payday_pill', 'S2')
     handleChipConfirm()
   }, [trackTap, handleChipConfirm])
+  // Saldo inicial del ciclo: abre el sheet DIRECTO. handleChipConfirm no sirve
+  // acá — su guarda pide cobro pendiente / prompt pendiente / payday hoy, y en
+  // el arranque del ciclo ninguna de las tres tiene por qué darse.
+  const handleConfirmStartingBalance = useCallback(() => {
+    trackTap('payday_pill', 'S2')
+    void triggerHaptic('selection')
+    setCycleBalanceSheetOpen(true)
+  }, [trackTap])
 
   // ── Deletes del feed (haptics + aviso neo) ─────────────────────────
   // El fallo es un aviso sin decisión: va al toast del host global, que
@@ -915,9 +924,9 @@ function NeoHomeDashboard({
 
   // ── Números del hero (fuentes canónicas, tabla NÚMEROS del plan) ───
   const hero = homeMetrics.hero
-  // Promedio LINEAL — misma fórmula que use-home-metrics (§5).
-  const avgDailySpend =
-    dashboard.variableSpentInCurrentCycle / Math.max(1, hero.cycleDay)
+  // El promedio lineal del ciclo ya NO se calcula acá: era el numerador del
+  // medidor y lo dejaba clavado. La proyección de cierre, que sí lo necesita,
+  // lo deriva en `use-home-metrics` y llega por `hero.projectedClose`.
 
   // USD susurro — gate literal (usd_rate_enabled + moneda ≠ USD + rate OK).
   const usdRateCurrency = dashboard.familyFinanceQuery.data?.local_currency ?? null
@@ -989,17 +998,34 @@ function NeoHomeDashboard({
 
   // Cupo diario (F2): pastilla "CUPO HOY" + bar GASTADO/DISPONIBLE; oculto si
   // cupo ≤ 0. spentRatio = fillRatio (clamp 0-1) de deriveGaugeState.
+  // El medidor mide el DÍA, no el promedio del ciclo: `deriveGaugeState`
+  // resuelve adentro la rama donde el cupo ya descontó el gasto, y devuelve
+  // los tres números ya conciliados entre sí (apertura / gastado / queda).
   const gaugeVM = useMemo<HomeGaugeVM | null>(() => {
-    const state = deriveGaugeState({ avgDailySpend, dailyBudget: hero.dailyBudget })
+    const state = deriveGaugeState({
+      spentToday: hero.spentToday,
+      dailyBudget: hero.dailyBudget,
+      cupoNetsSpend: hero.cupoNetsSpend,
+      budgetDays: dashboard.effectiveCycleDays,
+      discretionaryRaw: hero.discretionaryRaw,
+    })
     if (!state) return null
     return {
-      cupoAmount: formatMoneyShort(hero.dailyBudget),
-      spentLabel: formatMoneyShort(avgDailySpend),
-      availableLabel: formatMoneyShort(Math.max(0, hero.dailyBudget - avgDailySpend)),
+      // El ticket muestra lo que TE QUEDA hoy (decisión owner 2026-08-08):
+      // baja con cada gasto y sube si lo borrás. La barra al lado rotula
+      // contra QUÉ se mide —"GASTADO $X DE $Y"— así ningún número se repite.
+      cupoAmount: formatMoneyShort(state.remainingToday),
+      spentLabel: formatMoneyShort(state.spentToday),
+      availableLabel: formatMoneyShort(state.openingBudget),
       spentRatio: state.fillRatio,
       status: state.status,
     }
-  }, [avgDailySpend, hero.dailyBudget])
+  }, [
+    hero.spentToday,
+    dashboard.effectiveCycleDays,
+    hero.dailyBudget,
+    hero.cupoNetsSpend,
+  ])
 
   // Pill del día: warning de cobro pendiente (keys existentes) o "día N de M".
   const dayPill = hero.paydayPending
@@ -1079,20 +1105,28 @@ function NeoHomeDashboard({
 
   // ── Chips: miembros + sueldo ───────────────────────────────────────
   const membersChip: HomeMembersChipVM | null = useMemo(() => {
-    if (isSolo) return null
     if (familyMembers.length === 0) return null
     // Avatares REALES: SVG del pack (avatarSlug) o iniciales (fallback).
     // El ring pinta el color del chip para separar el overlap del stack.
     const ring = HOME_SPEC[mode].membersBackground
     return {
-      avatars: familyMembers.slice(0, 2).map((m) =>
+      avatars: familyMembers.slice(0, 2).map((m, index) =>
         m.avatarSlug ? (
-          <AvatarAnimal key={m.id} slug={m.avatarSlug} size={26} ringColor={ring} />
+          <AvatarAnimal
+            key={m.id}
+            slug={m.avatarSlug}
+            size={26}
+            ringColor={ring}
+            backgroundTint={index === 0 ? HOME_SPEC[mode].memberAvatarA : HOME_SPEC[mode].memberAvatarB}
+          />
         ) : (
           <Avatar key={m.id} name={m.name} color={m.color} size={26} ringColor={ring} />
         ),
       ),
-      count: familyMembers.length,
+      // Solitaria: el chip muestra al propio usuario, sin conteo (pedido
+      // owner). No es tappable: invitar es owner-only y en solo ni siquiera
+      // existe la fila en Ajustes.
+      count: isSolo ? null : familyMembers.length,
     }
   }, [isSolo, familyMembers, mode])
 
@@ -1106,10 +1140,23 @@ function NeoHomeDashboard({
     )
   }, [lastConfirmedAt, today])
 
+  // El ciclo todavía no arrancó con un saldo inicial confirmado.
+  const needsStartingBalance =
+    isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0
+
   const paydayChip: HomePaydayChipVM | null = useMemo(() => {
     if (isDynamicIncome) return null
     if (!hero.incomeConfigured)
       return { kind: 'configure', label: t('home:paydayPill.configureSalary') }
+    // Confirmar el saldo inicial MANDA sobre el countdown y sobre el resto de
+    // los estados: hasta que el ciclo arranca con un saldo, "Sueldo en N días"
+    // es ruido (pedido owner — este chip absorbió la banda de saldo inicial).
+    if (needsStartingBalance)
+      return {
+        kind: 'confirmBalance',
+        label: t('home:paydayPill.confirmStartingBalance'),
+        a11yLabel: t('home:startingBalanceCta.accessibility'),
+      }
     if (confirmedToday) return { kind: 'paidToday', label: t('home:paydayPill.gotPaidToday') }
     // Cobró pero falta confirmar (o el cobro es HOY) → "¿Ya cobraste?".
     // pending y confirmedToday son mutuamente excluyentes (va después de
@@ -1117,7 +1164,15 @@ function NeoHomeDashboard({
     if (pending || days === 0) return { kind: 'pending', label: t('home:paydayPill.didYouGetPaid') }
     if (days == null) return null
     return { kind: 'daysUntil', days, label: t('home:paydayPill.payInDays', { count: days }) }
-  }, [isDynamicIncome, hero.incomeConfigured, confirmedToday, pending, days, t])
+  }, [
+    isDynamicIncome,
+    hero.incomeConfigured,
+    needsStartingBalance,
+    confirmedToday,
+    pending,
+    days,
+    t,
+  ])
   // Interactivo solo cuando hay acción: configurar sueldo, o confirmar
   // cobro (pending / prompt pendiente / payday hoy) — semántica vieja.
   const paydayActionable =
@@ -1130,9 +1185,11 @@ function NeoHomeDashboard({
       ? undefined
       : paydayChip.kind === 'configure'
         ? handlePressConfigureIncome
-        : paydayActionable && paydayChip.kind !== 'paidToday'
-          ? handleChipConfirmTracked
-          : undefined
+        : paydayChip.kind === 'confirmBalance'
+          ? handleConfirmStartingBalance
+          : paydayActionable && paydayChip.kind !== 'paidToday'
+            ? handleChipConfirmTracked
+            : undefined
 
   // ── Resumen del ciclo ──────────────────────────────────────────────
   const topCategory = useMemo(
@@ -1476,8 +1533,7 @@ function NeoHomeDashboard({
       </NeoTourStep>
       </RiseView>
 
-      {/* Chips — paso familyStrip con las 4 ramas (modo, solo):
-          dinámico+solo salta el wrap (la fila colapsa sola). */}
+      {/* Chips — paso familyStrip con las 4 ramas (modo, solo). */}
       <RiseView delay={60}>
       {(() => {
         const chipsNode = (
@@ -1485,10 +1541,19 @@ function NeoHomeDashboard({
             mode={mode}
             members={membersChip}
             payday={paydayChip}
-            membersLabel={t('home:familyStrip.membersLabel')}
+            membersLabel={
+              isSolo
+                ? t('home:familyStrip.soloLabel')
+                : t('home:familyStrip.membersLabel')
+            }
             onPressPayday={handlePressPayday}
           />
         )
+        // Sin ningún chip la fila colapsa: el paso apuntaría a un target de
+        // altura 0. Dinámico+solo queda afuera aunque el chip de miembros ya
+        // se muestre: el copy disponible habla del grupo familiar o del
+        // próximo cobro, y en esa combinación no aplica ninguno.
+        if (!membersChip && !paydayChip) return chipsNode
         if (isDynamicIncome && isSolo) return chipsNode
         return (
           <NeoTourStep
@@ -1508,20 +1573,6 @@ function NeoHomeDashboard({
         )
       })()}
       </RiseView>
-
-      {/* Onboarding del ciclo (G4) — CTA + colapso suave, tal cual v1. */}
-      <CollapsingReveal
-        visible={
-          isOnboardingFlow && !onboardingSkippedViaExpense && dashboard.monthlyIncome > 0
-        }
-        hideDelayMs={320}
-        style={styles.startingBalanceSlot}
-      >
-        <StartingBalanceCta
-          tourOrder={99}
-          onPress={() => setCycleBalanceSheetOpen(true)}
-        />
-      </CollapsingReveal>
 
       {/* ① Hero */}
       <RiseView delay={100}>
@@ -1550,9 +1601,9 @@ function NeoHomeDashboard({
           fixedChip={fixedChipLabel}
           gauge={gaugeVM}
           gaugeHeadingLabel={t('home:gauge.canSpendToday')}
-          gaugeCupoLabel={t('home:gauge.cupoToday')}
+          gaugeCupoLabel={t('home:gauge.leftToday')}
           gaugeSpentLabel={t('home:gauge.spent')}
-          gaugeAvailableLabel={t('home:gauge.available')}
+          gaugeAvailableLabel={t('home:gauge.ofTarget')}
           projectionLabel={t('home:gauge.projectionLink')}
           projectionA11yLabel={t('home:gauge.projectionA11y')}
           emptyCopy={t('home:hero.emptyProjectionHint')}
@@ -1676,17 +1727,20 @@ function NeoHomeDashboard({
         highlight={{ borderRadius: 22, padding: 4 }}
       >
         {isLoadingActivity ? (
-          // G13: skeleton funcional actual; restyle neo = pase aparte.
           <View style={styles.activitySkeleton}>
-            <ListRowSkeleton rows={3} />
+            <ListRowSkeleton rows={3} skin="neo" />
           </View>
         ) : activityErrorKind ? (
-          <ErrorState
+          <NeoStateBlock
+            icon="error-outline"
             description={
               activityErrorKind === 'network'
                 ? t('states:error.network')
                 : t('states:error.server')
             }
+            title={t('states:errorState.title')}
+            actionLabel={t('states:errorState.action')}
+            tone="error"
             onAction={handleActivityRetry}
           />
         ) : !hasMovements ? (
@@ -1732,6 +1786,7 @@ function NeoHomeDashboard({
                     accessibilityHint={t('home:activitySection.swipeDeleteHint')}
                     rightActions={[dangerAction]}
                     borderRadius={22}
+                    skin="neo"
                     isProcessing={
                       isIncome
                         ? pendingDeleteIncomeId === id
@@ -1794,7 +1849,6 @@ const styles = StyleSheet.create({
     // Mismo offset top que la Home vigente (safe area + 14pt).
     paddingTop: 14,
   },
-  startingBalanceSlot: { paddingBottom: 12 },
   activitySkeleton: { marginTop: 12, gap: 6 },
   activityList: { marginTop: 12, gap: 10 },
   // Wrapper de sombra por fila (radius = card): la sombra vive acá (sin

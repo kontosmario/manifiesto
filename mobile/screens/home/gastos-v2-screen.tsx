@@ -80,6 +80,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { getErrorMessage } from '@/utils/error-message'
 import i18n from '@/lib/i18n'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GastosV2ScreenProps {
   familyId: string
@@ -1160,6 +1161,7 @@ const styles = StyleSheet.create({
   loadingMoreText: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
   endOfListBlock: {
     flexDirection: 'row',
@@ -1174,6 +1176,7 @@ const styles = StyleSheet.create({
   endOfList: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.8,
   },
   emptyCard: {
@@ -1194,7 +1197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: { flex: 1, gap: 2 },
-  emptyPrimary: { fontSize: 14, fontWeight: '700' },
+  emptyPrimary: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   emptySecondary: { fontSize: 12, lineHeight: 16 },
 })
 

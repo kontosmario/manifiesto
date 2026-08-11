@@ -22,6 +22,7 @@ import { HikeAlertRow, SignalRow } from './fijos-proximos-parts/alert-rows'
 import { RuleScale } from './fijos-proximos-parts/rule-scale'
 import { UpcomingMarquee } from './fijos-proximos-parts/upcoming-marquee'
 import { UrgentHeaderDot } from './fijos-proximos-parts/urgent-header-dot'
+import { nunitoFamily } from '@/theme/typography'
 
 interface FijosProximosCardProps {
   upcoming?: FijoItem[]
@@ -252,11 +253,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.6,
   },
   headerCount: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     fontVariant: ['tabular-nums'],
   },
   // ── Header dot urgente ──────────────────────────────────────────
@@ -276,6 +279,7 @@ const styles = StyleSheet.create({
   calmText: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     flex: 1,
   },
   // AVISOS sub-section
@@ -289,6 +293,7 @@ const styles = StyleSheet.create({
   alertsLabel: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.4,
   },
   alertsLine: {

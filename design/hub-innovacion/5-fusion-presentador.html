@@ -1,0 +1,1492 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub de acciones — Fusión B · Brot presentador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    --d-micro: 120ms;
+    --d-quick: 180ms;
+    --d-standard: 240ms;
+    --d-deliberate: 320ms;
+    --d-breath: 2800ms;
+
+    --t-branch: 460ms;
+    --t-branch-back: 260ms;
+    --t-bloom: 380ms;
+
+    --spring-bud: cubic-bezier(0.34, 1.5, 0.5, 1);
+    --spring-celebrate: cubic-bezier(0.34, 1.56, 0.46, 1);
+    --ease-grow: cubic-bezier(0.22, 0.9, 0.3, 1);
+    --ease-retract: cubic-bezier(0.55, 0, 0.7, 0.2);
+    --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-standard: cubic-bezier(0.22, 0.9, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: #171C16;
+    color: #E7EADE;
+    padding: 36px 28px 90px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ Chrome de la página ═══ */
+  .page-head { max-width: 960px; margin: 0 auto 30px; }
+  .kicker {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #8FA089; margin: 0 0 8px;
+  }
+  h1 { font-size: 31px; font-weight: 900; letter-spacing: -.9px; margin: 0 0 12px; }
+  .lede { font-size: 14.5px; font-weight: 600; line-height: 1.62; color: #A8B4A0; margin: 0; max-width: 76ch; }
+  .lede + .lede { margin-top: 11px; }
+  .lede b { color: #C9F3C6; font-weight: 800; }
+  .lede i { color: #D8DFCF; font-style: italic; }
+
+  .controls {
+    max-width: 960px; margin: 24px auto 34px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--font); font-size: 14px; font-weight: 900; letter-spacing: -.2px;
+    color: #0F1E14; border: 0; cursor: pointer;
+    padding: 12px 22px; border-radius: 22px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    box-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .btn:active { transform: scale(.97); }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: #A8B4A0; cursor: pointer;
+    padding: 10px 16px; border-radius: 20px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle input { accent-color: #A4E3A6; width: 15px; height: 15px; }
+  .hint-inline { font-size: 12.5px; font-weight: 700; color: #7C917A; padding: 10px 0; }
+
+  .frames { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .frame-col { display: flex; flex-direction: column; gap: 13px; }
+  .frame-label {
+    text-align: center; font-size: 11px; font-weight: 800;
+    letter-spacing: .1em; color: #8FA089; text-transform: uppercase;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     EL TELÉFONO — 393×830
+     ══════════════════════════════════════════════════════ */
+  .stage {
+    width: 393px; height: 830px; border-radius: 46px;
+    position: relative; overflow: hidden; flex: none;
+    font-family: var(--font);
+    box-shadow: 0 34px 80px rgba(8,14,8,.55);
+    touch-action: none;
+  }
+
+  .stage[data-theme="light"] {
+    --bg: #DCDFCD;
+    --sheet: #F0EFE3;
+    --surface: #E9EBE0;
+    --well: #E3E5D8;
+    --text: #24382A;
+    --muted: #54644F;
+    --tertiary: #9AA694;
+    --green: #2E7C39;
+    --green-deep: #1F5429;
+    --cta-fill: radial-gradient(circle at 32% 28%, #489350, #2E7434 85%);
+    --cta-ink: #F5F2E1;
+    --scrim: rgba(185,190,172,.92);
+    --on-scrim: #24382A;
+    --rim: #54644F;
+    --branch-a: #1F5429;
+    --branch-b: #276230;
+    --leaf-fill: #276230;
+    --raised-bg: linear-gradient(145deg, #ECEEE3, #E1E4D6);
+    --raised-lg: 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --raised-md: 6px 6px 12px rgba(151,160,136,.4), -6px -6px 12px rgba(255,255,255,.9);
+    --raised-sm: 5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    --inset-md: inset 3px 3px 7px rgba(151,160,136,.35), inset -3px -3px 7px rgba(255,255,255,.9);
+    --inset-lg: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+    --inset-cta: inset 5px 5px 11px rgba(15,45,20,.5), inset -4px -4px 9px rgba(255,255,255,.22);
+    --cta-shadow: 0 12px 24px rgba(46,116,52,.4), inset 0 2px 3px rgba(255,255,255,.3);
+    --deck-shadow: 0 22px 44px rgba(60,72,54,.30), 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --tile-lip: inset 0 1px 0 rgba(255,255,255,.55);
+    --glow: rgba(46,124,57,.42);
+    --ghost: rgba(36,56,42,.16);
+    --ghost-ring: rgba(36,56,42,.32);
+    background: #B9BEAC;
+  }
+
+  .stage[data-theme="dark"] {
+    --bg: #0F1A13;
+    --sheet: #1B2F22;
+    --surface: #1D3426;
+    --well: #142519;
+    --text: #F1EEDD;
+    --muted: #93A78F;
+    --tertiary: #7C917A;
+    --green: #A4E3A6;
+    --green-deep: #A4E3A6;
+    --cta-fill: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    --cta-ink: #0F1E14;
+    --scrim: rgba(10,19,13,.92);
+    --on-scrim: #F1EEDD;
+    --rim: #93A78F;
+    --branch-a: #3E7D46;
+    --branch-b: #6FB871;
+    --leaf-fill: #6FB871;
+    --raised-bg: linear-gradient(145deg, #1D3426, #132318);
+    --raised-lg: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --raised-md: 6px 6px 12px rgba(0,0,0,.5), -6px -6px 12px rgba(101,152,113,.1);
+    --raised-sm: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    --inset-md: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+    --inset-lg: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.08);
+    --inset-cta: inset 5px 5px 11px rgba(0,0,0,.55), inset -4px -4px 9px rgba(190,240,195,.18);
+    --cta-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    --deck-shadow: 0 22px 44px rgba(0,0,0,.55), 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --tile-lip: inset 0 1px 0 rgba(164,227,166,.1);
+    --glow: rgba(140,225,150,.4);
+    --ghost: rgba(241,238,221,.16);
+    --ghost-ring: rgba(241,238,221,.34);
+    background: #0A130D;
+  }
+
+  /* ── Recorte de la Home ── */
+  .home { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px 4px; color: var(--text); font-size: 15px; font-weight: 800;
+  }
+  .sb-right { display: flex; align-items: center; gap: 6px; }
+  .bars { display: flex; align-items: flex-end; gap: 2.5px; }
+  .bars i { width: 3px; border-radius: 1px; background: currentColor; display: block; }
+  .battery { width: 23px; height: 11.5px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; }
+  .battery > i { display: block; width: 62%; height: 100%; background: currentColor; border-radius: 1.5px; }
+
+  .home-head { display: flex; align-items: center; gap: 12px; padding: 14px 22px 0; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+  .home-title { font-size: 21px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
+  .home-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+  .hero {
+    margin: 16px 20px 0; height: 172px; border-radius: 32px;
+    background: linear-gradient(155deg, #244235 0%, #1F590D 55%, #297811 100%);
+    box-shadow: 12px 12px 26px rgba(124,138,110,.55);
+    padding: 22px 24px; color: #F7F4E4;
+  }
+  .stage[data-theme="dark"] .hero { box-shadow: 12px 12px 26px rgba(0,0,0,.6); }
+  .hero-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .14em; opacity: .88; }
+  .hero-amount { font-size: 42px; font-weight: 900; letter-spacing: -1.6px; margin-top: 8px; }
+  .hero-meter { height: 9px; border-radius: 6px; background: rgba(255,255,255,.22); margin-top: 20px; overflow: hidden; }
+  .hero-meter > i { display: block; height: 100%; width: 63%; border-radius: 6px; background: #C9F3C6; }
+  .hero-foot { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 10px; opacity: .9; }
+
+  .chips { display: flex; gap: 10px; margin: 16px 20px 0; }
+  .chip {
+    flex: 1; height: 74px; border-radius: 22px; background: var(--raised-bg); box-shadow: var(--raised-sm);
+    padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .chip-k { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .chip-v { font-size: 17px; font-weight: 900; letter-spacing: -.6px; color: var(--text); }
+  .rows-bg { margin: 16px 20px 0; display: flex; flex-direction: column; gap: 9px; }
+  .row-bg { height: 56px; border-radius: 20px; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+
+  /* ── Nav + FAB ── */
+  .nav {
+    position: absolute; left: 16px; right: 16px; bottom: 26px; height: 68px;
+    border-radius: 32px; background: var(--raised-bg); box-shadow: var(--raised-lg);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 26px; z-index: 1;
+  }
+  .nav i { width: 22px; height: 22px; border-radius: 7px; background: var(--tertiary); opacity: .5; display: block; }
+  .fab {
+    position: absolute; left: 50%; bottom: 42px; width: 62px; height: 62px;
+    transform: translateX(-50%); border-radius: 50%;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center; color: var(--cta-ink);
+    z-index: 8; cursor: grab; user-select: none; -webkit-user-select: none;
+    transition: transform var(--d-quick) var(--ease-ios), box-shadow var(--d-quick) var(--ease-ios);
+  }
+  .fab:active { cursor: grabbing; }
+  .fab-glyph { display: block; transition: transform var(--d-standard) var(--spring-bud); }
+  .stage.is-open .fab { transform: translateX(-50%) scale(.86); box-shadow: var(--inset-cta); }
+  .stage.is-open .fab-glyph { transform: rotate(45deg); }
+  .homebar {
+    position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+    width: 132px; height: 5px; border-radius: 3px; background: var(--text); opacity: .55; z-index: 9;
+  }
+
+  /* ── Scrim ── */
+  .scrim {
+    position: absolute; inset: 0; background: var(--scrim); z-index: 2;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--d-standard) var(--ease-standard);
+  }
+  .stage.is-open .scrim { opacity: 1; pointer-events: auto; }
+
+  /* ══════════════════════════════════════════════════════
+     LAS RAMAS (piel de Brote) sobre la geometría del Arco
+     ══════════════════════════════════════════════════════ */
+  .arc { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  /* `>` a propósito: sin él este regla también agarra los íconos SVG de
+     adentro de cada capullo y los clava en la esquina superior izquierda. */
+  .arc > svg { position: absolute; inset: 0; overflow: visible; }
+
+  /* El `stroke-linecap: round` pinta un punto en el arranque aunque el trazo
+     esté completamente descontado: la rama también apaga su opacidad. */
+  .branch {
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    stroke: var(--branch-url, #276230);
+    stroke-dasharray: var(--len); stroke-dashoffset: var(--len); opacity: 0;
+    transition:
+      stroke-dashoffset var(--t-branch-back) var(--ease-retract) var(--d-out, 0ms),
+      opacity 1ms linear calc(var(--t-branch-back) + var(--d-out, 0ms));
+  }
+  .stage.is-open .branch {
+    stroke-dashoffset: 0; opacity: 1;
+    transition:
+      stroke-dashoffset var(--t-branch) var(--ease-grow) var(--d-in, 0ms),
+      opacity 1ms linear var(--d-in, 0ms);
+  }
+
+  .leaflet {
+    fill: var(--leaf-fill); transform-box: fill-box;
+    transform: scale(0); opacity: 0;
+    transition: transform 180ms var(--ease-retract), opacity 140ms linear;
+  }
+  .stage.is-open .leaflet {
+    transform: scale(1); opacity: .9;
+    transition: transform 300ms var(--spring-bud) var(--d-leaf, 0ms), opacity 160ms linear var(--d-leaf, 0ms);
+  }
+
+  /* ── Los capullos ── */
+  .pod {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); cursor: pointer; pointer-events: none;
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(.1);
+    transition:
+      transform 200ms var(--ease-retract) var(--d-out, 0ms),
+      opacity 140ms linear var(--d-out, 0ms),
+      box-shadow var(--d-micro) var(--ease-ios);
+  }
+  .stage.is-open .pod {
+    pointer-events: auto; opacity: 1; transform: translate(0,0) scale(1);
+    transition:
+      transform var(--t-bloom) var(--spring-bud) var(--d-in, 0ms),
+      opacity 180ms linear var(--d-in, 0ms),
+      box-shadow var(--d-micro) var(--ease-ios);
+  }
+  /* Una vez que el arco terminó de florecer, los capullos pierden el
+     escalonado de entrada: si no, marcar el capullo presentado hereda
+     un delay de hasta 310ms y el resalte llega tarde y en el lugar
+     equivocado. Al cerrar se quita y vuelve el escalonado inverso. */
+  .stage.is-settled .pod {
+    transition:
+      transform var(--d-standard) var(--spring-bud),
+      opacity var(--d-quick) linear,
+      box-shadow var(--d-micro) var(--ease-ios);
+  }
+
+  .pod-pastel { box-shadow: var(--raised-md), var(--tile-lip), 0 0 0 2px var(--rim); }
+  .stage.is-open .pod-pastel.is-hot { box-shadow: var(--inset-md), 0 0 0 2px var(--rim); }
+  .stage.is-open .pod.is-hot { transform: translate(0,0) scale(1.2); }
+  /* Los NO presentados retroceden por ESCALA, nunca por opacidad: atenuar el
+     elemento a .62 tira el aro del capullo a 2.04:1 en claro y el relleno de
+     Gasto a 1.97:1 — por debajo del 3:1 de componente. La escala no toca el
+     contraste y el resalte ya tiene tres señales propias. */
+  .stage.is-open .pod.is-cool { transform: translate(0,0) scale(.94); }
+
+  .pod-cta { background: var(--cta-fill); color: var(--cta-ink); box-shadow: var(--cta-shadow); }
+  .stage.is-open .pod-cta.is-hot { box-shadow: var(--inset-cta); }
+
+  .stage[data-theme="light"] [data-pastel="import"]   { background: #E6E0F4; }
+  .stage[data-theme="light"] [data-pastel="no-spend"] { background: #D4EBDF; }
+  .stage[data-theme="light"] [data-pastel="income"]   { background: #D6E4F0; }
+  .stage[data-theme="light"] [data-pastel="fixed"]    { background: #EDE0C8; }
+  .stage[data-theme="dark"]  [data-pastel="import"]   { background: #3D5047; }
+  .stage[data-theme="dark"]  [data-pastel="no-spend"] { background: #3A5144; }
+  .stage[data-theme="dark"]  [data-pastel="income"]   { background: #3B5046; }
+  .stage[data-theme="dark"]  [data-pastel="fixed"]    { background: #3E5040; }
+
+  /* Halo del capullo presentado — pulso lento, nunca es el único indicio */
+  .cue {
+    position: absolute; border-radius: 50%; z-index: 3;
+    background: var(--glow); filter: blur(16px);
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--d-quick) linear, left var(--d-standard) var(--ease-standard),
+                top var(--d-standard) var(--ease-standard), width var(--d-standard) var(--ease-standard),
+                height var(--d-standard) var(--ease-standard);
+  }
+  .stage.has-cue .cue { opacity: 1; animation: breathe var(--d-breath) ease-in-out infinite; }
+
+  /* Nombres — SIEMPRE visibles con el arco abierto. Nunca dependen de apuntar. */
+  .pod-name {
+    position: absolute; z-index: 5;
+    font-size: 11px; font-weight: 800; letter-spacing: .02em;
+    color: var(--on-scrim); text-align: center; white-space: nowrap;
+    transform: translate(-50%, -50%) scale(.9);
+    opacity: 0; pointer-events: none;
+    transition: opacity 140ms linear var(--d-out, 0ms), transform 180ms var(--ease-retract) var(--d-out, 0ms);
+  }
+  .stage.is-open .pod-name {
+    opacity: 1; transform: translate(-50%, -50%) scale(1);
+    transition: opacity 200ms linear var(--d-in, 0ms), transform var(--t-bloom) var(--spring-bud) var(--d-in, 0ms);
+  }
+  .pod-name.is-hot { font-weight: 900; }
+
+  /* Anillo de confirmación al disparar */
+  .pod::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 3px solid var(--green); opacity: 0; pointer-events: none;
+  }
+  .pod.is-fired::after { animation: ring 520ms var(--ease-standard) forwards; }
+  .stage.is-firing .pod:not(.is-fired) {
+    opacity: 0; transform: translate(var(--tx), var(--ty)) scale(.3); transition-delay: 0ms;
+  }
+  .stage.is-firing .pod-name { opacity: 0; transition-delay: 0ms; }
+  .stage.is-firing .pod.is-fired { transform: translate(0,0) scale(1.24); }
+  .stage.is-firing .branch {
+    stroke-dashoffset: var(--len); opacity: 0;
+    transition: stroke-dashoffset 220ms var(--ease-retract), opacity 1ms linear 220ms;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     EL ATRIL — Brot presenta las acciones solo
+     ══════════════════════════════════════════════════════ */
+  .deck {
+    position: absolute; left: 20px; right: 20px; top: 292px; height: 226px;
+    z-index: 5; border-radius: 30px;
+    background: var(--sheet); box-shadow: var(--deck-shadow);
+    padding: 14px 18px 12px;
+    display: flex; flex-direction: column; align-items: center;
+    pointer-events: none; overflow: hidden;
+    opacity: 0; transform: translateY(16px) scale(.92);
+    transform-origin: 50% 120%;
+    transition: opacity var(--d-quick) linear, transform var(--d-standard) var(--ease-retract);
+  }
+  .stage.is-open .deck {
+    opacity: 1; transform: translateY(0) scale(1);
+    transition: opacity var(--d-standard) linear 80ms, transform 420ms var(--spring-celebrate) 80ms;
+  }
+
+  /* `flex: none` en todos: sin eso el alto fijo del atril hace que flexbox
+     encoja la línea de texto a cero y la frase desaparece sin avisar. */
+  .deck-eyebrow {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--green-deep); height: 15px; line-height: 15px; flex: none;
+  }
+  .deck-stage {
+    height: 98px; flex: none;
+    display: flex; align-items: flex-end; justify-content: center; margin-top: 2px;
+  }
+  .deck-line {
+    font-size: 15px; font-weight: 800; letter-spacing: -.2px; line-height: 1.28;
+    color: var(--text); text-align: center; margin-top: 8px; flex: none;
+    height: 36px; display: flex; align-items: center; justify-content: center;
+  }
+  .deck-line span { display: block; }
+  .deck.is-swapping .deck-eyebrow, .deck.is-swapping .deck-line span { opacity: 0; }
+  .deck-eyebrow, .deck-line span { transition: opacity var(--d-micro) linear; }
+
+  .rail { display: flex; gap: 6px; align-items: center; margin-top: 8px; height: 8px; flex: none; }
+  .rail i {
+    display: block; width: 6px; height: 6px; border-radius: 3px;
+    background: var(--muted); opacity: .8;
+    transition: width var(--d-standard) var(--ease-ios), background var(--d-quick) linear, opacity var(--d-quick) linear;
+  }
+  .rail i.on { width: 20px; background: var(--green-deep); opacity: 1; }
+
+  .deck-foot {
+    font-size: 10.5px; font-weight: 800; letter-spacing: .02em;
+    color: var(--muted); margin-top: 7px; text-align: center; flex: none;
+  }
+
+  /* Modo «reducir movimiento»: el atril deja de presentar y se vuelve
+     una lista estática con las cinco explicaciones a la vez. */
+  .deck-static { display: none; width: 100%; flex-direction: column; gap: 5px; margin-top: 6px; }
+  .srow { display: flex; align-items: center; gap: 8px; }
+  .sdot { width: 15px; height: 15px; border-radius: 6px; flex: none; box-shadow: 0 0 0 1.5px var(--rim); }
+  .srow b { font-size: 11.5px; font-weight: 900; color: var(--text); letter-spacing: -.1px; white-space: nowrap; }
+  .srow span { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: -.1px; }
+  body.reduced .deck-stage,
+  body.reduced .rail { display: none; }
+  body.reduced .deck-line { height: auto; margin-top: 2px; font-size: 13px; }
+  body.reduced .deck-static { display: flex; }
+  body.reduced .deck { height: 226px; justify-content: flex-start; }
+
+  /* ── Toast ── */
+  .toast {
+    position: absolute; left: 50%; bottom: 122px; z-index: 10;
+    transform: translate(-50%, 12px);
+    padding: 12px 20px; border-radius: 22px;
+    background: var(--sheet); box-shadow: var(--raised-lg);
+    color: var(--text); font-size: 13.5px; font-weight: 800; letter-spacing: -.1px;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity var(--d-quick) linear, transform var(--d-standard) var(--ease-ios);
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── Puntero fantasma del replay ── */
+  .ghost {
+    position: absolute; left: 0; top: 0; width: 54px; height: 54px;
+    border-radius: 50%; z-index: 9; pointer-events: none;
+    background: radial-gradient(circle at 40% 34%, var(--ghost-ring), var(--ghost) 70%);
+    box-shadow: 0 0 0 2px var(--ghost-ring), 0 6px 16px rgba(0,0,0,.25);
+    opacity: 0;
+    transform: translate(calc(var(--gx, 196.5px) - 50%), calc(var(--gy, 757px) - 50%));
+    transition: opacity var(--d-quick) linear;
+  }
+  .ghost.is-on { opacity: 1; }
+
+  @keyframes breathe {
+    0%, 100% { opacity: .45; transform: scale(.94); }
+    50%      { opacity: 1;   transform: scale(1.1); }
+  }
+  @keyframes ring {
+    from { opacity: .95; transform: scale(1); }
+    to   { opacity: 0;   transform: scale(2.1); }
+  }
+
+  /* Reducir movimiento */
+  body.reduced .stage, body.reduced .stage * {
+    transition-duration: 1ms !important; transition-delay: 0ms !important;
+  }
+  body.reduced .cue { animation: none !important; opacity: .45 !important; }
+  body.reduced .pod.is-fired::after { animation: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage, .stage * { transition-duration: 1ms !important; transition-delay: 0ms !important; }
+    .cue { animation: none !important; }
+  }
+
+  /* ═══ Paneles de la página ═══ */
+  .panel {
+    max-width: 960px; margin: 54px auto 0;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    border-radius: 26px; padding: 24px 26px;
+    box-shadow: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+  }
+  .panel + .panel { margin-top: 20px; }
+  .panel h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #93A78F; margin: 0 0 18px;
+  }
+  .poses { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pose {
+    flex: 1 1 155px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 10px; border-radius: 20px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .pose-action { font-size: 13px; font-weight: 900; color: #F1EEDD; text-align: center; }
+  .pose-name { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #A4E3A6; }
+  .pose-why { font-size: 11.5px; font-weight: 600; color: #93A78F; text-align: center; line-height: 1.4; }
+
+  .note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 14px; }
+  .note {
+    background: #142519; border-radius: 22px; padding: 20px 22px;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .note-n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; margin-bottom: 12px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    color: #0F1E14; font-size: 13px; font-weight: 900;
+  }
+  .note h3 { font-size: 15px; font-weight: 900; color: #F1EEDD; margin: 0 0 8px; letter-spacing: -.3px; }
+  .note p { font-size: 13px; font-weight: 600; line-height: 1.55; color: #A8B4A0; margin: 0; }
+  .note p + p { margin-top: 9px; }
+  .note b { color: #F1EEDD; font-weight: 800; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: #C9F3C6; background: rgba(164,227,166,.1);
+    padding: 1px 5px; border-radius: 5px;
+  }
+
+  .balance { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 18px; }
+  .bal-col h3 {
+    font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
+    margin: 0 0 12px;
+  }
+  .bal-col.win h3 { color: #A4E3A6; }
+  .bal-col.risk h3 { color: #E9C08A; }
+  .bal-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .bal-col li {
+    font-size: 13px; font-weight: 600; line-height: 1.5; color: #A8B4A0;
+    padding: 12px 15px; border-radius: 16px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .bal-col li b { color: #F1EEDD; font-weight: 800; }
+
+  table.wcag { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.wcag th {
+    text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: #7C917A; padding: 0 10px 10px;
+  }
+  table.wcag td { padding: 9px 10px; color: #A8B4A0; font-weight: 600; vertical-align: middle; }
+  table.wcag tbody tr { background: #142519; }
+  table.wcag tbody tr:nth-child(even) { background: #182B1D; }
+  table.wcag tbody tr td:first-child { border-radius: 12px 0 0 12px; }
+  table.wcag tbody tr td:last-child { border-radius: 0 12px 12px 0; }
+  .ratio { font-weight: 900; color: #F1EEDD; font-variant-numeric: tabular-nums; }
+  .pass { color: #A4E3A6; font-weight: 900; white-space: nowrap; }
+  .fail { color: #E9A08A; font-weight: 900; }
+  .wcag-note { font-size: 12.5px; font-weight: 600; line-height: 1.62; color: #93A78F; margin: 16px 0 0; }
+  .wcag-note b { color: #F1EEDD; font-weight: 800; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <p class="kicker">Hub de acciones · fusión Arco + Brote — variante B</p>
+  <h1>Brot presentador</h1>
+  <p class="lede">
+    El <b>esqueleto es el Arco</b>: el FAB es el pivote, las cinco acciones viven en un abanico de 144°
+    dentro del alcance del pulgar y se eligen con un gesto continuo —<i>mantén, desliza, suelta</i>—
+    con Gasto justo arriba del dedo. La <b>piel y el movimiento son de Brote</b>: no aparecen discos de
+    la nada, del FAB <b>crecen ramas trazadas</b> hasta cada posición del arco y ahí <b>florece</b> el
+    capullo; al cerrar, las ramas se retraen hacia el FAB en orden inverso.
+  </p>
+  <p class="lede">
+    <b>En qué se diferencia de la variante A (mini-Brots en cada capullo):</b> en vez de repartir la
+    explicación entre cinco mascotas compitiendo en 393px, hay <b>un solo Brot protagonista</b> arriba
+    del arco, en un atril. Presenta las acciones <b>solo</b>, en ciclo lento: cada 1,8&nbsp;s adopta la
+    pose de una acción, el capullo correspondiente se agranda y late, y una línea dice qué hace. Apenas
+    apoyas el dedo el ciclo <b>se detiene</b> y Brot pasa a seguir lo que estás apuntando: el ciclo
+    automático y el control manual son <b>el mismo mecanismo</b>. El costo lo paga la densidad: los
+    capullos bajan a 46–68&nbsp;px, sólo llevan ícono y nombre corto, y sobra aire. El costo de
+    cómputo también: <b>un canvas animado por teléfono</b>, no cinco.
+  </p>
+</div>
+
+<div class="controls">
+  <button class="btn" id="replay">Reproducir la apertura</button>
+  <label class="toggle"><input type="checkbox" id="reduced"> Simular «reducir movimiento»</label>
+  <label class="toggle"><input type="checkbox" id="expert"> Simular usuario que ya vio 3 aperturas</label>
+  <span class="hint-inline">Probalo con el mouse: apretá el «+» y arrastrá sin soltar · o hacé un tap seco en el «+»</span>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<div class="panel">
+  <h2>Las cinco poses que actúa el presentador</h2>
+  <div class="poses" id="poses"></div>
+</div>
+
+<div class="panel">
+  <h2>Las decisiones que estás aprobando</h2>
+  <div class="note-grid">
+    <div class="note">
+      <span class="note-n">1</span>
+      <h3>La ergonomía es del Arco, intacta</h3>
+      <p>El arco vive entre <b>148 y 160&nbsp;px</b> del centro del FAB, con Gasto a 0° y 68&nbsp;px,
+      Importar y Día sin gasto a ±38° y 52&nbsp;px, Ingreso y Fijo a ±72° y 46&nbsp;px. Soltar sin
+      moverse = Gasto. Zona muerta de 56&nbsp;px sobre el FAB para cancelar, tolerancia angular de 24°.</p>
+      <p>El atril está arriba, entre 296 y 514&nbsp;px: <b>fuera de la zona de alcance y fuera de donde
+      cae la mano</b>. Zona de leer arriba, zona de tocar abajo — la mano nunca tapa lo que explica.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">2</span>
+      <h3>Sin hover, sin excepciones</h3>
+      <p>Apenas se abre el arco, sin tocar nada, ya están a la vista: los <b>cinco capullos con su
+      nombre</b>, el pastel que los identifica y el atril presentando. Ningún significado queda detrás
+      de «apuntá para ver». El prototipo no usa <code>:hover</code> para nada que comunique: todo va por
+      <code>pointerdown/move/up</code>, y el <code>pointerenter</code> del modo tap es sólo comodidad de
+      escritorio.</p>
+      <p>El capullo presentado se distingue por <b>tres señales a la vez</b>: escala 1,2 · halo que
+      respira · nombre en peso 900. Nunca sólo por color.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">3</span>
+      <h3>Un canvas, no cinco</h3>
+      <p>La tensión real de esta fusión es que cinco Brots de Skia animando a la vez es un incidente de
+      CPU esperando pasar. Acá la explicación está <b>centralizada</b>: hay <b>un solo</b>
+      <code>brot-mascot</code> animado por teléfono, montado al abrir y <b>desmontado al cerrar</b> —en
+      reposo no corre ningún <code>requestAnimationFrame</code>—. En el teléfono real eso es
+      <b>un Skia canvas</b> con el mismo clock que ya usa Brot en Home.</p>
+      <p>Detalle verificado: en <code>brot.js</code> cambiar <code>animated</code> en caliente
+      <b>no</b> prende ni apaga el loop. Para prenderlo hay que <b>reinsertar</b> el elemento
+      (<code>removeChild → setAttribute → insertBefore</code>). Está implementado así en
+      <code>setAnimated()</code>.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">4</span>
+      <h3>Cuándo el ciclo NO corre</h3>
+      <p>Un carrusel automático es movimiento no pedido. Se apaga en cuatro casos, y todos están en el
+      prototipo: <b>(a)</b> apenas hay contacto con la pantalla o foco de teclado; <b>(b)</b> después de
+      <b>una vuelta completa</b> (5 pasos, 9&nbsp;s) queda parado en Gasto; <b>(c)</b> a partir de la
+      <b>cuarta apertura</b> el hub abre en silencio, con Brot quieto en <code>coach</code> y la línea
+      «Elige una acción» (probalo con el toggle); <b>(d)</b> con <b>reducir movimiento</b> el atril deja
+      de presentar y se convierte en una <b>lista estática con las cinco explicaciones a la vez</b>.</p>
+      <p>Si el usuario suelta el dedo sin haber apuntado nada, el ciclo <b>retoma</b> donde estaba: si
+      no, quien abre con tap seco nunca vería la presentación.</p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Qué gana / qué arriesga</h2>
+  <div class="balance">
+    <div class="bal-col win">
+      <h3>Qué gana</h3>
+      <ul>
+        <li><b>Se explica solo, sin puntero.</b> Es la respuesta directa al problema del hover: en un
+        teléfono no hay estado «encima», así que la explicación pasa a ser <b>ambiente</b>. El usuario
+        entiende las cinco acciones mirando, sin arriesgar un toque.</li>
+        <li><b>Densidad baja de golpe.</b> Un solo bloque de texto en vez de cinco. Los capullos bajan a
+        46–68&nbsp;px con ícono + nombre corto, y el arco queda <b>aireado</b>: los de las puntas
+        terminan a 33&nbsp;px del borde en 393&nbsp;px (en un SE de 375 quedan a 24).</li>
+        <li><b>Un canvas animado por teléfono.</b> La objeción de performance de la fusión desaparece
+        por construcción; no hay que inventar drivers compartidos ni animar por turnos.</li>
+        <li><b>Ciclo y dedo son el mismo mecanismo.</b> No hay dos sistemas: el «paso presentado» y el
+        «paso apuntado» escriben el mismo estado. Menos código y cero desincronización.</li>
+        <li><b>La identidad de jardín hace trabajo real.</b> Las ramas trazadas dicen «esto sale del
+        FAB» —no aparece de la nada— y Brot deja de ser adorno: es el que enseña.</li>
+        <li><b>Enseña el gesto sin tour.</b> El pie del atril («Mantén el + y desliza, o toca una») y el
+        riel de cinco puntos hacen de coach permanente, y desaparecen a la cuarta apertura.</li>
+      </ul>
+    </div>
+    <div class="bal-col risk">
+      <h3>Qué arriesga</h3>
+      <ul>
+        <li><b>Movimiento no pedido.</b> Es el riesgo central. Quien ya sabe que va a cargar un gasto no
+        pidió una demo: el ciclo le va a parecer ruido durante los 300&nbsp;ms que tarda en soltar. Las
+        cuatro reglas de apagado (contacto · una vuelta · cuarta apertura · reducir movimiento) mitigan,
+        pero <b>siguen siendo cuatro reglas</b>, y cada una es un bug esperando: si el contador de
+        aperturas no persiste bien, un usuario veterano ve la demo para siempre.</li>
+        <li><b>La explicación es secuencial, no simultánea.</b> Si querés comparar «Gasto» contra «Gasto
+        fijo» tenés que <b>esperar</b> a que el ciclo llegue, o apuntar. Para una duda concreta es peor
+        que la hoja actual, donde las cinco descripciones están juntas. Por eso el modo reducir
+        movimiento cae en lista estática — pero eso admite que la lista es mejor para <i>comparar</i>.</li>
+        <li><b>El atril compite con el arco por la mirada.</b> Hay movimiento arriba (Brot, texto, riel)
+        y movimiento abajo (ramas creciendo, capullo latiendo) en los mismos 400&nbsp;ms de la apertura.
+        En device puede leerse como dos cosas pasando a la vez; hay que escalonar duro (ramas 0–460&nbsp;ms,
+        atril entra a 80&nbsp;ms, primer paso del ciclo recién a 700&nbsp;ms) y aun así hay que verlo en
+        un Android de gama baja antes de aprobar.</li>
+        <li><b>Accesibilidad: el radial sigue siendo el peor caso.</b> Con VoiceOver/TalkBack un gesto
+        continuo con destino angular <b>no existe</b>, y con temblor apuntar a 38° de separación es
+        hostil. <b>Obliga a mantener la hoja actual</b> como camino alternativo (lector de pantalla,
+        toque asistido, reducir movimiento) — dos hubs para mantener. Además la línea del atril
+        <b>no puede ir en <code>aria-live</code></b>: un texto que cambia solo cada 1,8&nbsp;s
+        interrumpe al lector sin parar. La explicación viaja en el
+        <code>accessibilityLabel</code> de cada capullo, y el atril queda como
+        <code>accessibilityElementsHidden</code>.</li>
+        <li><b>Ergonomía zurda.</b> Igual que el Arco: está calibrado para pulgar derecho. Pide
+        espejado por preferencia, o sea una preferencia más en Ajustes.</li>
+        <li><b>Un temporizador más que mantener.</b> El ciclo es un <code>setInterval</code> de 1,8&nbsp;s
+        que hay que matar en <b>seis</b> caminos: contacto, foco, cierre, disparo, unmount y background
+        de la app. Si sobrevive uno solo, es una animación corriendo con la pantalla apagada.</li>
+        <li><b>Costo en RN.</b> Gesture Handler con pan continuo + hit-test angular en worklet, cinco
+        ramas con <code>stroke-dashoffset</code> en <code>react-native-svg</code> (el trazo animado ya
+        dio problemas de performance en este proyecto — la salida verificable es máscara/clip animada o
+        rama de 3 segmentos), el atril con su máquina de estados y el fallback de hoja. Estimado
+        <b>4–6 días</b>, más caro que el Arco solo.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Contraste WCAG — calculado sobre los pares reales de esta pantalla, los dos temas</h2>
+  <table class="wcag">
+    <thead>
+      <tr><th>Par</th><th>Tema</th><th>Umbral</th><th>Ratio</th><th></th></tr>
+    </thead>
+    <tbody id="wcag-body"></tbody>
+  </table>
+  <p class="wcag-note">
+    <b>Cuatro hallazgos, los cuatro corregidos antes de dibujar.</b>
+    (1) El nombre de la acción en el atril <b>no puede ir en verde <code>#2E7C39</code></b> sobre la hoja
+    clara: da 4,47:1 y el umbral de texto es 4,5. Sube a <code>green-deep</code> <b>#1F5429</b> (7,70:1).
+    En oscuro <code>#A4E3A6</code> da 9,56:1 y se deja.
+    (2) La <b>rama trazada</b> en <code>#2E7C39</code> sobre el scrim claro da 2,81:1 y no llega al 3:1 de
+    componente. El degradé claro se cierra a <b>#1F5429 → #276230</b>: el punto más claro da 3,96:1.
+    (3) Los <b>puntos del riel</b> en <code>tertiary #9AA694</code> daban 2,20:1 sobre la hoja: pasan a
+    <code>muted #54644F</code> (5,48:1) y el activo se distingue además por <b>forma</b> (cápsula de
+    20&nbsp;px), no sólo por color.
+    (4) El más caro: los capullos <b>no presentados</b> iban a atenuarse a <code>opacity .62</code> para
+    que resaltara el presentado. Eso baja su aro a <b>2,04:1</b> en claro (3,51:1 en oscuro) y el relleno
+    de Gasto a <b>1,97:1</b> — un control activo por debajo del umbral. Se cambió por un
+    <b>retroceso de escala</b> (0,94): no toca el contraste, y el capullo presentado ya se distingue por
+    escala 1,2 + halo + nombre en 900.
+    <br><br>
+    <b>Dos cosas que hay que decir.</b> Los capullos pastel flotan sin hoja detrás y contra el scrim dan
+    1,47:1 (claro) y 2,18:1 (oscuro): por eso llevan <b>aro de 2&nbsp;px en <code>muted</code></b>, que da
+    3,44:1 contra el scrim claro y 7,30:1 contra el oscuro. El capullo de Gasto no lleva aro porque su
+    propio relleno ya despega (3,11:1 / 3,78:1). Y el scrim está a <b>.92</b> —no .84— para que el fondo
+    de la Home casi no altere el compuesto: el peor caso del scrim claro es sobre el hero verde
+    (<code>#ADB69F</code>), pero <b>ningún elemento del arco llega a esa banda</b> (el hero termina en
+    y&nbsp;284 y el atril, que sí la cubre, es opaco). Igual está medido en la tabla.
+  </p>
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ══ Geometría — el FAB es el origen ═══════════════════════════
+     FAB: left 50%, bottom 42px, 62px → centro (196.5, 757).       */
+  var CX = 196.5, CY = 757;
+  var RAD = Math.PI / 180;
+  var QUIET_POSE = 'coach';
+
+  var ITEMS = [
+    { key: 'fixed',    ang: -72, r: 148, size: 46, name: 'Fijo',      full: 'Gasto fijo',
+      pose: 'think', glyph: 'fixed',    nx:   2, ny:  40,
+      line: 'Lo que se repite todos los meses.',
+      toast: 'Gasto fijo · lo que se repite todos los meses' },
+    { key: 'import',   ang: -38, r: 154, size: 52, name: 'Importar',  full: 'Importar captura',
+      pose: 'magic', glyph: 'import',   nx:  -4, ny: -44,
+      line: 'Leemos el ticket de una foto.',
+      toast: 'Importar captura · leyendo el ticket' },
+    { key: 'expense',  ang:   0, r: 160, size: 68, name: 'Gasto',     full: 'Gasto',
+      pose: 'wow',   glyph: 'expense',  nx:   0, ny: -50,
+      line: 'Anota lo que acabas de gastar.',
+      toast: 'Gasto · el monto ya te está esperando' },
+    { key: 'no-spend', ang:  38, r: 154, size: 52, name: 'Sin gasto', full: 'Día sin gasto',
+      pose: 'zen',   glyph: 'no-spend', nx:   4, ny: -44,
+      line: 'Suma un día sin gastar a tu racha.',
+      toast: 'Día sin gasto · sumaste una plantita al jardín' },
+    { key: 'income',   ang:  72, r: 148, size: 46, name: 'Ingreso',   full: 'Ingreso',
+      pose: 'cheer', glyph: 'income',   nx:  -2, ny:  40,
+      line: 'Registra la plata que entró.',
+      toast: 'Ingreso · suma lo que entró' }
+  ];
+
+  ITEMS.forEach(function (it) {
+    it.x = CX + it.r * Math.sin(it.ang * RAD);
+    it.y = CY - it.r * Math.cos(it.ang * RAD);
+    // Escalonado del centro hacia las puntas (mismo orden que la presentación).
+    it.stagger = Math.round(Math.abs(it.ang) / 72 * 140);
+  });
+
+  var BY_KEY = {};
+  ITEMS.forEach(function (it) { BY_KEY[it.key] = it; });
+
+  // Orden de la presentación: del centro hacia las puntas, alternando lados.
+  // Es el mismo orden en que florecen las ramas, así el ciclo «continúa» la apertura.
+  var CYCLE = ['expense', 'import', 'no-spend', 'fixed', 'income'];
+  var STEP_MS = 1800;
+  var LAP = CYCLE.length;     // una vuelta y para
+
+  var DEAD_ZONE = 56;   // sobre el FAB no se elige: es cancelar
+  var MAX_REACH = 268;
+  var ANG_TOL = 24;
+
+  function hit(px, py) {
+    var dx = px - CX, dy = CY - py;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DEAD_ZONE || dist > MAX_REACH) return null;
+    if (dy < -14) return null;
+    var ang = Math.atan2(dx, dy) / RAD;
+    var best = null, bestD = 1e9;
+    for (var i = 0; i < ITEMS.length; i++) {
+      var d = Math.abs(ang - ITEMS[i].ang);
+      if (d < bestD) { bestD = d; best = ITEMS[i]; }
+    }
+    return bestD <= ANG_TOL ? best.key : null;
+  }
+
+  /* ══ Ramas: cubica con doblez angular, de Brote ═══════════════ */
+  function polar(r, deg) {
+    return { x: CX + r * Math.sin(deg * RAD), y: CY - r * Math.cos(deg * RAD) };
+  }
+  function branchD(it) {
+    var R0 = 28, R1 = it.r - it.size / 2 + 6;
+    var bow = it.ang === 0 ? 6 : (it.ang > 0 ? 9 : -9);
+    var p0 = polar(R0, it.ang);
+    var c1 = polar(R0 + (R1 - R0) * 0.42, it.ang - bow);
+    var c2 = polar(R0 + (R1 - R0) * 0.80, it.ang + bow * 0.55);
+    var p1 = polar(R1, it.ang);
+    return 'M' + p0.x.toFixed(1) + ' ' + p0.y.toFixed(1) +
+           ' C' + c1.x.toFixed(1) + ' ' + c1.y.toFixed(1) +
+           ',' + c2.x.toFixed(1) + ' ' + c2.y.toFixed(1) +
+           ',' + p1.x.toFixed(1) + ' ' + p1.y.toFixed(1);
+  }
+
+  /* ══ Glifos ══════════════════════════════════════════════════ */
+  function svgIcon(paths, size, filled) {
+    var attrs = filled
+      ? 'fill="currentColor" stroke="none"'
+      : 'fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" ' + attrs + '>' + paths + '</svg>';
+  }
+  var GLYPH = {
+    expense:    '<path d="M12 5.5v13M5.5 12h13"/>',
+    'import':   '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/>',
+    'no-spend': '<path d="M6.05 8.05c-2.73 2.73-2.73 7.15-.02 9.88 1.47-3.4 4.09-6.24 7.36-7.93' +
+                '-2.77 2.34-4.71 5.61-5.39 9.32 2.6 1.23 5.8.78 7.95-1.37C19.43 14.47 20 4 20 4S9.53 4.57 6.05 8.05z"/>',
+    income:     '<path d="M3.5 17l6-6 3.5 3.5L20.5 7"/><path d="M15.5 7h5v5"/>',
+    fixed:      '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>' +
+                '<path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/>' +
+                '<path d="M9.2 16.6a3 3 0 1 1 1.1 2.3"/><path d="M9.2 13.9v2.7h2.7"/>'
+  };
+  var BARS = '<div class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.35"></i></div>';
+
+  /* ══ Markup ══════════════════════════════════════════════════ */
+  function homeMarkup() {
+    return '' +
+      '<div class="home">' +
+        '<div class="statusbar"><span>9:41</span><span class="sb-right">' + BARS +
+          '<span class="battery"><i></i></span></span></div>' +
+        '<div class="home-head"><div class="avatar"></div><div>' +
+          '<div class="home-title">Hola, Mario</div>' +
+          '<div class="home-sub">Ciclo del 1 al 31 de agosto</div>' +
+        '</div></div>' +
+        '<div class="hero">' +
+          '<div class="hero-eyebrow">LIBRE ESTE MES</div>' +
+          '<div class="hero-amount">$184.320</div>' +
+          '<div class="hero-meter"><i></i></div>' +
+          '<div class="hero-foot"><span>Gastado $315.680</span><span>63%</span></div>' +
+        '</div>' +
+        '<div class="chips">' +
+          '<div class="chip"><span class="chip-k">Por día</span><span class="chip-v">$6.140</span></div>' +
+          '<div class="chip"><span class="chip-k">Fijos</span><span class="chip-v">$128.000</span></div>' +
+          '<div class="chip"><span class="chip-k">Mi jardín</span><span class="chip-v">12 días</span></div>' +
+        '</div>' +
+        '<div class="rows-bg"><div class="row-bg"></div><div class="row-bg"></div><div class="row-bg"></div></div>' +
+      '</div>' +
+      '<div class="nav"><i></i><i></i><i style="opacity:0"></i><i></i><i></i></div>';
+  }
+
+  var PASTEL_L = { 'import': '#E6E0F4', 'no-spend': '#D4EBDF', income: '#D6E4F0', fixed: '#EDE0C8', expense: '#2E7434' };
+
+  function arcMarkup(themeId) {
+    var branches = '', pods = '', names = '', leaves = '';
+
+    ITEMS.forEach(function (it, i) {
+      branches += '<path class="branch" data-key="' + it.key + '" d="' + branchD(it) + '" ' +
+                  'style="stroke-width:' + (it.key === 'expense' ? 5.5 : 4.2) + ';' +
+                  '--d-in:' + it.stagger + 'ms;--d-out:' + (140 - it.stagger) + 'ms"></path>';
+
+      var half = it.size / 2;
+      var isCta = it.key === 'expense';
+      var delayIn = it.stagger + 170, delayOut = 140 - it.stagger;
+      pods +=
+        '<div class="pod ' + (isCta ? 'pod-cta' : 'pod-pastel') + '" data-key="' + it.key + '" ' +
+             (isCta ? '' : 'data-pastel="' + it.key + '" ') +
+             'style="left:' + (it.x - half).toFixed(1) + 'px;top:' + (it.y - half).toFixed(1) + 'px;' +
+             'width:' + it.size + 'px;height:' + it.size + 'px;' +
+             '--tx:' + (CX - it.x).toFixed(1) + 'px;--ty:' + (CY - it.y).toFixed(1) + 'px;' +
+             '--d-in:' + delayIn + 'ms;--d-out:' + delayOut + 'ms" ' +
+             'role="button" tabindex="-1" aria-label="' + it.full + '. ' + it.line + '">' +
+          svgIcon(GLYPH[it.glyph], isCta ? 30 : (it.size >= 52 ? 24 : 21), it.key === 'no-spend') +
+        '</div>';
+
+      names +=
+        '<div class="pod-name" data-key="' + it.key + '" ' +
+             'style="left:' + (it.x + it.nx).toFixed(1) + 'px;top:' + (it.y + it.ny).toFixed(1) + 'px;' +
+             '--d-in:' + (delayIn + 60) + 'ms;--d-out:' + delayOut + 'ms">' + it.name + '</div>';
+    });
+
+    // Tres hojitas sobre las ramas altas — la firma de jardín, sin cargar las puntas.
+    ['import', 'expense', 'no-spend'].forEach(function (k, j) {
+      leaves += '<path class="leaflet" data-key="' + k + '" style="--d-leaf:' + (380 + j * 70) + 'ms"></path>';
+    });
+
+    return '' +
+      '<div class="arc">' +
+        '<svg width="393" height="830" viewBox="0 0 393 830" aria-hidden="true">' +
+          '<defs><linearGradient id="brGrad-' + themeId + '" x1="0" y1="1" x2="0" y2="0">' +
+            '<stop offset="0" stop-color="var(--branch-a)"/>' +
+            '<stop offset="1" stop-color="var(--branch-b)"/>' +
+          '</linearGradient></defs>' +
+          branches + leaves +
+        '</svg>' +
+        '<div class="cue"></div>' +
+        pods + names +
+        '<div class="ghost"></div>' +
+      '</div>';
+  }
+
+  function deckMarkup() {
+    var rail = '', srows = '';
+    for (var i = 0; i < CYCLE.length; i++) rail += '<i data-key="' + CYCLE[i] + '"></i>';
+    ITEMS.forEach(function (it) {
+      srows +=
+        '<div class="srow">' +
+          '<span class="sdot" data-pastel="' + it.key + '"' +
+            (it.key === 'expense' ? ' style="background:' + PASTEL_L.expense + '"' : '') + '></span>' +
+          '<b>' + it.full + '</b><span>' + it.line + '</span>' +
+        '</div>';
+    });
+    return '' +
+      '<div class="deck">' +
+        '<div class="deck-eyebrow">QUÉ PUEDES HACER</div>' +
+        '<div class="deck-stage"></div>' +
+        '<div class="deck-line"><span>&nbsp;</span></div>' +
+        '<div class="rail">' + rail + '</div>' +
+        '<div class="deck-foot">Mantén el + y desliza, o toca una</div>' +
+        '<div class="deck-static">' + srows + '</div>' +
+      '</div>';
+  }
+
+  /* ══ Montaje ═════════════════════════════════════════════════ */
+  var THEMES = [
+    { id: 'light', label: 'Claro · Salvia' },
+    { id: 'dark',  label: 'Oscuro · Noche de bosque' }
+  ];
+  var frames = document.getElementById('frames');
+  var S = [];
+
+  THEMES.forEach(function (th) {
+    var col = document.createElement('div');
+    col.className = 'frame-col';
+
+    var stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.setAttribute('data-theme', th.id);
+    stage.innerHTML =
+      homeMarkup() +
+      '<div class="scrim"></div>' +
+      '<div class="fab" role="button" tabindex="0" aria-label="Nueva acción">' +
+        '<span class="fab-glyph">' + svgIcon(GLYPH.expense, 26) + '</span>' +
+      '</div>' +
+      arcMarkup(th.id) +
+      deckMarkup() +
+      '<div class="toast"></div>' +
+      '<div class="homebar"></div>';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'frame-label';
+    lbl.textContent = th.label;
+    col.appendChild(stage);
+    col.appendChild(lbl);
+    frames.appendChild(col);
+
+    // Las ramas usan el degradé del tema.
+    Array.prototype.forEach.call(stage.querySelectorAll('.branch'), function (b) {
+      b.style.setProperty('--branch-url', 'url(#brGrad-' + th.id + ')');
+    });
+
+    // UN solo Brot animado por teléfono. Se monta al abrir y se desmonta al cerrar.
+    var brot = document.createElement('brot-mascot');
+    brot.setAttribute('pose', QUIET_POSE);
+    brot.setAttribute('size', '94');
+    brot.setAttribute('shadow', 'false');
+    brot.setAttribute('animated', 'false');
+
+    var st = {
+      stage: stage,
+      brot: brot,
+      deck: stage.querySelector('.deck'),
+      deckStage: stage.querySelector('.deck-stage'),
+      eyebrow: stage.querySelector('.deck-eyebrow'),
+      lineWrap: stage.querySelector('.deck-line'),
+      line: stage.querySelector('.deck-line span'),
+      foot: stage.querySelector('.deck-foot'),
+      rail: stage.querySelectorAll('.rail i'),
+      cue: stage.querySelector('.cue'),
+      toast: stage.querySelector('.toast'),
+      ghost: stage.querySelector('.ghost'),
+      pods: {}, names: {},
+      mode: 'closed',     // closed | drag | latched | firing
+      shown: null,        // acción mostrada en el atril (ciclo o dedo)
+      pointed: null,      // acción apuntada por el dedo/foco
+      cycleT: 0, cycleI: 0, cycleSteps: 0, cycling: false,
+      swapT: 0, toastT: 0, unmountT: 0, settleT: 0,
+      downT: 0, downX: 0, downY: 0, moved: 0
+    };
+    Array.prototype.forEach.call(stage.querySelectorAll('.pod'), function (p) {
+      st.pods[p.getAttribute('data-key')] = p;
+    });
+    Array.prototype.forEach.call(stage.querySelectorAll('.pod-name'), function (n) {
+      st.names[n.getAttribute('data-key')] = n;
+    });
+    S.push(st);
+
+    // Hojitas: se resuelven sobre el path real de cada rama.
+    Array.prototype.forEach.call(stage.querySelectorAll('.leaflet'), function (lf) {
+      var k = lf.getAttribute('data-key');
+      var br = stage.querySelector('.branch[data-key="' + k + '"]');
+      var L = br.getTotalLength();
+      var a = br.getPointAtLength(L * 0.52);
+      var b = br.getPointAtLength(Math.min(L, L * 0.52 + 6));
+      var tx = b.x - a.x, ty = b.y - a.y;
+      var tl = Math.hypot(tx, ty) || 1;
+      var nx = -ty / tl, ny = tx / tl;         // normal a la rama
+      var dir = BY_KEY[k].ang <= 0 ? -1 : 1;
+      var len = 21, wid = 8;
+      var tipX = a.x + (tx / tl) * len * 0.55 + nx * dir * len * 0.8;
+      var tipY = a.y + (ty / tl) * len * 0.55 + ny * dir * len * 0.8;
+      var mx = (a.x + tipX) / 2, my = (a.y + tipY) / 2;
+      var dx2 = tipX - a.x, dy2 = tipY - a.y, l2 = Math.hypot(dx2, dy2) || 1;
+      var px = -dy2 / l2 * wid, py = dx2 / l2 * wid;
+      lf.setAttribute('d',
+        'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+        ' Q' + (mx + px).toFixed(1) + ' ' + (my + py).toFixed(1) + ' ' + tipX.toFixed(1) + ' ' + tipY.toFixed(1) +
+        ' Q' + (mx - px).toFixed(1) + ' ' + (my - py).toFixed(1) + ' ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Z');
+      lf.style.transformOrigin = (a.x.toFixed(1)) + 'px ' + (a.y.toFixed(1)) + 'px';
+      lf.style.transformBox = 'view-box';
+    });
+
+    // El largo real de cada rama alimenta el dasharray.
+    Array.prototype.forEach.call(stage.querySelectorAll('.branch'), function (b) {
+      b.style.setProperty('--len', b.getTotalLength().toFixed(1));
+    });
+  });
+
+  /* ══ brot.js: prender/apagar el rAF exige REINSERTAR ══════════
+     Cambiar `animated` en caliente no toca el loop (sólo arranca en
+     connectedCallback y `_resize` limpia el canvas).               */
+  function setAnimated(el, on) {
+    var want = on ? 'true' : 'false';
+    if (el.getAttribute('animated') === want) return;
+    var parent = el.parentNode, next = el.nextSibling;
+    if (parent) parent.removeChild(el);
+    el.setAttribute('animated', want);
+    if (parent) parent.insertBefore(el, next);
+  }
+  function setPose(st, pose) {
+    if (st.brot.getAttribute('pose') !== pose) st.brot.setAttribute('pose', pose);
+  }
+
+  function reducedOn()  { return document.body.classList.contains('reduced'); }
+  function expertOn()   { return document.body.classList.contains('expert'); }
+
+  /* ══ El atril ════════════════════════════════════════════════ */
+  function show(st, key, instant) {
+    if (st.shown === key) return;
+    st.shown = key;
+
+    var apply = function () {
+      if (key) {
+        var it = BY_KEY[key];
+        st.eyebrow.textContent = it.full.toUpperCase();
+        st.line.textContent = it.line;
+        setPose(st, it.pose);
+      } else {
+        st.eyebrow.textContent = 'QUÉ PUEDES HACER';
+        st.line.textContent = 'Elige una acción.';
+        setPose(st, QUIET_POSE);
+      }
+      Array.prototype.forEach.call(st.rail, function (d) {
+        d.classList.toggle('on', d.getAttribute('data-key') === key);
+      });
+      // El capullo presentado: escala + halo + nombre en 900. Tres señales.
+      ITEMS.forEach(function (it) {
+        st.pods[it.key].classList.toggle('is-hot', it.key === key);
+        st.pods[it.key].classList.toggle('is-cool', !!key && it.key !== key);
+        st.names[it.key].classList.toggle('is-hot', it.key === key);
+      });
+      st.stage.classList.toggle('has-cue', !!key);
+      if (key) {
+        var t = BY_KEY[key], pad = 12;
+        st.cue.style.left = (t.x - t.size / 2 - pad) + 'px';
+        st.cue.style.top = (t.y - t.size / 2 - pad) + 'px';
+        st.cue.style.width = (t.size + pad * 2) + 'px';
+        st.cue.style.height = (t.size + pad * 2) + 'px';
+      }
+      st.deck.classList.remove('is-swapping');
+    };
+
+    clearTimeout(st.swapT);
+    if (instant || reducedOn()) { apply(); return; }
+    st.deck.classList.add('is-swapping');
+    st.swapT = setTimeout(apply, 120);
+  }
+
+  /* ══ El ciclo automático ═════════════════════════════════════ */
+  function startCycle(st) {
+    stopCycle(st);
+    if (reducedOn() || expertOn()) { show(st, null, true); return; }
+    st.cycling = true;
+    st.cycleI = 0;
+    st.cycleSteps = 0;
+    st.cycleT = setTimeout(function tick() {
+      if (!st.cycling || st.mode === 'closed' || st.mode === 'firing') return;
+      show(st, CYCLE[st.cycleI]);
+      st.cycleI = (st.cycleI + 1) % CYCLE.length;
+      st.cycleSteps++;
+      if (st.cycleSteps >= LAP) {          // una vuelta y para, parado en Gasto
+        st.cycling = false;
+        st.cycleT = setTimeout(function () {
+          if (st.mode !== 'closed' && st.mode !== 'firing' && !st.pointed) show(st, 'expense');
+        }, STEP_MS);
+        return;
+      }
+      st.cycleT = setTimeout(tick, STEP_MS);
+    }, 700);   // recién cuando las ramas terminaron de crecer
+  }
+  function stopCycle(st) { clearTimeout(st.cycleT); st.cycling = false; }
+  function resumeCycle(st) {
+    if (st.cycling || reducedOn() || expertOn()) return;
+    if (st.cycleSteps >= LAP) return;             // ya dio la vuelta: no vuelve a arrancar
+    st.cycling = true;
+    st.cycleT = setTimeout(function tick() {
+      if (!st.cycling || st.mode === 'closed' || st.mode === 'firing' || st.pointed) return;
+      show(st, CYCLE[st.cycleI]);
+      st.cycleI = (st.cycleI + 1) % CYCLE.length;
+      st.cycleSteps++;
+      if (st.cycleSteps >= LAP) { st.cycling = false; return; }
+      st.cycleT = setTimeout(tick, STEP_MS);
+    }, STEP_MS);
+  }
+
+  /* ══ Abrir / cerrar / apuntar / disparar ═════════════════════ */
+  function open(st, mode) {
+    clearTimeout(st.unmountT);
+    st.mode = mode;
+    st.stage.classList.add('is-open');
+    st.stage.classList.remove('is-firing');
+    Object.keys(st.pods).forEach(function (k) {
+      st.pods[k].classList.remove('is-fired');
+      st.pods[k].setAttribute('tabindex', '0');
+    });
+    if (!st.deckStage.firstChild) st.deckStage.appendChild(st.brot);
+    // Cuando el arco terminó de florecer se apaga el escalonado de entrada.
+    clearTimeout(st.settleT);
+    if (reducedOn()) st.stage.classList.add('is-settled');
+    else st.settleT = setTimeout(function () {
+      if (st.mode !== 'closed') st.stage.classList.add('is-settled');
+    }, 620);
+    st.foot.textContent = expertOn()
+      ? 'Mantén y desliza · o toca una'
+      : 'Mantén el + y desliza, o toca una';
+    st.shown = undefined;
+    setAnimated(st.brot, !reducedOn() && !expertOn());
+    show(st, null, true);
+    st.pointed = null;
+    if (mode === 'drag') { stopCycle(st); }   // hay contacto: nada se mueve solo
+    else startCycle(st);
+  }
+
+  function close(st) {
+    st.mode = 'closed';
+    stopCycle(st);
+    clearTimeout(st.settleT);
+    st.stage.classList.remove('is-open', 'has-cue', 'is-settled');
+    st.pointed = null; st.shown = null;
+    st.ghost.classList.remove('is-on');
+    Object.keys(st.pods).forEach(function (k) {
+      st.pods[k].classList.remove('is-hot', 'is-cool');
+      st.pods[k].setAttribute('tabindex', '-1');
+      st.names[k].classList.remove('is-hot');
+    });
+    // Desmontar a Brot corta su requestAnimationFrame: en reposo, cero rAF.
+    clearTimeout(st.unmountT);
+    st.unmountT = setTimeout(function () {
+      if (st.mode === 'closed' && st.brot.parentNode) st.brot.parentNode.removeChild(st.brot);
+    }, 340);
+  }
+
+  function point(st, key) {
+    if (st.pointed === key) return;
+    st.pointed = key;
+    if (key) {
+      stopCycle(st);
+      setAnimated(st.brot, !reducedOn());
+      show(st, key, true);
+    } else {
+      show(st, null, true);
+    }
+  }
+
+  function fire(st, key) {
+    var it = BY_KEY[key];
+    st.mode = 'firing';
+    stopCycle(st);
+    st.stage.classList.remove('has-cue');
+    st.pods[key].classList.add('is-fired');
+    st.stage.classList.add('is-firing');
+    setTimeout(function () {
+      close(st);
+      st.stage.classList.remove('is-firing');
+      st.pods[key].classList.remove('is-fired');
+      showToast(st, it.toast);
+    }, 460);
+  }
+
+  function showToast(st, text) {
+    st.toast.textContent = text;
+    st.toast.classList.add('is-on');
+    clearTimeout(st.toastT);
+    st.toastT = setTimeout(function () { st.toast.classList.remove('is-on'); }, 1800);
+  }
+
+  /* ══ El gesto real — pointerdown / move / up ══════════════════ */
+  S.forEach(function (st) {
+    var fab = st.stage.querySelector('.fab');
+
+    function local(ev) {
+      var r = st.stage.getBoundingClientRect();
+      return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    }
+
+    fab.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'firing') return;
+      if (st.mode === 'latched') { close(st); return; }
+      try { fab.setPointerCapture(ev.pointerId); } catch (e) {}
+      var p = local(ev);
+      st.downT = Date.now(); st.downX = p.x; st.downY = p.y; st.moved = 0;
+      open(st, 'drag');
+    });
+
+    function onMove(ev) {
+      if (st.mode !== 'drag') return;
+      var p = local(ev);
+      var dd = Math.hypot(p.x - st.downX, p.y - st.downY);
+      if (dd > st.moved) st.moved = dd;
+      point(st, hit(p.x, p.y));
+    }
+    fab.addEventListener('pointermove', onMove);
+    st.stage.addEventListener('pointermove', onMove);
+
+    function release(ev) {
+      if (st.mode !== 'drag') return;
+      var p = local(ev);
+      var quick = (Date.now() - st.downT) < 300 && st.moved < 14;
+      var key = st.pointed || hit(p.x, p.y);
+      if (key) { fire(st, key); return; }
+      if (quick) {
+        // Tap seco: el arco queda abierto y el atril retoma la presentación.
+        st.mode = 'latched';
+        point(st, null);
+        startCycle(st);
+        return;
+      }
+      close(st);   // soltó en la zona muerta = cancelar
+    }
+    fab.addEventListener('pointerup', release);
+    window.addEventListener('pointerup', release);
+    fab.addEventListener('pointercancel', function () { if (st.mode === 'drag') close(st); });
+
+    fab.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'closed') { open(st, 'latched'); st.pods.expense.focus(); }
+      else close(st);
+    });
+
+    // Camino por tap: con el arco abierto se elige tocando. Nada de esto
+    // es requisito para ENTENDER — sólo para elegir.
+    ITEMS.forEach(function (it) {
+      var p = st.pods[it.key];
+      p.addEventListener('pointerdown', function (ev) {
+        if (st.mode !== 'latched') return;
+        ev.stopPropagation();
+        point(st, it.key);
+      });
+      p.addEventListener('click', function () { if (st.mode === 'latched') fire(st, it.key); });
+      p.addEventListener('focus', function () { if (st.mode === 'latched') point(st, it.key); });
+      p.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fire(st, it.key); }
+      });
+      // Conveniencia de escritorio, JAMÁS el único camino: en teléfono no existe.
+      p.addEventListener('pointerenter', function (ev) {
+        if (st.mode === 'latched' && ev.pointerType === 'mouse') point(st, it.key);
+      });
+      p.addEventListener('pointerleave', function (ev) {
+        if (st.mode === 'latched' && ev.pointerType === 'mouse') { point(st, null); resumeCycle(st); }
+      });
+    });
+
+    st.stage.querySelector('.scrim').addEventListener('pointerdown', function () {
+      if (st.mode === 'latched') close(st);
+    });
+  });
+
+  /* ══ Replay: primero la presentación sola, después el dedo ════ */
+  var timers = [], raf = 0, demoRunning = false, userTook = false;
+
+  function clearDemo() {
+    timers.forEach(clearTimeout); timers = [];
+    cancelAnimationFrame(raf); raf = 0;
+    demoRunning = false;
+  }
+  function cancelDemoIfUser() { if (demoRunning) { userTook = true; clearDemo(); } }
+  function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+  var PATH = [
+    { t: 0,    ang: 0,   r: 16  },
+    { t: 420,  ang: -38, r: 150 },
+    { t: 760,  ang: -72, r: 146 },
+    { t: 1160, ang: 20,  r: 156 },
+    { t: 1480, ang: 72,  r: 146 },
+    { t: 1860, ang: 0,   r: 158 },
+    { t: 2120, ang: 0,   r: 158 }
+  ];
+  function easeInOut(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+
+  function sweep(sts, done) {
+    var total = PATH[PATH.length - 1].t;
+    var t0 = performance.now();
+    sts.forEach(function (st) { st.ghost.classList.add('is-on'); stopCycle(st); });
+    function frame(now) {
+      var el = now - t0;
+      if (el > total) el = total;
+      var i = 0;
+      while (i < PATH.length - 2 && PATH[i + 1].t < el) i++;
+      var a = PATH[i], b = PATH[i + 1];
+      var u = b.t === a.t ? 1 : easeInOut((el - a.t) / (b.t - a.t));
+      var ang = a.ang + (b.ang - a.ang) * u;
+      var r = a.r + (b.r - a.r) * u;
+      var gx = CX + r * Math.sin(ang * RAD);
+      var gy = CY - r * Math.cos(ang * RAD);
+      sts.forEach(function (st) {
+        st.ghost.style.setProperty('--gx', gx.toFixed(1) + 'px');
+        st.ghost.style.setProperty('--gy', gy.toFixed(1) + 'px');
+        point(st, hit(gx, gy));
+      });
+      if (el < total) raf = requestAnimationFrame(frame);
+      else done();
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    clearDemo();
+    userTook = false;
+    demoRunning = true;
+    S.forEach(function (st) {
+      clearTimeout(st.toastT);
+      st.toast.classList.remove('is-on');
+      close(st);
+      st.ghost.style.setProperty('--gx', CX + 'px');
+      st.ghost.style.setProperty('--gy', CY + 'px');
+    });
+
+    if (reducedOn()) {
+      at(160, function () {
+        S.forEach(function (st) { open(st, 'latched'); });
+      });
+      at(1500, function () { S.forEach(function (st) { fire(st, 'expense'); }); demoRunning = false; });
+      return;
+    }
+
+    // 1) Se abre y PRESENTA solo — sin fantasma, sin dedo. Ese es el punto.
+    at(220, function () { S.forEach(function (st) { open(st, 'latched'); }); });
+
+    // 2) Recién a los 4,3 s aparece el dedo: el ciclo se corta y Brot lo sigue.
+    var handOff = expertOn() ? 1100 : 4300;
+    at(handOff, function () {
+      if (userTook) return;
+      sweep(S, function () {
+        if (userTook) return;
+        S.forEach(function (st) { st.ghost.classList.remove('is-on'); });
+        at(200, function () {
+          if (userTook) return;
+          S.forEach(function (st) { if (st.pointed) fire(st, st.pointed); else close(st); });
+          demoRunning = false;
+        });
+      });
+    });
+  }
+
+  document.getElementById('replay').addEventListener('click', play);
+  document.getElementById('reduced').addEventListener('change', function (e) {
+    document.body.classList.toggle('reduced', e.target.checked);
+    play();
+  });
+  document.getElementById('expert').addEventListener('change', function (e) {
+    document.body.classList.toggle('expert', e.target.checked);
+    play();
+  });
+
+  /* ══ Leyenda de poses — canvas estáticos, sin loop ════════════ */
+  var poses = document.getElementById('poses');
+  var WHY = {
+    expense:  'la acción principal',
+    'import': 'es OCR — chispas',
+    'no-spend': 'calma, no gastaste',
+    income:   'entra plata',
+    fixed:    'algo que se repite'
+  };
+  CYCLE.forEach(function (k) {
+    var it = BY_KEY[k];
+    var cell = document.createElement('div');
+    cell.className = 'pose';
+    var b = document.createElement('brot-mascot');
+    b.setAttribute('pose', it.pose);
+    b.setAttribute('size', '76');
+    b.setAttribute('animated', 'false');
+    b.setAttribute('shadow', 'false');
+    cell.appendChild(b);
+    var n = document.createElement('div'); n.className = 'pose-action'; n.textContent = it.full;
+    var pn = document.createElement('div'); pn.className = 'pose-name'; pn.textContent = it.pose;
+    var w = document.createElement('div'); w.className = 'pose-why'; w.textContent = WHY[k];
+    cell.appendChild(n); cell.appendChild(pn); cell.appendChild(w);
+    poses.appendChild(cell);
+  });
+
+  /* ══ Tabla de contraste ══════════════════════════════════════ */
+  var WCAG = [
+    ['Frase del atril #24382A / hoja #F0EFE3', 'Claro', '4.5', 10.85],
+    ['Nombre de la acción #1F5429 / hoja #F0EFE3', 'Claro', '4.5', 7.70],
+    ['(descartado) nombre en verde #2E7C39 / hoja #F0EFE3', 'Claro', '4.5', 4.47],
+    ['Fila estática (reducir movimiento) #54644F / hoja #F0EFE3', 'Claro', '4.5', 5.48],
+    ['Nombre del capullo #24382A / scrim .92 sobre el fondo #BCC1AF', 'Claro', '4.5', 6.80],
+    ['Nombre del capullo #24382A / scrim sobre el hero #ADB69F (banda que el arco no toca)', 'Claro', '4.5', 5.95],
+    ['(descartado) nombre del capullo en muted #54644F / scrim sobre el hero', 'Claro', '4.5', 3.01],
+    ['Toast #24382A / hoja #F0EFE3', 'Claro', '4.5', 10.85],
+    ['Ícono #24382A / capullo lavanda #E6E0F4', 'Claro', '3', 9.76],
+    ['Ícono #24382A / capullo menta #D4EBDF', 'Claro', '3', 10.00],
+    ['Ícono #24382A / capullo azul #D6E4F0', 'Claro', '3', 9.69],
+    ['Ícono #24382A / capullo arena #EDE0C8', 'Claro', '3', 9.62],
+    ['Tinta del CTA #F5F2E1 / punto más claro del radial #489350', 'Claro', '3', 3.36],
+    ['Aro del capullo #54644F / scrim #BCC1AF', 'Claro', '3', 3.44],
+    ['Aro del capullo #54644F / arena #EDE0C8 (el pastel más claro)', 'Claro', '3', 4.86],
+    ['(sin aro) capullo menta #D4EBDF / scrim — por eso lleva aro', 'Claro', '3', 1.47],
+    ['(descartado) aro del capullo NO presentado, atenuado a opacidad .62', 'Claro', '3', 2.04],
+    ['(descartado) capullo de Gasto atenuado a opacidad .62 / scrim', 'Claro', '3', 1.97],
+    ['Capullo de Gasto #2E7434 / scrim #BCC1AF (no lleva aro)', 'Claro', '3', 3.11],
+    ['Rama trazada #276230 (stop más claro) / scrim #BCC1AF', 'Claro', '3', 3.96],
+    ['(descartado) rama en #2E7C39 / scrim #BCC1AF', 'Claro', '3', 2.81],
+    ['Punto activo del riel #1F5429 / hoja #F0EFE3', 'Claro', '3', 7.70],
+    ['Punto inactivo #54644F / hoja #F0EFE3', 'Claro', '3', 5.48],
+    ['(descartado) punto inactivo en tertiary #9AA694 / hoja', 'Claro', '3', 2.20],
+    ['Frase del atril #F1EEDD / hoja #1B2F22', 'Oscuro', '4.5', 12.20],
+    ['Nombre de la acción #A4E3A6 / hoja #1B2F22', 'Oscuro', '4.5', 9.56],
+    ['Fila estática (reducir movimiento) #93A78F / hoja #1B2F22', 'Oscuro', '4.5', 5.53],
+    ['Nombre del capullo #F1EEDD / scrim .92 sobre el fondo #0A140D', 'Oscuro', '4.5', 16.10],
+    ['Nombre del capullo #F1EEDD / scrim sobre el hero #0C190D', 'Oscuro', '4.5', 15.52],
+    ['Toast #F1EEDD / hoja #1B2F22', 'Oscuro', '4.5', 12.20],
+    ['Ícono #F1EEDD / lavanda .16 → #3D5047', 'Oscuro', '3', 7.39],
+    ['Ícono #F1EEDD / menta .16 → #3A5144', 'Oscuro', '3', 7.38],
+    ['Ícono #F1EEDD / azul .16 → #3B5046', 'Oscuro', '3', 7.44],
+    ['Ícono #F1EEDD / arena .16 → #3E5040', 'Oscuro', '3', 7.42],
+    ['Tinta del CTA #0F1E14 / punto más oscuro del radial #3E7D46', 'Oscuro', '3', 3.48],
+    ['Aro del capullo #93A78F / scrim #0A140D', 'Oscuro', '3', 7.30],
+    ['Aro del capullo #93A78F / azul .16 #3B5046 (el pastel más claro)', 'Oscuro', '3', 3.37],
+    ['(sin aro) capullo menta .16 / scrim — por eso lleva aro', 'Oscuro', '3', 2.18],
+    ['(descartado) aro del capullo NO presentado, atenuado a opacidad .62', 'Oscuro', '3', 3.51],
+    ['Capullo de Gasto #3E7D46 / scrim #0A140D', 'Oscuro', '3', 3.78],
+    ['Rama trazada #3E7D46 (stop más oscuro) / scrim #0A140D', 'Oscuro', '3', 3.78],
+    ['Punto activo del riel #A4E3A6 / hoja #1B2F22', 'Oscuro', '3', 9.56],
+    ['Punto inactivo #93A78F / hoja #1B2F22', 'Oscuro', '3', 5.53]
+  ];
+  var body = document.getElementById('wcag-body');
+  WCAG.forEach(function (r) {
+    var need = parseFloat(r[2]);
+    var ok = r[3] >= need;
+    var discarded = r[0].indexOf('(descartado)') === 0 || r[0].indexOf('(sin aro)') === 0;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + r[0] + '</td>' +
+      '<td>' + r[1] + '</td>' +
+      '<td>' + r[2] + ':1</td>' +
+      '<td class="ratio">' + r[3].toFixed(2) + ':1</td>' +
+      '<td class="' + (ok ? 'pass' : 'fail') + '">' +
+        (ok ? 'PASA' : (discarded ? 'NO PASA — por eso no se usa' : 'NO PASA')) + '</td>';
+    body.appendChild(tr);
+  });
+
+  play();
+})();
+</script>
+</body>
+</html>

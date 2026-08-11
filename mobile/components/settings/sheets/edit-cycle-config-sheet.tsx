@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { CycleConfigSection } from '@/components/finance/cycle-config-section'
+import { NeoButton } from '@/components/ui/neo-button'
+import { CycleConfigSection, isSameCycleConfig } from '@/components/finance/cycle-config-section'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
+import { OnbSheetBody } from './onb-sheet-parts'
 
 interface EditCycleConfigSheetProps {
   visible: boolean
@@ -37,7 +37,7 @@ export function EditCycleConfigSheet({
   }, [visible, currentConfig])
 
   const dirty = useMemo(
-    () => JSON.stringify(draft) !== JSON.stringify(currentConfig),
+    () => !isSameCycleConfig(draft, currentConfig),
     [draft, currentConfig],
   )
 
@@ -51,22 +51,14 @@ export function EditCycleConfigSheet({
           : 'settings:editCycle.subtitle',
       )}
       title={t(
-        copyVariant === 'cycle'
-          ? 'settings:editCycle.titleCycle'
-          : 'settings:editCycle.title',
+        copyVariant === 'cycle' ? 'settings:editCycle.titleCycle' : 'settings:editCycle.title',
       )}
       visible={visible}
-    >
-      <View style={styles.stack}>
-        <CycleConfigSection
-          value={draft}
-          onChange={setDraft}
-          currentConfig={currentConfig}
-          copyVariant={copyVariant}
-          monthlyDefaultDay={copyVariant === 'cycle' ? 1 : 15}
-        />
-        <AppButton
+      footer={
+        <NeoButton
+          block
           disabled={!dirty}
+          haptic="light"
           label={t('common:actions.save')}
           loading={isSaving}
           onPress={() => {
@@ -74,11 +66,17 @@ export function EditCycleConfigSheet({
             onSave(draft)
           }}
         />
-      </View>
+      }
+    >
+      <OnbSheetBody>
+        <CycleConfigSection
+          value={draft}
+          onChange={setDraft}
+          currentConfig={currentConfig}
+          copyVariant={copyVariant}
+          monthlyDefaultDay={copyVariant === 'cycle' ? 1 : 15}
+        />
+      </OnbSheetBody>
     </ModalCard>
   )
 }
-
-const styles = StyleSheet.create({
-  stack: { gap: 16 },
-})

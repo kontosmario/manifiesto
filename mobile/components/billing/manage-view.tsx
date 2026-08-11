@@ -1,8 +1,7 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useAppTheme } from '@/theme/theme-provider'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { BrandLockup } from '@/components/billing/brand-lockup'
 import { MembershipHero } from '@/components/billing/membership-hero'
@@ -10,18 +9,28 @@ import { SubscriptionDetailRows } from '@/components/billing/subscription-detail
 import { HouseholdMembersList } from '@/components/billing/household-members-list'
 import { MembershipActions } from '@/components/billing/membership-actions'
 import {
+  BillingLink,
+  BillingLinkSeparator,
+  useWellStyle,
+} from '@/components/billing/billing-neo-kit'
+import {
   membershipVariant,
   formatDate,
 } from '@/features/billing/membership-state'
 import { useHouseholdInitials } from '@/features/billing/use-household-initials'
 import { BILLING_PLANS, type BillingPlanId } from '@/features/billing/billing-plans'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
 
 /**
  * "Mi suscripción" — lo que ve un suscriptor activo (Estado B). Hero de
- * membresía + info esencial + acciones. Compone las hojas; la lógica de
- * variante por estado vive en membership-state.ts.
+ * membresía + info esencial + acciones, en el material neumórfico del
+ * rediseño (el mismo que ya usan Ajustes y el paywall). Compone las hojas;
+ * la lógica de variante por estado vive en membership-state.ts.
  */
 export interface ManageViewProps {
   snap: EntitlementSnapshot
@@ -43,7 +52,10 @@ export const ManageView = memo(function ManageView({
   onChangePlan,
   onRestore,
 }: ManageViewProps) {
-  const { theme } = useAppTheme()
+  const mode = useThemeTokens().mode
+  const neo = neoTokens(mode)
+  const ink = neoInk(mode)
+  const well = useWellStyle('insetSm')
   const { t } = useTranslation()
   const variant = membershipVariant(snap)
   // MVP (super cuenta) no tiene sub: ocultamos renovación/precio/auto-renovación.
@@ -84,8 +96,6 @@ export const ManageView = memo(function ManageView({
   // actual). Da el aviso concreto que el banner antes no comunicaba.
   const renewDateLabel = formatDate(snap.expiresAt)
 
-  const linkStyle = [theme.typography.caption, { color: theme.colors.textMuted }]
-
   return (
     <View style={styles.root}>
       <RiseView delay={0}>
@@ -99,25 +109,10 @@ export const ManageView = memo(function ManageView({
           <View
             accessible
             accessibilityRole="text"
-            style={[
-              styles.pending,
-              {
-                backgroundColor: theme.colors.primarySurface,
-                borderColor: theme.colors.border,
-              },
-            ]}
+            style={[styles.pending, well]}
           >
-            <MaterialIcons
-              name="schedule"
-              size={16}
-              color={theme.colors.primary}
-            />
-            <Text
-              style={[
-                theme.typography.bodySmall,
-                { color: theme.colors.text, flex: 1 },
-              ]}
-            >
+            <MaterialIcons color={ink.accent} name="schedule" size={17} />
+            <Text style={[styles.pendingText, { color: neo.text }]}>
               {renewDateLabel === '—'
                 ? t('billing:manage.pendingChangeNextRenewal', {
                     plan: pendingPlanName,
@@ -133,12 +128,12 @@ export const ManageView = memo(function ManageView({
       {!isMvp ? (
         <RiseView delay={80}>
           <SubscriptionDetailRows
-            renewValue={formatDate(snap.expiresAt)}
-            initials={initials}
-            memberCount={snap.memberCount}
-            memberCap={snap.memberCap}
             autoRenew={snap.autoRenew}
+            initials={initials}
+            memberCap={snap.memberCap}
+            memberCount={snap.memberCount}
             priceLabel={variant.canManage ? priceLabel : undefined}
+            renewValue={formatDate(snap.expiresAt)}
           />
         </RiseView>
       ) : null}
@@ -147,30 +142,28 @@ export const ManageView = memo(function ManageView({
       </RiseView>
       <RiseView delay={120}>
         <MembershipActions
-          variant={variant}
           onChangePlan={onChangePlan}
           onRestore={onRestore}
+          variant={variant}
         />
       </RiseView>
       <RiseView delay={160}>
         <View style={styles.footer}>
-          <Pressable
-            accessibilityRole="link"
+          <BillingLink
             accessibilityLabel={t('billing:manage.termsA11y')}
-            hitSlop={8}
-            onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
-          >
-            <Text style={linkStyle}>{t('billing:manage.terms')}</Text>
-          </Pressable>
-          <Text style={linkStyle}> · </Text>
-          <Pressable
-            accessibilityRole="link"
+            label={t('billing:manage.terms')}
+            onPress={() => {
+              void Linking.openURL(TERMS_OF_SERVICE_URL)
+            }}
+          />
+          <BillingLinkSeparator />
+          <BillingLink
             accessibilityLabel={t('billing:manage.privacyA11y')}
-            hitSlop={8}
-            onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-          >
-            <Text style={linkStyle}>{t('billing:manage.privacy')}</Text>
-          </Pressable>
+            label={t('billing:manage.privacy')}
+            onPress={() => {
+              void Linking.openURL(PRIVACY_POLICY_URL)
+            }}
+          />
         </View>
       </RiseView>
     </View>
@@ -182,10 +175,17 @@ const styles = StyleSheet.create({
   pending: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 11,
-    borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: neoRadii.tile,
+  },
+  pendingText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 18,
   },
   footer: {
     flexDirection: 'row',

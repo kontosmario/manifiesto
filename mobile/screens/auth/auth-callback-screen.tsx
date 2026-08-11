@@ -15,6 +15,7 @@ import { BlockingScreen } from '@/screens/shared/blocking-screen'
 import { supabase } from '@/lib/supabase'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const AUTH_CALLBACK_TIMEOUT_MS = 30_000
 
@@ -130,6 +131,7 @@ export function AuthCallbackScreen() {
   if (timedOut) {
     return (
       <Screen
+        backgroundColor={theme.colors.background}
         subtitle={t('auth:authCallback.timeoutSubtitle')}
         title={t('auth:authCallback.timeoutTitle')}
       >
@@ -151,7 +153,11 @@ export function AuthCallbackScreen() {
   }
 
   return (
-    <Screen subtitle={t('auth:authCallback.errorSubtitle')} title={t('auth:authCallback.errorTitle')}>
+    <Screen
+      backgroundColor={theme.colors.background}
+      subtitle={t('auth:authCallback.errorSubtitle')}
+      title={t('auth:authCallback.errorTitle')}
+    >
       <BrandedPanel elevated style={styles.card} variant="accent">
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
         <View style={styles.actions}>
@@ -175,6 +181,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   actions: {
     gap: 12,

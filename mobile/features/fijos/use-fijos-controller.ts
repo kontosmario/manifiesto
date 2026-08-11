@@ -203,19 +203,21 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
     return summary.pendingItems
   }, [tab, summary])
 
-  // Solo las tabs con datos, en orden de urgencia. Si NINGUNA tiene (caso raro:
-  // todos los fijos son 'future', sin vencidos/pendientes/pagados este ciclo)
-  // caemos a ['pendientes'] para no dejar la barra vacía.
+  // Solo las tabs con datos, en orden de urgencia.
+  //
+  // Puede quedar VACÍO, y está bien: pasa cuando ningún fijo cae en el ciclo
+  // (p. ej. todos son 'future', un trimestral ya pagado). Antes se caía a
+  // `['pendientes']` para no dejar la barra vacía, pero eso dejaba una tab
+  // sola diciendo "Pendientes 0" — un filtro que no filtra nada. Con el array
+  // vacío, la barra entera se esconde (owner 2026-08-08).
   const visibleTabs = useMemo<FijosTab[]>(() => {
-    const visible = (['vencidos', 'pendientes', 'pagados'] as FijosTab[]).filter(
-      (t) =>
-        t === 'vencidos'
-          ? summary.overdueItems.length > 0
-          : t === 'pendientes'
-            ? summary.pendingItems.length > 0
-            : summary.paidItems.length > 0,
+    return (['vencidos', 'pendientes', 'pagados'] as FijosTab[]).filter((t) =>
+      t === 'vencidos'
+        ? summary.overdueItems.length > 0
+        : t === 'pendientes'
+          ? summary.pendingItems.length > 0
+          : summary.paidItems.length > 0,
     )
-    return visible.length > 0 ? visible : ['pendientes']
   }, [
     summary.overdueItems.length,
     summary.pendingItems.length,
@@ -230,6 +232,9 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   //    salvo que esa tab desaparezca.
   useEffect(() => {
     if (fixedExpensesQuery.isLoading) return
+    // Sin ninguna tab con datos no hay a dónde redirigir: se deja el tab como
+    // está (sigue siendo un valor válido del tipo) y la barra no se dibuja.
+    if (visibleTabs.length === 0) return
     if (!visibleTabs.includes(tab)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- redirección cuando el tab activo se queda sin datos
       setTab(visibleTabs[0])

@@ -1,4 +1,5 @@
 export { BrotMascot, BROT_POSES } from './brot-mascot'
+export * from './brot-geometry'
 export type { BrotMascotProps, BrotPose } from './brot-mascot'
 export { BrotParticles } from './brot-particles'
 export type { BrotParticlesProps } from './brot-particles'

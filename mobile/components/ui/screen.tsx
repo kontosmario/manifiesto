@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   View,
+  type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
   type NativeScrollEvent,
@@ -14,6 +15,7 @@ import {
 } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { useIsFocused } from '@react-navigation/native'
 import { useRouter, useSegments } from 'expo-router'
 import { ModalGrabHandle } from '@/components/ui/modal-grab-handle'
 import { SCROLL_EDGE_THRESHOLD, ScreenEdgeEffect } from '@/components/ui/screen-edge-effect'
@@ -24,6 +26,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useIsAnyModalOpen } from '@/lib/modal-visibility'
 import { useNumpadOffset } from '@/lib/numpad-visibility'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface ScreenProps extends ScrollViewProps {
@@ -36,9 +39,12 @@ interface ScreenProps extends ScrollViewProps {
   scrollable?: boolean
   bodyStyle?: StyleProp<ViewStyle>
   /**
-   * Override the SafeAreaView background. Use for screens whose canvas
-   * is intentionally brand-fixed (e.g. auth flow on cream regardless of
-   * theme). Defaults to `theme.colors.background`.
+   * Override del fondo de la pantalla. Para superficies cuyo canvas es
+   * intencionalmente propio (auth, hojas de marca) o para las pantallas
+   * que todavía no migraron al rediseño y necesitan fijar el fondo V1.
+   * Default: el canvas neo del modo activo (`neoTokens(mode).bg`), que
+   * es el mismo que pintan el root, el stack y las escenas de tabs — así
+   * no hay seam entre capas ni frame de color ajeno en las transiciones.
    */
   backgroundColor?: string
   /**
@@ -65,12 +71,21 @@ interface ScreenProps extends ScrollViewProps {
    */
   backgroundSlot?: ReactNode
   /**
-   * Opt-out del scroll edge effect (safe area superior transparente con
-   * material difuminado). Ponelo en `true` en pantallas que dibujan su
-   * PROPIO chrome hasta el borde y no quieren el material encima
-   * (splash a pantalla completa, wrapped, visores de media).
+   * Opt-out del scroll edge effect en LOS DOS bordes (safe areas
+   * transparentes con material difuminado). Ponelo en `true` en
+   * pantallas que dibujan su PROPIO chrome hasta el borde y no quieren
+   * el material encima (splash a pantalla completa, wrapped, visores de
+   * media).
    */
   disableEdgeEffect?: boolean
+  /**
+   * Opt-out SOLO del borde inferior, conservando el superior. Para las
+   * pantallas que anclan su propia superficie opaca contra el piso
+   * (footer fijo full-bleed, teclado propio): ahí la franja del home
+   * indicator ya está cubierta por chrome propio y el material sería un
+   * segundo velo sobre él.
+   */
+  disableBottomEdgeEffect?: boolean
   /**
    * La pantalla maneja SUS PROPIOS insets. Para las que montan una lista
    * virtualizada (SectionList/FlatList) en vez del ScrollView del Screen:
@@ -122,6 +137,13 @@ interface ScreenProps extends ScrollViewProps {
    * render (feed, vacío, ciclo cerrado), que es donde se escapaba.
    */
   edgeActive?: boolean
+  /**
+   * Estado CONTROLADO del borde INFERIOR, para los mismos casos que
+   * `edgeActive`. La condición es la simétrica: `true` mientras quede
+   * contenido por debajo del viewport (o sea, hasta llegar al final de
+   * la lista).
+   */
+  bottomEdgeActive?: boolean
 }
 
 /**
@@ -156,9 +178,11 @@ export function Screen({
   scrollRef,
   backgroundSlot,
   disableEdgeEffect = false,
+  disableBottomEdgeEffect = false,
   ownInsets = false,
   presentedAsSheet = false,
   edgeActive: edgeActiveProp,
+  bottomEdgeActive: bottomEdgeActiveProp,
   children,
   contentContainerStyle,
   ...scrollViewProps
@@ -197,6 +221,10 @@ export function Screen({
   // padding scrolleable (el contenido lo atraviesa) en vez de un borde
   // opaco que lo recorta.
   const insets = useSafeAreaInsets()
+  // Gate de MONTAJE del material inferior: con las tabs pre-montadas, su
+  // `active` nace en true en todas las que desbordan y el arranque
+  // crearía las capas de blur de las 4 juntas.
+  const isFocused = useIsFocused()
   // Inset SUPERIOR efectivo. En una hoja modal de iOS el inset del
   // dispositivo NO corresponde (ver el docblock de `presentedAsSheet`): la
   // tarjeta arranca debajo de la isla y lo que tiene arriba es su propio
@@ -256,24 +284,80 @@ export function Screen({
           },
     [ownInsets, callerTop, callerBottom, bottomPadding, topInset, insets.bottom],
   )
+  // Clearance vacío que el Screen suma al final del contenido. Se
+  // descuenta al decidir el material del borde inferior: es aire, no
+  // contenido que pase por detrás.
+  const injectedBottomPad = insetContentStyle?.paddingBottom ?? 0
 
-  // El material del borde superior aparece SOLO con contenido debajo.
-  // Se trackea con un booleano (no con el offset por frame): el estado
-  // cambia una vez al cruzar el umbral y el fade lo hace el propio
-  // overlay con withTiming — cero re-renders por frame de scroll.
+  // El material de cada borde aparece SOLO con contenido cruzando por
+  // detrás: arriba cuando ya scrolleaste (hay contenido por ENCIMA),
+  // abajo mientras todavía falte recorrido (hay contenido por DEBAJO).
+  // Los dos se trackean con un booleano (no con el offset por frame): el
+  // estado cambia una vez al cruzar el umbral y el fade lo hace el
+  // propio overlay con withTiming — cero re-renders por frame de scroll.
   const [edgeActiveInternal, setEdgeActive] = useState(false)
+  const [bottomEdgeActiveInternal, setBottomEdgeActive] = useState(false)
   const edgeActive = edgeActiveProp ?? edgeActiveInternal
+  const bottomEdgeActive = bottomEdgeActiveProp ?? bottomEdgeActiveInternal
+  // El borde inferior no se decide con el offset solo: hace falta la
+  // terna completa. Y el `onScroll` NO dispara en el montaje, así que
+  // una pantalla que arranca desbordada tiene que resolverse desde el
+  // layout y el tamaño del contenido — que llegan por eventos distintos
+  // y en orden no garantizado. Por eso las tres medidas viven en un ref
+  // y cada evento actualiza la suya y reevalúa con lo último de las
+  // otras.
+  const scrollMetrics = useRef({ offset: 0, viewport: 0, content: 0 })
+  const syncBottomEdge = useCallback(() => {
+    const { offset, viewport, content } = scrollMetrics.current
+    // `viewport` en 0 NO es "sin contenido oculto" sino el valor MÁS
+    // activo posible (la resta colapsa a `content`): sin este corte, el
+    // primer evento que llegue antes del layout enciende el material en
+    // cualquier pantalla, incluida una que no desborda — y el latch de
+    // montaje del overlay ya no se puede deshacer.
+    if (viewport <= 0) return
+    // El `paddingBottom` que el propio Screen inyecta (clearance de la
+    // tab bar + numpad + inset) es espacio VACÍO: contarlo como
+    // contenido haría aparecer el material en pantallas cuyo contenido
+    // real termina bien arriba del borde.
+    const hiddenBelow = content - viewport - offset - injectedBottomPad
+    setBottomEdgeActive((prev) => {
+      const next = hiddenBelow > SCROLL_EDGE_THRESHOLD
+      return prev === next ? prev : next
+    })
+  }, [injectedBottomPad])
   const callerOnScroll = scrollViewProps.onScroll
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = event.nativeEvent.contentOffset.y
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
       setEdgeActive((prev) => {
-        const next = y > SCROLL_EDGE_THRESHOLD
+        const next = contentOffset.y > SCROLL_EDGE_THRESHOLD
         return prev === next ? prev : next
       })
+      scrollMetrics.current.offset = contentOffset.y
+      scrollMetrics.current.viewport = layoutMeasurement.height
+      scrollMetrics.current.content = contentSize.height
+      syncBottomEdge()
       callerOnScroll?.(event)
     },
-    [callerOnScroll],
+    [callerOnScroll, syncBottomEdge],
+  )
+  const callerOnContentSizeChange = scrollViewProps.onContentSizeChange
+  const handleContentSizeChange = useCallback(
+    (width: number, height: number) => {
+      scrollMetrics.current.content = height
+      syncBottomEdge()
+      callerOnContentSizeChange?.(width, height)
+    },
+    [callerOnContentSizeChange, syncBottomEdge],
+  )
+  const callerOnLayout = scrollViewProps.onLayout
+  const handleLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetrics.current.viewport = event.nativeEvent.layout.height
+      syncBottomEdge()
+      callerOnLayout?.(event)
+    },
+    [callerOnLayout, syncBottomEdge],
   )
   const { contentAnimatedStyle, headerAnimatedStyle } = useScreenEntrance({
     reducedMotion: isReducedMotionEnabled,
@@ -315,12 +399,15 @@ export function Screen({
   // which pushes custom tops (back+title rows, hero cards) way below
   // the safe area. Skipping it keeps the first visible element tight
   // at the top — aligning with the Ajustes screen's look.
+  const canvas = backgroundColor ?? neoTokens(theme.mode).bg
+
   const hasHeaderContent = Boolean(title || subtitle || canGoBack || rightSlot)
   const header = hasHeaderContent ? (
     <Animated.View style={headerAnimatedStyle}>
       <ScreenHeader
         canGoBack={canGoBack}
         rightSlot={rightSlot}
+        skin="neo"
         subtitle={subtitle}
         title={title}
         titleColor={titleColor}
@@ -341,14 +428,7 @@ export function Screen({
     // el límite y el inset vive en un solo lugar. La app es
     // portrait-only (app.config.ts), así que no hay insets laterales
     // que consumir.
-    <View
-      style={[
-        styles.safeArea,
-        {
-          backgroundColor: backgroundColor ?? theme.colors.background,
-        },
-      ]}
-    >
+    <View style={[styles.safeArea, { backgroundColor: canvas }]}>
       <KeyboardAvoidingView
         behavior={kavBehavior}
         keyboardVerticalOffset={isTabScreen ? 8 : 0}
@@ -385,6 +465,8 @@ export function Screen({
             // sola vez por gesto). El caller puede subirlo, no bajarlo.
             scrollEventThrottle={16}
             {...scrollViewProps}
+            onContentSizeChange={handleContentSizeChange}
+            onLayout={handleLayout}
             onScroll={handleScroll}
           >
             {showGrabHandle ? <ModalGrabHandle /> : null}
@@ -411,9 +493,10 @@ export function Screen({
         )}
         </Animated.View>
       </KeyboardAvoidingView>
-      {/* Último hijo = capa superior del Screen. Solo en la rama
-          scrollable: sin scroll no hay contenido que pueda pasar por
-          debajo del borde, así que no hay nada que difuminar. El
+      {/* Los overlays van después del cuerpo = capa superior del Screen.
+          Solo en la rama scrollable: sin scroll no hay contenido que
+          pueda pasar por detrás del borde, así que no hay nada que
+          difuminar. El
           `topInset > 0` se chequea acá y no adentro del overlay para no
           montar nada en las hojas modales (`presentedAsSheet`): sobre una
           hoja no hay franja de sistema que materializar y el material
@@ -421,8 +504,49 @@ export function Screen({
       {(scrollable || ownInsets) && !disableEdgeEffect && topInset > 0 ? (
         <ScreenEdgeEffect
           active={edgeActive}
-          backgroundColor={backgroundColor ?? theme.colors.background}
+          backgroundColor={canvas}
           height={topInset}
+        />
+      ) : null}
+      {/* Borde inferior. Mismas condiciones de montaje que el superior,
+          con dos diferencias que salen de qué hay físicamente en cada
+          franja:
+
+          · El inset va CRUDO, sin el corte de `presentedAsSheet`. Una
+            hoja modal de iOS no llega a la isla dinámica pero SÍ llega
+            al home indicator (por eso `insets.bottom` tampoco se anula
+            en el padding), así que abajo hay franja de sistema real que
+            materializar incluso sobre la hoja.
+          · En las tab-screens la barra flota a `max(insets.bottom, 22)`
+            del piso: NO cubre la franja del home indicator, el contenido
+            le pasa por detrás igual. El material la materializa y queda
+            por debajo de la barra (el navegador la renderiza como
+            hermana posterior a la escena), y a la altura del borde
+            inferior de la barra el acumulado de la curva ya es ~7% del
+            pico — no le ensucia el glass.
+
+          Las pantallas con footer fijo full-bleed no llegan acá: montan
+          con `scrollable={false}`. Las que anclan el CTA DENTRO del
+          scroll (los wizards) sí, y ahí el efecto es el correcto: el
+          material acompaña mientras falte recorrido y se apaga justo
+          cuando el CTA aterriza contra el piso.
+
+          Ni el teclado ni el numpad llevan gate: los dos tapan la franja
+          entera (el teclado es una ventana del sistema, el numpad una
+          hoja en su propio host), así que el material queda invisible
+          igual. Apagarlo al abrirlos sería peor — el fade de vuelta
+          correría contra el slide-out de la hoja, que va destapando la
+          franja de a poco. */}
+      {(scrollable || ownInsets) &&
+      !disableEdgeEffect &&
+      !disableBottomEdgeEffect &&
+      insets.bottom > 0 ? (
+        <ScreenEdgeEffect
+          active={bottomEdgeActive}
+          backgroundColor={canvas}
+          edge="bottom"
+          height={insets.bottom}
+          mountable={isFocused}
         />
       ) : null}
     </View>

@@ -1,5 +1,5 @@
-import { AuthCallbackScreen } from '@/screens/auth/auth-callback-screen'
+import { NeoAuthCallbackScreen } from '@/screens/auth/neo/neo-auth-callback-screen'
 
 export default function AuthCallbackRoute() {
-  return <AuthCallbackScreen />
+  return <NeoAuthCallbackScreen />
 }

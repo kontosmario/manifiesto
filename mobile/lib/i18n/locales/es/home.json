@@ -60,7 +60,8 @@
     "confirmPaidHint": "Abre el diálogo para confirmar que cobraste",
     "confirmAmountHint": "Abre el diálogo para confirmar el monto que recibiste",
     "gotPaidToday": "Cobrado hoy ✓",
-    "configureSalary": "Configurá tu sueldo ›"
+    "configureSalary": "Configurá tu sueldo ›",
+    "confirmStartingBalance": "Confirma tu saldo ›"
   },
   "projectionWait": {
     "label": "Aún calculando",
@@ -214,7 +215,8 @@
   "familyStrip": {
     "membersAccessibility": "Miembros del hogar: {{members}}.",
     "none": "ninguno",
-    "membersLabel": "Miembros ·"
+    "membersLabel": "Miembros ·",
+    "soloLabel": "Tu espacio"
   },
   "historyToolbar": {
     "openFilters": "Abrir filtros",
@@ -382,11 +384,11 @@
     "over": "Cupo del día excedido",
     "perDay": "POR DÍA",
     "canSpendToday": "PODÉS GASTAR HOY",
-    "cupoToday": "CUPO HOY",
     "spent": "GASTADO",
-    "available": "DISPONIBLE",
     "projectionLink": "Proyección de cierre en Control ›",
-    "projectionA11y": "Proyección de cierre en Control"
+    "projectionA11y": "Proyección de cierre en Control",
+    "leftToday": "TE QUEDA HOY",
+    "ofTarget": "DE"
   },
   "cycleSummary": {
     "noMovements": "Sin movimientos aún",

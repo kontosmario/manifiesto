@@ -25,6 +25,7 @@ import {
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Pre-onboarding biometric setup screen. Sits between signup and
@@ -342,6 +343,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     marginBottom: 12,
     letterSpacing: -0.5,
@@ -367,6 +369,7 @@ const styles = StyleSheet.create({
   primaryLabel: {
     fontSize: 17,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   ghostButton: {
     height: 48,
@@ -376,5 +379,6 @@ const styles = StyleSheet.create({
   ghostLabel: {
     fontSize: 15,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
 })

@@ -8,6 +8,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface WizardHeaderProps {
   /** Ya traducido: el kit no conoce el namespace del flujo. */
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, fontSize: 22, fontWeight: '800', letterSpacing: -0.6 },
+  title: { flex: 1, fontSize: 22, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   headerRightSpacer: { width: 40 },
   dotsRow: { flexDirection: 'row', gap: 6 },
   stepBar: { flex: 1, height: 3, borderRadius: 2 },

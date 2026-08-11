@@ -335,18 +335,25 @@ export interface HomeMembersChipVM {
    *  emoji de muestra). El kit los envuelve en el círculo 26px con ring
    *  de separación; slice(0,2) acota al par visible del stack. */
   avatars: ReactNode[]
-  count: number
+  /** null = chip sin conteo (cuenta solitaria: el label ya se basta solo,
+   *  "Miembros · 1" no dice nada). */
+  count: number | null
 }
 
 export interface HomePaydayChipVM {
   /** daysUntil = "Sueldo en N días" (dot verde) · paidToday = "Cobrado
    *  hoy ✓" (dot verde) · configure = "Configurá tu sueldo ›" (dot
    *  naranja, catálogo §11) · pending = "¿Ya cobraste?" (dot naranja de
-   *  atención — cobró pero falta confirmar). */
-  kind: 'daysUntil' | 'paidToday' | 'configure' | 'pending'
+   *  atención — cobró pero falta confirmar) · confirmBalance = "Confirma
+   *  tu saldo ›" (dot naranja + ripple: el ciclo todavía no arrancó con un
+   *  saldo inicial confirmado). */
+  kind: 'daysUntil' | 'paidToday' | 'configure' | 'pending' | 'confirmBalance'
   days?: number
   /** Label resuelto (default = literal del mockup; la neo lo pasa con t()). */
   label?: string
+  /** Label hablado cuando el visible es telegráfico (chevron/pregunta).
+   *  Ausente = se lee el label visible. */
+  a11yLabel?: string
 }
 
 export interface HomeChipsRowProps {
@@ -356,7 +363,9 @@ export interface HomeChipsRowProps {
   /** null = chip oculto (income dinámico). */
   payday?: HomePaydayChipVM | null
   /** Prefijo del chip de miembros (default = literal del mockup; la neo lo
-   *  pasa con t('home:familyStrip.membersLabel')). Se renderiza "{label} N". */
+   *  pasa con t('home:familyStrip.membersLabel')). Se renderiza "{label} N";
+   *  con `count: null` se renderiza solo, así que ahí el caller tiene que
+   *  pasar un label que se baste (sin el separador del prefijo). */
   membersLabel?: string
   onPressPayday?: () => void
 }
@@ -378,7 +387,13 @@ function paydayLabel(payday: HomePaydayChipVM): string {
   if (payday.kind === 'paidToday') return 'Cobrado hoy ✓'
   if (payday.kind === 'configure') return 'Configurá tu sueldo ›'
   if (payday.kind === 'pending') return '¿Ya cobraste?'
+  if (payday.kind === 'confirmBalance') return 'Confirma tu saldo ›'
   return `Sueldo en ${payday.days ?? 13} días`
+}
+
+/** Kinds que piden una acción AHORA: dot naranja + anillo que irradia. */
+function isPaydayCallToAction(kind: HomePaydayChipVM['kind'] | undefined): boolean {
+  return kind === 'pending' || kind === 'confirmBalance'
 }
 
 export function HomeChipsRow({
@@ -390,16 +405,16 @@ export function HomeChipsRow({
 }: HomeChipsRowProps) {
   const s = HOME_SPEC[mode]
   const press = usePressScale({ pressedScale: 0.96 })
-  // Ripple de atención del chip "¿Ya cobraste?" (kind pending) — indica una
-  // acción a tocar (pedido owner: el pulse/breath no gustó). Un anillo peach
-  // que irradia hacia afuera (scale 1→1.22 + fade), detrás del chip, en loop.
-  // Parkeado invisible (ripple=0) fuera de pending o con reduced-motion, así
-  // el visual en reposo queda idéntico.
+  // Ripple de atención de los chips accionables ("¿Ya cobraste?" / "Confirma
+  // tu saldo ›") — indica una acción a tocar (pedido owner: el pulse/breath no
+  // gustó). Un anillo peach que irradia hacia afuera (scale 1→1.22 + fade),
+  // detrás del chip, en loop. Parkeado invisible (ripple=0) en el resto de los
+  // kinds o con reduced-motion, así el visual en reposo queda idéntico.
   const reduceMotion = useReducedMotion()
   const kind = payday?.kind
   const ripple = useSharedValue(0)
   useEffect(() => {
-    if (kind !== 'pending' || reduceMotion) {
+    if (!isPaydayCallToAction(kind) || reduceMotion) {
       cancelAnimation(ripple)
       ripple.value = 0
       return
@@ -420,9 +435,9 @@ export function HomeChipsRow({
   // Ambos chips ocultos → la fila colapsa (no ocupa espacio).
   if (!members && !payday) return null
   // Layout (catálogo): caso feliz (ambos chips) = space-between del mockup
-  // principal. Solo sueldo (members null, solo-mode G9) → chip a la DERECHA.
-  // Usuario nuevo (miembros + "Configurá tu sueldo ›", estados.dc.html:52-58)
-  // → los dos chips ADYACENTES gap 10 a la izquierda.
+  // principal. Solo sueldo (members null, p. ej. miembros aún sin cargar) →
+  // chip a la DERECHA. Usuario nuevo (miembros + "Configurá tu sueldo ›",
+  // estados.dc.html:52-58) → los dos chips ADYACENTES gap 10 a la izquierda.
   const soloSueldo = !members && Boolean(payday)
   const newUserAdjacent = Boolean(members) && payday?.kind === 'configure'
   const sueldoChip = payday ? (
@@ -432,7 +447,9 @@ export function HomeChipsRow({
           styles.sueldoDot,
           {
             backgroundColor:
-              payday.kind === 'configure' || payday.kind === 'pending' ? s.sueldoDotAttention : s.sueldoDot,
+              payday.kind === 'configure' || isPaydayCallToAction(payday.kind)
+                ? s.sueldoDotAttention
+                : s.sueldoDot,
           },
         ]}
       />
@@ -468,7 +485,9 @@ export function HomeChipsRow({
               </View>
             ))}
           </View>
-          <Text style={[styles.membersLabel, { color: s.membersInk }]}>{membersLabel} {members.count}</Text>
+          <Text style={[styles.membersLabel, { color: s.membersInk }]} numberOfLines={1}>
+            {members.count == null ? membersLabel : `${membersLabel} ${members.count}`}
+          </Text>
         </View>
       ) : null}
       {payday && sueldoChip ? (
@@ -481,7 +500,7 @@ export function HomeChipsRow({
           {onPressPayday ? (
             <AnimatedPressable
               accessibilityRole="button"
-              accessibilityLabel={paydayLabel(payday)}
+              accessibilityLabel={payday.a11yLabel ?? paydayLabel(payday)}
               hitSlop={4}
               onPress={onPressPayday}
               onPressIn={press.onPressIn}
@@ -643,19 +662,36 @@ function HomeCupoGauge({
   const targetPct = Math.min(1, Math.max(0, gauge.spentRatio)) * 100
   // Llenado al montar: 0 → targetPct. reduced-motion arranca lleno (sin anim).
   const fill = useSharedValue(reduceMotion ? targetPct : 0)
+  /**
+   * El barrido desde 0 es de ENTRADA y corre una sola vez.
+   *
+   * Antes el efecto hacía `fill.value = 0` en cada cambio de `targetPct`, así
+   * que al cargar un gasto la barra se rebobinaba y volvía a llenarse hasta un
+   * valor casi idéntico: se veía "la barra hace su animación", nunca "la barra
+   * SUBIÓ". Justo lo que hay que comunicar es el delta, y el delta era lo
+   * único que el rebobinado tapaba.
+   *
+   * A partir del segundo valor anima del anterior al nuevo, que es lo que hace
+   * legible cuánto te comió el gasto que acabás de cargar.
+   */
+  const hasEntered = useSharedValue(false)
   useEffect(() => {
     if (reduceMotion) {
       cancelAnimation(fill)
       fill.value = targetPct
+      hasEntered.value = true
       return
     }
-    fill.value = 0
+    if (!hasEntered.value) {
+      hasEntered.value = true
+      fill.value = 0
+    }
     fill.value = withTiming(targetPct, {
       duration: decorativeDurations.meterFill,
       easing: motionEasings.decelerate,
     })
     return () => cancelAnimation(fill)
-  }, [targetPct, reduceMotion, fill])
+  }, [targetPct, reduceMotion, fill, hasEntered])
   // width nunca undefined (siempre string %).
   const spentStyle = useAnimatedStyle(() => ({ width: `${fill.value}%` }))
   // over → segmento GASTADO en terracota; ok/limit quedan durazno.
@@ -686,7 +722,7 @@ function HomeCupoGauge({
             <Text style={[styles.cupoLabel, { color: s.cupoLabelInk }]}>{cupoTitle}</Text>
           </View>
         </View>
-        {/* Info — label + bar GASTADO/DISPONIBLE + leyenda. */}
+        {/* Info — label + bar + leyenda "GASTADO $X DE $Y". */}
         <View style={styles.cupoInfo}>
           <View style={styles.gaugeLabelRow}>
             <View style={[styles.gaugeLabelDot, { backgroundColor: s.gaugeLabelDot }]} />
@@ -748,9 +784,9 @@ export function HomeHero({
   emptyCtaLabel = '+ Ingreso',
   emptyCopy = 'El cupo diario y la proyección aparecen con tu primer ingreso.',
   gaugeHeadingLabel = 'PODÉS GASTAR HOY',
-  gaugeCupoLabel = 'CUPO HOY',
+  gaugeCupoLabel = 'TE QUEDA HOY',
   gaugeSpentLabel = 'GASTADO',
-  gaugeAvailableLabel = 'DISPONIBLE',
+  gaugeAvailableLabel = 'DE',
   projectionLabel = 'Proyección de cierre en Control ›',
   projectionA11yLabel = 'Proyección de cierre en Control',
   onPressEmptyCta,
@@ -1663,17 +1699,23 @@ const styles = StyleSheet.create({
 
   // ⓿ header
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  greetGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // El `flexShrink` de `greetTexts` no alcanza: sin uno acá el grupo mide por
+  // contenido y un nombre largo (el cableado admite hasta 22 caracteres a 28px
+  // = ~356pt) empuja los tres botones fuera de una pantalla de 375.
+  greetGroup: { flexShrink: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 10 },
   greetTexts: { flexShrink: 1, minWidth: 0 },
-  greetLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  greetLine: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
   greetEmoji: { fontSize: 16 },
-  greetLabel: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
-  greetName: { fontSize: 28, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 29.4, marginTop: 1 },
-  // "¡bienvenido!" §13 (estados.dc.html): label 13/800 · nombre 26/900
-  // line-height 1.05 (=27.3) sin marginTop.
+  greetLabel: { flexShrink: 1, fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  // Headroom 1.2× y no el 1.05 del mockup: en iOS la baseline cae a
+  // `lineHeight − descent` del tope, y una mayúscula acentuada de Nunito 900
+  // sube 0.959em (0.788em una minúscula). Con 1.05 quedaban 0.697em útiles y
+  // la tilde de un nombre como "Ángel" desaparecía.
+  greetName: { fontSize: 28, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 28 * 1.2, marginTop: 1 },
+  // "¡bienvenido!" §13 (estados.dc.html): label 13/800 · nombre 26/900.
   greetLabelWelcome: { fontSize: 13 },
-  greetNameWelcome: { fontSize: 26, lineHeight: 27.3, marginTop: 0 },
-  headerBtns: { flexDirection: 'row', gap: 9, paddingTop: 2 },
+  greetNameWelcome: { fontSize: 26, lineHeight: 26 * 1.2, marginTop: 0 },
+  headerBtns: { flexShrink: 0, flexDirection: 'row', gap: 9, paddingTop: 2 },
   iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   badge: {
     position: 'absolute',
@@ -1703,6 +1745,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingRight: 14,
     paddingLeft: 8,
+    // Con los dos chips largos (miembros + "Confirma tu saldo ›") la fila no
+    // entra en 375pt: cede este, no el que pide la acción.
+    flexShrink: 1,
   },
   avatarStack: { flexDirection: 'row' },
   // 26px, recorta el nodo al círculo (overflow) y lleva un ring 2px cuyo
@@ -1717,9 +1762,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarOverlap: { marginLeft: -8 },
-  membersLabel: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  membersLabel: { flexShrink: 1, fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800') },
   sueldoChip: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 22, paddingVertical: 9, paddingHorizontal: 14 },
-  // Wrap + anillo del ripple peach del chip pending "¿Ya cobraste?".
+  // Wrap + anillo del ripple peach de los chips accionables.
   sueldoChipWrap: { position: 'relative', alignSelf: 'flex-start' },
   sueldoRipple: {
     position: 'absolute',

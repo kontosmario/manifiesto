@@ -26,6 +26,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoneyShort } from '@/utils/money'
 import { toast } from '@/lib/toast-bus'
+import { nunitoFamily } from '@/theme/typography'
 
 interface MetaCardProps {
   goal: SavingsGoal
@@ -345,6 +346,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
@@ -357,6 +359,7 @@ const styles = StyleSheet.create({
   pctChipText: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.4,
   },
   amountRow: {
@@ -371,12 +374,14 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.8,
     lineHeight: 28,
   },
   goalText: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     marginTop: 1,
   },
   emoji: { fontSize: 30 },
@@ -397,9 +402,11 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 11,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
   footerStrong: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   actionPill: {
     flexDirection: 'row',
@@ -413,6 +420,7 @@ const styles = StyleSheet.create({
   actionPillText: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
 })

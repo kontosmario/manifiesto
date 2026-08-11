@@ -16,6 +16,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const ENTER = motionEasings.enterSmooth
 
@@ -232,8 +233,9 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     lineHeight: 15,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
-  alertName: { fontWeight: '800' },
+  alertName: { fontWeight: '800', fontFamily: nunitoFamily('800') },
   dismissBtn: {
     width: 22,
     height: 22,

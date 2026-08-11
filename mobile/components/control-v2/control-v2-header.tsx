@@ -25,6 +25,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoneyShort } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlV2HeaderProps {
   score: number
@@ -485,6 +486,7 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
@@ -502,6 +504,7 @@ const styles = StyleSheet.create({
   goalChipText: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.3,
   },
   // Wraps the pulse rings + the pill so they share a positioning

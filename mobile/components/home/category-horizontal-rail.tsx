@@ -28,7 +28,7 @@ import type { CategoryIconScope } from '@/components/category/category-icon-map'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations, motionSprings } from '@/lib/motion'
 import { neoRadii } from '@/theme/neo-tokens'
-import { typography } from '@/theme/typography'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
@@ -566,6 +566,7 @@ const styles = StyleSheet.create({
     borderRadius: neoRadii.chip,
     fontSize: 9.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
@@ -626,6 +627,7 @@ const styles = StyleSheet.create({
     // defecto (~14.3 a 12pt → 2 líneas ~28.6pt) entra en el tile de 92pt
     // (badge 42 + gap 4 + label + padding 16) y escala con la fuente al achicar.
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0,
     textAlign: 'center',
     width: '100%',

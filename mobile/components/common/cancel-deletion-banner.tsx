@@ -20,12 +20,14 @@ import { useCallback, useMemo } from 'react'
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
 import i18n from '@/lib/i18n'
 import { useCancelAccountDeletion } from '@/features/auth/use-delete-account'
 import { triggerHaptic } from '@/lib/haptics'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeMode } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import { monthShort } from '@/utils/date-format'
 import { getErrorMessage, isRateLimitError } from '@/utils/error-message'
 
@@ -47,7 +49,9 @@ export function CancelDeletionBanner({
   userId,
   scheduledAt,
 }: CancelDeletionBannerProps) {
-  const { theme } = useAppTheme()
+  const mode = useThemeMode().resolvedMode
+  const neo = neoTokens(mode)
+  const ink = neoInk(mode)
   const { t } = useTranslation()
   const cancelDeletion = useCancelAccountDeletion(userId)
 
@@ -98,33 +102,24 @@ export function CancelDeletionBanner({
           ? t('states:accountDeletion.a11yDated', { date: formatted })
           : t('states:accountDeletion.a11yUndated')
       }
-      style={[
-        styles.shell,
-        {
-          backgroundColor: theme.colors.surfaceMuted,
-          borderColor: theme.colors.danger,
-        },
-      ]}
+      style={[styles.shell, neoMaterial(mode, 'raisedMd'), { borderColor: ink.danger }]}
     >
       <View style={styles.row}>
-        <MaterialIcons
-          color={theme.colors.danger}
-          name="warning-amber"
-          size={24}
-        />
+        <MaterialIcons color={ink.danger} name="warning-amber" size={24} />
         <View style={styles.copy}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
+          <Text style={[styles.title, { color: neo.text }]}>
             {t('states:accountDeletion.title')}
           </Text>
-          <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.body, { color: neo.textMuted }]}>
             {formatted
               ? t('states:accountDeletion.bodyDated', { date: formatted })
               : t('states:accountDeletion.bodyUndated')}
           </Text>
         </View>
       </View>
-      <AppButton
+      <NeoButton
         disabled={cancelDeletion.isPending}
+        fullWidth
         label={
           cancelDeletion.isPending
             ? t('states:accountDeletion.cancelling')
@@ -141,9 +136,9 @@ export function CancelDeletionBanner({
 const styles = StyleSheet.create({
   shell: {
     borderWidth: 2,
-    borderRadius: radii.lg,
-    padding: 14,
-    gap: 12,
+    borderRadius: neoRadii.cardSm,
+    padding: 16,
+    gap: 14,
     ...(Platform.OS === 'web' ? {} : { marginHorizontal: 0 }),
   },
   row: {
@@ -158,10 +153,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   body: {
     fontSize: 13,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
 })

@@ -66,6 +66,13 @@ import {
   type SkiaModule,
 } from '@/lib/optional-skia'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import {
+  BROT_INK_BLEED_BOTTOM,
+  BROT_INK_BLEED_TOP,
+  BROT_INK_BLEED_X,
+  BROT_VIEWBOX_H,
+  BROT_VIEWBOX_H_PEEK,
+} from './brot-geometry'
 
 // ─── API pública ─────────────────────────────────────────────────────
 
@@ -135,8 +142,11 @@ export interface BrotMascotProps {
 // peores casos): `radiant` = cheer (perk, ya el peor caso de arriba) +
 // sparkles de magic, cuyo extremo con bounce+respiro queda en y≈-1.1 y
 // x≈76.7; los bebés sprout/sproutA viven en x∈[~17,~69], y∈[~40,~105.1].
-const PAD_TOP = 12
-const PAD_X = 6
+// Los números viven en `brot-geometry` (módulo puro) porque los necesitan
+// call sites que no pueden importar este archivo: quien apoye algo justo
+// encima de Brot tiene que reservar este aire o se lo comen las hojas.
+const PAD_TOP = BROT_INK_BLEED_TOP
+const PAD_X = BROT_INK_BLEED_X
 /**
  * LOAD-BEARING en 0: `peek` NO es una pose recortada por accidente — su
  * viewBox de 72 ES el recorte que deja solo cabeza y manitos asomando
@@ -145,7 +155,7 @@ const PAD_X = 6
  * de que ninguna pose se sale por abajo, así que 0 global sirve para
  * las dos cosas.
  */
-const PAD_BOTTOM = 0
+const PAD_BOTTOM = BROT_INK_BLEED_BOTTOM
 
 // ─── Paleta (tabla C del original) ───────────────────────────────────
 
@@ -1477,7 +1487,7 @@ export const BrotMascot = memo(function BrotMascot({
   // varios Brots no respiren sincronizados.
   const phase = useMemo(() => Math.random() * 10, [])
 
-  const viewH = pose === 'peek' ? 72 : 108
+  const viewH = pose === 'peek' ? BROT_VIEWBOX_H_PEEK : BROT_VIEWBOX_H
   const scale = size / viewH
   // Caja de LAYOUT: sigue siendo exactamente el viewBox, así que ningún
   // call site se mueve. El canvas es más grande y sobresale de ella.

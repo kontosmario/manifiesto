@@ -35,6 +35,7 @@ import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations, motionEasings, motionSprings } from '@/lib/motion'
 import { withAlpha } from '@/theme/color-utils'
+import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -264,11 +265,10 @@ export function NumericEditSheet({
     : neo.shadows.insetLg
 
   // `neo.danger` es el color del ANILLO (a un borde le alcanza 3:1). Como
-  // tinta de 12px sobre la hoja clara se queda en 3.75:1, abajo de los 4.5
-  // de AA, así que el texto del error usa la variante oscurecida — mismo
-  // recurso (y mismo valor) que el `accentClayInk` del kit de fijos. En
-  // oscuro el terracota del tema ya da 5.3:1 y se usa tal cual.
-  const errorInk = theme.mode === 'dark' ? neo.danger : '#9A421F'
+  // tinta de 12px sobre la hoja clara no llega al 4.5:1 de AA, así que el
+  // texto del error va por la tinta semántica del sistema (4.93:1 sobre
+  // `neo.sheet` en claro, 5.3:1 en oscuro).
+  const errorInk = neoInk(theme.mode).danger
 
   return (
     <Modal

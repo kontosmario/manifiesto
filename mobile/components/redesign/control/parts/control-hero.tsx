@@ -673,7 +673,11 @@ const styles = StyleSheet.create({
     fontSize: 37,
     fontWeight: '900',
     letterSpacing: 37 * -0.02,
-    lineHeight: 37,
+    // Headroom sobre el fontSize: en iOS la baseline queda a
+    // `lineHeight − descent` del tope, y Nunito 900 pide 0.705em de alto de
+    // caja alta (0.829em para el `$`). Con `lineHeight == fontSize` el signo y
+    // las cifras salían rebanados arriba.
+    lineHeight: 37 * 1.2,
   },
   amountChip: {
     alignItems: 'center',
@@ -740,7 +744,7 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('900'),
     fontSize: 14,
     fontWeight: '900',
-    lineHeight: 14,
+    lineHeight: 14 * 1.2,
     marginTop: 2,
   },
   statSub: {

@@ -4,6 +4,7 @@ import { getSignalPalette, type SignalTone } from '@/components/home/control-vis
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface ControlSignalTileProps {
   helper: string
@@ -121,12 +122,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.45,
     textTransform: 'uppercase',
   },
   signalValue: {
     fontSize: 21,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
   },
   signalHelper: {

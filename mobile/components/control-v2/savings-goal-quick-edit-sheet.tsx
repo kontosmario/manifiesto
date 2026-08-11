@@ -92,7 +92,7 @@ export function SavingsGoalQuickEditSheet({
   // (`neo.well` sobre `neo.sheet`, ~4% de delta en claro) desaparece.
   const flatFallback = SUPPORTS_INSET_SHADOW
     ? null
-    : { borderWidth: 1, borderColor: theme.colors.border }
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
 
   return (
     <ModalCard

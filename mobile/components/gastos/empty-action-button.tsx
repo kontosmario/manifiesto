@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 import Animated from 'react-native-reanimated'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function EmptyActionButton({
   label,
@@ -55,5 +56,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  emptyActionText: { fontSize: 12, fontWeight: '700' },
+  emptyActionText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
 })

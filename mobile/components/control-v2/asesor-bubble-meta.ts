@@ -9,7 +9,10 @@ import {
  * Conversational view of a signal — the "fusion" design renders each
  * task as a chat bubble. This adapter derives the extra display-only
  * fields the bubble needs (intro tag, headline, impact label, tier
- * label, type tones) from a regular `ControlAdvisorTask`.
+ * label) from a regular `ControlAdvisorTask`.
+ *
+ * Sólo SEMÁNTICA: el material con el que se pinta cada tipo (pastel del
+ * tile, tinta del acento, partículas) vive en `asesor-neo-meta`.
  *
  * No new fields are added to the canonical task type — we keep that
  * close to the signal builder. Everything the UI needs to "humanize"
@@ -21,34 +24,6 @@ import {
 
 export type BubbleType = 'critical' | 'warning' | 'positive' | 'insight'
 export type ConfidenceTier = 'solid' | 'building' | 'early'
-
-export interface BubbleTone {
-  /** Foreground / primary text on the type's bg. */
-  fg: string
-  /** Filled background tile (icon + impact label). */
-  bg: string
-  /** Soft tint for the impact chip and active bubble background. */
-  soft: string
-  /** Strong accent — borders, gradients, focus glow. */
-  accent: string
-  /** Edge tone — softer divider/border on tinted surfaces. */
-  edge: string
-}
-
-// ─── Type tones (LIGHT bubble surfaces against the dark panel) ────────────
-
-// V1 Mint Saturado tones — every fg-on-bg pair AA on the LIGHT
-// bubble surface (cream creamCard) and on the dark forest panel.
-export const TYPE_TONES: Record<BubbleType, BubbleTone> = {
-  // accent-700 fg / accent-100 bg / accent-50 soft / accent-500 / accent-200
-  critical: { fg: '#973511', bg: '#FCEAE3', soft: '#FDF4F1', accent: '#DC4D18', edge: '#F8D1C3' },
-  // V1 warning-light fg + butter bg/soft/edge (yellow stays per branding spec)
-  warning:  { fg: '#9A5E04', bg: '#FCEAC4', soft: '#FFF7E6', accent: '#F3BA57', edge: '#EBD49A' },
-  // primary-800 fg / primary-200 bg / primary-100 soft / primary-500 / primary-300
-  positive: { fg: '#297811', bg: '#D1F7C5', soft: '#EAFBE4', accent: '#49D61F', edge: '#A6EF8F' },
-  // surface-700 fg / surface-200 bg / surface-100 soft / surface-500 / surface-300
-  insight:  { fg: '#3B6D57', bg: '#D4E8DF', soft: '#EBF4F0', accent: '#569F7E', edge: '#ACD2C1' },
-}
 
 // ─── Type derivation ──────────────────────────────────────────────────────
 

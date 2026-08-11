@@ -84,8 +84,8 @@ Cada pantalla se evalúa en estos 7 ejes. Cada eje recibe ✅ pass / 🟡 mid / 
 | 5 | Add expense | `/add-expense` (modal) | T1 | 🔴 TO DO | 🔴 TO DO | — | — |
 | 6 | Asistente | `/asistente` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
 | 7 | Notificaciones | `/notifications` | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
-| 8 | Historial gastos | `/expenses-history` | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
-| 9 | Filtros gastos | `/expense-filters` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
+| 8 | ~~Historial gastos~~ | ~~`/expenses-history`~~ | — | 🗑️ RUTA RETIRADA 2026-08-05 | — | — | — |
+| 9 | ~~Filtros gastos~~ | ~~`/expense-filters`~~ | — | 🗑️ RUTA RETIRADA 2026-08-05 | — | — | — |
 | 10 | Categorías gastos | `/expense-categories` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
 | 11 | Coach signal | `/coach/[signalId]` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |
 | 12 | Add fijo | `/add-fixed-expense` (modal) | T2 | 🔴 TO DO | 🔴 TO DO | — | — |

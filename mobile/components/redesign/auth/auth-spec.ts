@@ -124,7 +124,7 @@ export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
     bg: '#DCDFCD',
     welcomeBg: '#E9EBE0',
     text: '#24382A',
-    helper: '#6C7B67',
+    helper: '#54644F',
     textSoft: '#3E5A44',
     wordmarkDot: '#D97E4F',
     chrome: '#24382A',
@@ -133,12 +133,12 @@ export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
     backGradientCss: undefined,
     backShadow: '6px 6px 12px rgba(151,160,136,0.4), -6px -6px 12px rgba(255,255,255,0.9)',
 
-    fieldLabel: '#6C7B67',
+    fieldLabel: '#54644F',
     wellBackground: undefined,
     wellShadow: 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)',
     passwordHint: '#8FA089',
 
-    ctaGreenCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaGreenCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaGreenFallback: '#489A4E',
     ctaGreenShadow: '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
     ctaGreenText: '#F5F2E1',
@@ -148,7 +148,7 @@ export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
     ctaNeutralShadow: '0 12px 24px rgba(23,40,28,0.35), inset 0 2px 3px rgba(255,255,255,0.18)',
     ctaNeutralText: '#F5F2E1',
 
-    ctaWelcomeCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaWelcomeCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaWelcomeFallback: '#489A4E',
     ctaWelcomeShadow:
       '0 14px 28px rgba(46,116,52,0.4), -6px -6px 14px rgba(255,255,255,0.85), inset 0 2px 3px rgba(255,255,255,0.3)',

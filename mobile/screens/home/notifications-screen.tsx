@@ -20,6 +20,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
+import { nunitoFamily } from '@/theme/typography'
 
 interface NotificationsScreenProps {
   userId: string
@@ -179,6 +180,7 @@ const styles = StyleSheet.create({
   topTitle: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
   },
   subRow: {
@@ -191,10 +193,12 @@ const styles = StyleSheet.create({
   subLine: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   markAll: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   backPill: {
     width: 40,

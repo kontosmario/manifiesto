@@ -28,7 +28,8 @@
     "reviveLabel": "Relive edition {{label}}, {{tone}}",
     "toneMargin": "margin",
     "toneExceeded": "exceeded",
-    "toneEven": "even"
+    "toneEven": "even",
+    "outroCaption": "Every closed cycle is at peace."
   },
   "paywall": {
     "lockChip": "ACCESS PAUSED",

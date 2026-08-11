@@ -25,13 +25,30 @@ import {
   HCAPTCHA_SITE_KEY,
   isCaptchaConfigured,
 } from '@/lib/captcha-config'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface CaptchaModalProps {
   visible: boolean
   /** Llamado con el token cuando éxito, `null` cuando cancel/error/expired. */
   onComplete: (token: string | null) => void
 }
+
+/**
+ * Misma alfa que el scrim de los sheets del sistema: el diseño lo dibuja
+ * sólido, pero atrás hay una pantalla real y el sólido a opacidad plena
+ * la borraría.
+ *
+ * El upstream usa este MISMO valor para dos cosas: el backdrop del Modal
+ * y —al abrirse el desafío— el `background-color` del body del WebView
+ * (Hcaptcha.js `onOpen`). Las dos capas se componen, así que durante el
+ * desafío el velo queda casi sólido: es el extremo correcto del rango
+ * (el scrim canónico ES sólido) y no hay forma de pasar valores
+ * distintos por capa.
+ */
+const CAPTCHA_SCRIM_ALPHA = 0.84
 
 const LIFECYCLE_NOOP = new Set(['open', 'closed'])
 const LIFECYCLE_CANCEL = new Set(['cancel', 'error', 'expired'])
@@ -45,7 +62,9 @@ interface ConfirmHcaptchaHandle {
 // componente no expone API imperativa al caller. El hook useCaptcha
 // maneja todo via props (visible + onComplete).
 export function CaptchaModal({ visible, onComplete }: CaptchaModalProps) {
-    const { theme } = useAppTheme()
+    const theme = useThemeTokens()
+    const neo = neoTokens(theme.mode)
+    const ink = neoInk(theme.mode)
     const captchaRef = useRef<ConfirmHcaptchaHandle | null>(null)
     const onCompleteRef = useRef(onComplete)
     useEffect(() => {
@@ -93,7 +112,9 @@ export function CaptchaModal({ visible, onComplete }: CaptchaModalProps) {
         siteKey={HCAPTCHA_SITE_KEY}
         baseUrl={HCAPTCHA_BASE_URL}
         size="normal"
-        theme={theme.isDark ? 'dark' : 'light'}
+        theme={theme.mode === 'dark' ? 'dark' : 'light'}
+        backgroundColor={withAlpha(neo.scrim, CAPTCHA_SCRIM_ALPHA)}
+        loadingIndicatorColor={ink.accent}
         showLoading
         onMessage={handleMessage}
       />

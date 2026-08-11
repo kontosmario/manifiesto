@@ -4,6 +4,7 @@ import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlPressureMeterProps {
   helper: string
@@ -83,10 +84,12 @@ const styles = StyleSheet.create({
   meterLabel: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   meterValue: {
     fontSize: 16,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   meterSegments: {
     flexDirection: 'row',

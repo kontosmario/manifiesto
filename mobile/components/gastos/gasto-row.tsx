@@ -6,6 +6,7 @@ import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'
 import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface GastoRowProps {
   title?: string
@@ -243,10 +244,10 @@ const styles = StyleSheet.create({
   },
   iconText: { fontSize: 18 },
   body: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '700' },
+  title: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   catChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, borderWidth: 1, flexShrink: 0 },
-  catChipText: { fontSize: 10, fontWeight: '700' },
+  catChipText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700') },
   subMeta: { fontSize: 11, flexShrink: 1 },
   notes: {
     fontSize: 11,
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
   // Tabular nums para que la columna right-aligned de montos alinee
   // verticalmente entre rows sin wobble por anchos de glifo
   // proporcionales (1 vs 8 ocupan distintos pixels en defaults).
-  amount: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  amount: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800'), fontVariant: ['tabular-nums'] },
 })
 
 /**

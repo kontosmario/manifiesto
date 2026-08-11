@@ -10,6 +10,7 @@ import { parsePrice } from '@/utils/money'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
+import { nunitoFamily } from '@/theme/typography'
 
 // Íconos de los 3 pasos de la card del modo variable (mismo set
 // MaterialIcons del resto del onboarding, uno por fila).
@@ -172,10 +173,10 @@ export function StepIncome({
 
 const styles = StyleSheet.create({
   stack: { gap: 16 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 4 },
   choices: { flexDirection: 'row', gap: 10 },
-  eyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1.6 },
+  eyebrow: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.6 },
   dayEyebrow: { marginBottom: 8 },
   hint: { marginTop: 10, fontSize: 12 },
   infoCard: {
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoHeaderText: { flex: 1, gap: 2 },
-  infoTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+  infoTitle: { fontSize: 16, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.3 },
   infoKicker: { fontSize: 12, lineHeight: 16 },
   dynamicCycleBlock: { marginTop: 16 },
   infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

@@ -1,0 +1,1610 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub de acciones — Ramillete (Arco × Brote)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    --d-micro: 120ms;
+    --d-quick: 180ms;
+    --d-standard: 240ms;
+    --d-deliberate: 320ms;
+    --d-breath: 2800ms;
+    --spring-bud: cubic-bezier(0.34, 1.5, 0.5, 1);
+    --spring-celebrate: cubic-bezier(0.34, 1.56, 0.46, 1);
+    --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-standard: cubic-bezier(0.22, 0.9, 0.3, 1);
+    --ease-grow: cubic-bezier(0.16, 0.84, 0.34, 1);
+    --ease-retract: cubic-bezier(0.55, 0, 0.68, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: #171C16;
+    color: #E7EADE;
+    padding: 36px 28px 90px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ Chrome de la página ═══ */
+  .page-head { max-width: 960px; margin: 0 auto 30px; }
+  .kicker {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #8FA089; margin: 0 0 8px;
+  }
+  h1 { font-size: 32px; font-weight: 900; letter-spacing: -1px; margin: 0 0 6px; }
+  .sub-h1 { font-size: 13px; font-weight: 800; letter-spacing: .04em; color: #A4E3A6; margin: 0 0 14px; }
+  .lede { font-size: 14.5px; font-weight: 600; line-height: 1.62; color: #A8B4A0; margin: 0; max-width: 76ch; }
+  .lede + .lede { margin-top: 10px; }
+  .lede b { color: #C9F3C6; font-weight: 800; }
+  .lede i { color: #E9E4D2; font-style: italic; }
+
+  .controls {
+    max-width: 960px; margin: 24px auto 34px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--font); font-size: 14px; font-weight: 900; letter-spacing: -.2px;
+    color: #0F1E14; border: 0; cursor: pointer;
+    padding: 12px 22px; border-radius: 22px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    box-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .btn:active { transform: scale(.97); }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: #A8B4A0; cursor: pointer;
+    padding: 10px 16px; border-radius: 20px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle input { accent-color: #A4E3A6; width: 15px; height: 15px; }
+  .hint-inline { font-size: 12.5px; font-weight: 700; color: #7C917A; padding: 10px 0; }
+
+  .frames { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .frame-col { display: flex; flex-direction: column; gap: 13px; }
+  .frame-label {
+    text-align: center; font-size: 11px; font-weight: 800;
+    letter-spacing: .1em; color: #8FA089; text-transform: uppercase;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     EL STAGE — teléfono de 393×830
+     ══════════════════════════════════════════════════════ */
+  .stage {
+    width: 393px; height: 830px; border-radius: 46px;
+    position: relative; overflow: hidden; flex: none;
+    font-family: var(--font);
+    box-shadow: 0 34px 80px rgba(8,14,8,.55);
+    touch-action: none;
+  }
+
+  .stage[data-theme="light"] {
+    --bg: #DCDFCD;
+    --sheet: #F0EFE3;
+    --surface: #E9EBE0;
+    --text: #24382A;
+    --muted: #54644F;
+    --tertiary: #9AA694;
+    --green: #2E7C39;
+    --deep: #1F5429;
+    --cta-fill: radial-gradient(circle at 32% 28%, #489350, #2E7434 85%);
+    --cta-ink: #F5F2E1;
+    --scrim: rgba(185,190,172,.84);          /* compuesto → #BFC3B1 */
+    --on-scrim: #24382A;                     /* muted NO alcanza: 3.52 */
+    --rim: #54644F;
+    --branch-a: #1F5429;                     /* el #2E7C39 del brote da 2.87 sobre el scrim */
+    --branch-b: #266A31;
+    --leaf: #266A31;
+    --corola: #F0EFE3;
+    --raised-bg: linear-gradient(145deg, #ECEEE3, #E1E4D6);
+    --raised-lg: 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --raised-md: 6px 6px 12px rgba(151,160,136,.4), -6px -6px 12px rgba(255,255,255,.9);
+    --raised-sm: 5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    --inset-md: inset 3px 3px 7px rgba(151,160,136,.35), inset -3px -3px 7px rgba(255,255,255,.9);
+    --inset-lg: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+    --inset-cta: inset 5px 5px 11px rgba(15,45,20,.5), inset -4px -4px 9px rgba(255,255,255,.22);
+    --cta-shadow: 0 12px 24px rgba(46,116,52,.4), inset 0 2px 3px rgba(255,255,255,.3);
+    --glow: rgba(46,124,57,.42);
+    --tile-lip: inset 0 1px 0 rgba(255,255,255,.55);
+    --ghost: rgba(36,56,42,.16);
+    --ghost-ring: rgba(36,56,42,.32);
+    --label-shadow: 0 1px 0 rgba(255,255,255,.4);
+    background: #B9BEAC;
+  }
+
+  .stage[data-theme="dark"] {
+    --bg: #0F1A13;
+    --sheet: #1B2F22;
+    --surface: #1D3426;
+    --text: #F1EEDD;
+    --muted: #93A78F;
+    --tertiary: #7C917A;
+    --green: #A4E3A6;
+    --deep: #3E7D46;
+    --cta-fill: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    --cta-ink: #0F1E14;
+    --scrim: rgba(10,19,13,.84);              /* compuesto → #0B140E */
+    --on-scrim: #F1EEDD;
+    --rim: #93A78F;
+    --branch-a: #6FB871;
+    --branch-b: #A4E3A6;
+    --leaf: #6FB871;
+    --corola: #1B2F22;
+    --raised-bg: linear-gradient(145deg, #1D3426, #132318);
+    --raised-lg: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --raised-md: 6px 6px 12px rgba(0,0,0,.5), -6px -6px 12px rgba(101,152,113,.1);
+    --raised-sm: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    --inset-md: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+    --inset-lg: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.08);
+    --inset-cta: inset 5px 5px 11px rgba(0,0,0,.55), inset -4px -4px 9px rgba(190,240,195,.18);
+    --cta-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    --glow: rgba(140,225,150,.4);
+    --tile-lip: inset 0 1px 0 rgba(164,227,166,.1);
+    --ghost: rgba(241,238,221,.16);
+    --ghost-ring: rgba(241,238,221,.34);
+    --label-shadow: 0 1px 2px rgba(0,0,0,.55);
+    background: #0A130D;
+  }
+
+  /* ── Fondo: recorte de la Home ── */
+  .home { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px 4px; color: var(--text); font-size: 15px; font-weight: 800;
+  }
+  .sb-right { display: flex; align-items: center; gap: 6px; }
+  .bars { display: flex; align-items: flex-end; gap: 2.5px; }
+  .bars i { width: 3px; border-radius: 1px; background: currentColor; display: block; }
+  .battery { width: 23px; height: 11.5px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; }
+  .battery > i { display: block; width: 62%; height: 100%; background: currentColor; border-radius: 1.5px; }
+
+  .home-head { display: flex; align-items: center; gap: 12px; padding: 14px 22px 0; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+  .home-title { font-size: 21px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
+  .home-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+  .hero {
+    margin: 16px 20px 0; height: 172px; border-radius: 32px;
+    background: linear-gradient(155deg, #244235 0%, #1F590D 55%, #297811 100%);
+    box-shadow: 12px 12px 26px rgba(124,138,110,.55);
+    padding: 22px 24px; color: #F7F4E4;
+  }
+  .stage[data-theme="dark"] .hero { box-shadow: 12px 12px 26px rgba(0,0,0,.6); }
+  .hero-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .14em; opacity: .88; }
+  .hero-amount { font-size: 42px; font-weight: 900; letter-spacing: -1.6px; margin-top: 8px; }
+  .hero-meter { height: 9px; border-radius: 6px; background: rgba(255,255,255,.22); margin-top: 20px; overflow: hidden; }
+  .hero-meter > i { display: block; height: 100%; width: 63%; border-radius: 6px; background: #C9F3C6; }
+  .hero-foot { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 10px; opacity: .9; }
+
+  .chips { display: flex; gap: 10px; margin: 16px 20px 0; }
+  .chip {
+    flex: 1; height: 74px; border-radius: 22px; background: var(--raised-bg); box-shadow: var(--raised-sm);
+    padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .chip-k { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .chip-v { font-size: 17px; font-weight: 900; letter-spacing: -.6px; color: var(--text); }
+  .rows-bg { margin: 16px 20px 0; display: flex; flex-direction: column; gap: 9px; }
+  .row-bg { height: 56px; border-radius: 20px; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+
+  /* ── Nav + FAB ── */
+  .nav {
+    position: absolute; left: 16px; right: 16px; bottom: 26px; height: 68px;
+    border-radius: 32px; background: var(--raised-bg); box-shadow: var(--raised-lg);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 26px; z-index: 1;
+  }
+  .nav i { width: 22px; height: 22px; border-radius: 7px; background: var(--tertiary); opacity: .5; display: block; }
+  .fab {
+    position: absolute; left: 50%; bottom: 42px; width: 62px; height: 62px;
+    transform: translateX(-50%); border-radius: 50%;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center; color: var(--cta-ink);
+    z-index: 9; cursor: grab; user-select: none; -webkit-user-select: none;
+    transition: transform var(--d-quick) var(--ease-ios), box-shadow var(--d-quick) var(--ease-ios);
+  }
+  .fab:active { cursor: grabbing; }
+  .fab-glyph { display: block; transition: transform var(--d-deliberate) var(--spring-bud); }
+  .stage.is-open .fab { transform: translateX(-50%) scale(.9); box-shadow: var(--inset-cta); }
+  .stage.is-open .fab-glyph { transform: rotate(135deg); }
+  .homebar {
+    position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+    width: 132px; height: 5px; border-radius: 3px; background: var(--text); opacity: .55; z-index: 10;
+  }
+
+  /* ── Scrim ── */
+  .scrim {
+    position: absolute; inset: 0; background: var(--scrim); z-index: 2;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--d-standard) var(--ease-standard);
+  }
+  .stage.is-open .scrim { opacity: 1; pointer-events: auto; }
+
+  /* ══════════════════════════════════════════════════════
+     EL RAMILLETE
+     ══════════════════════════════════════════════════════ */
+  .bouquet { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+  .bouquet > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  /* Las ramas: se TRAZAN al abrir y se RETRAEN al cerrar (nunca fade) */
+  .branch {
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    stroke: var(--branch-url, #1F5429); stroke-width: 5;
+    stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+    transition: stroke-dashoffset 260ms var(--ease-retract);
+    transition-delay: var(--b-out, 0ms);
+  }
+  .branch.b-main { stroke-width: 7; }
+  .stage.is-open .branch {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 380ms var(--ease-grow);
+    transition-delay: var(--b-in, 0ms);
+  }
+
+  .leaflet {
+    fill: var(--leaf); transform-box: fill-box;
+    transform: scale(0); opacity: 0;
+    transition: transform 180ms var(--ease-retract), opacity 140ms linear;
+  }
+  .stage.is-open .leaflet {
+    transform: scale(1); opacity: .92;
+    transition: transform 300ms var(--spring-bud) var(--l-in), opacity 160ms linear var(--l-in);
+  }
+
+  /* ── El capullo ── */
+  .bud {
+    position: absolute; pointer-events: none;
+    transform: translate(var(--tx), var(--ty)) scale(.1);
+    opacity: 0;
+    transition:
+      transform 220ms var(--ease-retract),
+      opacity 140ms linear;
+    transition-delay: var(--p-out, 0ms);
+  }
+  .stage.is-open .bud {
+    opacity: 1; transform: translate(0, 0) scale(1);
+    transition: transform 420ms var(--spring-bud), opacity 180ms linear;
+    transition-delay: var(--p-in, 0ms);
+    pointer-events: auto;
+  }
+
+  /* El capullo NO se rota: la punta se expresa eligiendo qué esquina
+     pierde el redondeo (la que mira al FAB). Rotar un cuadrado infla su
+     caja medida en √2 y era la causa de que los pods chicos midieran
+     MÁS que los medianos. Sin rotación, caja medida = tamaño declarado. */
+  .pod {
+    position: absolute; inset: 0; cursor: pointer;
+    border-radius: var(--radii, 50%);
+    box-shadow: var(--raised-md), var(--tile-lip), 0 0 0 2px var(--rim);
+    transition: transform var(--d-quick) var(--spring-bud), box-shadow var(--d-quick) var(--ease-ios);
+  }
+  .pod-in {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; line-height: 0;
+  }
+  .bud.is-pointed .pod { transform: scale(1.13); box-shadow: var(--inset-md), var(--tile-lip), 0 0 0 2px var(--rim); }
+  .bud.is-down .pod { transform: scale(.97); }
+
+  .stage[data-theme="light"] [data-pastel="import"]   { background: #E6E0F4; }
+  .stage[data-theme="light"] [data-pastel="no-spend"] { background: #D4EBDF; }
+  .stage[data-theme="light"] [data-pastel="income"]   { background: #D6E4F0; }
+  .stage[data-theme="light"] [data-pastel="fixed"]    { background: #EDE0C8; }
+  .stage[data-theme="dark"]  [data-pastel="import"]   { background: #3D5047; }
+  .stage[data-theme="dark"]  [data-pastel="no-spend"] { background: #3A5144; }
+  .stage[data-theme="dark"]  [data-pastel="income"]   { background: #3B5046; }
+  .stage[data-theme="dark"]  [data-pastel="fixed"]    { background: #3E5040; }
+
+  /* La flor abierta de Gasto: anillo CTA + corola pálida donde se sienta Brot */
+  .pod.pod-bloom {
+    background: var(--cta-fill);
+    box-shadow: var(--cta-shadow);
+    border-radius: 50%;                 /* ya está abierto en flor: es redondo */
+  }
+  .bud.is-pointed .pod-bloom { box-shadow: var(--inset-cta); }
+  .corola {
+    position: absolute; inset: 7px; border-radius: 50%;
+    background: var(--corola);
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.16);
+  }
+  /* El halo va como hermano ANTES de los capullos: adentro del capullo,
+     un z-index negativo lo pintaría sobre su propio fondo. */
+  .pod-glow {
+    position: absolute; border-radius: 50%;
+    background: var(--glow); filter: blur(18px); opacity: 0;
+    transition: opacity var(--d-quick) linear; pointer-events: none;
+  }
+  .stage.is-open .pod-glow { opacity: 1; animation: breathe var(--d-breath) ease-in-out infinite; }
+  /* Al disparar, el halo se va con su capullo: no queda prendido sobre el scrim. */
+  .stage.is-firing .pod-glow { opacity: 0; animation: none; }
+
+  /* El cáliz: donde la rama se engancha al capullo, con el ícono de la acción */
+  .calyx {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: var(--sheet); color: var(--text); z-index: 2;
+    display: flex; align-items: center; justify-content: center; line-height: 0;
+    box-shadow: var(--raised-sm);
+  }
+  /* El cáliz viaja con su capullo pero nunca se come el toque del control. */
+  .calyx-holder { pointer-events: none !important; }
+  .calyx-holder::after { display: none; }
+
+  /* Anillo de confirmación */
+  .bud::after {
+    content: ''; position: absolute; inset: -5px; border-radius: 50%;
+    border: 3px solid var(--green); opacity: 0; pointer-events: none;
+  }
+  .bud.is-fired::after { animation: ring 540ms var(--ease-standard) forwards; }
+  .stage.is-firing .bud:not(.is-fired) {
+    opacity: 0; transform: translate(var(--tx), var(--ty)) scale(.3);
+    transition-delay: 0ms;
+  }
+  .stage.is-firing .bud.is-fired { transform: translate(0,0) scale(1.22); }
+  .stage.is-firing .branch { stroke-dashoffset: var(--len); transition-delay: 0ms; }
+
+  /* ── Los nombres: SIEMPRE visibles, pegados a su capullo ──
+     UNA sola regla para los cinco: caja centrada en x sobre el centro de
+     su pod, apoyada a `gapLabel` del borde superior del pod, con el texto
+     centrado dentro de la caja (así 1 o 2 líneas dan la MISMA caja). */
+  .name {
+    position: absolute; z-index: 5; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    color: var(--on-scrim); text-shadow: var(--label-shadow);
+    font-weight: 900; letter-spacing: -.15px; line-height: 1.16;
+    opacity: 0; transform: translate(var(--ntx), var(--nty)) scale(.86);
+    transition: opacity 120ms linear, transform 200ms var(--ease-retract);
+    transition-delay: var(--n-out, 0ms);
+  }
+  .stage.is-open .name {
+    opacity: 1; transform: translate(0,0) scale(1);
+    transition: opacity 180ms linear, transform 360ms var(--spring-bud);
+    transition-delay: var(--n-in, 0ms);
+  }
+  .stage.is-firing .name { opacity: 0; transition-delay: 0ms; }
+
+  /* La línea larga: es EXTRA, no es el camino para entender */
+  .pill {
+    position: absolute; z-index: 6; left: 196.5px;   /* top lo pone la geometría */
+    padding: 9px 18px; border-radius: 20px;
+    background: var(--sheet); box-shadow: var(--raised-md);
+    color: var(--text); font-size: 13.5px; font-weight: 800; letter-spacing: -.15px;
+    white-space: nowrap; transform: translate(-50%, calc(-100% + 8px));
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--d-micro) linear, transform var(--d-quick) var(--ease-ios);
+  }
+  .stage.has-point .pill { opacity: 1; transform: translate(-50%, -100%); }
+
+  .hint {
+    position: absolute; z-index: 5; left: 0; right: 0; text-align: center;
+    height: 15px; line-height: 15px;                 /* top lo pone la geometría */
+    font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--on-scrim);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity var(--d-quick) linear, transform var(--d-standard) var(--ease-ios);
+  }
+  .stage.is-open .hint { opacity: 1; transform: translateY(0); transition-delay: 120ms; }
+  .stage.has-point .hint,
+  .stage.is-firing .hint { opacity: 0; transition-delay: 0ms; }
+
+  /* Toast */
+  .toast {
+    position: absolute; left: 50%; bottom: 122px; z-index: 11;
+    transform: translate(-50%, 12px);
+    padding: 12px 20px; border-radius: 22px;
+    background: var(--sheet); box-shadow: var(--raised-lg);
+    color: var(--text); font-size: 13.5px; font-weight: 800; letter-spacing: -.1px;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity var(--d-quick) linear, transform var(--d-standard) var(--ease-ios);
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Puntero fantasma del replay */
+  .ghost {
+    position: absolute; left: 0; top: 0; width: 54px; height: 54px;
+    border-radius: 50%; z-index: 8; pointer-events: none;
+    background: radial-gradient(circle at 40% 34%, var(--ghost-ring), var(--ghost) 70%);
+    box-shadow: 0 0 0 2px var(--ghost-ring), 0 6px 16px rgba(0,0,0,.25);
+    opacity: 0;
+    transform: translate(calc(var(--gx, 196.5px) - 50%), calc(var(--gy, 757px) - 50%));
+    transition: opacity var(--d-quick) linear;
+  }
+  .ghost.is-on { opacity: 1; }
+
+  @keyframes breathe {
+    0%, 100% { opacity: .5; transform: scale(.94); }
+    50%      { opacity: 1;  transform: scale(1.08); }
+  }
+  @keyframes ring {
+    from { opacity: .95; transform: scale(1); }
+    to   { opacity: 0;   transform: scale(2); }
+  }
+
+  /* Reducir movimiento */
+  /* El halo deja de respirar, pero NO se queda prendido con el hub cerrado:
+     el opacity fijo se aplica sólo dentro de .is-open. */
+  body.reduced .stage *, body.reduced .stage { transition-duration: 1ms !important; transition-delay: 0ms !important; }
+  body.reduced .pod-glow { animation: none !important; }
+  body.reduced .stage.is-open .pod-glow { opacity: .45 !important; }
+  body.reduced .bud.is-fired::after { animation: none !important; opacity: 0 !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage *, .stage { transition-duration: 1ms !important; transition-delay: 0ms !important; }
+    .pod-glow { animation: none !important; }
+    .stage.is-open .pod-glow { opacity: .45 !important; }
+    .bud.is-fired::after { animation: none !important; opacity: 0 !important; }
+  }
+
+  /* ═══ Bloques de la página ═══ */
+  .panel {
+    max-width: 960px; margin: 54px auto 0;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    border-radius: 26px; padding: 24px 26px;
+    box-shadow: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+  }
+  .panel + .panel { margin-top: 20px; }
+  .panel h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #93A78F; margin: 0 0 18px;
+  }
+  .poses { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pose {
+    flex: 1 1 160px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 10px; border-radius: 20px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .pose-action { font-size: 13px; font-weight: 900; color: #F1EEDD; text-align: center; }
+  .pose-name { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #A4E3A6; }
+  .pose-why { font-size: 11.5px; font-weight: 600; color: #93A78F; text-align: center; line-height: 1.4; }
+
+  .note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .note {
+    background: #142519; border-radius: 22px; padding: 20px 22px;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .note-n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; margin-bottom: 12px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    color: #0F1E14; font-size: 13px; font-weight: 900;
+  }
+  .note h3 { font-size: 15px; font-weight: 900; color: #F1EEDD; margin: 0 0 8px; letter-spacing: -.3px; }
+  .note p { font-size: 13px; font-weight: 600; line-height: 1.55; color: #A8B4A0; margin: 0; }
+  .note p + p { margin-top: 9px; }
+  .note code, .panel code, .lede code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: #C9F3C6; background: rgba(164,227,166,.1);
+    padding: 1px 5px; border-radius: 5px;
+  }
+
+  .balance { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+  .bal-col h3 {
+    font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
+    margin: 0 0 12px;
+  }
+  .bal-col.win h3 { color: #A4E3A6; }
+  .bal-col.risk h3 { color: #E9C08A; }
+  .bal-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .bal-col li {
+    font-size: 13px; font-weight: 600; line-height: 1.5; color: #A8B4A0;
+    padding: 12px 15px; border-radius: 16px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .bal-col li b { color: #F1EEDD; font-weight: 800; }
+
+  table.wcag { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.wcag th {
+    text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .1em;
+    text-transform: uppercase; color: #7C917A; padding: 0 10px 10px;
+  }
+  table.wcag td { padding: 9px 10px; color: #A8B4A0; font-weight: 600; vertical-align: middle; }
+  table.wcag tbody tr { background: #142519; }
+  table.wcag tbody tr:nth-child(even) { background: #182B1D; }
+  table.wcag tbody tr td:first-child { border-radius: 12px 0 0 12px; }
+  table.wcag tbody tr td:last-child { border-radius: 0 12px 12px 0; }
+  .ratio { font-weight: 900; color: #F1EEDD; font-variant-numeric: tabular-nums; }
+  .pass { color: #A4E3A6; font-weight: 900; }
+  .fail { color: #E9A08A; font-weight: 900; }
+  .wcag-note { font-size: 12.5px; font-weight: 600; line-height: 1.65; color: #93A78F; margin: 16px 0 0; }
+  .wcag-note b { color: #F1EEDD; font-weight: 800; }
+  .geo-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table.geo { font-variant-numeric: tabular-nums; min-width: 1040px; }
+  table.geo td { white-space: nowrap; }
+  .geo-src {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; line-height: 1.7; color: #C9F3C6; margin: 0 0 18px;
+    background: #142519; border-radius: 16px; padding: 14px 16px; white-space: pre-wrap;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <p class="kicker">Hub de acciones · fusión Arco × Brote · variante A</p>
+  <h1>Ramillete</h1>
+  <p class="sub-h1">Cada brote se explica solo, ahí mismo.</p>
+  <p class="lede">
+    El <b>esqueleto es el Arco</b>: el FAB deja de abrir una hoja y pasa a ser el <b>pivote</b>.
+    Mantienes apretado y las cinco acciones quedan repartidas alrededor del dedo, todas dentro del
+    alcance del pulgar; eliges <b>deslizando y soltando</b>, en un solo gesto continuo. Gasto —el 80&nbsp;%
+    de las aperturas— es el más grande y cae <b>justo arriba del pulgar</b>: apretar y soltar sin moverse
+    ya es «nuevo gasto».
+  </p>
+  <p class="lede">
+    La <b>piel y el movimiento son del Brote</b>: nada aparece de la nada. Del FAB <b>crecen cinco ramas
+    trazadas</b> hacia cada posición del arco, con sus hojitas, y la acción <b>florece al final de su rama</b>,
+    escalonada del centro hacia las puntas. Al cerrar, las ramas <b>se retraen</b> hacia el FAB —nunca un fade—
+    y los capullos se repliegan adentro. Los pods no son discos: son <b>capullos</b>, con la punta apuntando
+    de vuelta a su rama y un <b>cáliz</b> —el chip del ícono— justo en la juntura. Gasto es el único que ya
+    está <b>abierto en flor</b>: anillo de CTA con una corola pálida adentro.
+  </p>
+  <p class="lede">
+    <b>En qué se diferencia de la otra fusión:</b> acá la explicación está <b>distribuida y pegada a cada
+    acción</b>, no concentrada en un narrador. Apenas se abre el ramillete hay <b>cinco mini-Brot, cada uno
+    actuando su acción</b> (<code>wow</code>, <code>magic</code>, <code>zen</code>, <code>cheer</code>,
+    <code>think</code>) <b>más los cinco nombres, todos visibles sin tocar nada</b>. Apuntar no es el camino
+    para entender: apuntar sólo <i>agranda</i> el capullo elegido y despliega su línea larga. La otra
+    variante compra aire vaciando el arco y contando la historia en un solo lugar; ésta compra
+    comprensión inmediata pagándola en densidad.
+  </p>
+</div>
+
+<div class="controls">
+  <button class="btn" id="replay">Reproducir la apertura</button>
+  <label class="toggle"><input type="checkbox" id="reduced"> Simular «reducir movimiento»</label>
+  <span class="hint-inline">Pruébalo: aprieta el «+» y arrastra sin soltar · o haz un tap seco en el «+»</span>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<div class="panel">
+  <h2>Geometría derivada — la tabla la calcula el mismo código que dibuja el arco</h2>
+  <p class="geo-src" id="geo-src"></p>
+  <div class="geo-scroll">
+    <table class="wcag geo"><thead>
+      <tr><th>Acción</th><th>Peso</th><th>Ángulo</th><th>Radio</th><th>Capullo</th><th>Cáliz</th>
+          <th>Nombre (caja)</th><th>Δ nombre</th><th>Aire</th><th>Rama</th></tr>
+    </thead><tbody id="geo-body"></tbody></table>
+  </div>
+  <p class="wcag-note" id="geo-check"></p>
+</div>
+
+<div class="panel">
+  <h2>Los cinco Brot y qué actúa cada uno (acá quietos, en la app respiran)</h2>
+  <div class="poses" id="poses"></div>
+</div>
+
+<div class="panel">
+  <h2>Las decisiones que estás aprobando</h2>
+  <div class="note-grid">
+    <div class="note">
+      <span class="note-n">1</span>
+      <h3>La geometría es derivada, no dibujada a mano</h3>
+      <p>Hay <b>una sola fuente de verdad</b> arriba del script: <code>ARC</code> (centro del FAB, radio,
+      apertura, orden) y una <b>tabla por peso</b> (principal / diaria / mensual). Todo lo demás se calcula:
+      el ángulo de cada capullo, su radio, su tamaño, la esquina de su punta, la caja de su nombre, su
+      cáliz y el trazo de su rama. <b>Mover un solo número reacomoda las cinco acciones</b> y la simetría
+      se mantiene sola, porque no queda ni una excepción escrita a mano.</p>
+      <p>Los cinco viven <b>al mismo radio: 144&nbsp;px</b> del centro del FAB, repartidos parejo sobre una
+      apertura de <b>180°</b> → ángulos <b>0°, ±45° y ±90°</b>, con <b>45° exactos</b> entre vecinos. Las dos
+      mensuales quedan <b>a la altura del FAB, a los costados</b>: la zona más cómoda del pulgar. Los tamaños
+      salen de la tabla y respetan la jerarquía declarada: <b>88&nbsp;px</b> el principal, <b>64</b> las
+      diarias, <b>56</b> las mensuales.</p>
+      <p>Los nombres van <b>arriba</b> del capullo, con <b>una sola regla para los cinco</b>: caja centrada
+      en x sobre el centro del pod, apoyada a <b>12&nbsp;px</b> de su borde superior, con el texto centrado
+      adentro (así una o dos líneas dan la misma caja). Arriba y no abajo por dos razones: la rama sube por
+      debajo, y con el pulgar apoyado en el arco <b>todo lo que cuelga debajo del capullo lo tapa la mano</b>.</p>
+      <p>El capullo <b>no se rota</b>: la punta se expresa eligiendo qué esquina pierde el redondeo —la que
+      mira al FAB—. Rotar un cuadrado infla su caja en √2, y era exactamente por eso que los pods chicos
+      terminaban midiendo <i>más</i> que los medianos. El principal no tiene punta: ya está abierto en flor,
+      es un círculo.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">2</span>
+      <h3>Sin hover: todo se explica sin apuntar</h3>
+      <p>En el teléfono no existe «pasar por encima». Por eso, apenas se abre el ramillete están a la
+      vista <b>los 5 nombres y los 5 Brot en pose</b>. No hay ni una sola pieza de significado detrás
+      de un estado de puntero.</p>
+      <p>Lo único que agrega apuntar es la <b>línea larga</b> («Anota lo que gastaste», «Leemos el ticket
+      de una foto») en la píldora de arriba. Es información <i>extra</i>: si nunca aparece, el hub se
+      sigue entendiendo entero.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">3</span>
+      <h3>Dos canvas, no cinco</h3>
+      <p>Cinco Brot animados a la vez son cinco loops de dibujo. Acá corren <b>dos por teléfono</b>:
+      el de Gasto —siempre vivo, es el protagonista— y un <b>turno rotativo</b> que pasa por los otros
+      cuatro cada 1,7&nbsp;s. El que estás apuntando <b>se queda con el turno</b> al instante.</p>
+      <p>Los otros tres no desaparecen: quedan dibujados en <b>un solo frame</b> de su pose. Las poses de
+      Brot se leen quietas (chispas, halo, burbuja de pensamiento, brazos arriba), así que la explicación
+      no depende del movimiento — el movimiento sólo la sube de volumen.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">4</span>
+      <h3>Dos caminos, mismo destino</h3>
+      <p><b>Arrastre:</b> aprietas, el ramillete crece, deslizas hasta el capullo y sueltas.
+      Cero levantadas de dedo.</p>
+      <p><b>Tap:</b> un toque corto y seco deja el ramillete abierto; se elige con un segundo tap. El
+      texto de arriba cambia de <code>MANTÉN Y DESLIZA</code> a <code>ELIGE UNA</code> según el camino
+      que hayas tomado. Soltar sobre el FAB (zona muerta de 58&nbsp;px) es cancelar.</p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Qué gana / qué arriesga</h2>
+  <div class="balance">
+    <div class="bal-col win">
+      <h3>Qué gana</h3>
+      <ul>
+        <li><b>Ergonomía intacta.</b> Es el Arco tal cual: pivote, un solo gesto, Gasto arriba del pulgar,
+        radio único de 144&nbsp;px. La piel de jardín no le costó un milímetro de alcance.</li>
+        <li><b>Una sola fuente de verdad.</b> Ángulos, radios, tamaños, nombres, cálices y ramas salen
+        de <code>ARC</code> + la tabla de pesos. Cambiar la apertura o meter una sexta acción es tocar
+        un número, no recalcular cinco cajas a mano.</li>
+        <li><b>Comprensión sin tocar.</b> 5 nombres + 5 Brot en pose desde el frame uno. Un usuario nuevo
+        entiende las cinco acciones sin arrastrar, sin apuntar y sin leer un tutorial.</li>
+        <li><b>Cero apariciones mágicas.</b> Todo lo que entra, entra <i>creciendo desde el FAB</i>, y todo
+        lo que sale, sale <i>retrayéndose al FAB</i>. La relación causa-efecto entre el botón y el hub queda
+        dibujada, no supuesta.</li>
+        <li><b>La marca hace trabajo real.</b> Brot deja de ser decoración: es el que dice qué hace cada
+        acción. La app <i>es</i> un jardín y el hub por fin se parece a eso.</li>
+        <li><b>Lo raro también se entiende.</b> Gasto fijo e Ingreso, que casi nunca se usan, son
+        justamente los que más ayuda necesitan — y acá tienen nombre y Brot propios, no un ícono mudo.</li>
+        <li><b>Costo de canvas acotado y medible:</b> 2 loops, no 5, con una regla explícita de quién
+        anima y cuándo.</li>
+      </ul>
+    </div>
+    <div class="bal-col risk">
+      <h3>Qué arriesga</h3>
+      <ul>
+        <li><b>Densidad. Es el riesgo número uno y es real.</b> 5 capullos + 5 Brot + 5 nombres en 393&nbsp;px.
+        Medido en el navegador, la holgura mínima entre las 15 cajas es de <b>12&nbsp;px</b> y el elemento más
+        cercano al borde del teléfono queda a <b>18,5&nbsp;px</b>. Hay aire, pero es aire justo: con <b>texto
+        agrandado del sistema</b> (Dynamic Type XXL) los nombres crecen y se comen esos 12&nbsp;px. La ventaja
+        es que ahora el fallback también es un número: bajar <code>ARC.radio</code> o subir
+        <code>ARC.apertura</code> reacomoda todo solo. Falta probarlo en device.</li>
+        <li><b>Concesión declarada:</b> la <b>línea larga</b> de cada acción (la que explica de verdad qué pasa
+        al elegirla) <b>sólo aparece al apuntar</b>. En un teléfono eso quiere decir «sólo durante el arrastre».
+        Quien elija siempre por tap corto y segundo tap puede no verla nunca. Es aceptable porque el
+        nombre + la pose ya alcanzan, pero es una concesión, no un empate.</li>
+        <li><b>Las mensuales quedan sobre la nav.</b> A ±90° los dos capullos de <b>Gasto fijo</b> e
+        <b>Ingreso</b> caen a la altura del FAB, o sea encima de la barra de navegación. No la tapan —el
+        scrim ya la apagó y el ramillete pinta arriba—, pero es una superposición que hay que ver en device
+        con la mano real apoyada.</li>
+        <li><b>Los mini-Brot son chicos.</b> 40&nbsp;px de alto en las mensuales. Las poses se distinguen,
+        pero <code>think</code> y <code>zen</code> son las dos más quietas y a ese tamaño se parecen.
+        Si en device no se diferencian, hay que subir el tamaño en la tabla de pesos —y el arco se
+        reacomoda solo— o bajar de 5 a 4 acciones.</li>
+        <li><b>Performance en Android de gama baja.</b> Dos canvas de Skia + trazo de ramas
+        (<code>stroke-dashoffset</code> en <code>react-native-svg</code>) al mismo tiempo, sobre el frame de
+        apertura del hub: es exactamente el escenario que ya nos dio jank. Plan B verificable: reemplazar
+        el trazo por una máscara animada o por ramas de 3 segmentos, y arrancar los Brot recién cuando el
+        arco terminó de abrir.</li>
+        <li><b>Costo en RN.</b> Ramas y hojitas en <code>react-native-svg</code>, 5 <code>Canvas</code> de
+        Skia montados (2 animados), hit-testing polar propio con <code>Gesture.Pan</code>, y un scheduler
+        de turnos que prende/apaga animaciones. Es la variante <b>más cara de las tres direcciones</b>:
+        estimación honesta, el doble de trabajo que el Arco solo.</li>
+        <li><b>Accesibilidad del gesto.</b> El arrastre no es operable con VoiceOver ni con motricidad
+        reducida. El camino por tap queda como <i>obligatorio</i> de mantener, con foco, orden de lectura y
+        <code>accessibilityLabel</code> por capullo que incluya la línea larga — que en modo lector deja de
+        ser opcional.</li>
+        <li><b>Reinsertar el elemento para prender/apagar la animación</b> es un truco del prototipo web.
+        En RN el equivalente es montar/desmontar el <code>Canvas</code>, y montar cuesta. El turno rotativo
+        cada 1,7&nbsp;s puede ser demasiado churn: en RN conviene un <b>driver compartido</b> de baja
+        frecuencia que alimente los 5 dibujos, en vez de 5 loops que se prenden y apagan.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Contraste WCAG — calculado sobre los colores compuestos reales</h2>
+  <table class="wcag">
+    <thead>
+      <tr><th>Par</th><th>Tema</th><th>Umbral</th><th>Ratio</th><th></th></tr>
+    </thead>
+    <tbody id="wcag-body"></tbody>
+  </table>
+  <p class="wcag-note">
+    Los scrims se midieron <b>compuestos</b>: claro <code>rgba(185,190,172,.84)</code> sobre
+    <code>#DCDFCD</code> → <b>#BFC3B1</b>; oscuro <code>rgba(10,19,13,.84)</code> sobre
+    <code>#0F1A13</code> → <b>#0B140E</b>.
+  </p>
+  <p class="wcag-note">
+    <b>Tres hallazgos y cómo se resolvieron.</b>
+    (1) <b>El verde del tallo del Brote no sirve en claro.</b> El <code>#2E7C39</code> que usa la planta
+    original da <b>2,87:1</b> contra el scrim claro: la rama es un elemento de UI y no llega al 3:1. Las ramas
+    del ramillete claro bajan al gradiente <b>#1F5429 → #266A31</b> (4,94 y 3,66). En oscuro suben a
+    <b>#6FB871 → #A4E3A6</b> (7,83 y 12,60).
+    (2) <b>Brot no puede sentarse sobre el verde del CTA.</b> Su cuerpo <code>#A9CB80</code> contra el CTA
+    claro da <b>2,07:1</b> — el personaje se disolvía dentro del capullo de Gasto. Por eso Gasto es el único
+    <i>abierto en flor</i>: anillo de CTA y <b>corola pálida</b> (<code>#F0EFE3</code> / <code>#1B2F22</code>)
+    donde Brot sí se despega (4,33 el contorno en claro, 7,82 el cuerpo en oscuro).
+    (3) <b>Los nombres no pueden ir en <code>muted</code></b> sobre el scrim claro (3,52:1). Van en
+    <code>text</code> <code>#24382A</code> → <b>6,96:1</b>. En oscuro <code>#F1EEDD</code> da 16,07:1.
+  </p>
+  <p class="wcag-note">
+    Se mantiene el <b>aro de 2&nbsp;px en <code>muted</code></b> alrededor de cada capullo pastel, heredado del
+    Arco: sin hoja de fondo, un pastel contra el scrim da 1,40:1 (claro) y 2,17:1 (oscuro), muy por debajo del
+    3:1 que le corresponde a un control. El capullo de Gasto no lleva aro porque su propio relleno ya despega
+    (3,18:1 / 3,77:1). Las ramas, las hojitas y el halo que respira <b>no identifican ningún control</b>: cada
+    capullo es alcanzable y legible sin ellos.
+  </p>
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════════════════════════════════════════════════════
+     GEOMETRÍA DERIVADA — UNA sola fuente de verdad
+     ──────────────────────────────────────────────────────────
+     El FAB es el origen: left:50% bottom:42px, 62px de lado, sobre
+     un teléfono de 393×830 → centro EXACTO (196.5, 757).
+
+     Nada de acá abajo está escrito pod por pod. Ángulo, radio, tamaño,
+     esquina de la punta, caja del nombre, cáliz y rama SALEN de ARC +
+     la tabla de pesos. Mover un solo número (radio, apertura, un tamaño
+     de la tabla) reacomoda las cinco acciones de forma coherente y
+     mantiene la simetría espejo, porque no hay ni una excepción a mano.
+     ══════════════════════════════════════════════════════════ */
+  var RAD = Math.PI / 180;
+
+  var ARC = {
+    cx: 196.5,        // centro del FAB — origen de todo
+    cy: 757,
+    radio: 144,       // MISMO radio para los cinco (centro del FAB → centro del pod)
+    apertura: 180,    // grados totales del abanico; 5 pods → 45° exactos entre vecinos
+    gapLabel: 12,     // aire entre el borde superior del pod y su nombre
+    gapCalyz: 1,      // el cáliz queda tangente al pod, nunca encimado
+    curva: 10,        // grados de desvío de los controles de la rama (0 = recta)
+    orden: ['fixed', 'import', 'expense', 'no-spend', 'income']
+  };
+
+  /* Jerarquía declarada, en un solo lugar: principal > diaria > mensual.
+     pod = lado del capullo · brot = alto del mini-Brot · calyx = chip del ícono
+     lw/lh = caja del nombre · ls = tamaño de letra · lf = hojita de la rama */
+  var PESO = {
+    principal: { pod: 88, brot: 62, calyx: 26, lw: 92, lh: 20, ls: 15,   lf: 15 },
+    diaria:    { pod: 64, brot: 46, calyx: 22, lw: 72, lh: 28, ls: 11.5, lf: 13 },
+    mensual:   { pod: 56, brot: 40, calyx: 20, lw: 68, lh: 16, ls: 11,   lf: 13 }
+  };
+
+  /* Sólo contenido y peso: cero geometría. */
+  var ACCIONES = {
+    fixed:      { peso: 'mensual',   name: 'Gasto fijo', pose: 'think', glyph: 'fixed',
+                  long: 'Lo que se repite todos los meses',
+                  toast: 'Gasto fijo · lo que se repite todos los meses' },
+    'import':   { peso: 'diaria',    name: 'Importar<br>captura', pose: 'magic', glyph: 'import',
+                  long: 'Leemos el ticket de una foto',
+                  toast: 'Importar captura · leyendo el ticket' },
+    expense:    { peso: 'principal', name: 'Gasto', pose: 'wow', glyph: 'expense',
+                  long: 'Anota lo que gastaste',
+                  toast: 'Gasto · el monto ya te está esperando' },
+    'no-spend': { peso: 'diaria',    name: 'Día sin<br>gasto', pose: 'zen', glyph: 'no-spend',
+                  long: 'Hoy no gastaste: suma al jardín',
+                  toast: 'Día sin gasto · sumaste una plantita al jardín' },
+    income:     { peso: 'mensual',   name: 'Ingreso', pose: 'cheer', glyph: 'income',
+                  long: 'Suma la plata que entró',
+                  toast: 'Ingreso · sumaste lo que entró' }
+  };
+
+  var CX = ARC.cx, CY = ARC.cy;
+  var N = ARC.orden.length;
+  var STEP = ARC.apertura / (N - 1);   // 45°
+  var HALF = ARC.apertura / 2;         // 90°
+
+  function polar(ang, r) {
+    return { x: CX + r * Math.sin(ang * RAD), y: CY - r * Math.cos(ang * RAD) };
+  }
+
+  var ITEMS = ARC.orden.map(function (key, i) {
+    var src = ACCIONES[key];
+    var w = PESO[src.peso];
+    var it = {
+      key: key, peso: src.peso,
+      name: src.name, long: src.long, pose: src.pose, glyph: src.glyph, toast: src.toast,
+      pod: w.pod, brot: w.brot, cal: w.calyx, nW: w.lw, nH: w.lh, nSize: w.ls, lf: w.lf
+    };
+
+    // 1) ÁNGULO: reparto parejo sobre la apertura. Saltos idénticos por construcción.
+    it.ang = -HALF + i * STEP;
+    it.t = it.ang / HALF;                 // -1 … 0 … +1 (espejo exacto)
+    it.a = Math.abs(it.t);
+
+    // 2) RADIO: el mismo para los cinco. El arco ES un arco.
+    it.r = ARC.radio;
+    var p = polar(it.ang, it.r);
+    it.x = p.x; it.y = p.y;
+
+    // 3) PUNTA DEL CAPULLO: la esquina que pierde el redondeo es la que mira
+    //    al FAB, cuantizada a la esquina más cercana. Sin rotación → la caja
+    //    medida del pod es exactamente su tamaño declarado.
+    //    El principal ya está abierto en flor: es un círculo, no tiene punta.
+    var tip = Math.round(it.pod * 0.20) + 'px';
+    it.radii = it.t === 0 ? '50%'
+             : it.t < 0 ? '50% 50% ' + tip + ' 50%'     // punta abajo-derecha
+                        : '50% 50% 50% ' + tip;         // espejo: abajo-izquierda
+
+    // 4) CÁLIZ: tangente al pod, sobre la rama, del lado del FAB.
+    var rc = it.r - it.pod / 2 - it.cal / 2 - ARC.gapCalyz;
+    var c = polar(it.ang, rc);
+    it.cX = c.x; it.cY = c.y;
+
+    // 5) NOMBRE: misma regla para los cinco — caja centrada en x sobre el
+    //    centro del pod, apoyada a gapLabel del borde superior del pod.
+    it.nX = it.x - it.nW / 2;
+    it.nY = it.y - it.pod / 2 - ARC.gapLabel - it.nH;
+
+    // 6) ESCALONADO del centro hacia las puntas (Arco) sobre el crecido (Brote).
+    it.bIn  = Math.round(it.a * 150);        // la rama se traza
+    it.pIn  = it.bIn + 170;                  // el capullo florece al final de su rama
+    it.nIn  = it.pIn + 70;                   // el nombre entra último
+    it.pOut = Math.round((1 - it.a) * 110);  // al cerrar, las puntas se repliegan primero
+    it.bOut = it.pOut + 60;
+    it.nOut = 0;
+    return it;
+  });
+
+  // Banda de texto guía: justo arriba del nombre más alto del arco.
+  var ARC_TOP = Math.min.apply(null, ITEMS.map(function (it) { return it.nY; }));
+  var GUIDE_BOTTOM = ARC_TOP - 16;
+
+  /* ── Hit-test polar, también derivado ── */
+  var POD_MAX = Math.max.apply(null, ITEMS.map(function (it) { return it.pod; }));
+  var DEAD_ZONE = 58;                         // sobre el FAB no se elige: es cancelar
+  var MAX_REACH = ARC.radio + POD_MAX / 2 + 46;
+  var ANG_TOL = STEP / 2;                     // los sectores cubren el abanico sin huecos
+  var BELOW_TOL = POD_MAX / 2 + 24;
+
+  function hit(px, py) {
+    var dx = px - CX, dy = CY - py;           // dy positivo = hacia arriba
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DEAD_ZONE || dist > MAX_REACH) return null;
+    if (dy < -BELOW_TOL) return null;         // muy por debajo del FAB
+    var ang = Math.atan2(dx, dy) / RAD;
+    var best = null, bestD = 1e9;
+    for (var i = 0; i < ITEMS.length; i++) {
+      var d = Math.abs(ang - ITEMS[i].ang);
+      if (d < bestD) { bestD = d; best = ITEMS[i]; }
+    }
+    return bestD <= ANG_TOL ? best.key : null;
+  }
+
+  /* ══ Glifos ══════════════════════════════════════════════════ */
+  function svg(paths, size, filled) {
+    var attrs = filled
+      ? 'fill="currentColor" stroke="none"'
+      : 'fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"';
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" ' + attrs + '>' + paths + '</svg>';
+  }
+  var GLYPH = {
+    expense:    '<path d="M12 5.5v13M5.5 12h13"/>',
+    'import':   '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/>',
+    'no-spend': '<path d="M6.05 8.05c-2.73 2.73-2.73 7.15-.02 9.88 1.47-3.4 4.09-6.24 7.36-7.93' +
+                '-2.77 2.34-4.71 5.61-5.39 9.32 2.6 1.23 5.8.78 7.95-1.37C19.43 14.47 20 4 20 4S9.53 4.57 6.05 8.05z"/>',
+    income:     '<path d="M3.5 17l6-6 3.5 3.5L20.5 7"/><path d="M15.5 7h5v5"/>',
+    fixed:      '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>' +
+                '<path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/>' +
+                '<path d="M9.2 16.6a3 3 0 1 1 1.1 2.3"/><path d="M9.2 13.9v2.7h2.7"/>'
+  };
+  var BARS = '<div class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.35"></i></div>';
+
+  /* ══ Markup ══════════════════════════════════════════════════ */
+  function homeMarkup() {
+    return '' +
+      '<div class="home">' +
+        '<div class="statusbar"><span>9:41</span><span class="sb-right">' + BARS +
+          '<span class="battery"><i></i></span></span></div>' +
+        '<div class="home-head"><div class="avatar"></div><div>' +
+          '<div class="home-title">Hola, Mario</div>' +
+          '<div class="home-sub">Ciclo del 1 al 31 de agosto</div>' +
+        '</div></div>' +
+        '<div class="hero">' +
+          '<div class="hero-eyebrow">LIBRE ESTE MES</div>' +
+          '<div class="hero-amount">$184.320</div>' +
+          '<div class="hero-meter"><i></i></div>' +
+          '<div class="hero-foot"><span>Gastado $315.680</span><span>63%</span></div>' +
+        '</div>' +
+        '<div class="chips">' +
+          '<div class="chip"><span class="chip-k">Por día</span><span class="chip-v">$6.140</span></div>' +
+          '<div class="chip"><span class="chip-k">Fijos</span><span class="chip-v">$128.000</span></div>' +
+          '<div class="chip"><span class="chip-k">Mi jardín</span><span class="chip-v">12 días</span></div>' +
+        '</div>' +
+        '<div class="rows-bg"><div class="row-bg"></div><div class="row-bg"></div><div class="row-bg"></div></div>' +
+      '</div>' +
+      '<div class="nav"><i></i><i></i><i style="opacity:0"></i><i></i><i></i></div>';
+  }
+
+  /* Una rama por acción: nace EXACTAMENTE en el centro del FAB y muere
+     EXACTAMENTE en el centro de su capullo (el arranque queda tapado por
+     el propio FAB, que pinta encima, y la punta por el capullo).
+     Los controles se desvían `curva` grados en proporción a t → recta para
+     la del centro y espejo perfecto entre los dos lados. */
+  function branchD(it) {
+    var a = { x: CX, y: CY };
+    var b = { x: it.x, y: it.y };
+    var c1 = polar(it.ang - ARC.curva * it.t, it.r * 0.34);
+    var c2 = polar(it.ang + ARC.curva * 0.35 * it.t, it.r * 0.72);
+    return 'M' + a.x.toFixed(2) + ' ' + a.y.toFixed(2) +
+           ' C' + c1.x.toFixed(2) + ' ' + c1.y.toFixed(2) +
+           ', ' + c2.x.toFixed(2) + ' ' + c2.y.toFixed(2) +
+           ', ' + b.x.toFixed(2) + ' ' + b.y.toFixed(2);
+  }
+
+  function bouquetMarkup(themeId) {
+    var branches = '', leaflets = '', buds = '', names = '', glow = '';
+
+    ITEMS.forEach(function (it, i) {
+      branches +=
+        '<path class="branch' + (it.t === 0 ? ' b-main' : '') + '" data-i="' + i + '" ' +
+        'd="' + branchD(it) + '" style="--b-in:' + it.bIn + 'ms;--b-out:' + it.bOut + 'ms"></path>';
+      // Una hojita por rama, siempre del lado de AFUERA (así el par izquierdo
+      // y el derecho quedan espejados). La rama del centro, que es su propio
+      // eje de simetría, lleva el par completo.
+      (it.t === 0 ? [-1, 1] : [it.t > 0 ? 1 : -1]).forEach(function (dir) {
+        leaflets +=
+          '<path class="leaflet" data-i="' + i + '" data-dir="' + dir + '" ' +
+          'style="--l-in:' + (it.bIn + 150) + 'ms"></path>';
+      });
+
+      var half = it.pod / 2;
+      var isBloom = it.t === 0;
+      if (isBloom) {
+        glow = '<div class="pod-glow" style="left:' + (it.x - half - 10).toFixed(1) + 'px;top:' +
+               (it.y - half - 10).toFixed(1) + 'px;width:' + (it.pod + 20) + 'px;height:' + (it.pod + 20) + 'px"></div>';
+      }
+
+      var style =
+        'left:' + (it.x - half).toFixed(2) + 'px;top:' + (it.y - half).toFixed(2) + 'px;' +
+        'width:' + it.pod + 'px;height:' + it.pod + 'px;' +
+        '--tx:' + (CX - it.x).toFixed(2) + 'px;--ty:' + (CY - it.y).toFixed(2) + 'px;' +
+        '--radii:' + it.radii + ';' +
+        '--p-in:' + it.pIn + 'ms;--p-out:' + it.pOut + 'ms;';
+
+      buds +=
+        '<div class="bud" data-key="' + it.key + '" style="' + style + '">' +
+          '<div class="pod ' + (isBloom ? 'pod-bloom' : '') + '" ' +
+               (isBloom ? '' : 'data-pastel="' + it.key + '" ') +
+               'role="button" tabindex="-1" aria-label="' + it.name.replace('<br>', ' ') + '. ' + it.long + '">' +
+            (isBloom ? '<div class="corola"></div>' : '') +
+            '<div class="pod-in"><span class="brot-slot"></span></div>' +
+          '</div>' +
+        '</div>';
+
+      // El cáliz va fuera del .bud para que nunca herede el escalado del capullo.
+      buds +=
+        '<div class="bud calyx-holder" data-key="' + it.key + '" style="' +
+          'left:' + (it.cX - it.cal / 2).toFixed(2) + 'px;' +
+          'top:' + (it.cY - it.cal / 2).toFixed(2) + 'px;' +
+          'width:' + it.cal + 'px;height:' + it.cal + 'px;' +
+          '--tx:' + (CX - it.cX).toFixed(2) + 'px;--ty:' + (CY - it.cY).toFixed(2) + 'px;' +
+          '--p-in:' + (it.pIn + 60) + 'ms;--p-out:' + it.pOut + 'ms;">' +
+          '<div class="calyx">' +
+            svg(GLYPH[it.glyph], Math.round(it.cal * 0.5), it.key === 'no-spend') +
+          '</div>' +
+        '</div>';
+
+      names +=
+        '<div class="name" data-key="' + it.key + '" style="' +
+          'left:' + it.nX.toFixed(2) + 'px;top:' + it.nY.toFixed(2) + 'px;' +
+          'width:' + it.nW + 'px;height:' + it.nH + 'px;font-size:' + it.nSize + 'px;' +
+          '--ntx:' + ((CX - it.x) * 0.4).toFixed(2) + 'px;--nty:' + ((CY - it.y) * 0.4).toFixed(2) + 'px;' +
+          '--n-in:' + it.nIn + 'ms;--n-out:' + it.nOut + 'ms;">' + it.name + '</div>';
+    });
+
+    return '' +
+      '<div class="bouquet">' +
+        '<svg viewBox="0 0 393 830" aria-hidden="true">' +
+          '<defs><linearGradient id="brGrad-' + themeId + '" x1="0" y1="1" x2="0" y2="0">' +
+            '<stop offset="0" stop-color="var(--branch-a)"/>' +
+            '<stop offset="1" stop-color="var(--branch-b)"/>' +
+          '</linearGradient></defs>' +
+          branches + leaflets +
+        '</svg>' +
+        '<div class="hint" style="top:' + (GUIDE_BOTTOM - 15) + 'px">MANTÉN Y DESLIZA</div>' +
+        glow + buds + names +
+        '<div class="pill" style="top:' + GUIDE_BOTTOM + 'px"></div>' +
+        '<div class="ghost"></div>' +
+      '</div>' +
+      '<div class="toast"></div>';
+  }
+
+  /* ══ Montaje ═════════════════════════════════════════════════ */
+  var THEMES = [
+    { id: 'light', label: 'Claro · Salvia' },
+    { id: 'dark',  label: 'Oscuro · Noche de bosque' }
+  ];
+  var frames = document.getElementById('frames');
+  var S = [];
+
+  THEMES.forEach(function (th) {
+    var col = document.createElement('div');
+    col.className = 'frame-col';
+
+    var stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.setAttribute('data-theme', th.id);
+    stage.innerHTML =
+      homeMarkup() +
+      '<div class="scrim"></div>' +
+      '<div class="fab" role="button" tabindex="0" aria-label="Nueva acción">' +
+        '<span class="fab-glyph">' + svg(GLYPH.expense, 26) + '</span>' +
+      '</div>' +
+      bouquetMarkup(th.id) +
+      '<div class="homebar"></div>';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'frame-label';
+    lbl.textContent = th.label;
+    col.appendChild(stage);
+    col.appendChild(lbl);
+    frames.appendChild(col);
+
+    // El gradiente necesita un id por tema; el CSS lo toma por variable.
+    stage.style.setProperty('--branch-url', 'url(#brGrad-' + th.id + ')');
+
+    var st = {
+      stage: stage,
+      pill: stage.querySelector('.pill'),
+      hint: stage.querySelector('.hint'),
+      toast: stage.querySelector('.toast'),
+      ghost: stage.querySelector('.ghost'),
+      buds: {}, calyx: {}, slots: {}, brots: {},
+      mode: 'closed', pointed: null, pid: null,
+      downT: 0, downX: 0, downY: 0, moved: 0,
+      toastT: 0, turnT: 0, turn: 0, fireT: 0, unmountT: 0
+    };
+
+    Array.prototype.forEach.call(stage.querySelectorAll('.bud'), function (b) {
+      var k = b.getAttribute('data-key');
+      if (b.classList.contains('calyx-holder')) { st.calyx[k] = b; return; }
+      st.buds[k] = b;
+      st.slots[k] = b.querySelector('.brot-slot');
+    });
+
+    // Un <brot-mascot> por acción, creado una vez y montado sólo mientras el
+    // ramillete está abierto: desmontado no corre su requestAnimationFrame.
+    ITEMS.forEach(function (it) {
+      var b = document.createElement('brot-mascot');
+      b.setAttribute('pose', it.pose);
+      b.setAttribute('size', String(it.brot));
+      b.setAttribute('shadow', 'false');
+      b.setAttribute('animated', 'false');
+      st.brots[it.key] = b;
+    });
+
+    // Geometría de las hojitas: derivada del path real de cada rama.
+    // Se plantan en el punto MEDIO del tramo visible (entre el borde del FAB
+    // y el borde del capullo), así ninguna queda tapada por sus dos extremos.
+    var paths = stage.querySelectorAll('.branch');
+    Array.prototype.forEach.call(paths, function (p, i) {
+      p.style.setProperty('--len', p.getTotalLength());
+    });
+    Array.prototype.forEach.call(stage.querySelectorAll('.leaflet'), function (lf) {
+      var i = +lf.getAttribute('data-i');
+      var dir = +lf.getAttribute('data-dir');
+      var it = ITEMS[i];
+      var p = paths[i];
+      var L = p.getTotalLength();
+      var t = ((31 + (it.r - it.pod / 2)) / 2) / it.r;
+      var a = p.getPointAtLength(L * t);
+      var a2 = p.getPointAtLength(Math.min(L, L * t + 8));
+      var tx = a2.x - a.x, ty = a2.y - a.y;
+      var len = Math.hypot(tx, ty) || 1;
+      var nx = -ty / len, ny = tx / len;
+      var size = it.lf, bow = size * 0.4;
+      var ex = a.x + nx * dir * size + (tx / len) * 5;
+      var ey = a.y + ny * dir * size + (ty / len) * 5;
+      var mx = (a.x + ex) / 2, my = (a.y + ey) / 2;
+      var dx = ex - a.x, dy = ey - a.y, dl = Math.hypot(dx, dy) || 1;
+      var px = -dy / dl * bow, py = dx / dl * bow;
+      lf.setAttribute('d',
+        'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+        ' Q' + (mx + px).toFixed(1) + ' ' + (my + py).toFixed(1) + ' ' + ex.toFixed(1) + ' ' + ey.toFixed(1) +
+        ' Q' + (mx - px).toFixed(1) + ' ' + (my - py).toFixed(1) + ' ' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) + ' Z');
+      lf.style.transformOrigin = a.x.toFixed(1) + 'px ' + a.y.toFixed(1) + 'px';
+    });
+
+    S.push(st);
+  });
+
+  /* ══════════════════════════════════════════════════════════
+     POLÍTICA DE CANVAS — nunca más de 2 loops por teléfono
+     Gasto siempre respira; un turno rotativo pasa por los otros
+     cuatro; el apuntado se queda con el turno al instante.
+
+     GOTCHA de brot.js: cambiar `animated` en caliente NO prende ni
+     apaga el rAF (el loop sólo arranca en connectedCallback). Hay
+     que REINSERTAR el elemento con el atributo ya puesto.
+     ══════════════════════════════════════════════════════════ */
+  var PRINCIPAL = ARC.orden.filter(function (k) { return ACCIONES[k].peso === 'principal'; })[0];
+  var TURN_KEYS = ARC.orden.filter(function (k) { return k !== PRINCIPAL; });
+  var TURN_MS = 1700;
+
+  var mqReduced = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  function prefersReduced() {
+    return document.body.classList.contains('reduced') || !!(mqReduced && mqReduced.matches);
+  }
+
+  function setAnimated(el, on) {
+    var want = on ? 'true' : 'false';
+    if (el.getAttribute('animated') === want) return;
+    var parent = el.parentNode;
+    if (!parent) { el.setAttribute('animated', want); return; }
+    var next = el.nextSibling;
+    parent.removeChild(el);
+    el.setAttribute('animated', want);
+    parent.insertBefore(el, next);
+  }
+
+  function applyAnim(st) {
+    var reduced = prefersReduced();
+    var turnKey = st.pointed && st.pointed !== PRINCIPAL
+      ? st.pointed
+      : TURN_KEYS[st.turn % TURN_KEYS.length];
+    ITEMS.forEach(function (it) {
+      var el = st.brots[it.key];
+      if (!el.parentNode) return;
+      if (reduced) { setAnimated(el, false); return; }
+      setAnimated(el, it.key === PRINCIPAL || it.key === turnKey);
+    });
+  }
+
+  function mountBrots(st) {
+    clearTimeout(st.unmountT);
+    ITEMS.forEach(function (it) {
+      var slot = st.slots[it.key];
+      if (!slot.firstChild) slot.appendChild(st.brots[it.key]);
+    });
+    applyAnim(st);
+    clearInterval(st.turnT);
+    if (!prefersReduced()) {
+      st.turnT = setInterval(function () { st.turn++; applyAnim(st); }, TURN_MS);
+    }
+  }
+
+  function unmountBrots(st) {
+    clearInterval(st.turnT);
+    ITEMS.forEach(function (it) {
+      var el = st.brots[it.key];
+      if (el.parentNode) el.parentNode.removeChild(el);
+      el.setAttribute('animated', 'false');
+    });
+  }
+
+  /* ══ Núcleo ══════════════════════════════════════════════════ */
+  function open(st, mode) {
+    st.mode = mode;
+    st.stage.classList.add('is-open');
+    st.stage.classList.remove('is-firing');
+    st.stage.classList.toggle('is-latched', mode === 'latched');
+    ITEMS.forEach(function (it) {
+      st.buds[it.key].classList.remove('is-fired');
+      st.buds[it.key].querySelector('.pod').setAttribute('tabindex', mode === 'latched' ? '0' : '-1');
+    });
+    st.hint.textContent = mode === 'latched' ? 'ELIGE UNA' : 'MANTÉN Y DESLIZA';
+    mountBrots(st);
+    point(st, null);
+  }
+
+  // Cerrar = volver al estado cero. No queda ni un residuo: ni halo prendido,
+  // ni capullo agrandado, ni anillo a medio disparar, ni foco en un pod.
+  function close(st) {
+    st.mode = 'closed';
+    st.pid = null;
+    st.stage.classList.remove('is-open', 'is-latched', 'has-point', 'is-firing');
+    st.pointed = null;
+    st.ghost.classList.remove('is-on');
+    ITEMS.forEach(function (it) {
+      st.buds[it.key].classList.remove('is-pointed', 'is-down', 'is-fired');
+      st.calyx[it.key].classList.remove('is-fired');
+      var pod = st.buds[it.key].querySelector('.pod');
+      pod.setAttribute('tabindex', '-1');
+      if (document.activeElement === pod) pod.blur();
+    });
+    clearTimeout(st.fireT);
+    clearInterval(st.turnT);
+    clearTimeout(st.unmountT);
+    st.unmountT = setTimeout(function () {
+      if (st.mode !== 'closed') return;
+      unmountBrots(st);
+      st.hint.textContent = 'MANTÉN Y DESLIZA';   // el copy vuelve al estado cero
+    }, 420);
+  }
+
+  function point(st, key) {
+    if (st.pointed === key) return;
+    st.pointed = key;
+    st.stage.classList.toggle('has-point', !!key);
+    ITEMS.forEach(function (it) {
+      st.buds[it.key].classList.toggle('is-pointed', it.key === key);
+    });
+    if (key) {
+      var it = ITEMS.filter(function (i) { return i.key === key; })[0];
+      st.pill.textContent = it.long;
+    }
+    applyAnim(st);
+  }
+
+  function fire(st, key) {
+    if (st.mode === 'firing') return;
+    var it = ITEMS.filter(function (i) { return i.key === key; })[0];
+    var bud = st.buds[key], cal = st.calyx[key];
+    point(st, null);                    // soltá el «apuntado»: manda is-fired
+    st.mode = 'firing';
+    bud.classList.add('is-fired');
+    cal.classList.add('is-fired');       // el cáliz se va con su capullo
+    bud.classList.remove('is-down');
+    st.stage.classList.add('is-firing');
+    st.stage.classList.remove('has-point');
+    // 560ms = el anillo de confirmación (540ms) termina ANTES de que le saquen
+    // la clase; si no, quedaba cortado a la mitad.
+    var wait = prefersReduced() ? 60 : 560;
+    clearTimeout(st.fireT);
+    st.fireT = setTimeout(function () {
+      close(st);                          // close() ya limpia is-fired e is-firing
+      showToast(st, it.toast);
+    }, wait);
+  }
+
+  function showToast(st, text) {
+    st.toast.textContent = text;
+    st.toast.classList.add('is-on');
+    clearTimeout(st.toastT);
+    st.toastT = setTimeout(function () { st.toast.classList.remove('is-on'); }, 1800);
+  }
+
+  /* ══ El gesto de verdad (pointer events; el mouse hace de dedo) ══ */
+  S.forEach(function (st) {
+    var fab = st.stage.querySelector('.fab');
+
+    function local(ev) {
+      var r = st.stage.getBoundingClientRect();
+      return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    }
+
+    fab.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'firing') return;
+      if (st.mode === 'latched') { close(st); return; }
+      try { fab.setPointerCapture(ev.pointerId); } catch (e) {}
+      var p = local(ev);
+      st.pid = ev.pointerId;              // este teléfono es el dueño del dedo
+      st.downT = Date.now(); st.downX = p.x; st.downY = p.y; st.moved = 0;
+      open(st, 'drag');
+    });
+
+    // Dueño del gesto: sin esta guarda, un pointerup en CUALQUIER lado suelta
+    // el arrastre de todos los teléfonos abiertos (el listener vive en window).
+    function mine(ev) { return st.mode === 'drag' && st.pid !== null && ev.pointerId === st.pid; }
+
+    function onMove(ev) {
+      if (!mine(ev)) return;
+      var p = local(ev);
+      var dd = Math.hypot(p.x - st.downX, p.y - st.downY);
+      if (dd > st.moved) st.moved = dd;
+      point(st, hit(p.x, p.y));
+    }
+    fab.addEventListener('pointermove', onMove);
+    st.stage.addEventListener('pointermove', onMove);
+
+    function release(ev) {
+      if (!mine(ev)) return;
+      st.pid = null;
+      var p = local(ev);
+      var quick = (Date.now() - st.downT) < 300 && st.moved < 14;
+      var key = st.pointed || hit(p.x, p.y);
+      if (key) { fire(st, key); return; }
+      if (quick) {                       // tap seco: el ramillete queda abierto
+        st.mode = 'latched';
+        st.stage.classList.add('is-latched');
+        st.hint.textContent = 'ELIGE UNA';
+        ITEMS.forEach(function (it) {
+          st.buds[it.key].querySelector('.pod').setAttribute('tabindex', '0');
+        });
+        return;
+      }
+      close(st);                          // soltó en la zona muerta = cancelar
+    }
+    fab.addEventListener('pointerup', release);
+    window.addEventListener('pointerup', release);
+    fab.addEventListener('pointercancel', function (ev) { if (mine(ev)) { st.pid = null; close(st); } });
+    window.addEventListener('pointercancel', function (ev) { if (mine(ev)) { st.pid = null; close(st); } });
+
+    fab.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'closed') { open(st, 'latched'); point(st, PRINCIPAL); }
+      else close(st);
+    });
+
+    // Camino por tap: con el ramillete abierto se elige tocando.
+    ITEMS.forEach(function (it) {
+      var bud = st.buds[it.key];
+      var pod = bud.querySelector('.pod');
+      pod.addEventListener('pointerdown', function (ev) {
+        if (st.mode !== 'latched') return;
+        ev.stopPropagation();
+        bud.classList.add('is-down');
+        point(st, it.key);
+      });
+      pod.addEventListener('pointerup', function (ev) {
+        if (st.mode !== 'latched') return;
+        ev.stopPropagation();
+        bud.classList.remove('is-down');
+        fire(st, it.key);
+      });
+      // Conveniencia de escritorio — nunca el único camino.
+      pod.addEventListener('pointerenter', function () { if (st.mode === 'latched') point(st, it.key); });
+      pod.addEventListener('pointerleave', function () {
+        bud.classList.remove('is-down');
+        if (st.mode === 'latched') point(st, null);
+      });
+      pod.addEventListener('focus', function () { if (st.mode === 'latched') point(st, it.key); });
+      pod.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fire(st, it.key); }
+      });
+    });
+
+    st.stage.querySelector('.scrim').addEventListener('pointerdown', function () {
+      if (st.mode === 'latched') close(st);
+    });
+  });
+
+  /* ══ Replay: un barrido fantasma por todo el ramillete ══ */
+  var timers = [], raf = 0, demoRunning = false, userTook = false;
+
+  function clearDemo() {
+    timers.forEach(clearTimeout); timers = [];
+    cancelAnimationFrame(raf); raf = 0;
+    demoRunning = false;
+  }
+  function cancelDemoIfUser() { if (demoRunning) { userTook = true; clearDemo(); } }
+  function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+  // Barrido derivado del arco: centro → derecha → izquierda → centro.
+  var PATH = (function () {
+    var order = [2, 3, 4, 3, 1, 0, 1, 2, 2];   // índices de ITEMS
+    var out = [{ t: 0, ang: 0, r: 22 }];
+    var t = 380;
+    order.forEach(function (idx, n) {
+      out.push({ t: t, ang: ITEMS[idx].ang, r: ITEMS[idx].r });
+      t += (n === order.length - 2) ? 260 : 380;
+    });
+    return out;
+  })();
+
+  function easeInOut(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+
+  function sweep(sts, done) {
+    var total = PATH[PATH.length - 1].t;
+    var t0 = performance.now();
+    sts.forEach(function (st) { st.ghost.classList.add('is-on'); });
+    function frame(now) {
+      var el = now - t0;
+      if (el > total) el = total;
+      var i = 0;
+      while (i < PATH.length - 2 && PATH[i + 1].t < el) i++;
+      var a = PATH[i], b = PATH[i + 1];
+      var u = b.t === a.t ? 1 : easeInOut((el - a.t) / (b.t - a.t));
+      var ang = a.ang + (b.ang - a.ang) * u;
+      var r = a.r + (b.r - a.r) * u;
+      var p = polar(ang, r);
+      sts.forEach(function (st) {
+        st.ghost.style.setProperty('--gx', p.x.toFixed(1) + 'px');
+        st.ghost.style.setProperty('--gy', p.y.toFixed(1) + 'px');
+        point(st, hit(p.x, p.y));
+      });
+      if (el < total) raf = requestAnimationFrame(frame);
+      else done();
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    clearDemo();
+    userTook = false;
+    demoRunning = true;
+    S.forEach(function (st) {
+      clearTimeout(st.toastT);
+      st.toast.classList.remove('is-on');
+      close(st);
+      st.ghost.classList.remove('is-on');
+      st.ghost.style.setProperty('--gx', CX + 'px');
+      st.ghost.style.setProperty('--gy', CY + 'px');
+    });
+
+    var reduced = prefersReduced();
+
+    if (reduced) {
+      at(200, function () { S.forEach(function (st) { open(st, 'latched'); point(st, PRINCIPAL); }); });
+      at(900, function () { S.forEach(function (st) { fire(st, PRINCIPAL); }); demoRunning = false; });
+      return;
+    }
+
+    at(260, function () { S.forEach(function (st) { st.pid = null; open(st, 'drag'); }); });
+    at(1180, function () {
+      if (userTook) return;
+      sweep(S, function () {
+        if (userTook) return;
+        S.forEach(function (st) { st.ghost.classList.remove('is-on'); });
+        at(200, function () {
+          if (userTook) return;
+          S.forEach(function (st) { if (st.pointed) fire(st, st.pointed); else close(st); });
+          demoRunning = false;
+        });
+      });
+    });
+  }
+
+  document.getElementById('replay').addEventListener('click', play);
+  document.getElementById('reduced').addEventListener('change', function (e) {
+    document.body.classList.toggle('reduced', e.target.checked);
+    play();
+  });
+
+  /* ══ Leyenda de poses (canvas quieto, sin loop) ══ */
+  var poses = document.getElementById('poses');
+  var WHY = {
+    expense:  'la acción principal: ¡ojo, algo salió!',
+    'import': 'es OCR — las chispas leen el ticket',
+    'no-spend': 'calma: hoy no gastaste',
+    income:   'festeja porque entró plata',
+    fixed:    'piensa: es algo que se repite'
+  };
+  [ITEMS[2], ITEMS[1], ITEMS[3], ITEMS[4], ITEMS[0]].forEach(function (it) {
+    var cell = document.createElement('div');
+    cell.className = 'pose';
+    var b = document.createElement('brot-mascot');
+    b.setAttribute('pose', it.pose);
+    b.setAttribute('size', '76');
+    b.setAttribute('animated', 'false');
+    b.setAttribute('shadow', 'false');
+    cell.appendChild(b);
+    var n = document.createElement('div'); n.className = 'pose-action';
+    n.textContent = it.name.replace('<br>', ' ');
+    var pn = document.createElement('div'); pn.className = 'pose-name'; pn.textContent = it.pose;
+    var w = document.createElement('div'); w.className = 'pose-why'; w.textContent = WHY[it.key];
+    cell.appendChild(n); cell.appendChild(pn); cell.appendChild(w);
+    poses.appendChild(cell);
+  });
+
+  /* ══ Tabla de la geometría derivada ══════════════════════════
+     Se arma con los MISMOS ITEMS que dibujan el arco: si un número
+     de ARC cambia, esta tabla cambia sola. No hay valores tipeados. */
+  document.getElementById('geo-src').textContent =
+    'ARC = { cx: ' + ARC.cx + ', cy: ' + ARC.cy + ', radio: ' + ARC.radio +
+    ', apertura: ' + ARC.apertura + '°, gapLabel: ' + ARC.gapLabel + ' }\n' +
+    'paso angular = apertura / (n − 1) = ' + STEP + '°   ·   orden = [' + ARC.orden.join(', ') + ']\n' +
+    Object.keys(PESO).map(function (k) {
+      var w = PESO[k];
+      return 'PESO.' + k + (k.length < 9 ? '   '.slice(0, 9 - k.length) : '') +
+        ' → capullo ' + w.pod + ' · Brot ' + w.brot + ' · cáliz ' + w.calyx +
+        ' · nombre ' + w.lw + '×' + w.lh + ' @ ' + w.ls + 'px';
+    }).join('\n');
+
+  var geoBody = document.getElementById('geo-body');
+  ITEMS.forEach(function (it) {
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + it.name.replace('<br>', ' ') + '</td>' +
+      '<td>' + it.peso + '</td>' +
+      '<td class="ratio">' + it.ang.toFixed(1) + '°</td>' +
+      '<td class="ratio">' + it.r.toFixed(1) + '</td>' +
+      '<td>' + it.pod + '×' + it.pod + ' @ ' + it.x.toFixed(1) + ',' + it.y.toFixed(1) + '</td>' +
+      '<td>' + it.cal + ' @ ' + it.cX.toFixed(1) + ',' + it.cY.toFixed(1) + '</td>' +
+      '<td>' + it.nW + '×' + it.nH + ' @ ' + it.nX.toFixed(1) + ',' + it.nY.toFixed(1) + '</td>' +
+      '<td>Δx 0 · Δy −' + (it.pod / 2 + ARC.gapLabel + it.nH / 2) + '</td>' +
+      '<td>' + ARC.gapLabel + '</td>' +
+      '<td>' + CX + ',' + CY + ' → ' + it.x.toFixed(1) + ',' + it.y.toFixed(1) + '</td>';
+    geoBody.appendChild(tr);
+  });
+
+  (function () {
+    // Matriz de las 15 cajas: la holgura más chica y la distancia al borde.
+    var boxes = [];
+    ITEMS.forEach(function (it) {
+      boxes.push({ id: 'capullo ' + it.key, x: it.x - it.pod / 2, y: it.y - it.pod / 2, w: it.pod, h: it.pod });
+      boxes.push({ id: 'cáliz ' + it.key, x: it.cX - it.cal / 2, y: it.cY - it.cal / 2, w: it.cal, h: it.cal });
+      boxes.push({ id: 'nombre ' + it.key, x: it.nX, y: it.nY, w: it.nW, h: it.nH });
+    });
+    var min = 1e9, worst = '';
+    for (var i = 0; i < boxes.length; i++) for (var j = i + 1; j < boxes.length; j++) {
+      var A = boxes[i], B = boxes[j];
+      var sameKey = A.id.split(' ')[1] === B.id.split(' ')[1];
+      var kinds = A.id.split(' ')[0] + '+' + B.id.split(' ')[0];
+      if (sameKey && (kinds === 'capullo+cáliz' || kinds === 'cáliz+capullo')) continue;  // la juntura
+      var g = Math.max(Math.max(B.x - (A.x + A.w), A.x - (B.x + B.w)),
+                       Math.max(B.y - (A.y + A.h), A.y - (B.y + B.h)));
+      if (g < min) { min = g; worst = A.id + ' ↔ ' + B.id; }
+    }
+    var edge = 1e9, eId = '';
+    boxes.forEach(function (b) {
+      var m = Math.min(b.x, 393 - (b.x + b.w), b.y, 830 - (b.y + b.h));
+      if (m < edge) { edge = m; eId = b.id; }
+    });
+    document.getElementById('geo-check').innerHTML =
+      '<b>Chequeo automático.</b> Radio idéntico en las cinco (' + ARC.radio + ' px, desvío 0). ' +
+      'Saltos angulares de ' + STEP + '° parejos, desvío 0. ' +
+      'Jerarquía de tamaño ' + PESO.principal.pod + ' &gt; ' + PESO.diaria.pod + ' &gt; ' + PESO.mensual.pod + ', estricta. ' +
+      'Las cinco ramas arrancan en ' + CX + ',' + CY + ' —el centro exacto del FAB— y terminan en el centro de su capullo. ' +
+      'Holgura mínima entre las 15 cajas: <b>' + min.toFixed(2) + ' px</b> (' + worst + '). ' +
+      'Elemento más cercano al borde del teléfono: <b>' + edge.toFixed(2) + ' px</b> (' + eId + '), sobre un mínimo exigido de 16. ' +
+      'El cáliz toca su propio capullo por diseño —es la juntura de la rama— y queda tangente, a ' + ARC.gapCalyz + ' px, sin encimarse.';
+  })();
+
+  /* ══ Tabla de contraste ══ */
+  var WCAG = [
+    ['Nombre de la acción #24382A / scrim compuesto #BFC3B1', 'Claro', '4.5', 6.96],
+    ['(descartado) nombre en muted #54644F / scrim', 'Claro', '4.5', 3.52],
+    ['Línea larga en la píldora #24382A / hoja #F0EFE3', 'Claro', '4.5', 10.85],
+    ['Texto guía MANTÉN Y DESLIZA #24382A / scrim', 'Claro', '4.5', 6.96],
+    ['Toast #24382A / hoja #F0EFE3', 'Claro', '4.5', 10.85],
+    ['Rama, base del gradiente #1F5429 / scrim', 'Claro', '3', 4.94],
+    ['Rama, punta del gradiente #266A31 / scrim', 'Claro', '3', 3.66],
+    ['Hojita de la rama #266A31 / scrim', 'Claro', '3', 3.66],
+    ['(descartado) rama en el verde del Brote #2E7C39 / scrim', 'Claro', '3', 2.87],
+    ['Aro del capullo #54644F / scrim', 'Claro', '3', 3.52],
+    ['Aro del capullo #54644F / pastel más claro #EDE0C8', 'Claro', '3', 4.86],
+    ['(sin aro) capullo pastel #E6E0F4 / scrim — por eso lleva aro', 'Claro', '3', 1.40],
+    ['Capullo de Gasto #2E7434 / scrim', 'Claro', '3', 3.18],
+    ['Glifo del cáliz #24382A / chip #F0EFE3', 'Claro', '3', 10.85],
+    ['Contorno de Brot #4E7A44 / corola de Gasto #F0EFE3', 'Claro', '3', 4.33],
+    ['(descartado) cuerpo de Brot #A9CB80 / CTA #489350', 'Claro', '3', 2.07],
+    ['Contorno de Brot #4E7A44 / capullo lavanda #E6E0F4', 'Claro', '3', 3.90],
+    ['Contorno de Brot #4E7A44 / capullo menta #D4EBDF', 'Claro', '3', 4.00],
+    ['Contorno de Brot #4E7A44 / capullo azul #D6E4F0', 'Claro', '3', 3.87],
+    ['Contorno de Brot #4E7A44 / capullo arena #EDE0C8', 'Claro', '3', 3.84],
+    ['Nombre de la acción #F1EEDD / scrim compuesto #0B140E', 'Oscuro', '4.5', 16.07],
+    ['Línea larga en la píldora #F1EEDD / hoja #1B2F22', 'Oscuro', '4.5', 12.20],
+    ['Texto guía MANTÉN Y DESLIZA #F1EEDD / scrim', 'Oscuro', '4.5', 16.07],
+    ['Toast #F1EEDD / hoja #1B2F22', 'Oscuro', '4.5', 12.20],
+    ['Rama, base del gradiente #6FB871 / scrim', 'Oscuro', '3', 7.83],
+    ['Rama, punta del gradiente #A4E3A6 / scrim', 'Oscuro', '3', 12.60],
+    ['Hojita de la rama #6FB871 / scrim', 'Oscuro', '3', 7.83],
+    ['Aro del capullo #93A78F / scrim', 'Oscuro', '3', 7.29],
+    ['Aro del capullo #93A78F / capullo más claro #3B5046', 'Oscuro', '3', 3.37],
+    ['(sin aro) capullo #3D5047 / scrim — por eso lleva aro', 'Oscuro', '3', 2.17],
+    ['Capullo de Gasto #3E7D46 / scrim', 'Oscuro', '3', 3.77],
+    ['Glifo del cáliz #F1EEDD / chip #1B2F22', 'Oscuro', '3', 12.20],
+    ['Cuerpo de Brot #A9CB80 / corola de Gasto #1B2F22', 'Oscuro', '3', 7.82],
+    ['Cuerpo de Brot #A9CB80 / capullo lavanda #3D5047', 'Oscuro', '3', 4.74],
+    ['Cuerpo de Brot #A9CB80 / capullo menta #3A5144', 'Oscuro', '3', 4.73],
+    ['Cuerpo de Brot #A9CB80 / capullo azul #3B5046', 'Oscuro', '3', 4.77],
+    ['Cuerpo de Brot #A9CB80 / capullo arena #3E5040', 'Oscuro', '3', 4.76]
+  ];
+  var tbody = document.getElementById('wcag-body');
+  WCAG.forEach(function (r) {
+    var need = parseFloat(r[2]);
+    var ok = r[3] >= need;
+    var discarded = r[0].indexOf('(descartado)') === 0 || r[0].indexOf('(sin aro)') === 0;
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + r[0] + '</td>' +
+      '<td>' + r[1] + '</td>' +
+      '<td>' + r[2] + ':1</td>' +
+      '<td class="ratio">' + r[3].toFixed(2) + ':1</td>' +
+      '<td class="' + (ok ? 'pass' : 'fail') + '">' +
+        (ok ? 'PASA' : (discarded ? 'NO PASA — por eso no se usa' : 'NO PASA')) + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  play();
+})();
+</script>
+</body>
+</html>

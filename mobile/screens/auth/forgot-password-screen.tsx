@@ -40,6 +40,7 @@ import { useNumpadOffset } from '@/lib/numpad-visibility'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
+import { nunitoFamily } from '@/theme/typography'
 
 export function ForgotPasswordScreen() {
   const { t } = useTranslation()
@@ -375,6 +376,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     marginBottom: 10,
     textAlign: 'center',
@@ -382,6 +384,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.5,
     textAlign: 'center',
   },
@@ -389,15 +392,18 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textAlign: 'center',
     lineHeight: 20,
   },
   subStrong: {
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   codeLabel: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
     marginBottom: 12,
   },

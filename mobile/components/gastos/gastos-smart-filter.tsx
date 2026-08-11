@@ -6,6 +6,7 @@ import { GastosFilterPill } from '@/components/gastos/gastos-filter-pill'
 import { CategoryIcon } from '@/components/category/category-icon'
 import type { CategoryLite } from '@/features/gastos/gastos-aggregates.model'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GastosSmartFilterProps {
   categories: CategoryLite[]
@@ -123,7 +124,7 @@ export function GastosSmartFilter({
 
 const styles = StyleSheet.create({
   container: { gap: 8 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700' },
+  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   scrollContent: {
     // Match the screen's horizontal padding so the first chip starts
     // flush with the rest of the content but the scroll itself can

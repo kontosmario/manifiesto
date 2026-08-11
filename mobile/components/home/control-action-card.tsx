@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { buildTonePalette, type ControlAction } from '@/features/insights/control-model'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function ControlActionCard({
   detail,
@@ -66,6 +67,7 @@ const styles = StyleSheet.create({
   actionIndexLabel: {
     fontSize: 12,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   actionCopy: {
     flex: 1,
@@ -74,6 +76,7 @@ const styles = StyleSheet.create({
   actionTitle: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   actionDetail: {},
 })

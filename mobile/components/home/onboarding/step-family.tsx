@@ -22,6 +22,7 @@ import type { AccountKind } from '@/features/family/account-kind'
 import { getErrorMessage } from '@/utils/error-message'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StepFamilyProps {
   userId: string
@@ -351,7 +352,7 @@ function OptionCard({
 
 const styles = StyleSheet.create({
   stack: { gap: 16 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 4 },
   rejoinHint: { fontSize: 12, marginTop: 6, fontStyle: 'italic' },
   optionStack: { gap: 10 },
@@ -364,11 +365,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
   },
-  optionTitle: { fontSize: 16, fontWeight: '800' },
+  optionTitle: { fontSize: 16, fontWeight: '800', fontFamily: nunitoFamily('800') },
   optionMeta: { fontSize: 12, marginTop: 2 },
   codeInputOverride: {
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 4,
     textAlign: 'center',
   },
@@ -381,7 +383,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ghostButtonText: { fontSize: 14, fontWeight: '700' },
+  ghostButtonText: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   primaryButton: {
     flex: 1,
     paddingVertical: 14,
@@ -389,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: { fontSize: 14, fontWeight: '800' },
+  primaryButtonText: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
   confirmCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -407,7 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  confirmTitle: { fontSize: 15, fontWeight: '800' },
+  confirmTitle: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
   confirmMeta: { fontSize: 12, marginTop: 4 },
   confirmHint: { fontSize: 11, marginTop: 4 },
 })

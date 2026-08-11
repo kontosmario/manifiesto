@@ -16,15 +16,19 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { decorativeDurations } from '@/lib/motion/tokens'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { DrawRing } from '@/components/ui/draw-ring'
-import { CardParticles } from '@/components/ui/card-particles'
+import {
+  SettingsHeroCard,
+  settingsHeroInk,
+} from '@/components/settings/settings-hero-card'
 import { BadgeDetailSheet } from '@/components/achievements/badge-detail-sheet'
-import { radii } from '@/theme/palette'
+import { tierTone } from '@/components/achievements/tier-tone'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -35,7 +39,6 @@ import {
 import {
   achievementTitle,
   tierIsPremium,
-  tierTone,
 } from '@/features/achievements/achievement-tiers'
 import {
   AchievementIcon,
@@ -48,9 +51,10 @@ import {
   FilledAchievementIcon,
   hasFilledAchievementIcon,
 } from '@/components/achievements/achievement-icon-filled'
-import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
-import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { withAlpha } from '@/theme/color-utils'
+import { nunitoFamily } from '@/theme/typography'
 
 const GRID_GAP = 10
 
@@ -67,7 +71,7 @@ const GRID_GAP = 10
  */
 export function AchievementsGalleryScreen() {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const { data: session } = useAuthSession()
@@ -99,7 +103,6 @@ export function AchievementsGalleryScreen() {
       subtitle={t('achievements:gallery.subtitle')}
       canGoBack
       bodyStyle={styles.body}
-      backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
     >
       {error && !data ? (
         <NeoStateBlock
@@ -139,8 +142,6 @@ function ProgressRingHero({
   earnedCount: number
   totalCount: number
 }) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const progress = totalCount > 0 ? earnedCount / totalCount : 0
   const pct = Math.round(progress * 100)
@@ -156,45 +157,40 @@ function ProgressRingHero({
           : t('achievements:gallery.hero.subStart')
 
   return (
-    <NeoSurface
-      radius={neoRadii.hero}
-      style={styles.hero}
-      variant="hero"
-    >
-      <CardParticles count={10} accentColor={neo.heroPeach} />
+    <SettingsHeroCard>
       <View style={styles.heroRow}>
         <View style={{ width: RING, height: RING }}>
           <DrawRing
             size={RING}
             strokeWidth={11}
-            color={neo.heroGreen}
-            trackColor="rgba(242,234,211,0.14)"
+            color={settingsHeroInk.accent}
+            trackColor={withAlpha(settingsHeroInk.title, 0.24)}
             progress={progress}
           />
           <View style={styles.ringCenter}>
             <CountUpText
               value={earnedCount}
               format={(n) => `${Math.round(n)}`}
-              style={[styles.ringCount, { color: neo.heroText }]}
+              style={[styles.ringCount, { color: settingsHeroInk.title }]}
             />
-            <Text style={[styles.ringTotal, { color: neo.heroTextSoft }]}>
+            <Text style={[styles.ringTotal, { color: settingsHeroInk.soft }]}>
               {t('achievements:gallery.hero.of', { count: totalCount })}
             </Text>
           </View>
         </View>
         <View style={styles.heroText}>
-          <Text style={[styles.heroEyebrow, { color: neo.heroGreen }]}>
+          <Text style={[styles.heroEyebrow, { color: settingsHeroInk.accent }]}>
             {t('achievements:gallery.hero.eyebrow')}
           </Text>
-          <Text style={[styles.heroPct, { color: neo.heroText }]}>
+          <Text style={[styles.heroPct, { color: settingsHeroInk.title }]}>
             {pct}%
           </Text>
-          <Text style={[styles.heroSub, { color: neo.heroTextSoft }]}>
+          <Text style={[styles.heroSub, { color: settingsHeroInk.soft }]}>
             {subtitle}
           </Text>
         </View>
       </View>
-    </NeoSurface>
+    </SettingsHeroCard>
   )
 }
 
@@ -207,7 +203,7 @@ function BadgeGrid({
   onPress: (badge: AchievementViewItem) => void
 }) {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   // 3 columnas. 40 = padding horizontal del Screen (2×20).
@@ -250,16 +246,29 @@ function BadgeTile({
   onPress: () => void
 }) {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const neo = neoTokens(theme.mode)
   const press = usePressScale({ pressedScale: 0.95 })
-  const tone = tierTone(item.tier, theme.isDark)
+  const tone = tierTone(item.tier, theme.mode)
   const earned = item.earned
   const premium = earned && tierIsPremium(item.tier)
   const title = achievementTitle(item.code, item.title)
 
   // Un logro BLOQUEADO se dibuja hundido (pozo), no en relieve: el relieve es
-  // lo que distingue a los ya conseguidos.
-  const lockedBg = neo.well
+  // lo que distingue a los ya conseguidos. El "próximo" suma un anillo verde
+  // como capa extra del mismo boxShadow — el vocabulario no usa bordes.
+  const material = earned
+    ? {
+        backgroundColor: tone.fill,
+        boxShadow: premium
+          ? `${neo.shadows.raisedSm}, ${tone.glow}`
+          : neo.shadows.raisedSm,
+      }
+    : {
+        ...neoMaterial(theme.mode, 'insetSm'),
+        boxShadow: isNext
+          ? `${neo.shadows.insetSm}, 0 0 0 2px ${neo.green}`
+          : neo.shadows.insetSm,
+      }
 
   return (
     <Pressable
@@ -273,36 +282,23 @@ function BadgeTile({
         style={[
           styles.tile,
           { width: size, height: size * 1.16 },
-          earned
-            ? { backgroundColor: tone.bg, borderColor: tone.border }
-            : {
-                backgroundColor: lockedBg,
-                borderColor: isNext ? neo.heroGreen : neo.sheetDivider,
-              },
-          premium
-            ? {
-                shadowColor: tone.fg,
-                shadowOpacity: 0.45,
-                shadowRadius: 9,
-                shadowOffset: { width: 0, height: 0 },
-                elevation: 5,
-              }
-            : null,
+          material,
+          {
+            // El pozo del bloqueado y su anillo son `boxShadow`: en
+            // Android < 28/29 se descartan en silencio (ver
+            // `inset-shadow-support`) y el tile quedaría invisible.
+            borderWidth: earned || SUPPORTS_INSET_SHADOW ? 0 : isNext ? 2 : 1,
+            borderColor: isNext ? neo.green : neo.sheetDivider,
+          },
           press.animatedStyle,
         ]}
       >
         <View
           style={[
             styles.iconBubble,
-            {
-              backgroundColor: earned
-                ? theme.isDark
-                  ? 'rgba(255,251,242,0.92)'
-                  : '#FFFBF2'
-                : theme.isDark
-                  ? 'rgba(255,255,255,0.04)'
-                  : 'rgba(28,58,35,0.045)',
-            },
+            // Bloqueado NO lleva disco: la silueta cae directo sobre el
+            // pozo del tile (el disco crema es lo que celebra al ganado).
+            { backgroundColor: earned ? neo.heroText : 'transparent' },
           ]}
         >
           {hasFilledAchievementIcon(item.code) ? (
@@ -329,17 +325,8 @@ function BadgeTile({
           {title}
         </Text>
         {!earned ? (
-          <View
-            style={[
-              styles.tileLock,
-              {
-                backgroundColor: theme.isDark
-                  ? neo.sheetHandle
-                  : neo.sheetHandle,
-              },
-            ]}
-          >
-            <MaterialIcons name="lock" size={10} color={neo.textMuted} />
+          <View style={[styles.tileLock, { backgroundColor: neo.sheetHandle }]}>
+            <MaterialIcons name="lock" size={10} color={neo.text} />
           </View>
         ) : null}
       </Animated.View>
@@ -350,7 +337,7 @@ function BadgeTile({
 // ─── Skeleton de carga (nunca blanco) ──────────────────────────────────────
 function AchievementsSkeleton() {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const neo = neoTokens(theme.mode)
   const reduced = useReducedMotion()
   const { width } = useWindowDimensions()
   const tileSize = (width - 40 - GRID_GAP * 2) / 3
@@ -358,22 +345,25 @@ function AchievementsSkeleton() {
 
   useEffect(() => {
     if (reduced) return
-    pulse.value = withRepeat(withTiming(1, { duration: 850 }), -1, true)
+    pulse.value = withRepeat(withTiming(1, { duration: decorativeDurations.meterFill }), -1, true)
   }, [reduced, pulse])
 
   const pulseStyle = useAnimatedStyle(() => ({
     opacity: reduced ? 0.6 : pulse.value,
   }))
-  const sk = neo.well
+  // Los placeholders son pozos: en Android < 29 la sombra inset se
+  // descarta en silencio (ver `inset-shadow-support`) y sin el hairline
+  // quedarían en un rectángulo casi del color del fondo.
+  const skeletonMaterial = neoMaterial(theme.mode, 'insetSm')
+  const flatFallback = {
+    borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+    borderColor: neo.sheetDivider,
+  }
 
   return (
     <View style={styles.skeletonStack}>
       <Animated.View
-        style={[
-          styles.heroSkeleton,
-          { backgroundColor: sk, borderColor: neo.sheetDivider },
-          pulseStyle,
-        ]}
+        style={[styles.heroSkeleton, skeletonMaterial, flatFallback, pulseStyle]}
       />
       <View style={styles.grid}>
         {Array.from({ length: 9 }).map((_, i) => (
@@ -381,12 +371,9 @@ function AchievementsSkeleton() {
             key={i}
             style={[
               styles.tile,
-              {
-                width: tileSize,
-                height: tileSize * 1.16,
-                backgroundColor: sk,
-                borderColor: neo.sheetDivider,
-              },
+              { width: tileSize, height: tileSize * 1.16 },
+              skeletonMaterial,
+              flatFallback,
               pulseStyle,
             ]}
           />
@@ -402,11 +389,6 @@ const styles = StyleSheet.create({
   body: { gap: 24 },
 
   // Hero
-  hero: {
-    borderRadius: 24,
-    padding: 20,
-    overflow: 'hidden',
-  },
   heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -420,12 +402,14 @@ const styles = StyleSheet.create({
   ringCount: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
   ringTotal: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginTop: -2,
   },
   heroText: {
@@ -435,15 +419,19 @@ const styles = StyleSheet.create({
   heroEyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
   },
   heroPct: {
     fontSize: 30,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
   },
   heroSub: {
     fontSize: 12.5,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 17,
   },
 
@@ -454,8 +442,7 @@ const styles = StyleSheet.create({
     gap: GRID_GAP,
   },
   tile: {
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
@@ -480,6 +467,7 @@ const styles = StyleSheet.create({
   tileTitle: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     lineHeight: 14,
   },
@@ -489,7 +477,7 @@ const styles = StyleSheet.create({
     right: 7,
     width: 18,
     height: 18,
-    borderRadius: radii.pill,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -498,14 +486,17 @@ const styles = StyleSheet.create({
   skeletonStack: {
     gap: 24,
   },
+  // 168 = padding 20×2 + el anillo de 128 del hero real: sin esto la grilla
+  // salta de posición al pasar del skeleton al contenido.
   heroSkeleton: {
-    height: 128,
-    borderRadius: 24,
-    borderWidth: 1,
+    height: 168,
+    borderRadius: neoRadii.hero,
   },
 
   emptyText: {
     fontSize: 14,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     textAlign: 'center',
     paddingVertical: 40,
   },

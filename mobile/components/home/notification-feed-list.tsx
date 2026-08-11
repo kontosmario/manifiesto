@@ -32,6 +32,7 @@ import {
   iconForKind,
   pillForSeverity,
 } from '@/utils/notifications'
+import { nunitoFamily } from '@/theme/typography'
 
 interface NotificationFeedListProps {
   errorMessage?: string
@@ -366,12 +367,14 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
     lineHeight: 19,
   },
   time: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   bodyText: {
     fontSize: 12,
@@ -391,6 +394,7 @@ const styles = StyleSheet.create({
   pillLabel: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },

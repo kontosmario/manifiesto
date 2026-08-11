@@ -16,6 +16,7 @@ import Animated, {
 import { motionDurations } from '@/lib/motion'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface NameInputProps {
   value: string
@@ -151,5 +152,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

@@ -4,6 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -39,10 +40,7 @@ export function NeoStateBlock({
 }) {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
-  const isDark = theme.mode === 'dark'
-  // `neo.warm` en claro (#C96F3F) da 2.99:1 sobre el pozo — por debajo del
-  // 3:1 de un glifo. El rojo-tierra de exceso del rediseño da 4.72:1.
-  const errorInk = isDark ? neo.danger : '#A84A2F'
+  const errorInk = neoInk(theme.mode).danger
   // Android < API 29 descarta el boxShadow INSET en silencio: sin él, el pozo
   // queda del mismo material que su contenedor y el bloque desaparece.
   const wellFallback = useMemo<ViewStyle | null>(

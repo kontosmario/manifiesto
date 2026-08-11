@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contraste del CTA primario — comparativa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#DCDFCD; --surface:#E9EBE0; --sheet:#F0EFE3;
+    --text:#24382A; --muted:#54644F;
+    --danger:#A84A2F; --ok:#1F5429;
+    --font:'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);font-family:var(--font);color:var(--text);
+       padding:40px 24px 80px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:30px;font-weight:900;letter-spacing:-.6px;margin:0 0 6px}
+  .lede{font-size:15px;font-weight:700;color:var(--muted);margin:0 0 8px;max-width:70ch;line-height:1.5}
+  .eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+           color:var(--muted);margin:44px 0 14px}
+  .card{background:var(--sheet);border-radius:26px;padding:26px;
+        box-shadow:8px 8px 18px rgba(151,160,136,.42),-8px -8px 18px rgba(255,255,255,.92)}
+  .card + .card{margin-top:18px}
+
+  /* ── El botón real ───────────────────────────────────────── */
+  .cta{
+    width:100%;max-width:330px;height:56px;border-radius:18px;border:0;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font);font-size:16px;font-weight:900;letter-spacing:-.2px;
+    box-shadow:0 12px 24px rgba(46,116,52,.4), inset 0 2px 3px rgba(255,255,255,.3);
+  }
+  .cta.light{color:#F5F2E1}
+  .cta.dark{color:#0F1E14}
+
+  .row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+  .col{flex:1 1 300px;min-width:290px}
+  .caption{font-size:12.5px;font-weight:800;margin:12px 0 4px}
+  .val{font-size:12px;font-weight:700;color:var(--muted);line-height:1.5}
+  .hex{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600}
+
+  .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;
+         padding:4px 11px;font-size:11.5px;font-weight:800;margin-top:8px}
+  .badge.fail{background:#F3C9BC;color:#8C3A1E}
+  .badge.warn{background:#F7E3CF;color:#8A4A1B}
+  .badge.pass{background:#DCEBD8;color:#1F5429}
+
+  /* ── Tira ampliada: dónde cae el texto sobre el radial ───── */
+  .strip{position:relative;height:96px;border-radius:16px;overflow:hidden;margin-top:10px}
+  .strip .label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                font-size:19px;font-weight:900;letter-spacing:-.2px}
+  .ticks{display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;
+         color:var(--muted);margin-top:6px;letter-spacing:.04em}
+
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+  th{text-align:left;font-weight:800;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+     color:var(--muted);padding:0 10px 10px 0}
+  td{padding:9px 10px 9px 0;font-weight:700;border-top:1.5px solid rgba(151,160,136,.28)}
+  td.num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
+  .swatch{display:inline-block;width:14px;height:14px;border-radius:5px;vertical-align:-2px;margin-right:8px}
+
+  .rec{background:#DCEBD8;border-radius:22px;padding:22px 24px;margin-top:18px}
+  .rec h3{margin:0 0 6px;font-size:16px;font-weight:900;color:#1F5429}
+  .rec p{margin:0;font-size:14px;font-weight:700;color:#2E5636;line-height:1.55}
+  .darkpane{background:#0F1A13;border-radius:26px;padding:26px;color:#F1EEDD}
+  .darkpane .val,.darkpane .ticks{color:#93A78F}
+  .darkpane .caption{color:#F1EEDD}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Contraste del CTA primario</h1>
+  <p class="lede">El botón primario se pinta con un radial cuyo foco claro está arriba a la izquierda
+  (<span class="hex">circle at 32% 28%</span>). El label va centrado, así que cruza la zona clara —
+  y ahí es donde el contraste cae. Umbral que aplica: <strong>3:1</strong>, porque el label es bold de 16px
+  (texto grande).</p>
+
+  <div class="eyebrow">Tema claro · así se ve hoy</div>
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <button class="cta light" style="background:radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)">Confirmar</button>
+        <div class="caption">Actual</div>
+        <div class="val">Foco <span class="hex">#63B168</span> → borde <span class="hex">#2E7434</span><br>
+        Texto <span class="hex">#F5F2E1</span></div>
+        <div class="badge fail">2,33:1 en el foco · no pasa</div>
+        <div class="badge pass" style="margin-left:6px">5,10:1 en el borde</div>
+      </div>
+      <div class="col">
+        <div class="caption" style="margin-top:0">Dónde falla, ampliado</div>
+        <div class="strip" style="background:radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)">
+          <div class="label" style="color:#F5F2E1">Confirmar</div>
+        </div>
+        <div class="ticks"><span>foco 2,33:1</span><span>85% → 5,10:1</span></div>
+        <div class="val" style="margin-top:10px">El texto arranca sobre el tramo más claro. La mitad
+        izquierda del label es la que no llega.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="eyebrow">Tema claro · candidatos (solo cambia el stop del foco)</div>
+  <div class="card">
+    <div class="row">
+      <div class="col">
+        <button class="cta light" style="background:radial-gradient(circle at 32% 28%, #4C9A52, #2E7434 85%)">Confirmar</button>
+        <div class="caption">A · <span class="hex">#4C9A52</span></div>
+        <div class="val">Ya está en el sistema: es el stop medio del gradiente hero del handoff.</div>
+        <div class="badge warn">3,09:1 · pasa justo</div>
+      </div>
+      <div class="col">
+        <button class="cta light" style="background:radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)">Confirmar</button>
+        <div class="caption">B · <span class="hex">#489350</span></div>
+        <div class="val">Un escalón más oscuro. Margen cómodo sin perder el brillo del radial.</div>
+        <div class="badge pass">3,36:1 · pasa</div>
+      </div>
+      <div class="col">
+        <button class="cta light" style="background:radial-gradient(circle at 32% 28%, #448C4C, #2E7434 85%)">Confirmar</button>
+        <div class="caption">C · <span class="hex">#448C4C</span></div>
+        <div class="val">El más seguro. El degradé casi no se percibe: el botón se lee plano.</div>
+        <div class="badge pass">3,66:1 · pasa</div>
+      </div>
+    </div>
+    <table>
+      <tr><th>Opción</th><th>Foco</th><th>Ratio en el foco</th><th>Lectura</th></tr>
+      <tr><td><span class="swatch" style="background:#63B168"></span>Actual</td><td class="num">#63B168</td><td class="num" style="color:var(--danger)">2,33:1</td><td>No pasa</td></tr>
+      <tr><td><span class="swatch" style="background:#4C9A52"></span>A</td><td class="num">#4C9A52</td><td class="num">3,09:1</td><td>Pasa al filo · color ya del sistema</td></tr>
+      <tr><td><span class="swatch" style="background:#489350"></span>B</td><td class="num">#489350</td><td class="num">3,36:1</td><td>Pasa con margen · conserva el degradé</td></tr>
+      <tr><td><span class="swatch" style="background:#448C4C"></span>C</td><td class="num">#448C4C</td><td class="num">3,66:1</td><td>Pasa holgado · pierde brillo</td></tr>
+    </table>
+  </div>
+
+  <div class="eyebrow">Tema oscuro · no hace falta tocarlo</div>
+  <div class="darkpane">
+    <div class="row">
+      <div class="col">
+        <button class="cta dark" style="background:radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%)">Confirmar</button>
+        <div class="caption">Actual (oscuro)</div>
+        <div class="val">Foco <span class="hex">#9FDC9F</span> → borde <span class="hex">#3E7D46</span><br>
+        Texto <span class="hex">#0F1E14</span></div>
+        <div class="badge pass">10,86:1 en el foco</div>
+        <div class="badge pass" style="margin-left:6px">3,48:1 en el borde</div>
+      </div>
+      <div class="col">
+        <div class="caption" style="margin-top:0">Por qué acá sí funciona</div>
+        <div class="val">En oscuro la receta se invierte: tinta casi negra sobre verde claro. El punto
+        flojo pasa a ser el <em>borde</em> del radial, no el foco — y ahí queda en 3,48:1, que pasa el
+        umbral de 3:1 del texto grande. No propongo cambiarlo.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rec">
+    <h3>Mi recomendación: opción B (<span class="hex">#489350</span>)</h3>
+    <p>A pasa por 0,09 de margen: cualquier retoque futuro del label o del fondo lo vuelve a romper.
+    C aplana tanto el radial que el botón deja de tener el relieve del vocabulario. B se mantiene
+    dentro de la familia verde de la marca, conserva el degradé visible y deja margen real.
+    Es un cambio de una línea en <span class="hex">neo-tokens.ts</span> y solo afecta al tema claro.</p>
+  </div>
+
+</div>
+</body>
+</html>

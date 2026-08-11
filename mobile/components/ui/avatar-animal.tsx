@@ -1,37 +1,27 @@
 import { memo } from 'react'
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
-import { useTranslation } from 'react-i18next'
+import { StyleSheet, View, type ViewStyle } from 'react-native'
 import {
   AVATAR_LABELS,
   getAvatarComponent,
   type AvatarSlug,
 } from '@/assets/avatars'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 export interface AvatarAnimalProps {
   slug: AvatarSlug
   size?: number
   /** Silhouette tint override. Falls back to the theme default
-   *  (primary-800 in light, cream in dark) when omitted. */
+   *  (`greenDeep` in light, `text` in dark) when omitted. */
   tint?: string
   /** Circular background wash behind the silhouette. Defaults to the
-   *  theme's `creamSoft` (light) / `creamCard` (dark). */
+   *  neutral neo surface; callers pass a category pastel, `well` or
+   *  `selectedTint` when the disc has to carry state. */
   backgroundTint?: string
   /** Optional ring around the circle (matches the initials Avatar API). */
   ringColor?: string
   style?: ViewStyle
 }
-
-// Silhouette tint — single color per theme mode. The SVG body is
-// flattened to a unified silhouette (no gradient, no filter, no drop
-// shadow) so each avatar render is essentially one `fillPath` call
-// per path. That's a fraction of the cost of the previous relief
-// stack on older Android hardware and keeps the visual identity
-// "simple" — which matches the user's design preference.
-const SILHOUETTE_TINTS = {
-  light: '#297811', // primary-800 — deep forest silhouette on cream
-  dark: '#F2EAD3', // cream — light silhouette on the dark forest ring
-} as const
 
 // Glyph occupies ~72% of the avatar diameter — gives the figure
 // natural breathing room inside the circular ring without needing
@@ -42,12 +32,20 @@ const GLYPH_RATIO = 0.72
 /**
  * Circular animal avatar built from the monochrome SVG pack at
  * mobile/assets/avatars/components/<slug>.tsx. Renders:
- *   - a tinted background circle (creamSoft / creamCard from theme),
+ *   - a tinted background circle (neo surface by default),
  *   - the silhouette centered at size × GLYPH_RATIO so the animal
  *     sits comfortably inside the ring,
  *   - an optional ring border (used by FamilyStrip overlap stacks).
  *
- * Both light and dark mode are supported via theme-driven tint.
+ * The silhouette is a SINGLE color per mode: the SVG body is flattened
+ * (no gradient, no filter, no drop shadow) so each render is one
+ * `fillPath` call per path — a fraction of the cost of the old relief
+ * stack on low-end Android.
+ *
+ * Defaults come from the neo vocabulary: `surface` disc, `greenDeep`
+ * silhouette in light (7.39:1) / `text` in dark (11.46:1). Over the
+ * category pastels the same pair gives 6.68:1 in light and ≥ 7.6:1 in
+ * dark through `pastelDarkSolid()`.
  */
 function AvatarAnimalImpl({
   slug,
@@ -58,12 +56,10 @@ function AvatarAnimalImpl({
   style,
 }: AvatarAnimalProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
   const Component = getAvatarComponent(slug)
-  const resolvedBackground =
-    backgroundTint ??
-    (theme.isDark ? theme.colors.creamCard : theme.colors.creamSoft)
-  const resolvedTint =
-    tint ?? (theme.isDark ? SILHOUETTE_TINTS.dark : SILHOUETTE_TINTS.light)
+  const resolvedBackground = backgroundTint ?? neo.surface
+  const resolvedTint = tint ?? (theme.isDark ? neo.text : neo.greenDeep)
   const glyphSize = Math.round(size * GLYPH_RATIO)
 
   return (
@@ -101,125 +97,10 @@ function AvatarAnimalImpl({
  */
 export const AvatarAnimal = memo(AvatarAnimalImpl)
 
-export interface AvatarAnimalRowProps {
-  slug: AvatarSlug
-  selected?: boolean
-  onSelect?: (slug: AvatarSlug) => void
-  label?: string
-  actionLabel?: string
-}
-
-/**
- * Secondary variant used by the onboarding avatar picker: animal +
- * its Spanish label + a "Seleccionar" affordance on the right. When
- * `selected` is true the row adopts the primary accent border and the
- * button flips to an active state.
- */
-function AvatarAnimalRowImpl({
-  slug,
-  selected = false,
-  onSelect,
-  label,
-  actionLabel,
-}: AvatarAnimalRowProps) {
-  const { theme } = useAppTheme()
-  const { t } = useTranslation()
-  const resolvedLabel = label ?? AVATAR_LABELS[slug]
-  const resolvedActionLabel = actionLabel ?? t('common:avatar.selectAction')
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('common:avatar.pickA11y', { name: resolvedLabel })}
-      accessibilityState={{ selected }}
-      onPress={() => onSelect?.(slug)}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          backgroundColor: theme.colors.creamCard,
-          borderColor: selected ? theme.colors.primary : theme.colors.line,
-          borderWidth: selected ? 2 : 1,
-          opacity: pressed ? 0.94 : 1,
-        },
-      ]}
-    >
-      <AvatarAnimal
-        slug={slug}
-        size={56}
-        backgroundTint={theme.colors.creamSoft}
-      />
-      <Text style={[styles.rowLabel, { color: theme.colors.text }]} numberOfLines={1}>
-        {resolvedLabel}
-      </Text>
-      <View
-        style={[
-          styles.action,
-          {
-            backgroundColor: selected
-              ? theme.colors.primary
-              : theme.colors.creamSoft,
-            borderColor: selected ? theme.colors.primary : theme.colors.line,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.actionLabel,
-            {
-              color: selected
-                ? theme.isDark
-                  ? theme.colors.primaryStrong
-                  : '#FFFFFF'
-                : theme.colors.text,
-            },
-          ]}
-        >
-          {selected ? t('common:avatar.selected') : resolvedActionLabel}
-        </Text>
-      </View>
-    </Pressable>
-  )
-}
-
-/**
- * Memoized for the same reasons as AvatarAnimal. Onboarding's avatar
- * picker renders 8 of these simultaneously; without memo, any
- * unrelated parent re-render (e.g., theme tick, animation frame from
- * Reanimated's LinearTransition) reruns all 8 silhouettes. Note:
- * `onSelect` must be stable from the caller for memo to take effect —
- * step-avatar.tsx passes a `setDraft` from useState, which IS stable.
- */
-export const AvatarAnimalRow = memo(AvatarAnimalRowImpl)
-
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-  },
-  rowLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.1,
-  },
-  action: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  actionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.4,
   },
 })

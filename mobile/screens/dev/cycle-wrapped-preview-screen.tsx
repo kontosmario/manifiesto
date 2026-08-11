@@ -4,6 +4,7 @@ import { Screen } from '@/components/ui/screen'
 import { triggerCycleWrapped, type CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Dev-only preview screen para el "Manifiesto Wrapped" — el modal
@@ -212,6 +213,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
     marginBottom: 4,
   },
@@ -236,11 +238,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   subtitle: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: 0,
     lineHeight: 16,
   },
@@ -254,6 +258,7 @@ const styles = StyleSheet.create({
   cheatTitle: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   cheatBody: {

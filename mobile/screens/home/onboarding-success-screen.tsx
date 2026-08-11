@@ -16,6 +16,7 @@ import { usePushPermissionPrime } from '@/features/push/use-push-permission-prim
 import { triggerHaptic } from '@/lib/haptics'
 import { authTokens } from '@/theme/palette'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 const CREAM = authTokens.surfaceCream
 const PEACH = authTokens.peach
@@ -206,6 +207,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     marginBottom: 10,
   },
@@ -215,6 +217,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.5,
     textAlign: 'center',
   },
@@ -239,6 +242,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     textAlign: 'center',
     lineHeight: 22,
@@ -256,6 +260,7 @@ const styles = StyleSheet.create({
     color: CREAM,
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
   },
 })

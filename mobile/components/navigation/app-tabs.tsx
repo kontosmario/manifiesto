@@ -24,7 +24,7 @@ import { useTour } from '@/features/tours/tour-context'
 import { withNavDevLog } from '@/lib/dev/anim-log'
 import { useAdvisorBadge } from '@/features/insights/use-advisor-badge'
 import { buildFloatingTabBarStyle } from '@/theme/elevation'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 // ─── Memoized leaf components ───────────────────────────────────
@@ -263,16 +263,12 @@ export function AppTabs() {
     () => ({
       freezeOnBlur: false,
       headerShown: false,
-      // The tab scene container sits directly under each tab Screen.
-      // The tab screens override their canvas to the near-black
-      // DARK_TAB_CANVAS in dark mode, so the scene MUST match — otherwise
-      // the forest `background` (#12211A) flashes for a frame under the
-      // Screen on the first (cold) attach of each tab before the
-      // near-black content paints → the "first-visit flicker". Light
-      // mode keeps `background` (which already matches the light canvas).
-      sceneStyle: {
-        backgroundColor: theme.isDark ? DARK_TAB_CANVAS : theme.colors.background,
-      },
+      // The tab scene container sits directly under each tab Screen, so
+      // it MUST paint the same canvas the tab screens do (`#DCDFCD`
+      // light / `#0F1A13` dark). Any other colour flashes for a frame
+      // under the Screen on the first (cold) attach of each tab, before
+      // the screen content paints → the "first-visit flicker".
+      sceneStyle: { backgroundColor: neoTokens(theme.mode).bg },
       tabBarActiveTintColor: theme.colors.primaryStrong,
       tabBarInactiveTintColor: theme.colors.textSoft,
       tabBarHideOnKeyboard: true,

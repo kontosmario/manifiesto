@@ -6,6 +6,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { CardParticles } from '@/components/ui/card-particles'
 import { TextField } from '@/components/ui/text-field'
 import { radii } from '@/theme/palette'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StepWelcomeProps {
   displayName: string
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
     paddingVertical: 22,
     gap: 6,
   },
-  greeting: { fontSize: 30, fontWeight: '800', letterSpacing: -1 },
+  greeting: { fontSize: 30, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -1 },
   subcopy: { fontSize: 14, lineHeight: 19 },
   helperRow: {
     flexDirection: 'row',
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   helper: { flex: 1, fontSize: 11 },
-  counter: { fontSize: 11, fontWeight: '700' },
+  counter: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700') },
   rejoinBanner: {
     padding: 12,
     borderRadius: radii.md,

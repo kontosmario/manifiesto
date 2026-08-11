@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Banda de ahorro anual del ciclo yearly. Paleta CALMA alineada con Settings
@@ -60,6 +61,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
 })

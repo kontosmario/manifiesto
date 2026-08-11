@@ -23,6 +23,7 @@ import { formatMoney, formatMoneyShort, formatUsd } from '@/utils/money'
 import { formatProjectionWaitCopy } from '@/components/home/projection-wait-copy'
 import { useAppTheme } from '@/theme/theme-provider'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HomeHeroCardProps {
   data: HomeHeroMetrics
@@ -814,6 +815,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.4,
     textTransform: 'uppercase',
   },
@@ -831,10 +833,12 @@ const styles = StyleSheet.create({
   dayChipText: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   amount: {
     fontSize: 42,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.8,
     lineHeight: 48,
   },
@@ -842,6 +846,7 @@ const styles = StyleSheet.create({
   usdLine: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.2,
     fontVariant: ['tabular-nums'],
   },
@@ -849,6 +854,7 @@ const styles = StyleSheet.create({
   setupTitle: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     lineHeight: 30,
     marginTop: 4,
@@ -856,6 +862,7 @@ const styles = StyleSheet.create({
   setupBody: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     lineHeight: 18,
     marginTop: 8,
   },
@@ -873,6 +880,7 @@ const styles = StyleSheet.create({
   setupCtaText: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   // Stack wrapper for the read-only chips that may sit between the
@@ -905,6 +913,7 @@ const styles = StyleSheet.create({
   adjustedChipText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.2,
   },
   // "Apartando ahorro" chip — sits below the saldo amount,
@@ -924,6 +933,7 @@ const styles = StyleSheet.create({
   savingsChipText: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.2,
   },
   tilesRow: {
@@ -951,11 +961,13 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginBottom: 4,
   },
   tileValue: {
     fontSize: 20,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.5,
   },
   tileSub: {

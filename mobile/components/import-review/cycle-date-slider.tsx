@@ -9,9 +9,11 @@ import Animated, {
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion/tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { cssGradient, neoRadii } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { weekdayShort } from '@/utils/date-format'
 import { buildCycleDays, type CycleDay } from '@/features/import-review/cycle-date-math'
+import { useImportReviewNeo } from './import-review-neo'
 
 const TILE_WIDTH = 48
 const TILE_HEIGHT = 58
@@ -34,6 +36,12 @@ interface Props {
   onChange: (iso: string) => void
 }
 
+/**
+ * Riel de días del ciclo: una PISTA hundida sobre la que el día elegido se
+ * extruye como una perilla. El relieve es lo que comunica la selección — no
+ * un fill de color —, que es el recurso del vocabulario para "esto está
+ * puesto acá".
+ */
 export function CycleDateSlider({
   value,
   cycleStart,
@@ -41,7 +49,7 @@ export function CycleDateSlider({
   today,
   onChange,
 }: Props) {
-  const { theme } = useAppTheme()
+  const { neo, ink, softInk, wellFallback } = useImportReviewNeo()
   const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
 
@@ -71,7 +79,11 @@ export function CycleDateSlider({
 
   return (
     <View
-      style={styles.container}
+      style={[
+        styles.container,
+        { backgroundColor: neo.well, boxShadow: neo.shadows.insetMd },
+        wellFallback,
+      ]}
       accessibilityRole="adjustable"
       accessibilityLabel={t('gastos:import.dateSlider.a11yLabel')}
     >
@@ -104,10 +116,15 @@ export function CycleDateSlider({
                 animated: true,
               })
             }}
-            primary={theme.colors.primary}
-            textColor={theme.colors.text}
-            mutedColor={theme.colors.textMuted}
-            onPrimary={theme.colors.textOnPrimary}
+            accentInk={ink.accent}
+            textColor={neo.text}
+            // `softInk`, no `textMuted`: la abreviatura del día mide 10px y
+            // sobre el pozo el muted se queda en 3.73:1.
+            mutedColor={softInk}
+            raisedGradientCss={neo.raisedGradientCss}
+            raisedFallback={neo.surface}
+            raisedShadow={neo.shadows.raisedSm}
+            selectedTint={neo.selectedTint}
           />
         ))}
       </ScrollView>
@@ -119,20 +136,26 @@ interface TileProps {
   day: CycleDay
   isSelected: boolean
   onPress: () => void
-  primary: string
+  accentInk: string
   textColor: string
   mutedColor: string
-  onPrimary: string
+  raisedGradientCss: string
+  raisedFallback: string
+  raisedShadow: string
+  selectedTint: string
 }
 
 function DayTile({
   day,
   isSelected,
   onPress,
-  primary,
+  accentInk,
   textColor,
   mutedColor,
-  onPrimary,
+  raisedGradientCss,
+  raisedFallback,
+  raisedShadow,
+  selectedTint,
 }: TileProps) {
   const { t } = useTranslation()
   const press = useSharedValue(1)
@@ -170,28 +193,35 @@ function DayTile({
         }
         accessibilityState={{ selected: isSelected, disabled }}
         hitSlop={{ top: 8, bottom: 8, left: 0, right: 0 }}
-        style={[styles.tile, disabled ? styles.tileDisabled : null]}
+        style={[
+          styles.tile,
+          isSelected
+            ? {
+                ...cssGradient(raisedGradientCss, raisedFallback),
+                boxShadow: raisedShadow,
+              }
+            : null,
+          disabled ? styles.tileDisabled : null,
+        ]}
       >
         <Text
-          style={[
-            styles.weekday,
-            { color: isSelected ? primary : mutedColor },
-          ]}
+          style={[styles.weekday, { color: isSelected ? accentInk : mutedColor }]}
         >
           {weekdayLabel(day.weekday)}
         </Text>
         <View
           style={[
             styles.dayPill,
-            isSelected ? { backgroundColor: primary } : null,
+            isSelected ? { backgroundColor: selectedTint } : null,
           ]}
         >
           <Text
             style={[
               styles.dayNum,
               {
-                color: isSelected ? onPrimary : textColor,
+                color: isSelected ? accentInk : textColor,
                 fontWeight: isSelected ? '900' : '700',
+                fontFamily: nunitoFamily(isSelected ? '900' : '700'),
               },
             ]}
           >
@@ -199,7 +229,7 @@ function DayTile({
           </Text>
         </View>
         {day.isToday ? (
-          <View style={[styles.todayDot, { backgroundColor: primary }]} />
+          <View style={[styles.todayDot, { backgroundColor: accentInk }]} />
         ) : (
           <View style={styles.todayDotSpacer} />
         )}
@@ -211,9 +241,14 @@ function DayTile({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+    borderRadius: neoRadii.pill,
   },
+  // El riel recorta a sus bordes: el padding tiene que contener el alcance
+  // de la sombra `raisedSm` del tile (offset 5 + blur 10 → 10pt) o el primero
+  // y el último quedan con el relieve cortado a filo.
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 11,
     gap: TILE_GAP,
     alignItems: 'center',
   },
@@ -223,6 +258,7 @@ const styles = StyleSheet.create({
   tile: {
     width: TILE_WIDTH,
     height: TILE_HEIGHT,
+    borderRadius: neoRadii.tile,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
@@ -231,15 +267,18 @@ const styles = StyleSheet.create({
   tileDisabled: {
     opacity: 0.32,
   },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 800 se renderiza como regular.
   weekday: {
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 0.6,
     textTransform: 'lowercase',
   },
   dayPill: {
     minWidth: 32,
-    height: 28,
+    height: 26,
     borderRadius: 999,
     paddingHorizontal: 8,
     alignItems: 'center',

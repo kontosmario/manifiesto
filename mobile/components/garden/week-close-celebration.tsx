@@ -11,14 +11,15 @@ import Animated, {
 } from 'react-native-reanimated'
 import { triggerHaptic } from '@/lib/haptics'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
-import { Sprout } from '@/components/garden/sprout'
+import { BrotMascot, type BrotPose } from '@/components/brot'
 import { BroteFireflies } from '@/components/garden/brote-fireflies'
 import { CardParticles } from '@/components/ui/card-particles'
+import { GARDEN_GEOMETRY } from '@/components/redesign/garden/garden-spec'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { cssGradient, neoParticlePresets, neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
-import type { BroteStage, WeekClose } from '@/features/garden/garden-model'
+import type { WeekClose } from '@/features/garden/garden-model'
 
 interface WeekCloseCelebrationProps {
   weekClose: WeekClose
@@ -67,16 +68,47 @@ function labelColorForScore(score: number): string {
   return neo.textMuted
 }
 
-function stageForDay(
-  registered: boolean,
-  recovered: boolean,
-  weekStage: WeekClose['stage'],
-): BroteStage {
-  if (registered && weekStage !== 'none') return weekStage
-  // Día que un escudo recuperó: brote coral 'recovered' (no florece, pero
-  // tampoco se muestra marchito como un salteado real).
-  if (recovered) return 'recovered'
-  return 'missed'
+/**
+ * Mini-Brot por día de la semana, misma escala que la grilla del jardín
+ * (handoff L81/L82): registrado = `idle`, día que un escudo recuperó =
+ * `seed` (cuenta, pero nunca llegó a crecer), salteado = `wilted`.
+ */
+export function poseForDay(registered: boolean, recovered: boolean): BrotPose {
+  if (registered) return 'idle'
+  if (recovered) return 'seed'
+  return 'wilted'
+}
+
+/** Mini-Brot con la entrada escalonada L→D de la fila. */
+export function DayBrot({ pose, delay }: { pose: BrotPose; delay: number }) {
+  const reduced = useReducedMotion()
+  const grow = useSharedValue(reduced ? 1 : 0)
+
+  useEffect(() => {
+    if (reduced) {
+      grow.value = 1
+      return
+    }
+    grow.value = withDelay(delay, withSpring(1, motionSprings.celebrate))
+  }, [delay, reduced, grow])
+
+  // El spring `celebrate` sobrepasa 1 (ahí está el rebote): la opacidad se
+  // clampea, la escala no.
+  const style = useAnimatedStyle(() => ({
+    opacity: Math.min(1, grow.value),
+    transform: [{ scale: 0.3 + grow.value * 0.7 }],
+  }))
+
+  return (
+    <Animated.View style={style}>
+      <BrotMascot
+        pose={pose}
+        size={GARDEN_GEOMETRY.weekCloseBrotSize}
+        animated={false}
+        shadow={false}
+      />
+    </Animated.View>
+  )
 }
 
 /**
@@ -101,6 +133,7 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
       pop.value = 1
       return
     }
+    // @motion-allow: 420ms entrada del takeover de celebración (ease-out-expo).
     t.value = withTiming(1, { duration: 420, easing: Easing.bezier(0.16, 1, 0.3, 1) })
     pop.value = withDelay(100, withSpring(1, motionSprings.celebrate))
   }, [reduced, perfect, t, pop])
@@ -147,23 +180,22 @@ export function WeekCloseCelebration({ weekClose, onContinue }: WeekCloseCelebra
           </Text>
         </View>
 
+        {/* Brot protagonista del cierre (handoff L82): 150px entre el chip y
+            la fila de días. Entra con el mismo spring `pop` del contenido. */}
+        <View style={styles.cheerZone}>
+          <BrotMascot pose="cheer" size={GARDEN_GEOMETRY.weekCloseHeroBrotSize} />
+        </View>
+
         {/* Zona de brotes — las luciérnagas protagonistas viven ACÁ, cerca de
             los brotes (no dispersas por la pantalla). En este contenedor chico
             la misma amplitud de drift se percibe MUCHO más grande. */}
         <View style={styles.brotesZone}>
           <View style={styles.brotesRow}>
           {weekClose.days.map((day, i) => {
-            const stage = stageForDay(day.registered, day.recovered, weekClose.stage)
             return (
               <View key={i} style={styles.broteCol}>
                 <View style={styles.broteSlot}>
-                  <Sprout
-                    stage={stage}
-                    fernSize={46}
-                    tone="dark"
-                    animateIn
-                    animateInDelay={i * 70}
-                  />
+                  <DayBrot pose={poseForDay(day.registered, day.recovered)} delay={i * 70} />
                   {/* Luciérnagas que ORBITAN este brote (entran escalonadas con
                       su growIn + rodean el fern de forma dinámica). */}
                   {day.registered && <BroteFireflies delay={i * 70 + 240} />}
@@ -266,12 +298,18 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('700'),
     color: neo.textMuted,
   },
+  // El Brot protagonista es alto (150) y la composición entera tiene que
+  // seguir entrando en pantallas chicas con el CTA visible: de acá para
+  // abajo los aires se ajustan a ese presupuesto.
+  cheerZone: {
+    marginTop: 18,
+  },
   // Zona que contiene la fila de brotes + el cluster de luciérnagas. El
   // paddingTop da el espacio donde las luciérnagas "flotan" sobre los brotes.
   brotesZone: {
     alignSelf: 'stretch',
-    marginTop: 14,
-    paddingTop: 22,
+    marginTop: 10,
+    paddingTop: 14,
     position: 'relative',
   },
   brotesRow: {
@@ -279,22 +317,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignSelf: 'stretch',
   },
-  broteCol: { alignItems: 'center', gap: 10, flex: 1 },
+  broteCol: { alignItems: 'center', gap: 5, flex: 1 },
   broteSlot: {
-    // 50 → 58 para alojar los brotes más grandes (fernSize 46 + stickers).
-    height: 58,
+    // Alto del mini-Brot de la fila (34) + el aire que su canvas necesita.
+    height: 40,
     alignItems: 'center',
     justifyContent: 'flex-end',
     position: 'relative',
   },
-  broteLetter: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700') },
+  broteLetter: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800') },
   sub: {
     fontSize: 14,
     lineHeight: 21,
     fontFamily: nunitoFamily('400'),
     color: neo.textMuted,
     textAlign: 'center',
-    marginTop: 22,
+    marginTop: 16,
   },
   button: {
     width: '100%',
@@ -304,7 +342,7 @@ const styles = StyleSheet.create({
     boxShadow: neo.shadows.cta,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 20,
   },
   buttonText: {
     fontSize: 16,

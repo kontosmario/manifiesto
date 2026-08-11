@@ -12,6 +12,7 @@ import {
 import { deriveStreak, type StreakData } from '@/features/streaks/use-streak'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StreakFlameIconProps {
   data: StreakData
@@ -105,6 +106,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     lineHeight: 11,
   },
 })

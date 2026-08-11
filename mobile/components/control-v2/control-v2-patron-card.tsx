@@ -9,6 +9,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
 import type { DowBucket } from '@/features/insights/control-v2-mock'
+import { nunitoFamily } from '@/theme/typography'
 
 const MIN_DIAS = 14
 // Patrón sincero por día de la semana: necesita ~dos semanas de registro
@@ -399,6 +400,7 @@ function ControlV2PatronCardImpl({
                     {
                       color,
                       fontWeight: isPeor || isMejor || isToday ? '800' : '600',
+                      fontFamily: nunitoFamily(isPeor || isMejor || isToday ? '800' : '600'),
                     },
                   ]}
                   numberOfLines={1}
@@ -557,7 +559,7 @@ function ControlV2PatronCardEmpty({ diasConGasto }: { diasConGasto: number }) {
             {EMPTY_DOW_LABELS.map((d) => (
               <Text
                 key={d}
-                style={[styles.dayLabel, { color: theme.colors.textMuted, fontWeight: '600' }]}
+                style={[styles.dayLabel, { color: theme.colors.textMuted, fontWeight: '600', fontFamily: nunitoFamily('600') }]}
                 numberOfLines={1}
               >
                 {dowShortName(d)}
@@ -681,6 +683,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -696,16 +699,19 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   headline: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 20,
     letterSpacing: -0.2,
   },
   headlineStrong: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   statsRow: {
     flexDirection: 'row',
@@ -726,12 +732,14 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   statValue: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
   },
   statSub: {
@@ -773,6 +781,7 @@ const styles = StyleSheet.create({
   avgTagText: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.4,
   },
   barCol: {
@@ -821,6 +830,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
   todayCallout: {
@@ -836,6 +846,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     lineHeight: 14,
   },
   // ── Empty-state silhouette ──────────────────────────────────
@@ -847,9 +858,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyPillText: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.4 },
   calloutBody: { flex: 1, gap: 4 },
-  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.2 },
 })
 
 // Memo: Patron evalúa día predominante de gastos + insights. Sin

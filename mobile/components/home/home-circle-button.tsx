@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HomeCircleButtonProps {
   accessibilityLabel: string
@@ -130,6 +131,7 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     color: '#FFFBF2',  // V1 cream — AA on accent-700 burgundy (6.07:1)
     letterSpacing: -0.2,
   },

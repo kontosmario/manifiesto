@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { motionDurations } from '@/lib/motion'
 import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface TextFieldProps extends TextInputProps {
@@ -245,6 +245,7 @@ const styles = StyleSheet.create({
     // Sin padding vertical aquí: el render lo setea (0 single-line / 12 multi).
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   helper: {
     paddingHorizontal: 2,
@@ -262,6 +263,7 @@ const styles = StyleSheet.create({
   placeholderText: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   trailing: {
     // Absoluto a la derecha, ocupando toda la altura del wrap (top/bottom 0)

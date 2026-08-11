@@ -60,7 +60,8 @@
     "confirmPaidHint": "Opens the dialog to confirm you got paid",
     "confirmAmountHint": "Opens the dialog to confirm the amount you received",
     "gotPaidToday": "Paid today ✓",
-    "configureSalary": "Set up your income ›"
+    "configureSalary": "Set up your income ›",
+    "confirmStartingBalance": "Confirm balance ›"
   },
   "projectionWait": {
     "label": "Still calculating",
@@ -214,7 +215,8 @@
   "familyStrip": {
     "membersAccessibility": "Household members: {{members}}.",
     "none": "none",
-    "membersLabel": "Members ·"
+    "membersLabel": "Members ·",
+    "soloLabel": "Your space"
   },
   "historyToolbar": {
     "openFilters": "Open filters",
@@ -382,11 +384,11 @@
     "over": "Daily allowance exceeded",
     "perDay": "PER DAY",
     "canSpendToday": "YOU CAN SPEND TODAY",
-    "cupoToday": "TODAY'S ALLOWANCE",
     "spent": "SPENT",
-    "available": "AVAILABLE",
     "projectionLink": "Close projection in Control ›",
-    "projectionA11y": "Close projection in Control"
+    "projectionA11y": "Close projection in Control",
+    "leftToday": "LEFT TODAY",
+    "ofTarget": "OF"
   },
   "cycleSummary": {
     "noMovements": "No movements yet",

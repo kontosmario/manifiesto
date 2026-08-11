@@ -9,6 +9,7 @@ import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function ClearFiltersButton({ onPress }: { onPress: () => void }) {
   const { theme } = useAppTheme()
@@ -56,5 +57,6 @@ const styles = StyleSheet.create({
   clearFiltersText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

@@ -17,6 +17,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations } from '@/lib/motion'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -180,5 +181,5 @@ const styles = StyleSheet.create({
     // Agregar margen encima double-padea el CTA y lo deja ~40pt más angosto
     // que los inputs de arriba.
   },
-  primaryCtaText: { fontSize: 15, fontWeight: '800' },
+  primaryCtaText: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })

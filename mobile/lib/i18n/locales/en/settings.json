@@ -768,43 +768,18 @@
     "lenderPlaceholder": "e.g. Bank / Relative"
   },
   "cycleConfig": {
-    "type": {
-      "monthly": {
-        "title": "Monthly",
-        "subtitle": "Once a month"
-      },
-      "biweekly": {
-        "title": "Biweekly",
-        "subtitle": "Every 14 days"
-      },
-      "weekly": {
-        "title": "Weekly",
-        "subtitle": "Every 7 days"
-      },
-      "custom": {
-        "title": "Custom",
-        "subtitle": "Every N days"
-      }
-    },
-    "helper": {
-      "monthly": "The cycle lasts 28-31 days depending on the month.",
-      "biweekly": "Starting from this date, every 14 days.",
-      "weekly": "Starting from this date, every 7 days.",
-      "custom": "Indicate your next payday and how many days the cycle lasts."
+    "dayLabel": {
+      "monthly": "WHICH DAY DO YOU GET PAID?",
+      "biweekly": "WHICH DAY DOES YOUR FORTNIGHT START?",
+      "weekly": "WHICH DAY OF THE WEEK?",
+      "custom": "WHICH DAY DOES IT START?"
     },
     "transitionNotice": "You're changing your cycle from {{from}} to {{to}}. The change applies to the next payday you set.",
-    "monthDayLabel": "DAY OF THE MONTH YOU GET PAID",
-    "nextPaydayLabel": "WHEN IS YOUR NEXT PAYDAY?",
-    "everyNDaysLabel": "HOW OFTEN YOU GET PAID (DAYS)",
     "minusDay": "Subtract a day",
     "plusDay": "Add a day",
-    "days_one": "day",
-    "days_other": "days",
     "cycleCopy": {
-      "monthDayLabel": "DAY OF THE MONTH YOUR CYCLE STARTS",
-      "nextStartLabel": "WHEN DOES YOUR NEXT CYCLE START?",
+      "monthDayLabel": "WHICH DAY DOES YOUR CYCLE START?",
       "everyNDaysLabel": "HOW MANY DAYS DOES IT REPEAT EVERY",
-      "helperCustom": "Set when the next cycle starts and how many days it lasts.",
       "transitionNotice": "You're changing your cycle from {{from}} to {{to}}. The change applies to the next cycle — the current one runs its course."
     }
   },

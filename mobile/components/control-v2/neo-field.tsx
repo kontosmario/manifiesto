@@ -25,6 +25,7 @@ import {
   type TextInputProps,
 } from 'react-native'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -57,7 +58,6 @@ export function NeoField({
 }: NeoFieldProps) {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
-  const isDark = theme.mode === 'dark'
   const [isFocused, setFocused] = useState(false)
   const isMultiline = Boolean(inputProps.multiline)
 
@@ -68,19 +68,14 @@ export function NeoField({
   const showCustomPlaceholder =
     !isMultiline && Boolean(placeholder) && (effectiveText ?? '').length === 0
 
+  const ink = neoInk(theme.mode)
   const helperInk =
     helperTone === 'danger'
-      ? isDark
-        ? neo.danger
-        : '#9A421F'
+      ? ink.danger
       : helperTone === 'warn'
-        ? isDark
-          ? neo.warm
-          : '#A84A2F'
+        ? ink.warn
         : helperTone === 'positive'
-          ? isDark
-            ? neo.green
-            : neo.greenDeep
+          ? ink.accent
           : neo.textMuted
 
   // Android < API 29 descarta el boxShadow INSET en silencio: sin él el pozo
@@ -91,7 +86,7 @@ export function NeoField({
     ? { borderWidth: 0 }
     : {
         borderWidth: isFocused ? 2 : 1,
-        borderColor: isFocused ? neo.green : theme.colors.border,
+        borderColor: isFocused ? neo.green : neo.sheetDivider,
       }
 
   return (

@@ -7,10 +7,12 @@ import Animated, {
   withSpring,
   useReducedMotion,
 } from 'react-native-reanimated'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildElevationStyle } from '@/theme/elevation'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET, MIN_TOUCH_TARGET } from '@/theme/interaction'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { radii } from '@/theme/palette'
 import { typography } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -25,14 +27,27 @@ interface SegmentedControlProps<T extends string> {
   options: SegmentOption<T>[]
   value: T
   onChange: (value: T) => void
+  /**
+   * Piel neumórfica del rediseño 2026-07: pista hundida (`neo.well` +
+   * `insetSm`) y píldora activa en relieve (`raisedSm`), vocabulario de
+   * los tiles de frecuencia de `design/rediseno-2026-07/screens/3c.html`.
+   *
+   * Opt-in, mismo criterio que `ModalCard`: el control lo montan también
+   * pantallas que siguen en V1 (join) y ahí el material neo desentonaría
+   * con las cards que lo rodean.
+   */
+  skin?: 'classic' | 'neo'
 }
 
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  skin = 'classic',
 }: SegmentedControlProps<T>) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
+  const isNeo = skin === 'neo'
   const reduceMotion = useReducedMotion()
   // Items share `flex: 1`, so every segment renders at the same width.
   // We measure that width once and keep it static — animating only
@@ -80,25 +95,40 @@ export function SegmentedControl<T extends string>({
     transform: [{ translateX: pillX.value }],
   }))
 
+  const trackSkin = isNeo
+    ? {
+        backgroundColor: neo.well,
+        boxShadow: neo.shadows.insetSm,
+        // Android < API 29 descarta el inset EN SILENCIO: sin este
+        // límite la pista se aplana contra la card que la contiene y no
+        // se ve dónde termina el control. Ver `SUPPORTS_INSET_SHADOW`.
+        borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+        borderColor: neo.sheetDivider,
+      }
+    : {
+        backgroundColor: theme.colors.surfaceMuted,
+        borderColor: theme.colors.border,
+      }
+
+  const pillSkin = isNeo
+    ? {
+        ...neoMaterial(theme.mode, 'raisedSm'),
+        // Mismo piso de Android: sin la sombra outset la píldora queda a
+        // ~1.05:1 contra el pozo y el segmento activo no se distingue.
+        borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1.5,
+        borderColor: neo.green,
+      }
+    : { ...buildElevationStyle(theme, 'segmentedActive'), backgroundColor: theme.colors.surface }
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.colors.surfaceMuted,
-          borderColor: theme.colors.border,
-        },
-      ]}
-    >
+    <View style={[styles.container, isNeo && styles.containerNeo, trackSkin]}>
       <Animated.View
         pointerEvents="none"
         style={[
           styles.pill,
-          buildElevationStyle(theme, 'segmentedActive'),
-          {
-            backgroundColor: theme.colors.surface,
-            width: pillStaticWidth,
-          },
+          isNeo && styles.pillNeo,
+          pillSkin,
+          { width: pillStaticWidth },
           pillStyle,
         ]}
       />
@@ -112,8 +142,8 @@ export function SegmentedControl<T extends string>({
             android_ripple={{
               borderless: false,
               color: isActive
-                ? withAlpha(theme.colors.text, theme.isDark ? 0.16 : 0.08)
-                : withAlpha(theme.colors.primary, theme.isDark ? 0.2 : 0.12),
+                ? withAlpha(isNeo ? neo.text : theme.colors.text, theme.isDark ? 0.16 : 0.08)
+                : withAlpha(isNeo ? neo.green : theme.colors.primary, theme.isDark ? 0.2 : 0.12),
             }}
             key={option.value}
             onLayout={handleLayout(index)}
@@ -127,6 +157,7 @@ export function SegmentedControl<T extends string>({
             pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
             style={({ pressed }) => [
               styles.item,
+              isNeo && styles.itemNeo,
               { opacity: pressed ? 0.85 : 1 },
             ]}
           >
@@ -134,7 +165,13 @@ export function SegmentedControl<T extends string>({
               style={[
                 styles.label,
                 {
-                  color: isActive ? theme.colors.text : theme.colors.textMuted,
+                  color: isNeo
+                    ? isActive
+                      ? neo.text
+                      : neo.textMuted
+                    : isActive
+                      ? theme.colors.text
+                      : theme.colors.textMuted,
                 },
               ]}
             >
@@ -156,12 +193,23 @@ const styles = StyleSheet.create({
     gap: 4,
     overflow: 'hidden',
   },
+  containerNeo: {
+    borderRadius: neoRadii.tile,
+    padding: 4,
+  },
   pill: {
     position: 'absolute',
     top: 3,
     bottom: 3,
     left: 0,
     borderRadius: radii.sm,
+  },
+  // `top`/`bottom` acompañan al padding de `containerNeo`: la píldora se
+  // posiciona en absoluto contra la pista, no la separa el padding.
+  pillNeo: {
+    top: 4,
+    bottom: 4,
+    borderRadius: neoRadii.chip,
   },
   item: {
     flex: 1,
@@ -170,6 +218,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+  },
+  itemNeo: {
+    borderRadius: neoRadii.chip,
   },
   label: {
     ...typography.buttonCompact, // fontSize:13, fontWeight:'700'

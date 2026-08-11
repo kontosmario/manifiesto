@@ -136,6 +136,18 @@ export function buildFamilyDashboardSnapshot({
   let totalGeneral = 0
   let actualSpentInCurrentCycle = 0
   let variableSpentInCurrentCycle = 0
+  /**
+   * Gasto VARIABLE de hoy. Es el numerador del medidor "podés gastar hoy" del
+   * hero: sin esto el medidor sólo tenía el promedio del ciclo
+   * (`variableSpentInCurrentCycle / díaDelCiclo`), que se mueve una
+   * enésima parte por gasto y hacía ver la barra clavada.
+   *
+   * Se acumula DENTRO del bucket del ciclo y con el mismo `expenseDate` ya
+   * normalizado, así que no puede desincronizarse de `variableSpent…`: son la
+   * misma pasada, el mismo reloj y el mismo criterio de "variable"
+   * (`commitment_id` nulo).
+   */
+  let variableSpentToday = 0
   let commitmentPaymentsInCurrentCycle = 0
   const monthlyTotalsByMonth = new Map<string, number>()
 
@@ -157,6 +169,9 @@ export function buildFamilyDashboardSnapshot({
         commitmentPaymentsInCurrentCycle += expense.price
       } else {
         variableSpentInCurrentCycle += expense.price
+        if (expenseDate.getTime() === todayDate.getTime()) {
+          variableSpentToday += expense.price
+        }
       }
     }
 
@@ -344,6 +359,7 @@ export function buildFamilyDashboardSnapshot({
     totalGeneral,
     usdExchangeRate: finance?.usd_exchange_rate ?? DEFAULT_USD_EXCHANGE_RATE,
     variableSpentInCurrentCycle,
+    variableSpentToday,
     cycleStartingBalanceOverride,
     effectiveCycleIncome,
     effectiveCycleDays,

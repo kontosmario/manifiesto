@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { motionDurations } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { ONBOARDING_TOTAL_STEPS } from '@/features/onboarding/use-onboarding-state'
+import { nunitoFamily } from '@/theme/typography'
 
 interface OnboardingStepHeaderProps {
   /** Título del paso, centrado. Reemplaza el label "PASO X/N" (redundante
@@ -106,6 +107,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 22,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     textAlign: 'center',
   },

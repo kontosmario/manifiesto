@@ -1,9 +1,12 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
-import { useAppTheme } from '@/theme/theme-provider'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { useWizardSkin } from '@/components/wizard/wizard-skin'
+import { neoInk } from '@/theme/neo-ink'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
 import { GoalIcon } from '../goal-icon'
 
@@ -16,6 +19,12 @@ export interface StepSummaryProps {
   suggestedApply: number | null
 }
 
+/**
+ * Resumen del wizard: card ELEVADA (`raisedGradientCss` + `raisedMd`) — es
+ * el único bloque del flujo que no se hunde, porque no se edita: se lee.
+ * La nota del aporte automático es un pozo tintado, el recurso del sistema
+ * para "esto va a pasar solo".
+ */
 export function StepSummary({
   emoji,
   title,
@@ -24,44 +33,38 @@ export function StepSummary({
   monthlyEstimate,
   suggestedApply,
 }: StepSummaryProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+  const skin = useWizardSkin()
+  // `textMuted` da 3.49:1 sobre el gradiente de card; el escalón apagado
+  // FUERTE del sistema llega a 5.9:1 claro / 7.4:1 oscuro.
+  const subInk = skin.kind === 'neo' ? skin.mutedInkStrong : neo.textMuted
   const { t } = useTranslation()
-  const cardBg = theme.isDark
-    ? theme.colors.surfaceMuted
-    : theme.colors.creamCard
   return (
     <View style={styles.step4Body}>
       <View
         style={[
           styles.summaryCard,
-          { backgroundColor: cardBg, borderColor: theme.colors.line },
+          cssGradient(neo.raisedGradientCss, neo.surface),
+          { boxShadow: neo.shadows.raisedMd },
         ]}
       >
-        <GoalIcon value={emoji} size={52} emojiStyle={styles.summaryEmoji} />
+        <GoalIcon value={emoji} size={56} emojiStyle={styles.summaryEmoji} />
         <Text
-          style={[
-            typography.sectionTitle,
-            styles.summaryTitle,
-            { color: theme.colors.text },
-          ]}
+          style={[styles.summaryTitle, { color: neo.text }]}
           numberOfLines={2}
         >
           {title || t('settings:savingsWizard.defaultTitle')}
         </Text>
         <Text
-          style={[
-            typography.displayLarge,
-            styles.summaryAmount,
-            { color: theme.colors.text },
-          ]}
+          style={[styles.summaryAmount, { color: neo.text }]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
           {formatMoney(goalAmount)}
         </Text>
-        <Text
-          style={[styles.summarySub, { color: theme.colors.textMuted }]}
-        >
+        <Text style={[styles.summarySub, { color: subInk }]}>
           {t('settings:savingsWizard.summarySub', {
             amount: formatMoney(monthlyEstimate),
             months: t('settings:savingsWizard.monthsValue', { count: months }),
@@ -74,26 +77,15 @@ export function StepSummary({
           style={[
             styles.summaryApply,
             {
-              backgroundColor: theme.isDark
-                ? 'rgba(122,216,163,0.16)'
-                : 'rgba(28,126,58,0.10)',
-              borderColor: theme.isDark
-                ? 'rgba(122,216,163,0.32)'
-                : 'rgba(28,126,58,0.26)',
+              backgroundColor: neo.selectedTint,
+              boxShadow: neo.shadows.insetSm,
+              borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+              borderColor: neo.sheetDivider,
             },
           ]}
         >
-          <MaterialIcons
-            name="bolt"
-            size={16}
-            color={theme.colors.success}
-          />
-          <Text
-            style={[
-              styles.summaryApplyText,
-              { color: theme.colors.success },
-            ]}
-          >
+          <MaterialIcons name="bolt" size={16} color={ink.accent} />
+          <Text style={[styles.summaryApplyText, { color: ink.accent }]}>
             {t('settings:savingsWizard.applyNote', { amount: formatMoney(suggestedApply) })}
           </Text>
         </View>
@@ -107,10 +99,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryCard: {
-    borderRadius: radii['2xl'],
-    borderWidth: 1,
+    borderRadius: neoRadii.card,
     paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingVertical: 22,
     alignItems: 'center',
     gap: 6,
   },
@@ -120,14 +111,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   summaryAmount: {
+    fontSize: 38,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -1.4,
     marginTop: 4,
   },
   summarySub: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     marginTop: 4,
   },
@@ -137,13 +137,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
   },
   summaryApplyText: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.1,
   },
 })

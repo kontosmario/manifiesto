@@ -5,6 +5,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { StreakDerived } from '@/features/streaks/use-streak'
 import type { StatusTone } from './streak-sheet-tone'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * CTAs reactivos al status:
@@ -112,7 +113,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  ctaText: { fontSize: 15, fontWeight: '800' },
+  ctaText: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
   secondaryCta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   secondaryCtaIcon: { marginRight: 0 },
-  secondaryCtaText: { fontSize: 14, fontWeight: '800' },
+  secondaryCtaText: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })
 
 // Re-exporto el wrapper View para componer el stack consistente —

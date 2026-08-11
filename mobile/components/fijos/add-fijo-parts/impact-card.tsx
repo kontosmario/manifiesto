@@ -31,6 +31,7 @@ import {
   type ImpactZone,
 } from '@/components/wizard/parts/health-badge'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export { ImpactColumns, type ImpactColumnsProps } from '@/components/wizard/parts/impact-columns'
 export { ZoneGauge } from '@/components/wizard/parts/zone-gauge'
@@ -178,10 +179,10 @@ export function ImpactBar({
 
 const styles = StyleSheet.create({
   impactRow: { flexDirection: 'row', alignItems: 'center' },
-  impactLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
-  impactValue: { fontWeight: '800', letterSpacing: -0.4, marginTop: 2 },
-  impactSub: { fontSize: 11, fontWeight: '600' },
-  impactDelta: { fontSize: 11, fontWeight: '800', marginTop: 2 },
+  impactLabel: { fontSize: 9, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 1.2 },
+  impactValue: { fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.4, marginTop: 2 },
+  impactSub: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600') },
+  impactDelta: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 2 },
   impactBarTrack: {
     height: 8,
     borderRadius: 4,

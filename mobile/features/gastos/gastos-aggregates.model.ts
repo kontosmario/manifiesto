@@ -36,6 +36,11 @@ export interface CategoryLite {
 export interface CategoryWeightRow {
   id: string
   label: string
+  /**
+   * Nombre sin localizar. Es la semilla del pastel de categoría: hashear el
+   * `label` haría que la misma categoría cambiara de color al cambiar idioma.
+   */
+  rawName: string
   color: string
   amount: number
   percent: number

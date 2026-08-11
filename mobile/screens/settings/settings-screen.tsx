@@ -12,24 +12,23 @@ import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { useRouter } from 'expo-router'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
-import { CardParticles } from '@/components/ui/card-particles'
 import { FernMark } from '@/components/billing/fern-mark'
 import { membershipVariant } from '@/features/billing/membership-state'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
-import { NeoSurface } from '@/components/ui/neo-surface'
 import { Screen } from '@/components/ui/screen'
 import { CancelDeletionBanner } from '@/components/common/cancel-deletion-banner'
-import { neoRadii, neoTokens } from '@/theme/neo-tokens'
-import { withAlpha } from '@/theme/color-utils'
+import { neoTokens } from '@/theme/neo-tokens'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   SettingsGroup,
   SettingsRow,
   SettingsSwitchRow,
 } from '@/components/settings/settings-grouped-list'
+import {
+  SettingsHeroCard,
+  settingsHeroInk,
+} from '@/components/settings/settings-hero-card'
 import { SettingsProtectionDismissRow } from '@/components/settings/protection-dismiss-row'
 import { DestroyFamilyConfirmSheet } from '@/components/settings/sheets/destroy-family-confirm-sheet'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
@@ -110,7 +109,7 @@ import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/features/preferences/language-provider'
-import { typography } from '@/theme/typography'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { useEntitlement } from '@/features/billing/use-entitlement'
@@ -921,33 +920,17 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const planChip = useMemo<{
     label: string
     fg: string
-    bg: string
-    border: string
   } | null>(() => {
     const ent = entitlementQuery.data
     if (ent == null) return null
-    // Tono → trío de colores derivados de los tokens del hero neo, en vez de
-    // los rgba hardcodeados de la hero forest V1: el gradiente cambió (claro
-    // #337B39→#5FAC64 / oscuro #234931→#16301F) y esos valores estaban
-    // calibrados contra el anterior. `border` se conserva en la forma del
-    // objeto porque lo consume el markup, pero ahora es un tinte del mismo
-    // token, no un color suelto.
+    // El chip se apoya SIEMPRE en el pozo oscuro del hero (`chipBackground`),
+    // no en un tinte del propio tono: sobre un tinte claro la tinta crema cae
+    // a 3.78:1 contra el stop más claro del forest, y el label son 10px.
+    // Sobre el pozo, la tinta más floja del trío queda en 6.15:1.
     const TONES = {
-      positive: {
-        fg: neo.heroText,
-        bg: withAlpha(neo.heroGreen, 0.16),
-        border: withAlpha(neo.heroGreen, 0.42),
-      },
-      neutral: {
-        fg: neo.heroText,
-        bg: withAlpha(neo.heroText, 0.1),
-        border: withAlpha(neo.heroText, 0.18),
-      },
-      caution: {
-        fg: neo.heroPeach,
-        bg: withAlpha(neo.heroPeach, 0.18),
-        border: withAlpha(neo.heroPeach, 0.5),
-      },
+      positive: { fg: settingsHeroInk.chipAccentInk },
+      neutral: { fg: settingsHeroInk.chipInk },
+      caution: { fg: settingsHeroInk.chipCautionInk },
     } as const
     // 1) Trial → "Acceso completo · N días" (copy compliant).
     if (ent.source === 'trial') {
@@ -979,11 +962,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           ? TONES.neutral
           : TONES.positive
     return { label, ...tone }
-    // `neo` entra en deps porque los TONES ahora derivan de sus tokens: sin
-    // esto el chip se quedaba con los colores del tema anterior al cambiar
-    // claro↔oscuro. No agrega renders: `neoTokens()` devuelve el mismo objeto
-    // congelado por modo, así que la identidad solo cambia con el tema.
-  }, [entitlementQuery.data, neo, t])
+  }, [entitlementQuery.data, t])
 
   return (
     <Screen
@@ -1007,9 +986,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
           animate normally. */}
       <RiseViewGate skip={!isNavSettled}>
       <View style={styles.sectionStack}>
-        {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
         {shouldShowErrorState ? (
           <NeoStateBlock
             actionLabel={t('states:errorState.action')}
@@ -1043,81 +1019,69 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                 />
               </RiseView>
             ) : null}
-            {/* HERO — card de marca (forest). Mismo lenguaje visual que la
-                hero del Home: gradiente forest + campo de partículas detrás
-                del contenido. Logo (helecho) arriba-izq + chip de plan/estado
-                arriba-der. Texto en tokens claros (heroText/heroMuted). */}
+            {/* HERO — card de marca (forest). Mismo material que los heros de
+                Inicio/Gastos/Fijos/Control. Logo (helecho) arriba-izq + chip
+                de plan/estado arriba-der. */}
             <RiseView>
-              <NeoSurface radius={neoRadii.hero} style={styles.heroCard} variant="hero">
-                {/* Campo de partículas detrás del contenido. Va en su PROPIA
-                    capa con `overflow: hidden`, no en la NeoSurface: recortar
-                    sobre la view que lleva el `boxShadow` le come el relieve
-                    neumórfico. Acá se clipea solo el campo de partículas y la
-                    sombra del hero queda intacta. */}
-                <View
-                  pointerEvents="none"
-                  style={[StyleSheet.absoluteFill, styles.heroParticleClip]}
-                >
-                  <CardParticles count={10} accentColor={neo.heroPeach} />
-                </View>
-                {/* Contenido textual envuelto para que el `gap` del card no
-                    descoloque el absoluteFill de las partículas. */}
-                <View style={styles.heroContent}>
-                  {/* Fila superior: logo a la izquierda, chip a la derecha. */}
-                  <View style={styles.heroTopRow}>
-                    <FernMark variant="cream" size={20} />
-                    {planChip ? (
-                      <View
-                        style={[
-                          styles.heroChip,
-                          { backgroundColor: planChip.bg },
-                        ]}
-                      >
-                        <View
-                          style={[styles.heroChipDot, { backgroundColor: planChip.fg }]}
-                        />
-                        <Text
-                          style={[styles.heroChipText, { color: planChip.fg }]}
-                          numberOfLines={1}
-                          maxFontSizeMultiplier={1.3}
-                        >
-                          {planChip.label}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text style={[styles.heroEyebrow, { color: neo.heroLabel }]}>
-                    {isSolo ? t('settings:hero.eyebrowSolo') : t('settings:hero.eyebrowFamily')}
-                  </Text>
-                  <Text style={[styles.heroTitle, { color: neo.heroText }]}>
-                    {displayName.trim() || t('settings:hero.unnamedProfile')}
-                  </Text>
-                  <Text style={[styles.heroSub, { color: neo.heroTextSoft }]}>
-                    {isSolo
-                      ? t('settings:hero.personalAccount')
-                      : totalMembers === 1
-                        ? t('settings:hero.soloHousehold')
-                        : t('settings:hero.householdOfN', { count: totalMembers })}
-                  </Text>
-                  {isOwner && !isSolo ? (
+              <SettingsHeroCard style={styles.heroCard}>
+                {/* Fila superior: logo a la izquierda, chip a la derecha. */}
+                <View style={styles.heroTopRow}>
+                  <FernMark variant="cream" size={20} />
+                  {planChip ? (
                     <View
                       style={[
-                        styles.ownerPill,
-                        { backgroundColor: withAlpha(neo.heroGreen, 0.16) },
+                        styles.heroChip,
+                        { backgroundColor: settingsHeroInk.chipBackground },
                       ]}
                     >
-                      <MaterialIcons color={neo.heroGreen} name="verified" size={14} />
-                      <Text style={[styles.ownerText, { color: neo.heroGreen }]}>
-                        {t('settings:hero.ownerPill')}
+                      <View
+                        style={[styles.heroChipDot, { backgroundColor: planChip.fg }]}
+                      />
+                      <Text
+                        style={[styles.heroChipText, { color: planChip.fg }]}
+                        numberOfLines={1}
+                        maxFontSizeMultiplier={1.3}
+                      >
+                        {planChip.label}
                       </Text>
                     </View>
-                  ) : role === 'member' ? (
-                    <Text style={[styles.memberHint, { color: neo.heroTextSoft }]}>
-                      {t('settings:hero.memberHint')}
-                    </Text>
                   ) : null}
                 </View>
-              </NeoSurface>
+                <Text style={[styles.heroEyebrow, { color: settingsHeroInk.accent }]}>
+                  {isSolo ? t('settings:hero.eyebrowSolo') : t('settings:hero.eyebrowFamily')}
+                </Text>
+                <Text style={[styles.heroTitle, { color: settingsHeroInk.title }]}>
+                  {displayName.trim() || t('settings:hero.unnamedProfile')}
+                </Text>
+                <Text style={[styles.heroSub, { color: settingsHeroInk.soft }]}>
+                  {isSolo
+                    ? t('settings:hero.personalAccount')
+                    : totalMembers === 1
+                      ? t('settings:hero.soloHousehold')
+                      : t('settings:hero.householdOfN', { count: totalMembers })}
+                </Text>
+                {isOwner && !isSolo ? (
+                  <View
+                    style={[
+                      styles.ownerPill,
+                      { backgroundColor: settingsHeroInk.chipBackground },
+                    ]}
+                  >
+                    <MaterialIcons
+                      color={settingsHeroInk.chipAccentInk}
+                      name="verified"
+                      size={14}
+                    />
+                    <Text style={[styles.ownerText, { color: settingsHeroInk.chipAccentInk }]}>
+                      {t('settings:hero.ownerPill')}
+                    </Text>
+                  </View>
+                ) : role === 'member' ? (
+                  <Text style={[styles.memberHint, { color: settingsHeroInk.soft }]}>
+                    {t('settings:hero.memberHint')}
+                  </Text>
+                ) : null}
+              </SettingsHeroCard>
             </RiseView>
 
             {/* 1. PERFIL */}
@@ -1231,7 +1195,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               <RiseView delay={200}>
                 <SettingsGroup title={t('settings:reserve.title')}>
                   <View style={styles.reserveInner}>
+                    {/* La reserva no tiene techo: a 28px un monto de ocho
+                        cifras ya no entra en el ancho de la card. Encoge
+                        antes de partirse en dos renglones. */}
                     <Text
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.7}
+                      numberOfLines={1}
                       style={[styles.reserveAmount, { color: neo.text }]}
                       maxFontSizeMultiplier={1.4}
                     >
@@ -1412,6 +1382,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       { label: t('settings:theme.light'), value: 'light' },
                       { label: t('settings:theme.dark'), value: 'dark' },
                     ]}
+                    skin="neo"
                     value={preference}
                   />
                 </View>
@@ -1436,6 +1407,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       { label: 'Español', value: 'es' },
                       { label: 'English', value: 'en' },
                     ]}
+                    skin="neo"
                     value={langPreference}
                   />
                 </View>
@@ -1467,6 +1439,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                       { label: t('settings:motion.auto'), value: 'auto' },
                       { label: t('settings:motion.all'), value: 'never' },
                     ]}
+                    skin="neo"
                     value={motionPreference}
                   />
                 </View>
@@ -1797,6 +1770,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                         { label: 'Routing', value: 'routing' },
                         { label: t('settings:dev.filterAction'), value: 'action' },
                       ]}
+                      skin="neo"
                       value={assistantDemoFilter}
                     />
                   </View>
@@ -1940,18 +1914,6 @@ const styles = StyleSheet.create({
   heroCard: {
     padding: 18,
   },
-  // Capa que clipea el campo de partículas. Separada de la NeoSurface a
-  // propósito: ver el comentario en el markup del hero.
-  heroParticleClip: {
-    borderRadius: neoRadii.hero,
-    overflow: 'hidden',
-  },
-  // Envuelve el contenido textual: como el card aloja también el
-  // absoluteFill de las partículas, el `gap` vive aquí (no en el card)
-  // para no descolocar el fondo de partículas.
-  heroContent: {
-    gap: 6,
-  },
   heroTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1975,11 +1937,16 @@ const styles = StyleSheet.create({
   heroChipText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.3,
+    // La píldora encoge (`heroChip.flexShrink`); sin esto el label se sale
+    // por debajo de su propio padding en vez de acompañarla.
+    flexShrink: 1,
   },
   heroEyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
   },
   heroTitle: {
@@ -1987,6 +1954,7 @@ const styles = StyleSheet.create({
   },
   heroSub: {
     fontSize: 13,
+    fontFamily: nunitoFamily('600'),
   },
   ownerPill: {
     alignSelf: 'flex-start',
@@ -2001,9 +1969,11 @@ const styles = StyleSheet.create({
   ownerText: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   memberHint: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
     marginTop: 4,
   },
   appearanceInner: {
@@ -2021,15 +1991,18 @@ const styles = StyleSheet.create({
   reserveAmount: {
     fontSize: 28,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     fontVariant: ['tabular-nums'],
   },
   reserveSub: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
   },
   versionFooter: {
     textAlign: 'center',
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
     paddingTop: 6,
     paddingBottom: 24,
   },

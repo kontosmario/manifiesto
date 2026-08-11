@@ -3,18 +3,16 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
+  HouseholdSetupCard,
   HouseholdSetupProgressCard,
   HouseholdSavingsPresetCard,
   HouseholdSavingsResearchPanel,
 } from '@/components/settings/household-setup-sections'
 import { HeroStat, SettingsSwitchRow } from '@/components/settings/settings-primitives'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { AppButton } from '@/components/ui/button'
-import { BrandedPanel } from '@/components/ui/branded-panel'
+import { NeoButton } from '@/components/ui/neo-button'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
-import { SectionHeader } from '@/components/ui/section-header'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { NumpadField } from '@/components/ui/numpad-field'
 import { formatPriceInputValue } from '@/utils/money'
@@ -45,10 +43,10 @@ import {
 import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getNumberFormat } from '@/lib/i18n/active-locale'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { neoTokens } from '@/theme/neo-tokens'
 import { getErrorMessage } from '@/utils/error-message'
-import { typography } from '@/theme/typography'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HouseholdSetupScreenProps {
   familyId: string
@@ -89,6 +87,8 @@ function buildFamilyFinanceSnapshot(finance: FamilyFinance): FamilyFinanceInputS
 
 export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
   const { t } = useTranslation()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { initial } = useLocalSearchParams<{ initial?: string }>()
   const isInitialFlow = initial === '1'
   const financeQuery = useFamilyFinance(familyId)
@@ -106,11 +106,13 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
       // saltaría ~59pt al pasar de cargando a cargado. En Android la ruta es
       // `card` y el flag se ignora. Ver el docblock de `presentedAsSheet`.
       <Screen
+        backgroundColor={neo.bg}
         canGoBack={!isInitialFlow}
         presentedAsSheet
         title={t('settings:householdSetup.screenTitle')}
+        titleColor={neo.text}
       >
-        <LoadingBlock label={t('settings:householdSetup.loading')} />
+        <LoadingBlock label={t('settings:householdSetup.loading')} skin="neo" />
       </Screen>
     )
   }
@@ -118,9 +120,11 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
   if (!financeSnapshot) {
     return (
       <Screen
+        backgroundColor={neo.bg}
         canGoBack={!isInitialFlow}
         presentedAsSheet
         title={t('settings:householdSetup.screenTitle')}
+        titleColor={neo.text}
       >
         <NeoStateBlock
           actionLabel={t('states:errorState.action')}
@@ -159,25 +163,30 @@ export function HouseholdSetupScreen({ familyId }: HouseholdSetupScreenProps) {
 function HouseholdSetupDynamicNotice({ isInitialFlow }: { isInitialFlow: boolean }) {
   const router = useRouter()
   const { t } = useTranslation()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   return (
     <Screen
+      backgroundColor={neo.bg}
       canGoBack={!isInitialFlow}
       presentedAsSheet
       title={t('settings:householdSetup.screenTitle')}
+      titleColor={neo.text}
     >
-      <BrandedPanel>
-        <SectionHeader
-          subtitle={t('settings:householdSetup.dynamicSubtitle')}
-          title={t('settings:householdSetup.dynamicTitle')}
-        />
-        <AppButton
+      <HouseholdSetupCard
+        subtitle={t('settings:householdSetup.dynamicSubtitle')}
+        title={t('settings:householdSetup.dynamicTitle')}
+      >
+        <NeoButton
+          block
+          haptic="light"
           label={t('settings:householdSetup.dynamicCta')}
           onPress={() => {
             router.replace(isInitialFlow ? '/(app)/(tabs)/home' : '/(app)/settings')
           }}
           variant="primary"
         />
-      </BrandedPanel>
+      </HouseholdSetupCard>
     </Screen>
   )
 }
@@ -189,8 +198,8 @@ function HouseholdSetupWizardContent({
 }: HouseholdSetupWizardContentProps) {
   const router = useRouter()
   const { t } = useTranslation()
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   // userId hace falta para que `useUpsertFamilyFinance` pueda invalidar
   // home_snapshot (root key) tras el upsert. Sin esto, los users veían
   // valores stale en el hero hasta el próximo refetch manual. Code
@@ -283,6 +292,7 @@ function HouseholdSetupWizardContent({
 
   return (
     <Screen
+      backgroundColor={neo.bg}
       canGoBack={!isInitialFlow}
       contentContainerStyle={styles.screenContent}
       // Cuarta rama de la MISMA ruta modal — ver el comentario de la rama de
@@ -294,10 +304,9 @@ function HouseholdSetupWizardContent({
           : t('settings:householdSetup.subtitleRecalibrate')
       }
       title={isInitialFlow ? t('settings:householdSetup.titleInitial') : t('settings:householdSetup.titleRecalibrate')}
+      titleColor={neo.text}
     >
       <View style={styles.sectionStack}>
-        {!theme.isDark ? <AmbientBackdrop variant="form" /> : null}
-
         <HouseholdSetupProgressCard
           currentStep={currentStep + 1}
           subtitle={
@@ -318,11 +327,10 @@ function HouseholdSetupWizardContent({
         />
 
         {currentStep === 0 ? (
-          <BrandedPanel style={styles.card}>
-            <SectionHeader
-              subtitle={t('settings:householdSetup.step0Subtitle')}
-              title={t('settings:householdSetup.step0Title')}
-            />
+          <HouseholdSetupCard
+            subtitle={t('settings:householdSetup.step0Subtitle')}
+            title={t('settings:householdSetup.step0Title')}
+          >
             <NumpadField
               label={t('settings:householdSetup.incomeLabel')}
               value={drafts.incomeDraft}
@@ -360,7 +368,7 @@ function HouseholdSetupWizardContent({
               }
               value={drafts.currentIncomeConfirmed}
             />
-          </BrandedPanel>
+          </HouseholdSetupCard>
         ) : null}
 
         {currentStep === 1 ? (
@@ -370,11 +378,10 @@ function HouseholdSetupWizardContent({
               note={buildHouseholdSavingsResearchNote()}
               stats={buildHouseholdSavingsResearchStats()}
             />
-            <BrandedPanel style={styles.card}>
-              <SectionHeader
-                subtitle={t('settings:householdSetup.step1Subtitle')}
-                title={t('settings:householdSetup.step1Title')}
-              />
+            <HouseholdSetupCard
+              subtitle={t('settings:householdSetup.step1Subtitle')}
+              title={t('settings:householdSetup.step1Title')}
+            >
               <View style={styles.summaryStats}>
                 <HeroStat
                   compact
@@ -415,17 +422,16 @@ function HouseholdSetupWizardContent({
                 maxIntegerDigits={3}
                 maxDecimalDigits={0}
               />
-            </BrandedPanel>
+            </HouseholdSetupCard>
           </>
         ) : null}
 
         {currentStep === 2 ? (
           <>
-            <BrandedPanel style={styles.card}>
-              <SectionHeader
-                subtitle={t('settings:householdSetup.step2Subtitle')}
-                title={t('settings:householdSetup.step2Title')}
-              />
+            <HouseholdSetupCard
+              subtitle={t('settings:householdSetup.step2Subtitle')}
+              title={t('settings:householdSetup.step2Title')}
+            >
               <SegmentedControl
                 onChange={(value) =>
                   setDrafts((current) => ({ ...current, bufferModeDraft: value }))
@@ -435,6 +441,7 @@ function HouseholdSetupWizardContent({
                   { label: t('settings:householdSetup.bufferFixed'), value: 'fixed' },
                   { label: '%', value: 'percent' },
                 ]}
+                skin="neo"
                 value={drafts.bufferModeDraft}
               />
               <NumpadField
@@ -480,13 +487,16 @@ function HouseholdSetupWizardContent({
                 maxIntegerDigits={2}
                 maxDecimalDigits={0}
               />
-            </BrandedPanel>
+            </HouseholdSetupCard>
 
-            <BrandedPanel style={styles.summaryCard} variant="accent">
-              <SectionHeader
-                subtitle={t('settings:householdSetup.summarySubtitle')}
-                title={t('settings:householdSetup.summaryTitle')}
-              />
+            {/* `raisedXl` y no `hero`: los `HeroStat` del resumen son pozos
+                del canvas (`well` + tinta oscura) y sobre el gradiente verde
+                del hero dejarían de leerse como parte del sistema. */}
+            <HouseholdSetupCard
+              subtitle={t('settings:householdSetup.summarySubtitle')}
+              title={t('settings:householdSetup.summaryTitle')}
+              variant="raisedXl"
+            >
               <View style={styles.summaryStats}>
                 <HeroStat label={t('settings:householdSetup.summaryIncome')} value={fieldValues.income || t('settings:rowValue.define')} />
                 <HeroStat
@@ -513,20 +523,23 @@ function HouseholdSetupWizardContent({
                   percent: fieldValues.savings || '0',
                 })}
               </Text>
-            </BrandedPanel>
+            </HouseholdSetupCard>
           </>
         ) : null}
 
         <View style={styles.footerActions}>
           {currentStep > 0 ? (
-            <AppButton
+            <NeoButton
               fullWidth={false}
+              haptic="none"
               label={t('common:actions.back')}
               onPress={() => setCurrentStep((value) => Math.max(0, value - 1))}
               variant="ghost"
             />
           ) : null}
-          <AppButton
+          <NeoButton
+            block
+            haptic="light"
             label={primaryActionLabel}
             loading={upsertFinanceMutation.isPending}
             onPress={() => {
@@ -560,16 +573,9 @@ const styles = StyleSheet.create({
   },
   sectionStack: {
     gap: 18,
-    position: 'relative',
-  },
-  card: {
-    gap: 18,
   },
   presetList: {
     gap: 10,
-  },
-  summaryCard: {
-    gap: 16,
   },
   summaryStats: {
     flexDirection: 'row',
@@ -577,7 +583,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   summaryNote: {
-    ...typography.bodySmall,
+    fontSize: 13,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
+    lineHeight: 18,
   },
   footerActions: {
     alignItems: 'center',

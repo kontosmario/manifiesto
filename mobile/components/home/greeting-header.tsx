@@ -4,6 +4,7 @@ import { getGreeting, getGreetingName } from '@/features/home/home-dashboard-mod
 import { FloatView } from '@/components/home/animated/float-view'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GreetingHeaderProps {
   name: string
@@ -80,6 +81,6 @@ const MoonIcon = () => (
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconWrap: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
-  greeting: { fontSize: 14, fontWeight: '500' },
-  name: { fontSize: 34, lineHeight: 36, fontWeight: '800', marginTop: 2, letterSpacing: -1.2 },
+  greeting: { fontSize: 14, fontWeight: '500', fontFamily: nunitoFamily('500') },
+  name: { fontSize: 34, lineHeight: 36, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 2, letterSpacing: -1.2 },
 })

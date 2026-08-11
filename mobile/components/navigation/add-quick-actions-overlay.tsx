@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import {
   Dimensions,
   Modal,
@@ -15,28 +15,36 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import { BrotMascot, type BrotPose } from '@/components/brot'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import {
+  decorativeDurations,
   motionDurations,
   motionEasings,
   motionSprings,
+  motionStagger,
 } from '@/lib/motion/tokens'
 import { withAlpha } from '@/theme/color-utils'
 import {
   cssGradient,
   neoCategoryPastels,
+  neoMaterial,
   neoRadii,
   neoTokens,
   pastelDark,
   type NeoTokens,
 } from '@/theme/neo-tokens'
+import type { ResolvedThemeMode } from '@/theme/palette'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'
 import { AddQuickActionIcon, type ActionKey } from './add-quick-action-icon'
@@ -80,6 +88,8 @@ const CARD_HORIZONTAL_MARGIN = 16
 const PRIMARY_TILE_HEIGHT = 84
 const SECONDARY_ROW_HEIGHT = 60
 const SECONDARY_TILE_SIZE = 42
+/** Altura de Brot en la cabecera (viewBox 84×108 → ancho 42). */
+const BROT_SIZE = 54
 
 /**
  * El handoff dibuja el scrim como un sólido (`#B9BEAC` claro / `#0A130D`
@@ -107,13 +117,34 @@ const ACTION_PASTEL: Record<ActionKey, string> = {
 }
 
 /**
- * Hierarchical FAB action menu. Replaces the legacy 5-petal radial
- * fan + (briefly) a 2×2 card grid, both of which read as "identical
- * card grid" once we had five actions. New composition:
+ * Pose de reposo de Brot: `coach` es el brazo levantado explicando, o
+ * sea literalmente el gesto de ofrecer opciones. Es la pose con la que
+ * hace la pregunta del eyebrow.
+ */
+const BROT_POSE_RESTING: BrotPose = 'coach'
+
+/**
+ * Reacción de Brot a la fila que el dedo está tocando. La semántica de
+ * cada pose es la del catálogo de `brot-mascot`, no una elección
+ * decorativa: `wow` (asombro) para la acción principal, `magic`
+ * (chispas) para el OCR, `zen` (calma) para el día sin gasto, `cheer`
+ * (celebración) para la plata que entra y `think` (planificación) para
+ * lo que se repite todos los meses.
+ */
+const BROT_POSE_BY_ACTION: Record<ActionKey, BrotPose> = {
+  expense: 'wow',
+  import: 'magic',
+  'no-spend': 'zen',
+  income: 'cheer',
+  fixed: 'think',
+}
+
+/**
+ * Hierarchical FAB action menu, con Brot de anfitrión. Composición:
  *
- *   [eyebrow]
- *   [PRIMARY full-width tile — CTA radial verde, pulsing icon]
- *   [vertical list of secondary rows — tile pastel + chevron]
+ *   [Brot + eyebrow — la pregunta es SUYA]
+ *   [PRIMARY full-width tile — CTA radial verde + glow que respira]
+ *   [4 filas secundarias en relieve — tile pastel + chevron]
  *
  * Material: pantalla 3c del handoff neumórfico
  * (`design/rediseno-2026-07/screens/3c.html` L31-62 claro / L87-118
@@ -122,15 +153,27 @@ const ACTION_PASTEL: Record<ActionKey, string> = {
  * producto aprobada por el owner y NO sale del handoff: acá sólo se
  * transcribe el material dentro de esa geometría.
  *
+ * DESVÍO DELIBERADO del handoff: las filas secundarias van en RELIEVE
+ * (raised → inset al presionar) y no separadas por el hairline de
+ * `sheetDivider`. La regla del hairline es para listas de TEXTO dentro
+ * de una hoja; acá son cuatro objetivos táctiles de 60px que se
+ * presionan, y en el vocabulario neo lo que se presiona se hunde.
+ *
+ * Brot reacciona a la fila que el dedo toca (`BROT_POSE_BY_ACTION`) y
+ * vuelve a `coach` al soltar sin elegir. Se monta UNA sola vez con la
+ * hoja: el press sólo cambia la prop `pose`, que re-graba el SkPicture
+ * sin remontar el canvas de Skia.
+ *
  * Each row carries a signature entrance animation via `AddQuickActionIcon`
  * so individual actions announce themselves (the "+" rotates in, the
  * scanner pass sweeps, the trending-up arrow climbs, the leaf wiggles,
- * the loop rotates). Combined with the tile-level FadeInDown stagger,
- * opening the overlay becomes a tiny choreography moment instead of a
- * generic "five buttons appear".
+ * the loop rotates).
  *
- * Card bloom enters anchored to the FAB (spring scale 0.85→1,
- * translateY 40→0, opacity 0→1) so it reads as the FAB unfurling.
+ * Coreografía: la hoja florece anclada al FAB (spring scale 0.85→1,
+ * translateY 40→0, opacity 0→1) y las filas suben en ola DESDE ABAJO —
+ * la más cercana al FAB primero, la principal última— para que el
+ * escalonado siga el mismo origen que la hoja. Brot cierra con un pop
+ * (scale 0.8→1 con rebote) y la mirada termina en él y en la pregunta.
  * Exit uses timing (not a spring) to keep the Modal's touch-capture
  * window short — the rest threshold on a critically-damped spring
  * left the Modal grabbing taps long after the card was visually gone.
@@ -147,6 +190,7 @@ export function AddQuickActionsOverlay({
   const reduced = useReducedMotion()
   const progress = useSharedValue(0)
   const [mounted, setMounted] = useState(false)
+  const [pose, setPose] = useState<BrotPose>(BROT_POSE_RESTING)
   // Avisa al resto de la app que hay una ventana nativa arriba (el
   // ToastHost la necesita para no quedar tapado). Ver `modal-visibility`.
   useModalVisibilityBeacon(mounted)
@@ -200,20 +244,39 @@ export function AddQuickActionsOverlay({
     }
   })
 
-  const handleTileSelect = (action: QuickAction) => {
-    void triggerHaptic('selection')
-    skipNextExitRef.current = true
-    onDismiss()
-    action.onPress()
-  }
+  // Identidad estable en las tres: los tiles están memoizados y sólo
+  // debe re-renderizar el anfitrión cuando cambia la pose.
+  const handleTileSelect = useCallback(
+    (action: QuickAction) => {
+      void triggerHaptic('selection')
+      // La hoja se reabre con Brot en reposo. (RN dispara onPressOut
+      // antes de onPress, así que en la práctica ya volvió solo; esto
+      // cubre la elección que llegue por otro camino.)
+      setPose(BROT_POSE_RESTING)
+      skipNextExitRef.current = true
+      onDismiss()
+      action.onPress()
+    },
+    [onDismiss],
+  )
+  const handlePosePreview = useCallback((key: ActionKey) => {
+    setPose(BROT_POSE_BY_ACTION[key])
+  }, [])
+  const handlePoseRelease = useCallback(() => {
+    setPose(BROT_POSE_RESTING)
+  }, [])
 
-  // Choreography timing: primary tile enters at 80ms, then each
-  // secondary at +70ms. The ActionIcon's signature animation runs
-  // with the SAME delay (offset from mount) so the icon's identity
-  // play lands just as the row's tile fade-in completes.
-  const PRIMARY_DELAY = 80
-  const SECONDARY_STAGGER = 70
-  const SECONDARY_BASE_DELAY = 180
+  // Coreografía: la ola sube desde el FAB, así que la fila MÁS CERCANA
+  // a él (la última) es la primera en aparecer; la principal cierra la
+  // ola y Brot entra un escalón después. La signature del ícono corre
+  // con el delay de SU fila (+ un escalón) para que la identidad del
+  // glifo aterrice cuando la fila termina de asentarse.
+  const rowDelay = (idx: number) =>
+    motionStagger.section +
+    (secondaries.length - 1 - idx) * motionStagger.listItem
+  const primaryDelay =
+    motionStagger.section + secondaries.length * motionStagger.listItem
+  const brotDelay = primaryDelay + motionStagger.listItem
 
   return (
     <Modal
@@ -259,53 +322,56 @@ export function AddQuickActionsOverlay({
             },
           ]}
         >
-          <Text style={[styles.eyebrow, { color: neo.textMuted }]}>
-            {t('states:quickActions.eyebrow')}
-          </Text>
+          {/* Brot hace la pregunta: el eyebrow es SU línea, así que
+              viven en la misma fila. El canvas queda fuera del árbol de
+              accesibilidad — es decoración, no un control. */}
+          <View style={styles.header}>
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <BrotHost pose={pose} delay={brotDelay} reduced={reduced} />
+            </View>
+            <Text style={[styles.eyebrow, { color: neo.textMuted }]}>
+              {t('states:quickActions.eyebrow')}
+            </Text>
+          </View>
 
           {primary ? (
-            <Animated.View
-              entering={
-                reduced
-                  ? undefined
-                  : FadeInDown.duration(motionDurations.standard)
-                      .delay(PRIMARY_DELAY)
-                      .easing(EASE_IOS)
-              }
-            >
+            <Animated.View entering={rowEntering(reduced, primaryDelay)}>
               <PrimaryTile
                 action={primary}
                 active={mounted}
-                signatureDelay={PRIMARY_DELAY + 60}
+                signatureDelay={primaryDelay + motionStagger.listItem}
                 onSelect={handleTileSelect}
+                onPosePreview={handlePosePreview}
+                onPoseRelease={handlePoseRelease}
                 neo={neo}
                 isDark={isDark}
+                reduced={reduced}
               />
             </Animated.View>
           ) : null}
 
           {secondaries.length > 0 ? (
-            <View>
+            <View style={styles.rowList}>
               {secondaries.map((action, idx) => {
-                const rowDelay = SECONDARY_BASE_DELAY + idx * SECONDARY_STAGGER
+                const delay = rowDelay(idx)
                 return (
                   <Animated.View
                     key={action.key}
-                    entering={
-                      reduced
-                        ? undefined
-                        : FadeInDown.duration(motionDurations.standard)
-                            .delay(rowDelay)
-                            .easing(EASE_IOS)
-                    }
+                    entering={rowEntering(reduced, delay)}
                   >
                     <SecondaryRow
                       action={action}
                       active={mounted}
-                      signatureDelay={rowDelay + 40}
-                      isFirst={idx === 0}
+                      signatureDelay={delay + motionStagger.listItem}
                       onSelect={handleTileSelect}
+                      onPosePreview={handlePosePreview}
+                      onPoseRelease={handlePoseRelease}
                       neo={neo}
+                      mode={theme.mode}
                       isDark={isDark}
                     />
                   </Animated.View>
@@ -319,24 +385,137 @@ export function AddQuickActionsOverlay({
   )
 }
 
+/**
+ * Entrada de una fila: sube desde abajo (FadeInDown arranca en +25) con
+ * el spring `enter` del kit, así el escalonado tiene la misma física que
+ * el resto de las listas de la app.
+ */
+function rowEntering(reduced: boolean, delay: number) {
+  if (reduced) {
+    return undefined
+  }
+  return FadeInDown.delay(delay)
+    .springify()
+    .damping(motionSprings.enter.damping)
+    .stiffness(motionSprings.enter.stiffness)
+    .mass(motionSprings.enter.mass)
+}
+
+// ─── Brot ───────────────────────────────────────────────────────
+
+interface BrotHostProps {
+  pose: BrotPose
+  delay: number
+  reduced: boolean
+}
+
+/**
+ * Anfitrión de la hoja. Memoizado y aislado a propósito: el press de
+ * una fila cambia la pose y esto es lo ÚNICO que re-renderiza — el
+ * canvas de Skia no se remonta, sólo se vuelve a grabar el frame con la
+ * pose nueva (`brot-mascot` recalcula el SkPicture en el UI thread).
+ *
+ * Entra último y con rebote (`celebrate` overshootea por encima de 1,
+ * que es el pop) para que la mirada termine en él y en su pregunta.
+ */
+const BrotHost = memo(function BrotHost({ pose, delay, reduced }: BrotHostProps) {
+  const pop = useSharedValue(reduced ? 1 : 0)
+
+  useEffect(() => {
+    if (reduced) {
+      pop.value = 1
+      return
+    }
+    pop.value = withDelay(delay, withSpring(1, motionSprings.celebrate))
+  }, [pop, delay, reduced])
+
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(pop.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(pop.value, [0, 1], [0.8, 1]) }],
+  }))
+
+  return (
+    <Animated.View style={style}>
+      <BrotMascot pose={pose} size={BROT_SIZE} shadow={false} />
+    </Animated.View>
+  )
+})
+
 // ─── Tiles ──────────────────────────────────────────────────────
+
+/**
+ * Halo que respira detrás del tile principal mientras la hoja está
+ * abierta: es la acción que se elige la enorme mayoría de las veces y
+ * el loop lento la sostiene sin pedir atención. El cuerpo sólido queda
+ * TAPADO por el tile (inset 8, y el scale del loop no alcanza a
+ * asomarlo); lo único que se ve es el desenfoque que sobresale.
+ */
+function PrimaryGlow({ color, reduced }: { color: string; reduced: boolean }) {
+  const breath = useSharedValue(reduced ? 0.5 : 0)
+
+  useEffect(() => {
+    if (reduced) {
+      breath.value = 0.5
+      return
+    }
+    breath.value = withRepeat(
+      withSequence(
+        withTiming(1, {
+          duration: decorativeDurations.pulseSlow,
+          easing: motionEasings.warm,
+        }),
+        withTiming(0, {
+          duration: decorativeDurations.pulseSlow,
+          easing: motionEasings.warm,
+        }),
+      ),
+      -1,
+      false,
+    )
+  }, [breath, reduced])
+
+  const style = useAnimatedStyle(() => ({
+    opacity: 0.3 + 0.4 * breath.value,
+    transform: [{ scale: 1 + 0.02 * breath.value }],
+  }))
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.primaryGlow,
+        style,
+        {
+          backgroundColor: color,
+          boxShadow: `0 0 22px 4px ${withAlpha(color, 0.55)}`,
+        },
+      ]}
+    />
+  )
+}
 
 interface PrimaryTileProps {
   action: QuickAction
   active: boolean
   signatureDelay: number
   onSelect: (a: QuickAction) => void
+  onPosePreview: (key: ActionKey) => void
+  onPoseRelease: () => void
   neo: NeoTokens
   isDark: boolean
+  reduced: boolean
 }
 
-function PrimaryTile({
+const PrimaryTile = memo(function PrimaryTile({
   action,
   active,
   signatureDelay,
   onSelect,
+  onPosePreview,
+  onPoseRelease,
   neo,
   isDark,
+  reduced,
 }: PrimaryTileProps) {
   const pressScale = useSharedValue(1)
   const animatedStyle = useAnimatedStyle(() => ({
@@ -372,18 +551,21 @@ function PrimaryTile({
 
   return (
     <Animated.View style={animatedStyle}>
+      {isMarked ? null : <PrimaryGlow color={neo.green} reduced={reduced} />}
       <Pressable
         accessibilityLabel={action.label}
         accessibilityHint={action.subtitle}
         accessibilityRole="button"
         onPress={() => onSelect(action)}
         onPressIn={() => {
+          onPosePreview(action.key)
           pressScale.value = withTiming(0.97, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
           })
         }}
         onPressOut={() => {
+          onPoseRelease()
           pressScale.value = withTiming(1, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
@@ -431,25 +613,29 @@ function PrimaryTile({
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 interface SecondaryRowProps {
   action: QuickAction
   active: boolean
   signatureDelay: number
-  isFirst: boolean
   onSelect: (a: QuickAction) => void
+  onPosePreview: (key: ActionKey) => void
+  onPoseRelease: () => void
   neo: NeoTokens
+  mode: ResolvedThemeMode
   isDark: boolean
 }
 
-function SecondaryRow({
+const SecondaryRow = memo(function SecondaryRow({
   action,
   active,
   signatureDelay,
-  isFirst,
   onSelect,
+  onPosePreview,
+  onPoseRelease,
   neo,
+  mode,
   isDark,
 }: SecondaryRowProps) {
   const pressScale = useSharedValue(1)
@@ -468,30 +654,27 @@ function SecondaryRow({
         accessibilityRole="button"
         onPress={() => onSelect(action)}
         onPressIn={() => {
+          onPosePreview(action.key)
           pressScale.value = withTiming(0.98, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
           })
         }}
         onPressOut={() => {
+          onPoseRelease()
           pressScale.value = withTiming(1, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
           })
         }}
+        // Relieve, no hairline (ver el bloque de arriba del componente):
+        // el tile sube en reposo y se HUNDE bajo el dedo, que es el gesto
+        // físico del sistema. 'marked' se queda hundido con su anillo
+        // verde, el mismo estado seleccionado del tile principal.
         style={({ pressed }) => [
           styles.secondaryRow,
-          {
-            backgroundColor: isMarked
-              ? neo.selectedTint
-              : pressed
-                ? neo.well
-                : 'transparent',
-            // Único hairline del vocabulario neo: la línea de 1.5px
-            // entre ítems de una MISMA lista (`screens/3c.html` L49).
-            borderTopColor: neo.sheetDivider,
-            borderTopWidth: isFirst ? 0 : 1.5,
-          },
+          neoMaterial(mode, isMarked ? 'ringSelected' : pressed ? 'insetSm' : 'raisedSm'),
+          isMarked ? { backgroundColor: neo.selectedTint } : null,
         ]}
       >
         {/* Tile pastel 42×42 radio 14 del handoff. El ícono va sin su
@@ -520,15 +703,14 @@ function SecondaryRow({
         >
           {action.label}
         </Text>
-        <MaterialIcons
-          name="chevron-right"
-          size={20}
-          color={neo.textTertiary}
-        />
+        {/* `textTertiary` da 1.97:1 sobre el stop oscuro del material
+            raised — por debajo del 3:1 de un elemento de UI. `textMuted`
+            lo deja en 4.91:1 en claro y 5.20:1 en oscuro. */}
+        <MaterialIcons name="chevron-right" size={20} color={neo.textMuted} />
       </Pressable>
     </Animated.View>
   )
-}
+})
 
 // ─── Styles ─────────────────────────────────────────────────────
 
@@ -550,14 +732,31 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     gap: 12,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 2,
+  },
   eyebrow: {
     // 11.5 / 800 / 0.16em del handoff (0.16em × 11.5 ≈ 1.84).
+    flex: 1,
     fontSize: 11.5,
     fontWeight: '800',
     fontFamily: nunitoFamily('800'),
     letterSpacing: 1.84,
     textTransform: 'uppercase',
-    paddingLeft: 4,
+  },
+  rowList: {
+    gap: 10,
+  },
+  primaryGlow: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    right: 8,
+    bottom: 8,
+    borderRadius: neoRadii.cardSm,
   },
   primaryTile: {
     minHeight: PRIMARY_TILE_HEIGHT,
@@ -586,6 +785,7 @@ const styles = StyleSheet.create({
   },
   secondaryRow: {
     minHeight: SECONDARY_ROW_HEIGHT,
+    borderRadius: neoRadii.tile,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',

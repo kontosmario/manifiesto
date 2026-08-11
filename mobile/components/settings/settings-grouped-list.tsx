@@ -19,6 +19,7 @@ import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { motionDurations } from '@/lib/motion/tokens'
@@ -45,18 +46,9 @@ type IconName = keyof typeof MaterialIcons.glyphMap
  * idéntica a la V1: la consumen 105 veces 5 pantallas de Ajustes.
  */
 
-/**
- * Tinta destructiva legible en los dos temas.
- *
- * `neo.danger` en claro (#C25B33) no llega a 4.5:1 sobre el material raised. El
- * rojo-tierra de "excedido" del propio rediseño (`neoCalendar.light.excess.text`)
- * da 4.72:1 y es el mismo que ya usan las pantallas neo migradas. En oscuro
- * `neo.danger` (#E08765) sí cumple sobre el material oscuro.
- */
 function useDangerInk() {
   const theme = useThemeTokens()
-  const neo = neoTokens(theme.mode)
-  return theme.mode === 'dark' ? neo.danger : '#A84A2F'
+  return neoInk(theme.mode).danger
 }
 
 /**
@@ -172,7 +164,8 @@ export function SettingsRow({
 
   const iconColor = destructive ? dangerInk : disabled ? neo.textMuted : neo.text
   const labelColor = destructive ? dangerInk : disabled ? neo.textMuted : neo.text
-  const trailingText = disabled && disabledHint ? disabledHint : value
+  const showsHint = disabled && Boolean(disabledHint)
+  const trailingText = showsHint ? disabledHint : value
 
   const content = (
     <Animated.View
@@ -200,9 +193,12 @@ export function SettingsRow({
         ) : trailing ? (
           trailing
         ) : trailingText ? (
+          // El hint del estado bloqueado es una FRASE ("Solo el dueño puede
+          // editar"), no un valor: a una línea entra cortada en cualquier
+          // pantalla. Los valores propiamente dichos siguen a una línea.
           <Text
-            numberOfLines={1}
-            style={[styles.value, { color: neo.textMuted, maxWidth: 160 }]}
+            numberOfLines={showsHint ? 2 : 1}
+            style={[styles.value, { color: neo.textMuted }]}
           >
             {trailingText}
           </Text>
@@ -354,14 +350,24 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
+  // El tope es PROPORCIONAL, no un ancho fijo: con un cap en puntos el valor
+  // se corta igual en pantallas anchas, y con `flexShrink` solo se lo come el
+  // label. 52% deja siempre la mitad de la fila para el label.
   trailing: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 1,
+    maxWidth: '52%',
   },
   value: {
     fontSize: 14,
     fontWeight: '600',
     fontFamily: nunitoFamily('600'),
+    flexShrink: 1,
+    // La columna está anclada al chevron: cuando el texto pasa a dos líneas
+    // (el hint del estado bloqueado) las dos tienen que quedar a ras del
+    // borde derecho, no escalonadas.
+    textAlign: 'right',
   },
 })

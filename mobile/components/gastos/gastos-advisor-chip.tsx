@@ -20,6 +20,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Helper para tint suaves del icon-tile sin recurrir a `rgba(...)` hard.
  *  Asume hex `#RRGGBB`. Si no matchea, devuelve el color sin alpha. */
@@ -245,11 +246,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   impact: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginTop: 1,
   },
 })

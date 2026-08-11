@@ -5,6 +5,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { MaterialIcons } from '@expo/vector-icons'
 import { EXPENSE_NOTES_MAX_LENGTH } from '@/features/expenses/expense-repository.model'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface NotesRowProps {
   /** Current note value. Empty string when not set; we never carry
@@ -137,11 +138,13 @@ const styles = StyleSheet.create({
   addPillLabel: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   addPillHint: {
     fontSize: 11,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
@@ -157,6 +160,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.2,
   },
   closeButton: {
@@ -178,6 +182,7 @@ const styles = StyleSheet.create({
   counter: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'right',
     paddingHorizontal: 4,
   },

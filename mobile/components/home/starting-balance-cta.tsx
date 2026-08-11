@@ -1,14 +1,14 @@
 import { memo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
-import Animated from 'react-native-reanimated'
 import { TourTarget } from '@/features/tours'
 import { TOUR_KEYS } from '@/features/tours/tour-keys'
-import { useAppTheme } from '@/theme/theme-provider'
-import { useBorderGlow } from '@/hooks/use-border-glow'
+import { HOME_SPEC, type HomeMode } from '@/components/redesign/home/home-spec'
 import { triggerHaptic } from '@/lib/haptics'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeMode } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StartingBalanceCtaProps {
   /** Called when user taps "Confirmar". Owner provides the modal/sheet UX. */
@@ -18,24 +18,19 @@ interface StartingBalanceCtaProps {
   tourOrder: number
 }
 
-// Texto del pill lime → verde forest oscuro (legible sobre el lime en ambos temas).
-const PILL_TEXT = '#0F2E1F'
-
 /**
  * Barra COMPACTA (una línea) que aparece en Home cuando el ciclo todavía no
- * tiene `current_cycle_starting_balance` confirmado. Estilo de la HERO card:
- * gradiente forest + texto crema (heroText) + acento lime (heroAccent), así
- * esta card —que es importante— se siente parte de la jerarquía del hero, no un
- * cartel suelto. El efecto es un BORDER GLOW (useBorderGlow): el borde lime
- * respira, queda dentro de los límites → nunca se corta. El gradiente se
- * redondea a sí mismo (sin overflow:hidden) para que el borde no quede seamed
- * en las esquinas. Una vez confirmado el saldo, el padre (CollapsingReveal) la
- * colapsa y desmonta.
+ * tiene `current_cycle_starting_balance` confirmado. Comparte el material del
+ * HERO de la Home (gradiente forest + `heroShadow` del HOME_SPEC) y cierra con
+ * el pill crema del catálogo, así esta card —que es importante— se lee dentro
+ * de la jerarquía del hero y no como un cartel suelto. Una vez confirmado el
+ * saldo, el padre (CollapsingReveal) la colapsa y desmonta.
  */
 function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps) {
-  const { theme } = useAppTheme()
+  const mode = useThemeMode().resolvedMode as HomeMode
+  const s = HOME_SPEC[mode]
+  const neo = neoTokens(mode)
   const { t } = useTranslation()
-  const glowBorderStyle = useBorderGlow()
 
   const handlePress = () => {
     void triggerHaptic('selection')
@@ -50,37 +45,32 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
         onPress={handlePress}
         style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
       >
-        <Animated.View style={[styles.card, glowBorderStyle]}>
-          <LinearGradient
-            colors={
-              [...theme.colors.heroGradient] as unknown as readonly [
-                string,
-                string,
-                ...string[],
-              ]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            // El gradiente se redondea a sí mismo (mismo radio que la card) en
-            // vez de depender de overflow:hidden — así el borde no queda
-            // "cropeado"/seamed en las esquinas redondeadas.
-            style={[StyleSheet.absoluteFillObject, styles.gradient]}
-          />
-          <View style={styles.row}>
-            <MaterialIcons name="savings" size={18} color={theme.colors.heroAccent} />
-            <Text
-              style={[styles.title, { color: theme.colors.heroText }]}
-              numberOfLines={1}
-            >
-              {t('home:startingBalanceCta.title')}
+        <View
+          style={[
+            styles.card,
+            cssGradient(s.heroGradientCss, neo.greenDeep),
+            { boxShadow: s.heroShadow },
+          ]}
+        >
+          <MaterialIcons name="savings" size={18} color={s.heroDot} />
+          <Text
+            style={[styles.title, { color: s.balanceInk }]}
+            numberOfLines={1}
+          >
+            {t('home:startingBalanceCta.title')}
+          </Text>
+          <View
+            style={[
+              styles.ctaPill,
+              cssGradient(s.ctaCreamGradientCss, neo.heroText),
+              { boxShadow: s.ctaCreamShadow },
+            ]}
+          >
+            <Text style={[styles.ctaPillText, { color: s.ctaCreamInk }]}>
+              {t('home:startingBalanceCta.confirm')}
             </Text>
-            <View style={[styles.ctaPill, { backgroundColor: theme.colors.heroAccent }]}>
-              <Text style={[styles.ctaPillText, { color: PILL_TEXT }]}>
-                {t('home:startingBalanceCta.confirm')}
-              </Text>
-            </View>
           </View>
-        </Animated.View>
+        </View>
       </Pressable>
     </TourTarget>
   )
@@ -88,33 +78,29 @@ function StartingBalanceCtaImpl({ onPress, tourOrder }: StartingBalanceCtaProps)
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  gradient: {
-    borderRadius: 14,
-  },
-  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: neoRadii.pill,
   },
   title: {
     flex: 1,
-    fontSize: 13.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   ctaPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: neoRadii.chip,
   },
   ctaPillText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.2,
   },
 })

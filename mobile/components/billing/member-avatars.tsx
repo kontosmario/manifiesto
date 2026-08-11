@@ -1,16 +1,19 @@
 import { memo } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Avatares solapados con iniciales de los miembros del hogar. Refleja
- * quiénes "consumen" la cuenta. El borde matchea el fondo de la card
+ * quiénes "consumen" la cuenta. El borde matchea el material de la card
  * que los contiene (recorte visual). Si hay más que `max`, último chip "+N".
  */
 export interface MemberAvatarsProps {
   initials: string[]
   max?: number
-  /** Color del borde — el fondo de la card donde viven. */
+  /** Color del borde — el material de la card donde viven. */
   borderColor?: string
 }
 
@@ -19,10 +22,13 @@ export const MemberAvatars = memo(function MemberAvatars({
   max = 4,
   borderColor,
 }: MemberAvatarsProps) {
-  const { theme } = useAppTheme()
+  const mode = useThemeTokens().mode
+  const neo = neoTokens(mode)
+  const ink = neoInk(mode)
   const shown = initials.slice(0, max)
   const overflow = initials.length - shown.length
-  const ring = borderColor ?? theme.colors.creamCard
+  const ring = borderColor ?? neo.surface
+
   return (
     <View style={styles.row}>
       {shown.map((ini, i) => (
@@ -31,10 +37,10 @@ export const MemberAvatars = memo(function MemberAvatars({
           style={[
             styles.av,
             i > 0 && styles.overlap,
-            { backgroundColor: theme.colors.primarySurface, borderColor: ring },
+            { backgroundColor: neo.selectedTint, borderColor: ring },
           ]}
         >
-          <Text style={[styles.txt, { color: theme.colors.primary }]}>{ini}</Text>
+          <Text style={[styles.txt, { color: ink.accent }]}>{ini}</Text>
         </View>
       ))}
       {overflow > 0 && (
@@ -42,12 +48,10 @@ export const MemberAvatars = memo(function MemberAvatars({
           style={[
             styles.av,
             styles.overlap,
-            { backgroundColor: theme.colors.surfaceMuted, borderColor: ring },
+            { backgroundColor: neo.well, borderColor: ring },
           ]}
         >
-          <Text style={[styles.txt, { color: theme.colors.textMuted }]}>
-            +{overflow}
-          </Text>
+          <Text style={[styles.txt, { color: neo.text }]}>+{overflow}</Text>
         </View>
       )}
     </View>
@@ -65,5 +69,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   overlap: { marginLeft: -7 },
-  txt: { fontSize: 9, fontWeight: '900' },
+  txt: { fontSize: 9, fontWeight: '900', fontFamily: nunitoFamily('900') },
 })

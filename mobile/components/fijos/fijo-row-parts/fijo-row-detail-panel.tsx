@@ -20,6 +20,7 @@ import {
   trendState,
 } from './fijo-row-helpers'
 import type { AccentPalette } from './fijo-row-styling'
+import { nunitoFamily } from '@/theme/typography'
 
 type FijoStatus = 'paid' | 'overdue' | 'pending' | 'future'
 
@@ -536,11 +537,13 @@ const styles = StyleSheet.create({
   statsEyebrow: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.2,
   },
   statsValue: {
     fontSize: 26,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     fontVariant: ['tabular-nums'],
   },
@@ -553,11 +556,13 @@ const styles = StyleSheet.create({
   statsPctText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   section: { gap: 6 },
   sectionEyebrow: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
     marginBottom: 2,
   },
@@ -575,9 +580,10 @@ const styles = StyleSheet.create({
   trendCopyMain: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
-  trendCopySub: { fontSize: 11, fontWeight: '500' },
+  trendCopySub: { fontSize: 11, fontWeight: '500', fontFamily: nunitoFamily('500') },
   payCtaRow: { marginTop: 10, marginBottom: 2 },
   actionDelete: {
     flexDirection: 'row',
@@ -596,7 +602,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
   },
-  actionSecondaryText: { fontSize: 13, fontWeight: '700' },
+  actionSecondaryText: { fontSize: 13, fontWeight: '700', fontFamily: nunitoFamily('700') },
   actionRevertContent: {
     flexDirection: 'row',
     alignItems: 'center',

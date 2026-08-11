@@ -6,6 +6,7 @@ import {
   PreviewPhoneSection,
   PreviewSectionLabel,
 } from '@/screens/dev/redesign/redesign-preview-shared'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Preview dev-only de las partículas (port Skia de particles.js) en
@@ -92,6 +93,7 @@ const styles = StyleSheet.create({
   heroLabel: {
     fontSize: 11.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
     color: 'rgba(240,248,230,0.85)',
   },

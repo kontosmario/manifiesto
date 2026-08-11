@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { freeAccessBadgeLabel } from '@/features/billing/free-access-nudge'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Banner informativo del período libre (estado de cuenta — NUNCA "prueba" ni
@@ -65,6 +66,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   text: { flex: 1 },
-  title: { fontSize: 12, fontWeight: '800' },
-  subtitle: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+  title: { fontSize: 12, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  subtitle: { fontSize: 10, fontWeight: '600', fontFamily: nunitoFamily('600'), marginTop: 1 },
 })

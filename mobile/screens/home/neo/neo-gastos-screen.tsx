@@ -66,6 +66,7 @@ import {
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   SectionList,
@@ -84,7 +85,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { Screen } from '@/components/ui/screen'
 import { SCROLL_EDGE_THRESHOLD } from '@/components/ui/screen-edge-effect'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
 import {
   CycleDropdown,
@@ -117,6 +118,8 @@ import {
 import { RiseViewGate } from '@/components/home/animated/rise-view'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useThemeMode } from '@/theme/theme-provider'
+import { categorySwatch } from '@/components/gastos/category-pastel'
+import { EditGastoSheet } from '@/components/gastos/edit-gasto-sheet'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
 import { GASTOS_DAYS_PER_PAGE } from '@/features/gastos/use-gastos-endpoints'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
@@ -154,6 +157,7 @@ import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import {
   useDeleteExpense,
   useRecentExpenses,
+  useUpdateExpense,
   type Expense,
 } from '@/features/expenses/use-expenses'
 import { loadExpenses } from '@/features/expenses/expense-repository'
@@ -195,6 +199,7 @@ import { toast } from '@/lib/toast-bus'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
+import { nunitoFamily } from '@/theme/typography'
 
 // Signo menos del kit (U+2212, no el guión ASCII) — matchea los montos del
 // handoff (`−$61.200`) y el total de día (`−$73.700`).
@@ -564,10 +569,17 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
   // (feed, ciclo vacío, ciclo cerrado) — antes vivía dentro del árbol
   // del feed y las ramas vacías retornaban antes de montarlo.
   const [edgeActive, setEdgeActive] = useState(false)
+  // El inferior arranca en true: la lista de movimientos desborda desde
+  // el primer render y su `onScroll` no dispara en el montaje, así que
+  // esperar al primer gesto dejaría la franja sin material justo en la
+  // pantalla donde más se nota. Las ramas sin contenido lo apagan en su
+  // primer layout.
+  const [bottomEdgeActive, setBottomEdgeActive] = useState(true)
 
   return (
     <Screen
       backgroundColor={s.bg}
+      bottomEdgeActive={bottomEdgeActive}
       contentContainerStyle={styles.screenBody}
       edgeActive={edgeActive}
       ownInsets
@@ -576,9 +588,12 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
       <RiseViewGate skip={reduceMotion}>
       {snapshot.error && !snapshot.data ? (
         <View style={styles.errorWrap}>
-          <ErrorState
+          <NeoStateBlock
+            icon="error-outline"
             description={getErrorMessage(snapshot.error, t('states:error.server'))}
             title={t('gastos:errors.loadTitle')}
+            actionLabel={t('states:errorState.action')}
+            tone="error"
             onAction={() => {
               void snapshot.refetch()
             }}
@@ -597,6 +612,7 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
       ) : (
         <NeoGastosContent
           onEdgeActiveChange={setEdgeActive}
+          onBottomEdgeActiveChange={setBottomEdgeActive}
           userId={userId}
           familyId={familyId}
           mode={mode}
@@ -632,7 +648,15 @@ function NeoGastosSkeleton({ mode, label }: { mode: GastosMode; label: string })
       accessibilityLabel={label}
     >
       <View style={styles.skelHeaderRow}>
-        <View style={[styles.skelCyclePill, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+        {/* Columna izquierda = título (lineHeight 40) + trigger de ciclo
+            (marginTop 6 + 18) del `GastosHeader` real: sin la placa del título
+            el header medía 46 y el feed saltaba 18pt al resolver. */}
+        <View>
+          <View style={styles.skelTitleSlot}>
+            <View style={[styles.skelTitle, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+          </View>
+          <View style={[styles.skelCyclePill, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+        </View>
         <View
           style={[
             styles.skelBrot,
@@ -654,15 +678,17 @@ function NeoGastosSkeleton({ mode, label }: { mode: GastosMode; label: string })
           <View key={i} style={[styles.skelChip, { backgroundColor: s.bg, boxShadow: s.ins }]} />
         ))}
       </View>
-      {[0, 1, 2].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.skelRow,
-            { backgroundColor: s.movRowBackground, boxShadow: s.movRowShadow },
-          ]}
-        />
-      ))}
+      <View style={styles.skelRows}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={[
+              styles.skelRow,
+              { backgroundColor: s.movRowBackground, boxShadow: s.movRowShadow },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   )
 }
@@ -766,6 +792,9 @@ interface NeoGastosContentProps {
   /** Reporta al shell si hay contenido pasando por debajo del safe area
    *  superior (el shell se lo pasa al `Screen`, que monta el material). */
   onEdgeActiveChange: (active: boolean) => void
+  /** Ídem para el safe area INFERIOR: true mientras quede recorrido de
+   *  lista por debajo del viewport. */
+  onBottomEdgeActiveChange: (active: boolean) => void
   /** Dashboard del hogar (mismo objeto que computa el outer) — lo consumen la
    *  orquestación del cierre y las sheets de confirmación (F5). */
   dashboard: FamilyDashboard
@@ -797,6 +826,9 @@ interface MovementRowProps {
   isDeleting: boolean
   onDeleteExpense: (id: string) => void
   onDeleteIncome: (id: string) => void
+  /** Edición del gasto EN el feed (long-press de la fila). Los ingresos no la
+   *  reciben: su escritura vive en su propio alta. */
+  onEditExpense: (expense: Expense) => void
   /** v2 · M-3 — nota bajo la fila cuando el movimiento quedó FUERA del ciclo.
    *  Sale de `t()` en la pantalla (el kit es `@i18n-ignore-file`) y solo la
    *  reciben las filas del feed con un día fuera en foco. */
@@ -822,6 +854,7 @@ const MovementRow = memo(function MovementRow({
   isDeleting,
   onDeleteExpense,
   onDeleteIncome,
+  onEditExpense,
   outNote,
 }: MovementRowProps) {
   // FIX E (perf) · `onDelete` y `actions` ERAN literales nuevos en cada render.
@@ -848,15 +881,29 @@ const MovementRow = memo(function MovementRow({
     ],
     [t, onDelete],
   )
+  // El long-press abre la edición del gasto sin sacar al usuario del feed. No
+  // compite con el swipe (el pan pide 10px de desplazamiento para activarse) ni
+  // con el tap, que en esta fila no tiene acción.
+  const onEdit = useCallback(() => {
+    if (item.kind !== 'expense') return
+    onEditExpense(item.expense)
+  }, [item, onEditExpense])
   const a11yActions = useMemo(
-    () => [{ name: 'delete', label: t('common:actions.delete') }],
-    [t],
+    () =>
+      isExpense
+        ? [
+            { name: 'edit', label: t('common:actions.edit') },
+            { name: 'delete', label: t('common:actions.delete') },
+          ]
+        : [{ name: 'delete', label: t('common:actions.delete') }],
+    [isExpense, t],
   )
   const handleA11yAction = useCallback(
     (event: { nativeEvent: { actionName: string } }) => {
       if (event.nativeEvent.actionName === 'delete') onDelete()
+      else if (event.nativeEvent.actionName === 'edit') onEdit()
     },
-    [onDelete],
+    [onDelete, onEdit],
   )
 
   let row: MovRowVM
@@ -918,14 +965,29 @@ const MovementRow = memo(function MovementRow({
     >
       <SwipeRow
         accessibilityLabel={a11yLabel}
-        accessibilityHint={t('gastos:movementRow.swipeToDeleteHint')}
+        accessibilityHint={
+          isExpense
+            ? t('gastos:movementRow.editOrDeleteHint')
+            : t('gastos:movementRow.swipeToDeleteHint')
+        }
         accessibilityActions={a11yActions}
         onAccessibilityAction={handleA11yAction}
         rightActions={actions}
         isProcessing={isDeleting}
         borderRadius={GASTOS_RADII.row}
+        skin="neo"
       >
-        <GastosMovRow mode={mode} row={row} flat />
+        {/* `accessible={false}`: el nodo que lee el lector sigue siendo el
+            SwipeRow (con su label compuesto y sus acciones); este Pressable
+            sólo agrega el gesto. Sin gasto no se monta — un ingreso no se
+            edita desde acá. */}
+        {isExpense ? (
+          <Pressable accessible={false} onLongPress={onEdit}>
+            <GastosMovRow mode={mode} row={row} flat />
+          </Pressable>
+        ) : (
+          <GastosMovRow mode={mode} row={row} flat />
+        )}
       </SwipeRow>
     </View>
   )
@@ -961,6 +1023,7 @@ function areMovementRowPropsEqual(
     prev.memberById !== next.memberById ||
     prev.onDeleteExpense !== next.onDeleteExpense ||
     prev.onDeleteIncome !== next.onDeleteIncome ||
+    prev.onEditExpense !== next.onEditExpense ||
     // v2 · M-3 — sin esto la nota "queda fuera del ciclo" quedaría pegada (o
     // ausente) al entrar/salir del foco de un día fuera: la memo compara por
     // contenido y `outNote` no aparecía en ningún lado.
@@ -1009,6 +1072,7 @@ function NeoGastosContent({
   mode,
   preview,
   onEdgeActiveChange,
+  onBottomEdgeActiveChange,
   dashboard,
   isSalaryPendingConfirmation,
   confirmCycleStartingBalance,
@@ -1136,16 +1200,30 @@ function NeoGastosContent({
   // tour cuando está activo para no montar dos onScroll en la lista
   // (prop nuevo = lista invalidada, ver nota de perf de abajo).
   const edgeActiveRef = useRef(false)
+  const bottomEdgeActiveRef = useRef(false)
   const isTourActiveRef = useRef(false)
-  const handleListScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y
-    const next = y > SCROLL_EDGE_THRESHOLD
-    if (edgeActiveRef.current !== next) {
-      edgeActiveRef.current = next
-      onEdgeActiveChange(next)
-    }
-    if (isTourActiveRef.current) tourBindingRef.current?.onScroll(event)
-  }, [onEdgeActiveChange])
+  const handleListScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+      const y = contentOffset.y
+      const next = y > SCROLL_EDGE_THRESHOLD
+      if (edgeActiveRef.current !== next) {
+        edgeActiveRef.current = next
+        onEdgeActiveChange(next)
+      }
+      // Simétrico del de arriba: material mientras quede recorrido por
+      // debajo. La lista trae sus propios insets (`ownInsets`), así que
+      // el Screen no ve este scroll y el booleano se lo pasamos nosotros.
+      const hiddenBelow = contentSize.height - layoutMeasurement.height - y
+      const nextBottom = hiddenBelow > SCROLL_EDGE_THRESHOLD
+      if (bottomEdgeActiveRef.current !== nextBottom) {
+        bottomEdgeActiveRef.current = nextBottom
+        onBottomEdgeActiveChange(nextBottom)
+      }
+      if (isTourActiveRef.current) tourBindingRef.current?.onScroll(event)
+    },
+    [onEdgeActiveChange, onBottomEdgeActiveChange],
+  )
   // PERF (jank de scroll) · el `onScroll` del tour se CABLEA solo mientras el
   // tour corre. Antes iba siempre: un callback JS despachado por frame en TODO
   // scroll, de por vida, para mantener un ref que solo lee el TourHost. El
@@ -1264,7 +1342,7 @@ function NeoGastosContent({
     return normaliseCategoryBreakdown(selectedEdition.category_breakdown)
       .slice(0, 3)
       .map((c) => ({
-        color: c.color ?? '#888',
+        color: categorySwatch(c.name ?? '', mode === 'dark'),
         name: c.name
           ? localizeCategoryNameByName(c.name, 'expense')
           : t('gastos:movementRow.noCategory'),
@@ -1272,7 +1350,7 @@ function NeoGastosContent({
         value: `${formatMoney(Math.round(c.total))} · ${Math.round(c.pct)}%`,
         pct: c.pct,
       }))
-  }, [selectedEdition, t])
+  }, [selectedEdition, mode, t])
   // v2 · DS-6 — el calendario de una edición cerrada pasa a ser TAPPABLE: el
   // total por día ya estaba persistido en `daily_totals` y hasta v1 la grilla
   // lo pintaba sin dejar leerlo. El día elegido se guarda por número de día
@@ -1619,13 +1697,13 @@ function NeoGastosContent({
   const heroCategories = useMemo<HeroCategory[]>(
     () =>
       controller.cycleTopCategories.map((c) => ({
-        color: c.color,
+        color: categorySwatch(c.rawName, mode === 'dark'),
         name: c.label,
         // Mismo formato que la vieja (CategoryWeightsList): "$X · N%".
         value: `${formatMoney(c.amount)} · ${c.percent}%`,
         pct: c.percent,
       })),
-    [controller.cycleTopCategories],
+    [controller.cycleTopCategories, mode],
   )
 
   // ── Filtro por categoría: capa de mapeo índice↔category_id ──────────
@@ -1957,6 +2035,63 @@ function NeoGastosContent({
     },
     // Sin deleteIncomeMutation en deps (se lee por ref): identidad ESTABLE.
     [preview, familyId, t, trackTap],
+  )
+
+  // ── Edición del gasto EN el feed (long-press de la fila) ───────────
+  // La mutación es la MISMA que ya usaba el editor del historial retirado
+  // (`useUpdateExpense`): patchea las caches paginadas en el onMutate, así que
+  // la fila se corrige sola sin esperar el round-trip, y su onError ya avisa
+  // con toast + reintento.
+  const updateExpenseMutation = useUpdateExpense(familyId, userId)
+  // Mismo motivo que las delete (FIX A): el objeto de RQ v5 es literal nuevo
+  // por render; leerlo por ref mantiene ESTABLE el handler que baja a la fila.
+  const updateExpenseMutationRef = useRef(updateExpenseMutation)
+  updateExpenseMutationRef.current = updateExpenseMutation
+  // `token` versiona la sesión de edición: es la `key` de la hoja, así que
+  // abrir otro movimiento la remonta con sus valores. La sesión sobrevive al
+  // cierre para que la hoja tenga contenido mientras corre su salida.
+  const [editSession, setEditSession] = useState<{
+    expense: Expense
+    token: number
+  } | null>(null)
+  const [isEditOpen, setEditOpen] = useState(false)
+  const editTokenRef = useRef(0)
+
+  const handleEditExpense = useCallback(
+    (expense: Expense) => {
+      void triggerHaptic('selection')
+      trackTap('gasto_row_edit', 'list')
+      editTokenRef.current += 1
+      setEditSession({ expense, token: editTokenRef.current })
+      setEditOpen(true)
+    },
+    [trackTap],
+  )
+
+  const handleCloseEdit = useCallback(() => setEditOpen(false), [])
+
+  const handleSubmitEdit = useCallback(
+    (payload: { description: string; price: number }) => {
+      const expenseId = editSession?.expense.id
+      if (!expenseId) return
+      // En preview NO escribimos datos reales (la vieja está montada sobre el
+      // mismo cache): la hoja se cierra y la mutación queda no-op.
+      if (preview) {
+        setEditOpen(false)
+        return
+      }
+      updateExpenseMutationRef.current.mutate(
+        { description: payload.description, expenseId, price: payload.price },
+        {
+          onError: () => void triggerHaptic('error'),
+          onSuccess: () => {
+            void triggerHaptic('success')
+            setEditOpen(false)
+          },
+        },
+      )
+    },
+    [editSession, preview],
   )
 
   // ── No-spend mark / registrar-olvidado (F3, NO-OP en preview) ──────
@@ -2629,6 +2764,7 @@ function NeoGastosContent({
           isDeleting={isDeleting}
           onDeleteExpense={handleDeleteExpense}
           onDeleteIncome={handleDeleteIncome}
+          onEditExpense={handleEditExpense}
           outNote={outRowNote}
         />
       )
@@ -2641,6 +2777,7 @@ function NeoGastosContent({
       memberById,
       handleDeleteExpense,
       handleDeleteIncome,
+      handleEditExpense,
       deletingExpenseId,
       deletingIncomeId,
       outRowNote,
@@ -3228,6 +3365,26 @@ function NeoGastosContent({
     />
   )
 
+  // Hoja de edición del gasto — sólo se monta sobre el feed vivo (la edición
+  // cerrada es de lectura). La `key` versiona la sesión: abrir otro movimiento
+  // remonta el formulario con sus valores.
+  const editSheet = editSession ? (
+    <EditGastoSheet
+      key={`edit-gasto-${editSession.token}`}
+      amount={Math.abs(Number(editSession.expense.price ?? 0))}
+      categoryName={controller.categoriesById.get(editSession.expense.category_id)?.name}
+      categorySeed={
+        controller.categoriesById.get(editSession.expense.category_id)?.rawName ??
+        controller.categoriesById.get(editSession.expense.category_id)?.name
+      }
+      description={editSession.expense.description ?? ''}
+      isSaving={updateExpenseMutation.isPending}
+      onCancel={handleCloseEdit}
+      onSubmit={handleSubmitEdit}
+      visible={isEditOpen}
+    />
+  ) : null
+
   // Feed con un día FUERA en foco → muestra solo ese día (sin la paginación del
   // ciclo). Sino, las day-groups normales del controller.
   const feedSections = isOutDayFocused ? outDaySections : sections
@@ -3370,9 +3527,12 @@ function NeoGastosContent({
   ) {
     return (
       <View style={styles.errorWrap}>
-        <ErrorState
+        <NeoStateBlock
+          icon="error-outline"
           description={getErrorMessage(controller.error, t('states:error.server'))}
           title={t('gastos:errors.loadTitle')}
+          actionLabel={t('states:errorState.action')}
+          tone="error"
           onAction={() => {
             void controller.refetchAll()
           }}
@@ -3706,6 +3866,7 @@ function NeoGastosContent({
       />
     </View>
     {confirmSheets}
+    {editSheet}
     </>
   )
 }
@@ -3715,7 +3876,7 @@ const styles = StyleSheet.create({
   // no-scrollable solo provee el canvas (sin padding/gap propios).
   screenBody: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, gap: 0 },
   // screenBody pisa el padding default del Screen (para que skeleton/feed/vacíos
-  // manejen el suyo, 20/14). Las ramas de ErrorState no scrollean, así que se
+  // manejen el suyo, 20/14). Las ramas de error no scrollean, así que se
   // padean acá para no quedar pegadas a los bordes ni al safe-area top.
   errorWrap: { flex: 1, paddingHorizontal: 20, justifyContent: 'center' },
   list: { flex: 1 },
@@ -3729,16 +3890,23 @@ const styles = StyleSheet.create({
   skeletonStack: { paddingHorizontal: 20, paddingTop: 14, gap: 16 },
   skelHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  skelCyclePill: { width: 150, height: 26, borderRadius: GASTOS_RADII.chip },
-  skelBrot: { width: 46, height: 46, borderRadius: GASTOS_RADII.brotBtn },
+  // Alto de la caja del título real (fontSize 34 / lineHeight 40).
+  skelTitleSlot: { height: 40, justifyContent: 'center' },
+  skelTitle: { width: 140, height: 28, borderRadius: GASTOS_RADII.chip },
+  skelCyclePill: { width: 150, height: 18, borderRadius: GASTOS_RADII.chip, marginTop: 6 },
+  // 44 = `brotDisc` del header real (antes 46).
+  skelBrot: { width: 44, height: 44, borderRadius: GASTOS_RADII.brotBtn },
   skelHero: { height: 168, borderRadius: GASTOS_RADII.hero },
   skelCalendar: { height: 300, borderRadius: GASTOS_RADII.card },
   skelFilterRow: { flexDirection: 'row', gap: 10 },
   skelChip: { width: 92, height: 40, borderRadius: GASTOS_RADII.chip },
-  skelRow: { height: 62, borderRadius: GASTOS_RADII.row },
+  // 68 = paddingVertical 12×2 + tile 44 de `GastosMovRow`; 10 = el `movRows`
+  // gap del kit, que es también el `rowShadowWrap marginTop` del feed vivo.
+  skelRows: { gap: 10 },
+  skelRow: { height: 68, borderRadius: GASTOS_RADII.row },
   // Encabezado de grupo-día (rhythm del kit: ~14px entre grupos).
   sectionHeaderWrap: { marginTop: 14 },
   // Fila: wrapper de sombra sin overflow (radius = fila) para que el SwipeRow no
@@ -3752,7 +3920,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 18,
   },
-  footerText: { fontSize: 12, fontWeight: '700' },
+  footerText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   footerEnd: { alignItems: 'center', paddingVertical: 20 },
-  footerEndText: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.8 },
+  footerEndText: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.8 },
 })

@@ -17,6 +17,7 @@ import type { NextFixedFallback } from '@/components/home/home-next-fixed-fallba
 import { pickMaterialIconForCategory } from '@/features/gastos/category-icons'
 import { formatMoneyShort } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface MonthSummaryCardProps {
   data: HomeMonthSummary
@@ -577,6 +578,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     flexShrink: 1,
@@ -584,6 +586,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 28,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.8,
     lineHeight: 32,
   },
@@ -604,6 +607,7 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     fontVariant: ['tabular-nums'],
   },
   // Mini-warning peach de "cobro pendiente" — mismo lenguaje que el
@@ -630,6 +634,7 @@ const styles = StyleSheet.create({
   cobroWarnText: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.2,
   },
   bandRegion: {
@@ -661,11 +666,13 @@ const styles = StyleSheet.create({
   bandPrimary: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.1,
   },
   bandSecondary: {
     fontSize: 11,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     fontVariant: ['tabular-nums'],
   },
 })

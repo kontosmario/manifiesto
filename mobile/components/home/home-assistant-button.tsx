@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HomeAssistantButtonProps {
   onPress?: () => void
@@ -137,6 +138,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     color: '#FFFBF2',  // V1 cream — AA on accent-700 burgundy (6.07:1)
     letterSpacing: -0.2,
   },

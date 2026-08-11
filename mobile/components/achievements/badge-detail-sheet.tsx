@@ -3,13 +3,15 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import {
   achievementBody,
   achievementTitle,
   formatEarnedDate,
   tierShort,
-  tierTone,
 } from '@/features/achievements/achievement-tiers'
+import { tierTone } from '@/components/achievements/tier-tone'
 import {
   AchievementIcon,
   hasAchievementIcon,
@@ -22,7 +24,8 @@ import {
   hasFilledAchievementIcon,
 } from '@/components/achievements/achievement-icon-filled'
 import type { AchievementViewItem } from '@/features/achievements/use-achievements'
-import { radii } from '@/theme/palette'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface BadgeDetailSheetProps {
@@ -37,6 +40,7 @@ interface BadgeDetailSheetProps {
  */
 export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
   const { theme } = useAppTheme()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const visible = badge != null
   // Cachea la medalla (ref en render) para que el body sobreviva la animación
@@ -46,27 +50,29 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
   const b = badge ?? cachedRef.current
 
   if (!b) {
-    return <ModalCard visible={false} title="" subtitle="" onClose={onClose} />
+    return <ModalCard skin="neo" visible={false} title="" subtitle="" onClose={onClose} />
   }
 
-  const tone = tierTone(b.tier, theme.isDark)
+  const tone = tierTone(b.tier, theme.mode)
   const earned = b.earned
 
   return (
-    <ModalCard visible={visible} title="" subtitle="" onClose={onClose}>
+    <ModalCard skin="neo" visible={visible} title="" subtitle="" onClose={onClose}>
       <View style={styles.center}>
-        <View
+        <NeoSurface
+          backgroundColor={earned ? tone.fill : neo.well}
+          radius={neoRadii.card}
           style={[
             styles.iconWrap,
-            earned
-              ? { backgroundColor: tone.bg, borderColor: tone.border }
-              : {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
-                },
+            {
+              // El pozo del estado bloqueado se dibuja SÓLO con sombra
+              // inset: en Android < 29 se descarta en silencio y el
+              // medallón desaparecería contra la hoja.
+              borderWidth: !earned && !SUPPORTS_INSET_SHADOW ? 1 : 0,
+              borderColor: neo.sheetDivider,
+            },
           ]}
+          variant={earned ? 'raisedSm' : 'insetSm'}
         >
           {hasFilledAchievementIcon(b.code) ? (
             <View style={styles.iconDisc}>
@@ -76,67 +82,54 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
             <View
               style={[
                 styles.iconDisc,
-                {
-                  backgroundColor: earned
-                    ? '#FFFBF2'
-                    : theme.isDark
-                      ? 'rgba(255,255,255,0.05)'
-                      : 'rgba(28,58,35,0.05)',
-                },
+                // Bloqueado NO lleva disco: la silueta cae directo sobre el
+                // pozo (el disco crema es lo que celebra al ganado).
+                { backgroundColor: earned ? neo.heroText : 'transparent' },
               ]}
             >
               <AchievementIcon
                 code={b.code}
                 size={48}
-                stroke={earned ? ICON_FOREST : theme.colors.textMuted}
-                accent={earned ? ICON_CORAL : theme.colors.textMuted}
-                accentSoft={earned ? ICON_CORAL_SOFT : theme.colors.textMuted}
+                stroke={earned ? ICON_FOREST : neo.textMuted}
+                accent={earned ? ICON_CORAL : neo.textMuted}
+                accentSoft={earned ? ICON_CORAL_SOFT : neo.textMuted}
               />
             </View>
           ) : (
             <Text style={[styles.icon, !earned && styles.iconLocked]}>{b.icon}</Text>
           )}
           {!earned ? (
-            <View
-              style={[
-                styles.lockBadge,
-                {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceStrong
-                    : theme.colors.borderStrong,
-                },
-              ]}
-            >
-              <MaterialIcons name="lock" size={13} color="#FFFFFF" />
+            <View style={[styles.lockBadge, { backgroundColor: neo.sheetHandle }]}>
+              <MaterialIcons name="lock" size={13} color={neo.text} />
             </View>
           ) : null}
-        </View>
+        </NeoSurface>
 
         {earned ? (
-          <View style={[styles.tierPill, { backgroundColor: tone.bg, borderColor: tone.border }]}>
-            <Text style={[styles.tierPillText, { color: tone.fg }]}>
+          <View style={[styles.tierPill, { backgroundColor: tone.fill }]}>
+            <Text style={[styles.tierPillText, { color: tone.ink }]}>
               {tierShort(b.tier)}
             </Text>
           </View>
         ) : (
-          <Text style={[styles.lockedEyebrow, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.lockedEyebrow, { color: neo.textMuted }]}>
             {t('achievements:badgeDetail.locked')}
           </Text>
         )}
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>
+        <Text style={[styles.title, { color: neo.text }]}>
           {achievementTitle(b.code, b.title)}
         </Text>
-        <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.body, { color: neo.textMuted }]}>
           {achievementBody(b.code, b.body)}
         </Text>
 
         {earned ? (
-          <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
+          <Text style={[styles.footnote, { color: neo.textMuted }]}>
             {t('achievements:badgeDetail.unlockedOn', { date: formatEarnedDate(b.earned_at) })}
           </Text>
         ) : (
-          <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
+          <Text style={[styles.footnote, { color: neo.textMuted }]}>
             {t('achievements:badgeDetail.lockedHint')}
           </Text>
         )}
@@ -155,8 +148,6 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 96,
     height: 96,
-    borderRadius: radii['2xl'],
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -181,34 +172,38 @@ const styles = StyleSheet.create({
     right: 6,
     width: 24,
     height: 24,
-    borderRadius: radii.pill,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   tierPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: neoRadii.chip,
   },
   tierPillText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1,
   },
   lockedEyebrow: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
   },
   title: {
     fontSize: 20,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     textAlign: 'center',
   },
   body: {
     fontSize: 14,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 20,
     textAlign: 'center',
     paddingHorizontal: 8,
@@ -216,6 +211,7 @@ const styles = StyleSheet.create({
   footnote: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
     marginTop: 2,
   },

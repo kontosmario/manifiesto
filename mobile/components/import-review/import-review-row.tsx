@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
   type StyleProp,
@@ -12,13 +13,15 @@ import {
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
+  FadeIn,
+  FadeOut,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import i18n from '@/lib/i18n'
-import { useAppTheme } from '@/theme/theme-provider'
 import { motionDurations } from '@/lib/motion/tokens'
 import { AmountCard } from '@/components/home/amount-card'
 import {
@@ -30,11 +33,14 @@ import {
 } from '@/components/home/category-horizontal-rail'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { CategorySticker } from '@/components/category/category-sticker'
+import { EXPENSE_NOTES_MAX_LENGTH } from '@/features/expenses/expense-repository.model'
 import { INCOME_KINDS } from '@/features/income/income-kinds'
-import { NotesRow } from '@/components/home/notes-row'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { InAppNumpad } from '@/components/ui/in-app-numpad'
-import { TextField } from '@/components/ui/text-field'
+import { NeoTextField } from '@/components/ui/neo-text-field'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { cssGradient, neoRadii } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { parsePrice, serializePrice } from '@/utils/money'
 import { formatWeekdayDayMonth } from '@/utils/date-format'
 import type { Category } from '@/features/categories/use-categories'
@@ -44,6 +50,7 @@ import type {
   ReviewRowKind,
 } from '@/features/import-review/types'
 import { CycleDateSlider } from './cycle-date-slider'
+import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
   row: ReviewRow
@@ -73,8 +80,8 @@ interface Props {
  * collapsed/expanded state — the wizard shows one row at a time, so the
  * form is always fully visible. Skipped rows show a slim "saltado"
  * confirmation card with a restore action; everything else renders the
- * shared add-expense-family form (AmountCard + InAppNumpad + TextField
- * + NotesRow + CycleDateSlider).
+ * shared add-expense-family form (AmountCard + InAppNumpad +
+ * NeoTextField + nota + CycleDateSlider).
  */
 export function ImportReviewRow({
   row,
@@ -88,7 +95,7 @@ export function ImportReviewRow({
   onPatch,
   onUnskip,
 }: Props) {
-  const { theme } = useAppTheme()
+  const { neo, ink, softInk, wellFallback } = useImportReviewNeo()
   const { t } = useTranslation()
   const [numpadVisible, setNumpadVisible] = useState(false)
   // `isFlagged` becomes true the first time the parent bumps
@@ -122,33 +129,38 @@ export function ImportReviewRow({
       <View
         style={[
           styles.skipCard,
-          {
-            backgroundColor: theme.colors.surfaceMuted,
-            borderColor: theme.colors.line,
-          },
+          { backgroundColor: neo.well, boxShadow: neo.shadows.insetLg },
+          wellFallback,
         ]}
       >
-        <View style={styles.skipHeader}>
-          <MaterialIcons name="block" size={18} color={theme.colors.textMuted} />
-          <Text
-            style={[styles.skipLabel, { color: theme.colors.textMuted }]}
-            numberOfLines={2}
-          >
+        <View
+          style={[
+            styles.skipChip,
+            { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm },
+            wellFallback,
+          ]}
+        >
+          <MaterialIcons name="block" size={14} color={softInk} />
+          <Text style={[styles.skipLabel, { color: softInk }]} numberOfLines={1}>
             {t('gastos:import.row.skipped')}
           </Text>
         </View>
-        <Text
-          style={[styles.skipDescription, { color: theme.colors.text }]}
-          numberOfLines={2}
-        >
+        <Text style={[styles.skipDescription, { color: neo.text }]} numberOfLines={2}>
           {row.description}
         </Text>
         <PressScale
           onPress={onUnskip}
           accessibilityLabel={t('gastos:import.row.restoreMovement')}
-          style={[styles.restoreBtn, { borderColor: theme.colors.line }]}
+          style={[
+            styles.restoreBtn,
+            {
+              ...cssGradient(neo.raisedGradientCss, neo.surface),
+              boxShadow: neo.shadows.raisedSm,
+            },
+          ]}
         >
-          <Text style={[styles.restoreLabel, { color: theme.colors.primary }]}>
+          <MaterialIcons name="restore" size={16} color={ink.accent} />
+          <Text style={[styles.restoreLabel, { color: ink.accent }]}>
             {t('gastos:import.row.restoreMovement')}
           </Text>
         </PressScale>
@@ -181,22 +193,7 @@ export function ImportReviewRow({
     // lento (animación frecuente). El slide del stepHost ya lleva la entrada;
     // gateamos el stagger interno (skip = render al estado final, layout intacto).
     <RiseViewGate skip>
-    <View
-      style={[
-        styles.expanded,
-        {
-          backgroundColor: theme.isDark
-            ? theme.colors.surfaceMuted
-            : theme.colors.creamCard,
-          // Card border stays neutral always. We surface validation
-          // state at the field level (border tint on the specific
-          // unfilled inputs) instead of painting the whole expanded
-          // panel red — the user pushed back on that pattern as
-          // "invasivo y visualmente horrible".
-          borderColor: theme.colors.line,
-        },
-      ]}
-    >
+    <View style={styles.form}>
       <RiseView delay={0}>
         <KindToggle kind={row.kind} onChange={onSetKind} />
       </RiseView>
@@ -211,14 +208,14 @@ export function ImportReviewRow({
           warning={flagAmount}
         />
         {row.source.origin === 'ocr' && row.source.appliedRate !== null ? (
-          <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.hint, { color: softInk }]}>
             {`${row.source.transaction.primaryAmount.value} ${row.source.originalCurrency} @ $${row.source.appliedRate}`}
           </Text>
         ) : null}
       </RiseView>
 
       <RiseView delay={120} style={styles.rhythmTop}>
-        <TextField
+        <NeoTextField
           label={t('gastos:import.row.description')}
           value={row.description}
           onChangeText={(next) => onPatch({ description: next })}
@@ -234,10 +231,10 @@ export function ImportReviewRow({
       <RiseView delay={180}>
         <View style={styles.field}>
           <View style={styles.dateLabelRow}>
-            <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.label, { color: neo.textMuted }]}>
               {t('gastos:import.row.date')}
             </Text>
-            <Text style={[styles.dateValue, { color: theme.colors.text }]}>
+            <Text style={[styles.dateValue, { color: neo.text }]}>
               {formatDayLabel(row.date)}
             </Text>
           </View>
@@ -268,7 +265,7 @@ export function ImportReviewRow({
       </RiseView>
 
       <RiseView delay={300}>
-        <NotesRow
+        <NotesWell
           notes={row.notes ?? ''}
           onChange={(next) => onPatch({ notes: next === '' ? null : next })}
         />
@@ -278,10 +275,7 @@ export function ImportReviewRow({
         <RiseView delay={360}>
           <View style={styles.warnings}>
             {infoWarnings.map((w) => (
-              <Text
-                key={w}
-                style={[styles.warning, { color: theme.colors.textMuted }]}
-              >
+              <Text key={w} style={[styles.warning, { color: ink.warn }]}>
                 {warningLabel(w)}
               </Text>
             ))}
@@ -359,41 +353,122 @@ function KindToggle({
   kind: ReviewRowKind
   onChange: (kind: ReviewRowKind) => void
 }) {
-  const { theme } = useAppTheme()
   const { t } = useTranslation()
-  const options: ReadonlyArray<{ key: ReviewRowKind; label: string }> = [
-    { key: 'expense', label: t('common:terms.expense') },
-    { key: 'income', label: t('gastos:import.incomeKind.incomeLabel') },
+  const options = [
+    { value: 'expense' as const, label: t('common:terms.expense') },
+    { value: 'income' as const, label: t('gastos:import.incomeKind.incomeLabel') },
   ]
   return (
-    <View style={styles.toggleRow}>
-      {options.map((opt) => {
-        const active = opt.key === kind
-        return (
+    <SegmentedControl
+      skin="neo"
+      options={options}
+      value={kind === 'skip' ? 'expense' : kind}
+      onChange={(next) => onChange(next)}
+    />
+  )
+}
+
+/**
+ * Nota opcional del movimiento. Colapsada por defecto —un solo chip
+ * "+ Agregar nota"— porque la mayoría de los movimientos importados no la
+ * necesitan; expandida es un POZO con contador, el mismo material que el
+ * resto de los campos del paso.
+ */
+function NotesWell({
+  notes,
+  onChange,
+}: {
+  notes: string
+  onChange: (value: string) => void
+}) {
+  const { neo, ink, softInk, wellFallback } = useImportReviewNeo()
+  const { t } = useTranslation()
+  // Auto-expand cuando ya hay nota escrita (p.ej. al volver a este paso).
+  const [expanded, setExpanded] = useState(notes.length > 0)
+
+  const handleCollapse = () => {
+    if (notes.length > 0) onChange('')
+    setExpanded(false)
+  }
+
+  const remaining = EXPENSE_NOTES_MAX_LENGTH - notes.length
+  const counterTone = remaining < 50 ? ink.danger : softInk
+
+  return (
+    <Animated.View layout={LinearTransition.duration(motionDurations.standard)} style={styles.notesRoot}>
+      {!expanded ? (
+        <Animated.View
+          entering={FadeIn.duration(motionDurations.quick)}
+          exiting={FadeOut.duration(motionDurations.micro)}
+        >
           <PressScale
-            key={opt.key}
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(opt.key)}
+            onPress={() => setExpanded(true)}
+            accessibilityLabel={t('home:notesRow.addAccessibility')}
             style={[
-              styles.toggleBtn,
+              styles.notesChip,
               {
-                backgroundColor: active ? theme.colors.primary : 'transparent',
-                borderColor: active ? theme.colors.primary : theme.colors.line,
+                ...cssGradient(neo.raisedGradientCss, neo.surface),
+                boxShadow: neo.shadows.raisedSm,
               },
             ]}
           >
-            <Text
-              style={[
-                styles.toggleLabel,
-                { color: active ? theme.colors.textOnPrimary : theme.colors.text },
-              ]}
-            >
-              {opt.label}
+            <MaterialIcons name="edit-note" size={18} color={neo.text} />
+            <Text style={[styles.notesChipLabel, { color: neo.text }]}>
+              {t('home:notesRow.addLabel')}
+            </Text>
+            <Text style={[styles.notesChipHint, { color: softInk }]}>
+              {t('home:notesRow.optional')}
             </Text>
           </PressScale>
-        )
-      })}
-    </View>
+        </Animated.View>
+      ) : (
+        <Animated.View
+          entering={FadeIn.duration(motionDurations.standard)}
+          exiting={FadeOut.duration(motionDurations.micro)}
+          style={styles.notesExpanded}
+        >
+          <View style={styles.notesHeaderRow}>
+            <Text style={[styles.label, { color: neo.textMuted }]}>
+              {t('home:notesRow.noteLabel')}
+            </Text>
+            <Pressable
+              onPress={handleCollapse}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={t('home:notesRow.closeAccessibility')}
+              style={({ pressed }) => [{ opacity: pressed ? 0.5 : 1 }]}
+            >
+              <MaterialIcons name="close" size={16} color={neo.textMuted} />
+            </Pressable>
+          </View>
+          {/* El material del pozo vive en el wrapper: `wellFallback` es un
+              ViewStyle y el `style` de un TextInput sólo acepta TextStyle. */}
+          <View
+            style={[
+              styles.notesWell,
+              { backgroundColor: neo.well, boxShadow: neo.shadows.insetLg },
+              wellFallback,
+            ]}
+          >
+            <TextInput
+              value={notes}
+              onChangeText={onChange}
+              placeholder={t('home:notesRow.placeholder')}
+              placeholderTextColor={neo.textMuted}
+              selectionColor={neo.green}
+              multiline
+              numberOfLines={3}
+              maxLength={EXPENSE_NOTES_MAX_LENGTH}
+              textAlignVertical="top"
+              style={[styles.notesInput, { color: neo.text }]}
+            />
+          </View>
+          <Text style={[styles.notesCounter, { color: counterTone }]}>
+            {notes.length}/{EXPENSE_NOTES_MAX_LENGTH}
+          </Text>
+        </Animated.View>
+      )}
+    </Animated.View>
   )
 }
 
@@ -505,55 +580,55 @@ function warningLabel(w: ReviewRow['warnings'][number]): string {
   }
 }
 
+// El `fontFamily` viaja con el peso: cada peso de Nunito es un face estático
+// propio, así que sin él el 800/900 se renderiza como regular.
 const styles = StyleSheet.create({
-  expanded: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 12,
+  form: {
     gap: 10,
   },
   skipCard: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: neoRadii.cardSm,
     padding: 18,
     gap: 10,
     alignItems: 'flex-start',
   },
-  skipHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  skipChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: neoRadii.chip,
+  },
   skipLabel: {
-    fontSize: 10,
-    fontWeight: '900',
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  skipDescription: { fontSize: 16, fontWeight: '700', letterSpacing: -0.2 },
+  skipDescription: {
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.2,
+  },
   restoreBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 44,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: neoRadii.pill,
     alignSelf: 'flex-start',
     marginTop: 4,
   },
-  restoreLabel: { fontSize: 12, fontWeight: '800' },
-  // KindToggle takes the upper width but is purely a binary choice —
-  // cap its width so it doesn't dominate the form. Centered to keep
-  // visual balance with the AmountCard below.
-  toggleRow: {
-    flexDirection: 'row',
-    gap: 4,
-    alignSelf: 'stretch',
+  restoreLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
-  toggleBtn: {
-    flex: 1,
-    minHeight: 44,
-    paddingVertical: 11,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  toggleLabel: { fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
   field: { gap: 6 },
   rhythmTop: { marginTop: 6 },
   dateLabelRow: {
@@ -561,14 +636,74 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  dateValue: { fontSize: 13, fontWeight: '700' },
+  dateValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+  },
   label: {
     fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-  hint: { fontSize: 11, fontWeight: '500', marginTop: 6 },
+  hint: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    marginTop: 6,
+  },
   warnings: { gap: 4 },
-  warning: { fontSize: 11, fontWeight: '600' },
+  warning: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
+  notesRoot: { gap: 8 },
+  notesChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: neoRadii.pill,
+  },
+  notesChipLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.2,
+  },
+  notesChipHint: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
+  notesExpanded: { gap: 6 },
+  notesHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  notesWell: {
+    minHeight: 88,
+    borderRadius: neoRadii.input,
+  },
+  notesInput: {
+    minHeight: 88,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
+  notesCounter: {
+    alignSelf: 'flex-end',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
 })

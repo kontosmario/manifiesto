@@ -69,7 +69,7 @@ export interface Onb5dSpec {
 
 export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
   light: {
-    sectionLabel: '#6C7B67',
+    sectionLabel: '#54644F',
     cardGradientCss: ONB_SURFACES.light.cardGradientCss,
     cardFallback: '#E4E6D8',
     cardShadowStrong: ONB_SURFACES.light.cardShadow,
@@ -84,7 +84,7 @@ export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
     tileIdleGridShadow:
       '5px 5px 10px rgba(151,160,136,0.35), -5px -5px 10px rgba(255,255,255,0.85)',
     tileIdleTitle: '#24382A',
-    tileIdleSub: '#6C7B67',
+    tileIdleSub: '#54644F',
     tileIconSelectedBg: '#F0EFE3',
     tileIconFijoBg: '#F2ECC9',
     tileIconVariableBg: '#D4EBDF',
@@ -95,7 +95,7 @@ export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
     infoCircleShadow:
       'inset 3px 3px 6px rgba(90,110,70,0.18), inset -3px -3px 6px rgba(255,255,255,0.85)',
     infoText: '#24382A',
-    montoKicker: '#6C7B67',
+    montoKicker: '#54644F',
     montoEdit: '#2E7C39',
     montoAmount: '#24382A',
     stepperMinusGradientCss: 'linear-gradient(145deg, #F3F4E9, #E0E3D4)',
@@ -106,7 +106,7 @@ export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
     stepperPlusShadow: '0 8px 16px rgba(46,116,52,0.35), inset 0 2px 3px rgba(255,255,255,0.3)',
     stepperPlusIcon: '#F5F2E1',
     stepperValue: '#24382A',
-    stepperUnit: '#6C7B67',
+    stepperUnit: '#54644F',
     dayIdleBg: undefined,
     dayIdleShadow:
       'inset 2px 2px 5px rgba(151,160,136,0.3), inset -2px -2px 5px rgba(255,255,255,0.8)',

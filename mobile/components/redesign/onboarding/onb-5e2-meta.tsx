@@ -197,7 +197,7 @@ interface Onb5e2Spec {
 const SPEC_5E2: Record<OnbMode, Onb5e2Spec> = {
   light: {
     ...ONB_SURFACES.light,
-    label: '#6C7B67',
+    label: '#54644F',
     body: '#3E5A44',
     accent: '#2E7C39',
     autoBadge: '#9AA694',

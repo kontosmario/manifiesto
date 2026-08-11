@@ -37,6 +37,13 @@ interface CollapsingRevealProps {
  * fade → el layout normal hace que lo de abajo se deslice hacia arriba sin
  * salto. La altura natural se mide una vez (onLayout) y se anima `altura ×
  * progress`; `overflow: hidden` recorta el contenido mientras encoge.
+ *
+ * RESTRICCIÓN — el hijo NO puede llevar sombra propia: el `overflow: hidden`
+ * es obligatorio para colapsar la altura y recorta todo lo que se dibuje fuera
+ * del rectángulo, así que una `boxShadow` outset (y más aún el glow blanco del
+ * neumorfismo) queda cortada en seco y se lee como un halo cuadrado alrededor
+ * del contenido. Si el contenido necesita sombra, tiene que vivir FUERA:
+ * envolver ESTE componente en un wrapper que la lleve, no el hijo.
  */
 export function CollapsingReveal({
   visible,

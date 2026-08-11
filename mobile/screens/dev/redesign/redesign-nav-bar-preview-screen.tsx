@@ -15,6 +15,7 @@ import {
   PreviewHomeIndicator,
   PreviewPhoneSection,
 } from '@/screens/dev/redesign/redesign-preview-shared'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Preview dev-only de la NAV NUEVA extraída (`NeoTabBarLive`), el visual
@@ -150,9 +151,11 @@ const styles = StyleSheet.create({
   labelTitle: {
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   labelSource: {
     fontSize: 11.5,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

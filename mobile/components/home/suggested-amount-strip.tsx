@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useFijosSkin, FIJOS_SHADOW_BLEED } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface SuggestedAmountStripProps {
   amounts: number[]
@@ -139,5 +140,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
 })

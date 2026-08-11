@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ProtectionDismissRowProps {
   onPress: () => void
@@ -50,6 +51,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textDecorationLine: 'underline',
   },
 })

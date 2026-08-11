@@ -7,6 +7,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface FamilyMember {
   id: string
@@ -71,7 +72,7 @@ export const FamilyStrip = memo(function FamilyStrip({ members, daysUntilPayday,
               ) : null}
             </View>
             <Text style={[styles.familyLabel, { color: theme.colors.textMuted }]}>
-              {t('home:familyStrip.membersLabel')} <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{members.length}</Text>
+              {t('home:familyStrip.membersLabel')} <Text style={{ color: theme.colors.text, fontWeight: '700', fontFamily: nunitoFamily('700') }}>{members.length}</Text>
             </Text>
           </>
         ) : null}
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
   avatars: { flexDirection: 'row' },
   avatarSlot: {},
   overflow: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
-  overflowText: { fontSize: 10, fontWeight: '700' },
+  overflowText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700') },
   familyLabel: { fontSize: 12 },
   spacer: { flex: 1 },
 })

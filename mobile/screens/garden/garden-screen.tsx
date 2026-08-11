@@ -1,18 +1,25 @@
 import { useCallback, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'expo-router'
 import { Screen } from '@/components/ui/screen'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { FernMark } from '@/components/billing/fern-mark'
+import { BrotMascot } from '@/components/brot'
+import { ChevronBackIcon } from '@/components/redesign/auth/auth-icons'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { GardenHero } from '@/components/garden/garden-hero'
 import { GardenGrid } from '@/components/garden/garden-grid'
 import { WeekCloseBanner } from '@/components/garden/week-close-banner'
 import { WeekCloseCelebration } from '@/components/garden/week-close-celebration'
+import { GARDEN_GEOMETRY } from '@/components/redesign/garden/garden-spec'
 import { useGarden } from '@/features/garden/use-garden'
 import { triggerHaptic } from '@/lib/haptics'
-import { DARK_TAB_CANVAS } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { motionStagger } from '@/lib/motion'
+import { buildMinimumTouchTargetHitSlop } from '@/theme/interaction'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface GardenScreenProps {
   familyId: string
@@ -28,8 +35,11 @@ interface GardenScreenProps {
  * `_advance_streak_internal` (Case 3) y el cron `cron_emit_streak_broken`.
  */
 export function GardenScreen({ familyId, userId }: GardenScreenProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
   const { t } = useTranslation()
+  const router = useRouter()
   const { data } = useGarden(familyId, userId)
   const [showWeekClose, setShowWeekClose] = useState(false)
 
@@ -38,106 +48,132 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
     setShowWeekClose(true)
   }, [])
 
+  const handleBack = useCallback(() => {
+    void triggerHaptic('selection')
+    router.back()
+  }, [router])
+
   return (
     <>
-    <Screen
-      backgroundColor={theme.isDark ? DARK_TAB_CANVAS : undefined}
-      title={t('garden:screen.title')}
-      subtitle={t('garden:screen.subtitle')}
-      canGoBack
-      rightSlot={
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: theme.isDark ? 'rgba(166,239,143,0.16)' : '#FFFFFF' },
-          ]}
-        >
-          <FernMark variant={theme.isDark ? 'mint' : 'forest'} size={24} />
-        </View>
-      }
-      bodyStyle={styles.body}
-      backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
-    >
-      {data && (
-        <>
-          <RiseView delay={0} translateY={0} duration={400}>
-            <GardenHero
-              streak={data.currentStreak}
-              total={data.totalDaysLogged}
-              record={data.longestStreak}
-              seeds={data.freezeTokens}
-            />
-          </RiseView>
-          {data.weekCloseAvailable && (
-            <RiseView delay={75} translateY={0} duration={400}>
-              <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
-            </RiseView>
-          )}
-          <RiseView delay={150} translateY={0} duration={400}>
-            <View
-              style={[
-                styles.gardenCard,
-                {
-                  backgroundColor: theme.isDark
-                    ? theme.colors.surfaceMuted
-                    : theme.colors.creamCard,
-                  borderColor: theme.colors.line,
-                },
-              ]}
-            >
-              <View style={styles.gardenHeader}>
-                <Text style={[styles.gardenTitle, { color: theme.colors.text }]}>
-                  {t('garden:card.title')}
-                </Text>
-                <Text style={[styles.gardenMeta, { color: theme.colors.textSoft }]}>
-                  {data.weeksShown <= 1
-                    ? t('garden:card.firstWeek')
-                    : t('garden:card.weeksShown', { count: data.weeksShown })}
-                </Text>
-              </View>
-              <View style={styles.gridWrap}>
-                <GardenGrid cells={data.cells} />
-              </View>
-            </View>
-          </RiseView>
-          <RiseView delay={225} translateY={0} duration={400}>
-            <Text style={[styles.footnote, { color: theme.colors.textSoft }]}>
-              {t('garden:screen.footnote')}
+      <Screen backgroundColor={neo.bg} bodyStyle={styles.body}>
+        <View style={styles.header}>
+          <Pressable
+            accessibilityLabel={t('common:actions.back')}
+            accessibilityRole="button"
+            hitSlop={buildMinimumTouchTargetHitSlop(GARDEN_GEOMETRY.backSize)}
+            onPress={handleBack}
+            style={({ pressed }) => [
+              styles.back,
+              neoMaterial(theme.mode, pressed && SUPPORTS_INSET_SHADOW ? 'insetSm' : 'raisedMd'),
+              pressed && !SUPPORTS_INSET_SHADOW ? styles.pressedFlat : null,
+            ]}
+          >
+            <ChevronBackIcon color={neo.text} />
+          </Pressable>
+          <View style={styles.headerText}>
+            <Text style={[styles.title, { color: neo.text }]}>{t('garden:screen.title')}</Text>
+            <Text style={[styles.subtitle, { color: neo.textMuted }]}>
+              {t('garden:screen.subtitle')}
             </Text>
-          </RiseView>
-        </>
+          </View>
+          <BrotMascot pose="wave" size={GARDEN_GEOMETRY.headerBrotSize} shadow={false} />
+        </View>
+
+        {data && (
+          <>
+            <RiseView delay={0}>
+              <GardenHero
+                streak={data.currentStreak}
+                total={data.totalDaysLogged}
+                record={data.longestStreak}
+                seeds={data.freezeTokens}
+              />
+            </RiseView>
+            {data.weekCloseAvailable && (
+              <RiseView delay={motionStagger.section}>
+                <WeekCloseBanner weekClose={data.weekClose} onPress={handleOpenWeekClose} />
+              </RiseView>
+            )}
+            <RiseView delay={motionStagger.section * 2}>
+              <View style={[styles.gardenCard, neoMaterial(theme.mode, 'raisedLg')]}>
+                <View style={styles.gardenHeader}>
+                  <Text style={[styles.gardenTitle, { color: neo.text }]}>
+                    {t('garden:card.title')}
+                  </Text>
+                  <Text style={[styles.gardenMeta, { color: ink.accent }]}>
+                    {data.weeksShown <= 1
+                      ? t('garden:card.firstWeek')
+                      : t('garden:card.weeksShown', { count: data.weeksShown })}
+                  </Text>
+                </View>
+                <View style={styles.gridWrap}>
+                  <GardenGrid cells={data.cells} />
+                </View>
+              </View>
+            </RiseView>
+            <RiseView delay={motionStagger.section * 3}>
+              <Text style={[styles.footnote, { color: neo.textMuted }]}>
+                {t('garden:screen.footnote')}
+              </Text>
+            </RiseView>
+          </>
+        )}
+      </Screen>
+      {showWeekClose && data && (
+        <WeekCloseCelebration
+          weekClose={data.weekClose}
+          onContinue={() => setShowWeekClose(false)}
+        />
       )}
-    </Screen>
-    {showWeekClose && data && (
-      <WeekCloseCelebration
-        weekClose={data.weekClose}
-        onContinue={() => setShowWeekClose(false)}
-      />
-    )}
     </>
   )
 }
 
 const styles = StyleSheet.create({
   body: {
-    gap: 12,
+    gap: 16,
     paddingBottom: 28,
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  back: {
+    width: GARDEN_GEOMETRY.backSize,
+    height: GARDEN_GEOMETRY.backSize,
+    borderRadius: neoRadii.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 3px 10px rgba(28,58,35,0.08)',
+  },
+  pressedFlat: {
+    opacity: 0.82,
+  },
+  headerText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    // En iOS la baseline cae a `lineHeight − descent` del tope de la caja. Con
+    // el 1.05 del mockup web quedaban 0.697em de alto útil y una minúscula
+    // acentuada de Nunito 900 sube 0.788em: la tilde de "jardín" salía cortada.
+    lineHeight: 30 * 1.2,
+    letterSpacing: -0.6,
+  },
+  subtitle: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    marginTop: 2,
   },
   gardenCard: {
-    borderRadius: 28,
+    borderRadius: GARDEN_GEOMETRY.cardRadius,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingHorizontal: 18,
-    paddingBottom: 10,
-    borderWidth: 1,
-    boxShadow: '0 6px 24px rgba(28,58,35,0.07)',
+    paddingBottom: 14,
   },
   gardenHeader: {
     flexDirection: 'row',
@@ -146,18 +182,22 @@ const styles = StyleSheet.create({
   },
   gardenTitle: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   gardenMeta: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   gridWrap: {
     marginTop: 12,
   },
   footnote: {
-    fontSize: 12.5,
-    lineHeight: 18.75,
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 18.6,
     textAlign: 'center',
     paddingHorizontal: 10,
   },

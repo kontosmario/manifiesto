@@ -2,8 +2,7 @@ import type { ViewStyle } from 'react-native'
 import type { ResolvedThemeMode } from './palette'
 
 /**
- * Rediseño 2026-07 — tokens neumórficos ("Rediseño Manifiesto app
- * neumórfico", Claude Design 0892036b). Fuente canónica:
+ * Rediseño 2026-07 — tokens neumórficos. Fuente canónica:
  * design/rediseno-2026-07/handoff-README.md (spec final de tokens) +
  * screens/*.html (markup literal por pantalla).
  *
@@ -89,8 +88,28 @@ export interface NeoTokens {
   sheetDivider: string
   /** Fondo de pozos hundidos (en claro = bg; en oscuro #142519). */
   well: string
-  /** Jerarquía de texto (4 niveles del handoff). */
+  /**
+   * Jerarquía de texto (4 niveles del handoff). Sólo los dos primeros son
+   * tintas de TEXTO: `textTertiary` y `textDim` dan 1.87:1 y 2.05:1 sobre
+   * `bg` en claro, así que valen para placeholders, glifos de relleno y
+   * separadores, nunca para una línea que haya que leer.
+   */
   text: string
+  /**
+   * Segundo nivel de lectura: eyebrows, helpers, subtítulos, footnotes,
+   * labels de hero, metadatos de fila.
+   *
+   * En claro NO es el `#6C7B67` que escribe el handoff. Ese valor da
+   * 3.32:1 sobre `bg`, 3.49:1 sobre el peor stop del material raised y
+   * 3.89:1 sobre `sheet` — bajo el 4.5:1 que AA exige para los 11-12px en
+   * los que este token se usa. El valor de acá es el MISMO salvia (hue
+   * Lab 137, croma 14.5 contra 13.2 del original) un escalón más oscuro,
+   * y llega a ≥4.67:1 contra todas las superficies claras del
+   * vocabulario. Volver al hex del handoff reintroduce la falla.
+   *
+   * En oscuro el valor del handoff sí pasa (5.20:1 en el peor caso) y se
+   * conserva tal cual.
+   */
   textMuted: string
   textTertiary: string
   textDim: string
@@ -162,7 +181,7 @@ const lightNeo: NeoTokens = {
   sheetDivider:   'rgba(151,160,136,0.25)',
   well:           '#E9EBE0',
   text:           '#24382A',
-  textMuted:      '#6C7B67',
+  textMuted:      '#54644F',
   textTertiary:   '#9AA694',
   textDim:        '#8FA089',
   green:          '#2E7C39',
@@ -177,7 +196,13 @@ const lightNeo: NeoTokens = {
   heroGreen:      '#C9F3C6',
   heroPeach:      '#FBD9BC',
   heroLabel:      'rgba(240,248,230,0.85)',
-  ctaGradient:    ['#63B168', '#2E7434'],
+  // El foco del radial NO es el `#63B168` del handoff: con la tinta crema
+  // encima ese stop da 2.33:1 y el label (bold 16) no llega ni al 3:1 de
+  // texto grande. `#489350` es el valor más claro de la familia que pasa
+  // con margen (3.36:1) conservando el degradé. El tema oscuro no aplica:
+  // ahí la receta se invierte (tinta casi negra sobre verde claro) y su
+  // punto flojo, el borde, ya da 3.48:1.
+  ctaGradient:    ['#489350', '#2E7434'],
   ctaText:        '#F5F2E1',
   selectedTint:   'rgba(46,124,57,0.1)',
   shadows:        lightShadows,

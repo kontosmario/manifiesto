@@ -29,6 +29,7 @@ import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useFijosSkin, type FijosNeoSkin } from '@/components/fijos/fijos-skin'
 import { resolveFijosCategoryTone } from '@/components/fijos/fijos-category-palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -427,6 +428,7 @@ const styles = StyleSheet.create({
   calendarCellNum: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   calendarCellEmoji: {
     textAlign: 'center',
@@ -448,17 +450,20 @@ const styles = StyleSheet.create({
   calendarCellDayBadgeText: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     color: '#0A1410',
   },
   calendarFoot: {
     marginTop: 12,
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   calendarFootPrompt: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
 })

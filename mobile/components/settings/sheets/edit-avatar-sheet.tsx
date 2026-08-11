@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
 import {
   AVATAR_SLUGS,
   isAvatarSlug,
   type AvatarSlug,
 } from '@/assets/avatars'
 import { useTranslation } from 'react-i18next'
-import { StepAvatar } from '@/components/home/onboarding/step-avatar'
-import { AppButton } from '@/components/ui/button'
+import { OnbSheetAvatarPicker } from '@/components/settings/sheets/onb-sheet-parts'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 
 interface EditAvatarSheetProps {
   visible: boolean
@@ -52,8 +51,10 @@ export function EditAvatarSheet({
       title={t('settings:editAvatar.title')}
       visible={visible}
       footer={
-        <AppButton
+        <NeoButton
+          block
           disabled={!hasChanged}
+          haptic="light"
           label={t('settings:editAvatar.save')}
           loading={isSaving}
           onPress={() => {
@@ -63,13 +64,7 @@ export function EditAvatarSheet({
         />
       }
     >
-      <View style={styles.stack}>
-        <StepAvatar selected={draft} onSelect={setDraft} />
-      </View>
+      <OnbSheetAvatarPicker selected={draft} onSelect={setDraft} />
     </ModalCard>
   )
 }
-
-const styles = StyleSheet.create({
-  stack: { gap: 16 },
-})

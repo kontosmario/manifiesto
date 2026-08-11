@@ -2,16 +2,23 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import {
+  BillingStatusChip,
+  useRaisedFallback,
+} from '@/components/billing/billing-neo-kit'
 import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
 import { formatDate } from '@/features/billing/membership-state'
-import { getStateTokens } from '@/theme/state-tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Integrantes del hogar que usan el plan: avatar + nombre + desde cuándo se
- * unió, con badge para el dueño. Misma superficie calma que las cards de
- * Ajustes (surfaceMuted oscuro / creamCard claro + borde line). El dueño va
- * primero; el resto por antigüedad.
+ * unió, con chip para el dueño. Grupo `raisedLg` con el hairline de lista del
+ * vocabulario, igual que la card de detalle. El dueño va primero; el resto por
+ * antigüedad.
  */
 export interface HouseholdMembersListProps {
   familyId?: string
@@ -20,8 +27,11 @@ export interface HouseholdMembersListProps {
 export const HouseholdMembersList = memo(function HouseholdMembersList({
   familyId,
 }: HouseholdMembersListProps) {
-  const { theme } = useAppTheme()
+  const mode = useThemeTokens().mode
+  const neo = neoTokens(mode)
+  const ink = neoInk(mode)
   const { t } = useTranslation()
+  const flatFallback = useRaisedFallback()
   const { data: members } = useFamilyMembersDetail(familyId)
   if (!members || members.length === 0) return null
 
@@ -30,27 +40,13 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
     return (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '')
   })
 
-  const ownerPill = getStateTokens('positive', theme)
-
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.isDark
-            ? theme.colors.surfaceMuted
-            : theme.colors.creamCard,
-          borderColor: theme.colors.line,
-        },
-      ]}
+    <NeoSurface
+      radius={neoRadii.card}
+      style={[styles.card, flatFallback]}
+      variant="raisedLg"
     >
-      <Text
-        style={[
-          theme.typography.eyebrow,
-          styles.heading,
-          { color: theme.colors.textMuted },
-        ]}
-      >
+      <Text style={[styles.heading, { color: neo.textMuted }]}>
         {t('billing:members.heading')}
       </Text>
       {sorted.map((m, i) => (
@@ -58,66 +54,59 @@ export const HouseholdMembersList = memo(function HouseholdMembersList({
           key={m.userId}
           style={[
             styles.row,
-            i > 0 && {
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: theme.colors.border,
+            i < sorted.length - 1 && {
+              borderBottomWidth: 1.5,
+              borderBottomColor: neo.sheetDivider,
             },
           ]}
         >
           {m.avatarSlug ? (
-            <AvatarAnimal slug={m.avatarSlug} size={34} />
+            <AvatarAnimal size={34} slug={m.avatarSlug} />
           ) : (
             <View
-              style={[
-                styles.fallback,
-                { backgroundColor: theme.colors.primarySurface },
-              ]}
+              style={[styles.fallback, { backgroundColor: neo.selectedTint }]}
             >
-              <Text style={[styles.fallbackText, { color: theme.colors.primary }]}>
+              <Text style={[styles.fallbackText, { color: ink.accent }]}>
                 {(m.displayName || '?').trim().charAt(0).toUpperCase() || '?'}
               </Text>
             </View>
           )}
           <View style={styles.mid}>
             <Text
-              style={[styles.name, { color: theme.colors.text }]}
               numberOfLines={1}
+              style={[styles.name, { color: neo.text }]}
             >
               {m.displayName || t('billing:members.fallbackName')}
             </Text>
-            <Text style={[styles.sub, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.sub, { color: neo.textMuted }]}>
               {m.joinedAt
                 ? t('billing:members.joinedOn', { date: formatDate(m.joinedAt) })
                 : t('billing:members.inHousehold')}
             </Text>
           </View>
           {m.isOwner ? (
-            <View
-              style={[
-                styles.pill,
-                { backgroundColor: ownerPill.bg, borderColor: ownerPill.border },
-              ]}
-            >
-              <Text style={[styles.pillText, { color: ownerPill.fg }]}>
-                {t('billing:members.owner')}
-              </Text>
-            </View>
+            <BillingStatusChip label={t('billing:members.owner')} tone="active" />
           ) : null}
         </View>
       ))}
-    </View>
+    </NeoSurface>
   )
 })
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 11,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
   },
-  heading: { textTransform: 'uppercase', marginTop: 9, marginBottom: 3 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  heading: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginTop: 13,
+    marginBottom: 4,
+  },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   fallback: {
     width: 34,
     height: 34,
@@ -125,15 +114,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fallbackText: { fontSize: 14, fontWeight: '800' },
-  mid: { flex: 1, gap: 1 },
-  name: { fontSize: 13, fontWeight: '800' },
-  sub: { fontSize: 11, fontWeight: '600' },
-  pill: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  fallbackText: {
+    fontSize: 14,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
-  pillText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
+  mid: { flex: 1, gap: 2 },
+  name: {
+    fontSize: 14,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+  },
+  sub: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+  },
 })

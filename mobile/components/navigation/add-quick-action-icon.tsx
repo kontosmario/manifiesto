@@ -201,7 +201,7 @@ export function AddQuickActionIcon({
           style={[
             styles.scanBar,
             scanStyle,
-            { backgroundColor: color, shadowColor: color },
+            { backgroundColor: color, boxShadow: `0 0 6px ${withAlpha(color, 0.8)}` },
           ]}
         />
       ) : null}
@@ -258,10 +258,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: 2,
     borderRadius: 999,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 6,
   },
   pulseRing: {
     position: 'absolute',

@@ -22,23 +22,36 @@ import {
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { triggerHaptic } from '@/lib/haptics'
+import { motionDurations, motionStagger } from '@/lib/motion/tokens'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { useControlActionDispatcher } from '@/features/insights/use-control-action-dispatcher'
+import { BrotMascot } from '@/components/brot/brot-mascot'
+import { NeoButton } from '@/components/ui/neo-button'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { iconForSignal } from '@/components/control-v2/asesor-signal-meta'
 import { getActionMeta, resolveCtaLabel } from '@/components/control-v2/asesor-action-meta'
 import {
-  TYPE_TONES,
   bubbleHeadline,
+  bubbleIntro,
   bubbleType,
   confidenceLabel,
   impactChipLabel,
 } from '@/components/control-v2/asesor-bubble-meta'
+import {
+  starColors,
+  starOpacityScale,
+  typeInk,
+  typeTileBackground,
+} from '@/components/control-v2/asesor-neo-meta'
+import { AsesorStarField } from '@/components/control-v2/asesor-star-field'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface CoachModeScreenProps {
   familyId: string
@@ -49,13 +62,19 @@ interface CoachModeScreenProps {
   topic?: string
 }
 
-const SHELL_GRADIENT = ['#0F2A1E', '#143B2A', '#0A1410'] as const
-
 const TOPIC_TITLE_KEYS: Record<string, string> = {
   crisis: 'control:coach.topicCrisis',
   leaks: 'control:coach.topicLeaks',
 }
 
+/**
+ * La pantalla hereda el tema del sistema: se compone con el material de
+ * `neoTokens(mode)` y se ve en claro "Salvia" y en oscuro "Noche de
+ * bosque". El vocabulario es el mismo que el del Asistente —misma
+ * familia de señales, misma lectura— con el narrador de `screens/3f.html`
+ * arriba: Brot en pose `coach` a 104 y su globo `22 22 22 6` con la
+ * receta de card.
+ */
 export function CoachModeScreen({
   familyId,
   userId,
@@ -65,6 +84,9 @@ export function CoachModeScreen({
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { t } = useTranslation()
+  const themeTokens = useThemeTokens()
+  const neo = neoTokens(themeTokens.mode)
+  const isDark = themeTokens.mode === 'dark'
   const { signals } = useControlV2Data(familyId, userId)
   const dispatch = useControlActionDispatcher({ familyId, userId })
 
@@ -89,8 +111,6 @@ export function CoachModeScreen({
 
   const onPrimaryAction = useCallback(() => {
     if (!task?.action) return
-    const meta = getActionMeta(task.action)
-    void triggerHaptic(meta.haptic)
     dispatch(task.action, {
       taskId: task.id,
       surface: 'asistente_screen',
@@ -108,27 +128,65 @@ export function CoachModeScreen({
     topic && TOPIC_TITLE_KEYS[topic]
       ? t(TOPIC_TITLE_KEYS[topic])
       : t('control:coach.headerDefault')
-  const tone = task ? TYPE_TONES[bubbleType(task)] : TYPE_TONES.insight
+  const type = task ? bubbleType(task) : 'insight'
+  const accent = typeInk(type, themeTokens.mode)
+  const actionMeta = task?.action ? getActionMeta(task.action) : null
+  const ctaLabel = task ? resolveCtaLabel(task.cta, task.action) : ''
+
+  // Android < API 28 descarta el boxShadow outset (y < 29 el inset) EN
+  // SILENCIO: sin el relieve, las cards y los pozos se quedarían sin
+  // ningún límite contra la hoja, así que ahí cae un hairline del
+  // separador. Ver `inset-shadow-support`.
+  const edgeFallback = {
+    borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+    borderColor: neo.sheetDivider,
+  }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={SHELL_GRADIENT}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={StyleSheet.absoluteFill}
+    // Carcasa de hoja: sólido `neo.sheet`. Sin esquinas superiores
+    // redondeadas ni `shadows.sheet` — es una ruta con
+    // `presentation:'modal'`, el sistema ya redondea y proyecta la
+    // tarjeta y un radio propio dejaría ver el vacío del presentador.
+    <View style={[styles.root, { backgroundColor: neo.sheet }]}>
+      <AsesorStarField
+        count={18}
+        colors={starColors(neo, isDark)}
+        opacityScale={starOpacityScale(isDark)}
       />
-      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}>
+
+      <View
+        style={[
+          styles.grabHandleArea,
+          // iOS modal already inset by the system; Android card needs
+          // the regular safe area top.
+          { paddingTop: Platform.OS === 'ios' ? 8 : insets.top + 8 },
+        ]}
+        pointerEvents="none"
+      >
+        <View style={[styles.grabHandle, { backgroundColor: neo.sheetHandle }]} />
+      </View>
+
+      <View style={styles.topBar}>
         <Pressable
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={t('control:coach.closeA11y')}
           hitSlop={10}
-          style={styles.closeButton}
+          style={({ pressed }) => [
+            styles.closeButton,
+            {
+              backgroundColor: neo.surface,
+              boxShadow: neo.shadows.raisedSm,
+              opacity: pressed ? 0.85 : 1,
+            },
+            edgeFallback,
+          ]}
         >
-          <MaterialIcons name="close" size={22} color="#E6F0E2" />
+          <MaterialIcons name="close" size={19} color={neo.textMuted} />
         </Pressable>
-        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <Text style={[styles.topBarTitle, { color: neo.textMuted }]} numberOfLines={1}>
+          {headerTitle.toUpperCase()}
+        </Text>
         <View style={styles.closeButton} />
       </View>
 
@@ -140,47 +198,118 @@ export function CoachModeScreen({
         showsVerticalScrollIndicator={false}
       >
         {!task ? (
-          <Animated.View entering={FadeIn.duration(220)} style={styles.emptyCard}>
-            <MaterialIcons name="info-outline" size={28} color="#9FBFA9" />
-            <Text style={styles.emptyTitle}>{t('control:coach.emptyTitle')}</Text>
-            <Text style={styles.emptyBody}>
+          <Animated.View
+            entering={FadeIn.duration(motionDurations.standard)}
+            style={[
+              styles.emptyCard,
+              cssGradient(neo.raisedGradientCss, neo.surface),
+              { boxShadow: neo.shadows.raisedLg },
+              edgeFallback,
+            ]}
+          >
+            <BrotMascot pose="worried" size={96} shadow={false} />
+            <Text style={[styles.emptyTitle, { color: neo.text }]}>
+              {t('control:coach.emptyTitle')}
+            </Text>
+            <Text style={[styles.emptyBody, { color: neo.text }]}>
               {t('control:coach.emptyBody')}
             </Text>
-            <Pressable
+            <NeoButton
+              label={t('control:coach.emptyCta')}
               onPress={onClose}
+              size="compact"
+              // `onClose` ya dispara el suyo — sin esto suena doble.
+              haptic="none"
               style={styles.emptyCta}
-              accessibilityRole="button"
-            >
-              <Text style={styles.emptyCtaLabel}>{t('control:coach.emptyCta')}</Text>
-            </Pressable>
+            />
           </Animated.View>
         ) : (
           <>
+            {/* Narrador: Brot cuenta la señal antes de la ficha. */}
             <Animated.View
-              entering={FadeIn.duration(280)}
-              style={[styles.heroCard, { backgroundColor: tone.soft, borderColor: tone.edge }]}
+              entering={FadeIn.duration(motionDurations.standard)}
+              style={styles.narratorRow}
             >
-              <View style={[styles.heroIconWrap, { backgroundColor: tone.bg }]}>
-                <MaterialIcons
-                  name={iconForSignal(task.id)}
-                  size={28}
-                  color={tone.fg}
-                />
-              </View>
-              <Text style={[styles.heroEyebrow, { color: tone.fg }]}>
-                {bubbleHeadline(task)}
-              </Text>
-              <Text style={styles.heroTitle}>{task.title}</Text>
-              <Text style={styles.heroBody}>{task.body}</Text>
-              <View style={styles.heroChips}>
-                <View style={[styles.chip, { borderColor: tone.edge }]}>
-                  <Text style={[styles.chipText, { color: tone.fg }]}>
-                    {impactChipLabel(task)}
+              <BrotMascot pose="coach" size={104} shadow={false} />
+              <View
+                style={[
+                  styles.bubble,
+                  cssGradient(neo.raisedGradientCss, neo.surface),
+                  { boxShadow: neo.shadows.raisedLg },
+                  edgeFallback,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.bubbleChip,
+                    { backgroundColor: neo.well, boxShadow: neo.shadows.insetMd },
+                    edgeFallback,
+                  ]}
+                >
+                  <MaterialIcons name="insights" size={12} color={accent} />
+                  <Text
+                    style={[styles.bubbleChipText, { color: accent }]}
+                    numberOfLines={1}
+                  >
+                    {confidenceLabel(task.confidence)}
                   </Text>
                 </View>
-                <View style={[styles.chip, { borderColor: tone.edge }]}>
-                  <Text style={[styles.chipText, { color: tone.fg }]}>
-                    {confidenceLabel(task.confidence)}
+                <Text style={[styles.bubbleLine, { color: neo.text }]}>
+                  {bubbleIntro(task)}
+                </Text>
+              </View>
+            </Animated.View>
+
+            <Animated.View
+              entering={FadeIn.duration(motionDurations.deliberate).delay(
+                motionStagger.section,
+              )}
+              style={[
+                styles.heroCard,
+                cssGradient(neo.raisedGradientCss, neo.surface),
+                { boxShadow: neo.shadows.raisedXl },
+                edgeFallback,
+              ]}
+            >
+              <View style={styles.heroHead}>
+                <View
+                  style={[
+                    styles.heroTile,
+                    {
+                      backgroundColor: typeTileBackground(type, isDark),
+                      boxShadow: neo.shadows.raisedSm,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name={iconForSignal(task.id)}
+                    size={24}
+                    color={neo.text}
+                  />
+                </View>
+                <Text
+                  style={[styles.heroEyebrow, { color: neo.textMuted }]}
+                  numberOfLines={2}
+                >
+                  {bubbleHeadline(task).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={[styles.heroTitle, { color: neo.text }]}>
+                {task.title}
+              </Text>
+              <Text style={[styles.heroBody, { color: neo.text }]}>
+                {task.body}
+              </Text>
+              <View style={styles.heroChips}>
+                <View
+                  style={[
+                    styles.impactChip,
+                    { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm },
+                    edgeFallback,
+                  ]}
+                >
+                  <Text style={[styles.impactChipText, { color: accent }]}>
+                    {impactChipLabel(task)}
                   </Text>
                 </View>
               </View>
@@ -188,69 +317,104 @@ export function CoachModeScreen({
 
             {constituents.length > 0 ? (
               <Animated.View
-                entering={FadeIn.duration(320).delay(80)}
-                style={styles.constituentsBlock}
+                entering={FadeIn.duration(motionDurations.deliberate).delay(
+                  motionStagger.section * 2,
+                )}
+                style={styles.section}
               >
-                <Text style={styles.sectionEyebrow}>{t('control:coach.compuestaPor')}</Text>
-                {constituents.map((c) => {
-                  const cTone = TYPE_TONES[bubbleType(c)]
-                  return (
+                <Text style={[styles.sectionEyebrow, { color: neo.textMuted }]}>
+                  {t('control:coach.compuestaPor').toUpperCase()}
+                </Text>
+                {constituents.map((c) => (
+                  <View
+                    key={c.id}
+                    style={[
+                      styles.constituentTile,
+                      {
+                        backgroundColor: neo.surface,
+                        boxShadow: neo.shadows.raisedSm,
+                      },
+                      edgeFallback,
+                    ]}
+                  >
                     <View
-                      key={c.id}
-                      style={[styles.constituentRow, { borderColor: cTone.edge }]}
+                      style={[
+                        styles.constituentTileIcon,
+                        {
+                          backgroundColor: typeTileBackground(
+                            bubbleType(c),
+                            isDark,
+                          ),
+                        },
+                      ]}
                     >
-                      <View style={[styles.constituentIcon, { backgroundColor: cTone.bg }]}>
-                        <MaterialIcons
-                          name={iconForSignal(c.id)}
-                          size={18}
-                          color={cTone.fg}
-                        />
-                      </View>
-                      <View style={styles.constituentText}>
-                        <Text style={styles.constituentTitle}>{c.title}</Text>
-                        <Text style={styles.constituentBody} numberOfLines={2}>
-                          {c.body}
-                        </Text>
-                      </View>
+                      <MaterialIcons
+                        name={iconForSignal(c.id)}
+                        size={17}
+                        color={neo.text}
+                      />
                     </View>
-                  )
-                })}
+                    <View style={styles.constituentText}>
+                      <Text
+                        style={[styles.constituentTitle, { color: neo.text }]}
+                        numberOfLines={2}
+                      >
+                        {c.title}
+                      </Text>
+                      <Text
+                        style={[styles.constituentBody, { color: neo.textMuted }]}
+                        numberOfLines={2}
+                      >
+                        {c.body}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
               </Animated.View>
             ) : (
               <Animated.View
-                entering={FadeIn.duration(320).delay(80)}
-                style={styles.explanationBlock}
+                entering={FadeIn.duration(motionDurations.deliberate).delay(
+                  motionStagger.section * 2,
+                )}
+                style={styles.section}
               >
-                <Text style={styles.sectionEyebrow}>{t('control:coach.porQueImporta')}</Text>
-                <Text style={styles.explanationBody}>
-                  {task.dummyExplanation ?? t('control:coach.explanationFallback')}
+                <Text style={[styles.sectionEyebrow, { color: neo.textMuted }]}>
+                  {t('control:coach.porQueImporta').toUpperCase()}
                 </Text>
+                <View
+                  style={[
+                    styles.explanationWell,
+                    { backgroundColor: neo.well, boxShadow: neo.shadows.insetLg },
+                    edgeFallback,
+                  ]}
+                >
+                  <Text style={[styles.explanationBody, { color: neo.text }]}>
+                    {task.dummyExplanation ?? t('control:coach.explanationFallback')}
+                  </Text>
+                </View>
               </Animated.View>
             )}
 
-            {task.action ? (
+            {task.action && actionMeta ? (
               <Animated.View
-                entering={FadeIn.duration(360).delay(140)}
+                entering={FadeIn.duration(motionDurations.deliberate).delay(
+                  motionStagger.section * 3,
+                )}
                 style={styles.ctaBlock}
               >
-                <Pressable
+                <NeoButton
+                  label={ctaLabel}
                   onPress={onPrimaryAction}
-                  accessibilityRole="button"
-                  accessibilityLabel={resolveCtaLabel(task.cta, task.action)}
-                  style={({ pressed }) => [
-                    styles.primaryCta,
-                    pressed && { opacity: 0.85 },
-                  ]}
-                >
-                  <Text style={styles.primaryCtaLabel}>
-                    {resolveCtaLabel(task.cta, task.action)}
-                  </Text>
-                  <MaterialIcons
-                    name={getActionMeta(task.action).icon}
-                    size={18}
-                    color="#0F2A1E"
-                  />
-                </Pressable>
+                  haptic={actionMeta.haptic}
+                  fullWidth
+                  icon={
+                    <MaterialIcons
+                      name={actionMeta.icon}
+                      size={18}
+                      color={neo.ctaText}
+                    />
+                  }
+                />
               </Animated.View>
             ) : null}
           </>
@@ -261,192 +425,224 @@ export function CoachModeScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  root: { flex: 1 },
+  // Grab handle (telegraphs swipe-down dismiss on iOS modals).
+  grabHandleArea: {
+    alignItems: 'center',
+    paddingBottom: 6,
+  },
+  grabHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: neoRadii.pill,
+  },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 10,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 38,
+    height: 38,
+    borderRadius: neoRadii.chip,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#E6F0E2',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+  topBarTitle: {
+    flexShrink: 1,
+    fontSize: 11.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 11.5 * 0.14,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    gap: 16,
+    paddingTop: 4,
+    gap: 18,
   },
-  heroCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
+  // ── Narrador (Brot coach + globo) ──────────────────────────────────
+  narratorRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 10,
   },
-  heroIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  bubble: {
+    flex: 1,
+    borderTopLeftRadius: neoRadii.pill,
+    borderTopRightRadius: neoRadii.pill,
+    borderBottomRightRadius: neoRadii.pill,
+    // La punta del globo apunta a Brot: la esquina que lo mira no se
+    // redondea (receta literal de `3f.html`).
+    borderBottomLeftRadius: 6,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 9,
+  },
+  bubbleChip: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 13,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  bubbleChipText: {
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.1,
+  },
+  bubbleLine: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    lineHeight: 20.3,
+    letterSpacing: -0.2,
+  },
+  // ── Ficha de la señal ──────────────────────────────────────────────
+  heroCard: {
+    borderRadius: neoRadii.card,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  heroHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heroTile: {
+    width: 52,
+    height: 52,
+    borderRadius: neoRadii.tile,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    flexShrink: 0,
   },
   heroEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    flex: 1,
+    fontSize: 11.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 11.5 * 0.14,
+    lineHeight: 16,
   },
+  // lineHeight con headroom sobre el fontSize: en Nunito 900 un
+  // lineHeight ≈ fontSize clippea el ascender en RN.
   heroTitle: {
     fontSize: 21,
-    fontWeight: '700',
-    color: '#0F1F18',
-    lineHeight: 26,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.6,
+    lineHeight: 27,
+    marginTop: 4,
   },
   heroBody: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#1F3329',
+    fontSize: 14.5,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 21,
   },
   heroChips: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 6,
     flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
   },
-  chip: {
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  impactChip: {
+    borderRadius: neoRadii.chip,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
   },
-  chipText: {
-    fontSize: 12,
-    fontWeight: '600',
+  impactChipText: {
+    fontSize: 11,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: 11 * 0.08,
+    textTransform: 'uppercase',
   },
-  constituentsBlock: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 18,
-    padding: 16,
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(199, 238, 156, 0.18)',
+  // ── Secciones ──────────────────────────────────────────────────────
+  section: {
+    gap: 10,
   },
   sectionEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: '#A9C7B0',
-    marginBottom: 2,
+    fontSize: 11.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 11.5 * 0.16,
+    paddingLeft: 2,
   },
-  constituentRow: {
+  constituentTile: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FAFCF7',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
   },
-  constituentIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  constituentTileIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: neoRadii.chip,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  constituentText: { flex: 1, gap: 2 },
+  constituentText: { flex: 1, gap: 3 },
   constituentTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#1F2A24',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.2,
+    lineHeight: 19,
   },
   constituentBody: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#566761',
+    fontSize: 12.5,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 17.5,
   },
-  explanationBlock: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(199, 238, 156, 0.18)',
+  explanationWell: {
+    borderRadius: neoRadii.input,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   explanationBody: {
     fontSize: 14,
-    lineHeight: 22,
-    color: '#D8E5DC',
-    marginTop: 6,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 21,
   },
-  ctaBlock: { marginTop: 8 },
-  primaryCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#C7EE9C',
-    borderRadius: 14,
-    paddingVertical: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.18,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-      },
-      android: { elevation: 6 },
-    }),
-  },
-  primaryCtaLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F2A1E',
-    letterSpacing: 0.2,
-  },
+  ctaBlock: { marginTop: 2 },
+  // ── Señal ausente ──────────────────────────────────────────────────
   emptyCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: neoRadii.card,
+    paddingVertical: 26,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(199, 238, 156, 0.18)',
+    gap: 10,
   },
   emptyTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#E6F0E2',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.3,
+    lineHeight: 23,
+    textAlign: 'center',
     marginTop: 6,
   },
   emptyBody: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#A9C7B0',
+    fontSize: 13.5,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 19.5,
     textAlign: 'center',
   },
   emptyCta: {
-    backgroundColor: '#C7EE9C',
-    borderRadius: 12,
-    paddingHorizontal: 22,
-    paddingVertical: 10,
-    marginTop: 6,
-  },
-  emptyCtaLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0F2A1E',
+    marginTop: 8,
   },
 })

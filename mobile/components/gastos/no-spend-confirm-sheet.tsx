@@ -2,18 +2,15 @@ import { useMemo } from 'react'
 import { ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import { categorySwatch } from '@/components/gastos/category-pastel'
 import { ModalCard } from '@/components/ui/modal-card'
 import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import type { Category } from '@/features/categories/use-categories'
 import type { Expense } from '@/features/expenses/use-expenses'
-import {
-  neoCategoryPastels,
-  neoRadii,
-  neoTokens,
-  pastelDarkSolid,
-} from '@/theme/neo-tokens'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
@@ -32,24 +29,12 @@ interface NoSpendConfirmSheetProps {
   onConfirm: () => void
 }
 
-const PASTELS = Object.values(neoCategoryPastels)
-
 /**
- * Pastel de categoría DETERMINISTA. El catálogo de categorías no tiene
- * un slug que mapee 1:1 contra las 12 claves de `neoCategoryPastels`
- * (son grupos de ícono: `alimentacion/…`, `finanzas/…`), así que el
- * puente es un hash estable del nombre CRUDO: la misma categoría cae
- * siempre en el mismo pastel y ninguno de los colores saturados del
- * catálogo V1 (`category.color`) llega a pintarse — el owner los
- * rechaza fuera del sistema.
+ * Cuánto se extiende la sombra `raisedMd` de una fila más allá de su caja
+ * (offset 6 + blur 12). Mismo recurso que `FIJOS_SHADOW_BLEED` en los rieles
+ * del alta de fijos.
  */
-function categoryPastel(seed: string): string {
-  let hash = 0
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) | 0
-  }
-  return PASTELS[Math.abs(hash) % PASTELS.length]
-}
+const ROW_SHADOW_BLEED = 12
 
 /**
  * Sheet que reemplaza el `Alert.alert` genérico cuando el user intenta
@@ -92,11 +77,7 @@ export function NoSpendConfirmSheet({
     [neo],
   )
 
-  // Tinta de aviso. `neo.warm` en claro (#C96F3F) sobre el pozo da 2.99:1 —
-  // por debajo del 3:1 que WCAG pide incluso para un glifo. Se usa el
-  // rojo-tierra de exceso del propio rediseño (`gastos-spec.dayExcesoInk`),
-  // que da 4.72:1; en oscuro `neo.warm` ya cumple de sobra.
-  const warnInk = isDark ? neo.warm : '#A84A2F'
+  const warnInk = neoInk(theme.mode).warn
 
   return (
     <ModalCard
@@ -152,12 +133,10 @@ export function NoSpendConfirmSheet({
               ? categoryById.get(expense.category_id)
               : null
             const title = expense.description?.trim() || cat?.displayName || t('common:terms.expense')
-            const pastel = cat ? categoryPastel(cat.name) : null
-            const dotColor = pastel
-              ? isDark
-                ? pastelDarkSolid(pastel)
-                : pastel
-              : neo.textTertiary
+            // Sin categoría el punto cae a `textMuted`, no a `textTertiary`:
+            // el terciario sobre el material raised claro da 2.2:1 y el punto
+            // —que es lo que identifica la fila— desaparece.
+            const dotColor = cat ? categorySwatch(cat.name, isDark) : neo.textMuted
             return (
               <NeoSurface
                 key={expense.id}
@@ -243,11 +222,18 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('700'),
     marginTop: 2,
   },
+  // El riel RECORTA a sus bordes: la sombra `raisedMd` de las filas sangra
+  // ROW_SHADOW_BLEED hacia afuera, así que el scroll se estira ese tanto con
+  // margen negativo y lo devuelve como padding. Las filas quedan donde
+  // estaban y el relieve entra entero en el área de clip.
   list: {
-    maxHeight: 280,
+    maxHeight: 280 + ROW_SHADOW_BLEED * 2,
+    marginHorizontal: -ROW_SHADOW_BLEED,
+    marginVertical: -ROW_SHADOW_BLEED,
   },
   listContent: {
     gap: 8,
+    padding: ROW_SHADOW_BLEED,
   },
   row: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StatTileProps {
   iconName: keyof typeof MaterialIcons.glyphMap
@@ -69,17 +70,20 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   tileValue: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
   },
   tileSub: {
     fontSize: 10,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     marginTop: 2,
   },
 })

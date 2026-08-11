@@ -46,6 +46,17 @@ export interface CycleDisponible {
   availableToday: number
   /** Saldo del mes SIN clamp — `< 0` ⇒ "arriba del plan". */
   rawCycleBalance: number
+  /**
+   * Base DISCRECIONAL del ciclo SIN clampear, redondeada.
+   *
+   * Existe porque `dailyBudget` se calcula clampeando el discrecional a 0
+   * ANTES de dividir, y ese clamp BORRA información: en la rama override, un
+   * hogar que se pasó del ciclo entero queda con `dailyBudget = 0` sin manera
+   * de saber por cuánto se pasó. Quien necesite reconstruir el cupo de
+   * APERTURA del día (sumarle de vuelta lo gastado hoy) tiene que partir de
+   * acá, o le sale un número inventado que CRECE con cada gasto nuevo.
+   */
+  discretionaryRaw: number
 }
 
 export function computeCycleDisponible(inputs: CycleDisponibleInputs): CycleDisponible {
@@ -90,5 +101,10 @@ export function computeCycleDisponible(inputs: CycleDisponibleInputs): CycleDisp
         ),
       )
 
-  return { dailyBudget, availableToday, rawCycleBalance }
+  return {
+    dailyBudget,
+    availableToday,
+    rawCycleBalance,
+    discretionaryRaw: Math.round(discretionary),
+  }
 }

@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { formatCompactMoney } from '@/components/home/control-visual-utils'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlHistoryRibbonItem {
   balance: number
@@ -83,6 +84,7 @@ const styles = StyleSheet.create({
   historyBalance: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   historyTrack: {
     flex: 1,
@@ -101,5 +103,6 @@ const styles = StyleSheet.create({
   historyLabel: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
 })

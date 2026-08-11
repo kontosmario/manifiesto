@@ -7,6 +7,7 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
 import { useWizardSkin, WIZARD_SHADOW_BLEED } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface QuickTextChipsProps {
   options: readonly string[]
@@ -107,5 +108,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  chipText: { fontSize: 12, fontWeight: '700' },
+  chipText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
 })

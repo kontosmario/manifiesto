@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import { Stack } from 'expo-router'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
 import { AchievementUnlockBridge } from '@/components/bridges/achievement-unlock-bridge'
@@ -12,6 +13,8 @@ import { NoSpendConfettiHost } from '@/components/ui/no-spend-confetti-host'
 import { DailyBudgetNudgeBridge } from '@/components/bridges/daily-budget-nudge-bridge'
 import { GlobalSettingsModalsHost } from '@/components/settings/global-settings-modals-host'
 import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-action-host'
+import { ArcHubA11yShield, ArcHubHost } from '@/components/navigation/arc-hub-host'
+import { ArcHubProvider } from '@/components/navigation/arc-hub-context'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
@@ -160,7 +163,7 @@ export function AppStackShell() {
   const familyId = snapshot.data?.family?.familyId ?? null
 
   return (
-    <>
+    <ArcHubProvider>
       <DailyBudgetNudgeBridge />
       {/* Fuera del gate de `userId && familyId` a propósito: reemplaza a
           `Alert.alert`, que estaba disponible en toda la app. Sin host
@@ -178,230 +181,241 @@ export function AppStackShell() {
           <NoSpendConfettiHost />
         </>
       ) : null}
-      <Stack
-        screenListeners={STACK_DEV_LISTENERS}
-        screenOptions={{
-          headerShown: false,
-          animation: STACK_PUSH_ANIMATION,
-          animationDuration: motionDurations.enterStack,
-          animationMatchesGesture: true,
-          freezeOnBlur: true,
-          fullScreenGestureEnabled: false,
-          gestureEnabled: true,
-          // Closes the white flash that was visible during stack
-          // push/pop in dark mode. Native-stack's screen content
-          // container defaults to white on iOS/Android; during the
-          // slide animation, the parent (this content container) is
-          // revealed for a frame as the outgoing screen exits and the
-          // incoming screen enters. Without an explicit theme-aware
-          // background, that frame shows white-on-dark on dark theme.
-          // Canvas match con `ThemedRoot` outer para que NO haya seam
-          // entre capas (root → stack → screen).
-          contentStyle: { backgroundColor: theme.colors.canvas },
-        }}
-      >
-        {/* The `(tabs)` group is the first screen pushed onto this
-            stack right after login (AppEntryGate redirects here once
-            session+family resolve). The push transition fires while
-            the warm splash is still fully opaque on top — animating
-            it is wasted UI-thread work that contests the splash's
-            worklets (~280ms of native push animation overlapping
-            with snapshot RPC processing + tabs tree mounting at the
-            same wall-clock moment). Setting `animation: 'none'`
-            makes the push instant; the splash handles all the
-            visual transition work itself. Pure-navigation pushes to
-            `/(tabs)` after login (and any internal swap) become
-            free UI-thread work. */}
-        {/* freezeOnBlur: false SOLO aquí (override del global true). Con
-            freezeOnBlur, al pushear una pantalla de Settings (card full-screen)
-            el screen (tabs) se congela vía react-freeze + react-native-screens
-            lo desconecta; al volver, Reanimated sigue avanzando los shared
-            values pero escribe a un view tag inválido → TODAS las animaciones
-            de los tabs quedan congeladas hasta reiniciar la app (confirmado:
-            withRepeat sigue corriendo pero las views no actualizan). Mantener
-            (tabs) sin freeze preserva el binding de las views. Trade-off: los
-            tabs siguen vivos bajo Settings (costo de GPU menor mientras estás
-            en una sub-pantalla), aceptable vs el freeze permanente. */}
-        <Stack.Screen
-          name="(tabs)"
-          options={{ animation: 'none', freezeOnBlur: false }}
-        />
-        <Stack.Screen
-          name="onboarding"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureEnabled: false,
+      <ArcHubA11yShield>
+        <Stack
+          screenListeners={STACK_DEV_LISTENERS}
+          screenOptions={{
+            headerShown: false,
+            animation: STACK_PUSH_ANIMATION,
+            animationDuration: motionDurations.enterStack,
+            animationMatchesGesture: true,
+            freezeOnBlur: true,
             fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="onboarding-success"
-          options={{
-            // El wizard (onboarding) es un modal; success es el destino al
-            // terminar. Un `fade` hace que success CRUCE suave sobre el wizard
-            // (crossfade) en vez del modal-dismiss (slide-down) + card-push,
-            // que se leía como un salto/parpadeo hacia atrás. Combinado con
-            // quitar el replace imperativo redundante en el orquestador (el
-            // gate redirige una sola vez), la transición queda limpia.
-            animation: 'fade',
-            animationDuration: motionDurations.enterModal,
-            gestureEnabled: false,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="trial-welcome"
-          options={{
-            gestureEnabled: false,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="biometric-setup"
-          options={{
-            gestureEnabled: false,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="pin-setup"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
             gestureEnabled: true,
-            fullScreenGestureEnabled: false,
+            // Closes the white flash that was visible during stack
+            // push/pop in dark mode. Native-stack's screen content
+            // container defaults to white on iOS/Android; during the
+            // slide animation, the parent (this content container) is
+            // revealed for a frame as the outgoing screen exits and the
+            // incoming screen enters. Without an explicit theme-aware
+            // background, that frame shows white-on-dark on dark theme.
+            // Canvas match con `ThemedRoot` outer y con el default de
+            // `Screen` para que NO haya seam entre capas (root → stack →
+            // screen).
+            contentStyle: { backgroundColor: neoTokens(theme.mode).bg },
           }}
-        />
-        <Stack.Screen
-          name="add-expense"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="add-fixed-expense"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="add-income"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="household-setup"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="expense-filters"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="expense-categories"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="asistente"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="coach/[signalId]"
-          options={{
-            presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-            animation: MODAL_ANIMATION,
-            animationDuration: motionDurations.enterModal,
-            gestureDirection: 'vertical',
-          }}
-        />
-        <Stack.Screen
-          name="notifications"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/notifications"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/family-admin"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/asistente"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/plan"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/about"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-        <Stack.Screen
-          name="settings/delete-account"
-          options={{
-            freezeOnBlur: true,
-            fullScreenGestureEnabled: false,
-          }}
-        />
-      </Stack>
-    </>
+        >
+          {/* The `(tabs)` group is the first screen pushed onto this
+              stack right after login (AppEntryGate redirects here once
+              session+family resolve). The push transition fires while
+              the warm splash is still fully opaque on top — animating
+              it is wasted UI-thread work that contests the splash's
+              worklets (~280ms of native push animation overlapping
+              with snapshot RPC processing + tabs tree mounting at the
+              same wall-clock moment). Setting `animation: 'none'`
+              makes the push instant; the splash handles all the
+              visual transition work itself. Pure-navigation pushes to
+              `/(tabs)` after login (and any internal swap) become
+              free UI-thread work. */}
+          {/* freezeOnBlur: false SOLO aquí (override del global true). Con
+              freezeOnBlur, al pushear una pantalla de Settings (card full-screen)
+              el screen (tabs) se congela vía react-freeze + react-native-screens
+              lo desconecta; al volver, Reanimated sigue avanzando los shared
+              values pero escribe a un view tag inválido → TODAS las animaciones
+              de los tabs quedan congeladas hasta reiniciar la app (confirmado:
+              withRepeat sigue corriendo pero las views no actualizan). Mantener
+              (tabs) sin freeze preserva el binding de las views. Trade-off: los
+              tabs siguen vivos bajo Settings (costo de GPU menor mientras estás
+              en una sub-pantalla), aceptable vs el freeze permanente. */}
+          <Stack.Screen
+            name="(tabs)"
+            options={{ animation: 'none', freezeOnBlur: false }}
+          />
+          <Stack.Screen
+            name="onboarding"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="onboarding-success"
+            options={{
+              // El wizard (onboarding) es un modal; success es el destino al
+              // terminar. Un `fade` hace que success CRUCE suave sobre el wizard
+              // (crossfade) en vez del modal-dismiss (slide-down) + card-push,
+              // que se leía como un salto/parpadeo hacia atrás. Combinado con
+              // quitar el replace imperativo redundante en el orquestador (el
+              // gate redirige una sola vez), la transición queda limpia.
+              animation: 'fade',
+              animationDuration: motionDurations.enterModal,
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="trial-welcome"
+            options={{
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="biometric-setup"
+            options={{
+              gestureEnabled: false,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="pin-setup"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              gestureEnabled: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="add-expense"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="add-fixed-expense"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="add-income"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="household-setup"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="expense-categories"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="asistente"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="coach/[signalId]"
+            options={{
+              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              animation: MODAL_ANIMATION,
+              animationDuration: motionDurations.enterModal,
+              gestureDirection: 'vertical',
+            }}
+          />
+          <Stack.Screen
+            name="notifications"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/notifications"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/family-admin"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/asistente"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/plan"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/about"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="settings/delete-account"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
+        </Stack>
+      </ArcHubA11yShield>
+      {/* ÚLTIMO hermano a propósito, y fuera del escudo de accesibilidad.
+          Es hermano del `<Stack>` y no hijo porque el arco sube ~250px por
+          encima de la barra de tabs, y en Android un hijo fuera de los
+          límites de su padre no recibe toques.
+
+          Que vaya al final es lo que hace que RECIBA los toques cuando
+          queda abierto por tap. `zIndex: 900` sigue puesto, pero ahora sólo
+          como refuerzo del orden de pintado: apoyarse en él para el
+          hit-test era apoyarse en el precedente equivocado —
+          `BackgroundSnapshotOverlay` sube por `zIndex`, pero es una tapa de
+          privacidad que nunca necesitó recibir un toque, así que probaba el
+          dibujo y no el táctil. Último en el árbol es topmost sin depender
+          de cómo cada plataforma ordene el hit-test.
+
+          NO es un `<Modal>`: una ventana nativa montada a mitad del touch
+          no recibe el stream del gesto que arrancó en la raíz de RNGH. */}
+      {userId && familyId ? <ArcHubHost /> : null}
+    </ArcHubProvider>
   )
 }

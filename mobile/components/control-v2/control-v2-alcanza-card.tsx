@@ -7,6 +7,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlV2AlcanzaCardProps {
   alcanzaElMes: boolean
@@ -677,6 +678,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -692,11 +694,13 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   headline: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
     lineHeight: 22,
   },
@@ -724,6 +728,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 2,
@@ -731,6 +736,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
   },
   statSub: {
@@ -751,6 +757,7 @@ const styles = StyleSheet.create({
   timelineLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1,
   },
   timelineTrack: {
@@ -802,6 +809,7 @@ const styles = StyleSheet.create({
     left: -18,
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     width: 50,
     textAlign: 'center',
   },
@@ -818,6 +826,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
   // ── Empty-state silhouette ──────────────────────────────────
@@ -829,9 +838,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyPillText: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.4 },
   calloutBody: { flex: 1, gap: 4 },
-  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.2 },
 })
 
 // Memo: Alcanza proyecta hasta cuándo llega la plata. Card de

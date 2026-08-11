@@ -33,6 +33,7 @@ import { EXPENSE_DESCRIPTION_MAX_LENGTH } from '@/features/expenses/expense-repo
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface DescriptionFieldProps {
   value: string
@@ -204,5 +205,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

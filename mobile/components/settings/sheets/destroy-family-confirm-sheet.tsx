@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { radii } from '@/theme/palette'
+import { NeoButton } from '@/components/ui/neo-button'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
-import { neoTokens } from '@/theme/neo-tokens'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 interface DestroyFamilyConfirmSheetProps {
   visible: boolean
@@ -118,7 +118,7 @@ export function DestroyFamilyConfirmSheet({
                 { backgroundColor: ink.danger },
               ]}
             >
-              <MaterialIcons name="warning-amber" size={20} color="#FFFFFF" />
+              <MaterialIcons name="warning-amber" size={20} color={neo.ctaText} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.warningTitle, { color: neo.text }]}>
@@ -176,16 +176,20 @@ export function DestroyFamilyConfirmSheet({
             </View>
           )}
 
-          <View style={styles.row}>
-            <AppButton
-              label={t('common:actions.cancel')}
-              onPress={onCancel}
-              variant="ghost"
-            />
-            <AppButton
+          <View style={styles.actions}>
+            <NeoButton
+              block
+              haptic="warning"
               label={t('common:actions.continue')}
               onPress={() => setStep(2)}
               variant="danger"
+            />
+            <NeoButton
+              block
+              haptic="none"
+              label={t('common:actions.cancel')}
+              onPress={onCancel}
+              variant="ghost"
             />
           </View>
         </View>
@@ -194,7 +198,7 @@ export function DestroyFamilyConfirmSheet({
           <View style={styles.confirmHelperRow}>
             <Text style={[styles.confirmHelper, { color: neo.textMuted }]}>
               {t('settings:destroyFamily.confirmHelperPrefix')}{' '}
-              <Text style={{ color: ink.danger, fontWeight: '800' }}>
+              <Text style={{ color: ink.danger, fontWeight: '800', fontFamily: nunitoFamily('800') }}>
                 {confirmPhrase}
               </Text>{' '}
               {t('settings:destroyFamily.confirmHelperSuffix')}
@@ -231,19 +235,23 @@ export function DestroyFamilyConfirmSheet({
             </Text>
           ) : null}
 
-          <View style={styles.row}>
-            <AppButton
-              disabled={isSubmitting}
-              label={t('common:actions.cancel')}
-              onPress={onCancel}
-              variant="ghost"
-            />
-            <AppButton
+          <View style={styles.actions}>
+            <NeoButton
+              block
               disabled={!matches || isSubmitting}
+              haptic="warning"
               label={isAccount ? t('settings:destroyFamily.ctaAccount') : t('settings:destroyFamily.ctaFamily')}
               loading={isSubmitting}
               onPress={onConfirm}
               variant="danger"
+            />
+            <NeoButton
+              block
+              disabled={isSubmitting}
+              haptic="none"
+              label={t('common:actions.cancel')}
+              onPress={onCancel}
+              variant="ghost"
             />
           </View>
         </View>
@@ -274,13 +282,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 14,
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.tile,
     borderWidth: 1,
   },
   warningIcon: {
     width: 32,
     height: 32,
-    borderRadius: radii.pill,
+    borderRadius: neoRadii.pill,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
@@ -288,11 +296,13 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     marginBottom: 4,
   },
   warningBody: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   bullets: {
@@ -306,12 +316,16 @@ const styles = StyleSheet.create({
   },
   bulletText: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
     flex: 1,
   },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  // Apilados, no en fila: "Eliminar para siempre" / "Reiniciar mi cuenta" son
+  // labels largos y en fila con "Cancelar" el par supera el ancho útil de la
+  // hoja (331pt en un iPhone de 375) — el ScrollView del `ModalCard` recorta a
+  // filo y los dos botones quedaban mordidos por los costados. Es además el
+  // mismo orden que ya usan `income-mode-confirm-sheet` y `category-editor-modal`.
+  actions: {
     gap: 10,
     marginTop: 4,
   },
@@ -320,21 +334,24 @@ const styles = StyleSheet.create({
   },
   confirmHelper: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   input: {
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.tile,
     borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 2,
     textAlign: 'center',
   },
   errorText: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     paddingHorizontal: 4,
   },
 })

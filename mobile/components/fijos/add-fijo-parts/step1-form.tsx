@@ -35,6 +35,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { Field } from './field'
 import { FreqTile } from './freq-tile'
 import { NameInput } from './name-input'
+import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -142,7 +143,15 @@ export function Step1Form(props: Step1FormProps) {
       </Stagger>
 
       {isInstallment && amount > 0 ? (
-        <Text style={[styles.cuotaInlineHint, { color: theme.colors.textMuted }]}>
+        <Text
+          style={[
+            styles.cuotaInlineHint,
+            { color: theme.colors.textMuted },
+            neo
+              ? { color: neo.mutedInkStrong, fontWeight: '700', fontFamily: neo.font('700') }
+              : null,
+          ]}
+        >
           {t('fijos:wizard.step1.installmentSummary', {
             count: cuotaTot,
             amount: formatMoney(amount),
@@ -265,7 +274,7 @@ export function Step1Form(props: Step1FormProps) {
                   neo
                     ? [
                         styles.cuotaFootnoteNeo,
-                        { color: neo.mutedInk, fontWeight: '700', fontFamily: neo.font('700') },
+                        { color: neo.mutedInkStrong, fontWeight: '700', fontFamily: neo.font('700') },
                       ]
                     : null,
                 ]}
@@ -431,6 +440,7 @@ const styles = StyleSheet.create({
   cuotaInlineHint: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginTop: -4,
     paddingHorizontal: 4,
   },
@@ -451,7 +461,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
-  cuotaEyebrow: { fontSize: 10, letterSpacing: 1.4, fontWeight: '700' },
+  cuotaEyebrow: { fontSize: 10, letterSpacing: 1.4, fontWeight: '700', fontFamily: nunitoFamily('700') },
   cuotaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   cuotaPill: {
     paddingHorizontal: 11,
@@ -459,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  cuotaPillText: { fontSize: 12, fontWeight: '700' },
+  cuotaPillText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   // Las seis opciones REPARTEN el ancho en una sola fila. Con `minWidth` fijo
   // la sexta se caía a un segundo renglón y el bloque se leía como una grilla
   // rota: son seis alternativas del mismo eje, tienen que verse como una
@@ -474,7 +484,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cuotaPillTextNeo: { fontSize: 13, fontWeight: '900', textAlign: 'center' },
+  cuotaPillTextNeo: { fontSize: 13, fontWeight: '900', fontFamily: nunitoFamily('900'), textAlign: 'center' },
   // El total es la consecuencia de elegir — se lee antes que el desglose.
   cuotaFootnoteNeo: { fontSize: 11.5, marginTop: 10 },
   cuotaFootnote: { fontSize: 11, marginTop: 8 },

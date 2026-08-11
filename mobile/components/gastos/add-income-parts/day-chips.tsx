@@ -20,6 +20,7 @@ import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { triggerHaptic } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -197,6 +198,6 @@ const styles = StyleSheet.create({
   // `flex: 1` reparte el ancho entre las tres opciones: son alternativas del
   // mismo eje y tienen que leerse como una escala, no como tres pills sueltas.
   chipNeo: { flex: 1, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 12, fontWeight: '700' },
-  labelNeo: { fontWeight: '800', textAlign: 'center' },
+  label: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
+  labelNeo: { fontWeight: '800', fontFamily: nunitoFamily('800'), textAlign: 'center' },
 })

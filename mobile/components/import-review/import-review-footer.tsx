@@ -7,10 +7,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { NeoButton } from '@/components/ui/neo-button'
 import { motionDurations } from '@/lib/motion/tokens'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { cssGradient, neoRadii } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { formatMissingFields } from '@/lib/form-missing-fields'
+import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
   /** Zero-indexed current step. Last index = summary step. */
@@ -47,11 +50,10 @@ interface Props {
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 /**
- * Wizard footer rebuilt for clarity. Anterior + Saltear are visible
- * outlined pill buttons with icon + label (not ghost text), each at
- * 44pt min touch height so a confused user can tell what's tappable at
- * a glance. The primary CTA stays as the dominant full-width action
- * below.
+ * Wizard footer. Anterior + Saltear son tiles extruidos con icono + label
+ * (no texto fantasma), cada uno con 44pt de alto táctil, para que se vea de
+ * un vistazo qué se puede tocar. El CTA primario domina abajo a todo el
+ * ancho.
  *
  * On the summary step the layout simplifies: Saltear disappears
  * (nothing to skip from a summary), Anterior becomes "Volver a editar",
@@ -72,7 +74,7 @@ export function ImportReviewFooter({
   onSkip,
   onPrimary,
 }: Props) {
-  const { theme } = useAppTheme()
+  const { neo, ink } = useImportReviewNeo()
   const { t } = useTranslation()
   const isFirst = stepIndex <= 0
   const isLastMovement = !isSummary && stepIndex >= totalSteps - 1
@@ -98,7 +100,6 @@ export function ImportReviewFooter({
   })()
 
   const primaryIcon: keyof typeof MaterialIcons.glyphMap = (() => {
-    if (busy) return 'hourglass-empty'
     if (isSummary) return totalSubmittable === 0 ? 'close' : 'check'
     return 'arrow-forward'
   })()
@@ -106,14 +107,13 @@ export function ImportReviewFooter({
   // Visual-only disabled: the CTA stays tappable even when "disabled"
   // so a tap can route to the sheet's "bump highlightToken" branch
   // instead of advancing. The caller's `onPrimary` decides what each
-  // press means. `lookDisabled` controls opacity/affordance; `busy`
-  // hard-disables (during the network roundtrip) because we genuinely
-  // do not want repeat presses there.
+  // press means. `lookDisabled` hunde el botón sin bloquearlo; `busy`
+  // sí bloquea (durante el roundtrip de red) porque ahí un segundo tap
+  // es un bug.
   // All-skipped → the CTA is a live "Cerrar", not a pending/disabled state.
   const lookDisabled = isSummary
     ? totalSubmittable > 0 && !canConfirm
     : !canAdvanceCurrent
-  const hardDisabled = busy
 
   const showMissingHelper =
     !isSummary && !canAdvanceCurrent && missingFields.length > 0
@@ -126,7 +126,6 @@ export function ImportReviewFooter({
           label={isSummary ? t('gastos:import.footer.backToEdit') : t('gastos:import.footer.previous')}
           onPress={onPrev}
           disabled={isFirst || busy}
-          theme={theme}
         />
         {isSummary ? (
           <View style={styles.secondarySpacer} />
@@ -136,32 +135,31 @@ export function ImportReviewFooter({
             label={isCurrentSkipped ? t('gastos:import.footer.restore') : t('gastos:import.footer.skipThis')}
             onPress={onSkip}
             disabled={busy}
-            theme={theme}
           />
         )}
       </View>
 
-      <PrimaryCTA
+      <NeoButton
         label={primaryLabel}
-        icon={primaryIcon}
-        lookDisabled={lookDisabled}
-        hardDisabled={hardDisabled}
-        backgroundColor={lookDisabled ? theme.colors.line : theme.colors.primary}
-        foregroundColor={lookDisabled ? theme.colors.textMuted : theme.colors.textOnPrimary}
         onPress={onPrimary}
+        lookDisabled={lookDisabled}
+        busy={busy}
+        fullWidth
+        // La tinta del glifo sigue a la del label: hundido lee sobre el pozo
+        // (`neo.text`), y en relieve sobre el fill radial (`neo.ctaText`).
+        icon={
+          <MaterialIcons
+            name={primaryIcon}
+            size={20}
+            color={lookDisabled ? neo.text : neo.ctaText}
+          />
+        }
       />
 
       {showMissingHelper ? (
         <View style={styles.helperRow}>
-          <MaterialIcons
-            name="error-outline"
-            size={14}
-            color={theme.colors.warning}
-          />
-          <Text
-            style={[styles.helperText, { color: theme.colors.warning }]}
-            numberOfLines={2}
-          >
+          <MaterialIcons name="error-outline" size={14} color={ink.warn} />
+          <Text style={[styles.helperText, { color: ink.warn }]} numberOfLines={2}>
             {formatMissingFields(missingFields)}
           </Text>
         </View>
@@ -170,115 +168,46 @@ export function ImportReviewFooter({
   )
 }
 
-
-interface PrimaryCTAProps {
-  label: string
+interface SecondaryButtonProps {
   icon: keyof typeof MaterialIcons.glyphMap
-  /** Renders the visual disabled affordance (lower opacity, no press
-   *  scale) but DOES NOT block the press. Used when required fields
-   *  are missing — the sheet wants the press to route to "bump the
-   *  row's highlightToken" rather than advance. */
-  lookDisabled: boolean
-  /** True disabled — no press, no haptic. Reserved for actual
-   *  in-flight states (network roundtrip) where re-pressing is a bug. */
-  hardDisabled: boolean
-  backgroundColor: string
-  foregroundColor: string
+  label: string
+  disabled?: boolean
   onPress: () => void
 }
 
 /**
- * Animated.View wrapper around the Pressable so the press scale flows
- * through a Reanimated shared value, not through a `transform` prop
- * that flips between an array and undefined — that pattern crashes
- * iOS at the bridge ("Cannot read property 'forEach' of null").
+ * Tile extruido del vocabulario (`raisedSm`) que se HUNDE al quedar inactivo,
+ * en vez de bajar de opacidad: `opacity` aplana el subárbol y desvanece fill y
+ * tinta contra el mismo material.
+ *
+ * La tinta es `neo.text` y no `textMuted` — a 13px el muted se queda en 3.73:1
+ * sobre el material extruido, y acá da 10.41:1 en claro / 13.77:1 en oscuro.
+ * El estado inactivo sí usa `textMuted` (3.73:1): un control deshabilitado
+ * está exento de WCAG 1.4.3.
  */
-function PrimaryCTA({
-  label,
-  icon,
-  lookDisabled,
-  hardDisabled,
-  backgroundColor,
-  foregroundColor,
-  onPress,
-}: PrimaryCTAProps) {
-  const pressScale = useSharedValue(1)
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pressScale.value }],
-  }))
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ disabled: lookDisabled || hardDisabled }}
-        disabled={hardDisabled}
-        onPressIn={() => {
-          if (lookDisabled || hardDisabled) return
-          pressScale.value = withTiming(0.98, {
-            duration: motionDurations.micro,
-            easing: EASE_IOS,
-          })
-        }}
-        onPressOut={() => {
-          pressScale.value = withTiming(1, {
-            duration: motionDurations.micro,
-            easing: EASE_IOS,
-          })
-        }}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.primary,
-          {
-            backgroundColor,
-            opacity: hardDisabled ? 0.55 : pressed ? 0.92 : 1,
-          },
-        ]}
-      >
-        <Text style={[styles.primaryText, { color: foregroundColor }]} numberOfLines={1}>
-          {label}
-        </Text>
-        <MaterialIcons name={icon} size={20} color={foregroundColor} />
-      </Pressable>
-    </Animated.View>
-  )
-}
-
-interface SecondaryButtonProps {
-  icon: keyof typeof MaterialIcons.glyphMap
-  label: string
-  helper?: string
-  disabled?: boolean
-  tone?: 'default' | 'warning'
-  onPress: () => void
-  theme: ReturnType<typeof useAppTheme>['theme']
-}
-
-function SecondaryButton({
-  icon,
-  label,
-  helper,
-  disabled = false,
-  tone = 'default',
-  onPress,
-  theme,
-}: SecondaryButtonProps) {
+function SecondaryButton({ icon, label, disabled = false, onPress }: SecondaryButtonProps) {
+  const { neo, wellFallback } = useImportReviewNeo()
   const pressScale = useSharedValue(1)
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pressScale.value }],
   }))
 
-  const tint =
-    tone === 'warning' ? theme.colors.warning : theme.colors.textMuted
-  const border = disabled ? theme.colors.line : tint
+  const tint = disabled ? neo.textMuted : neo.text
+  const material = disabled
+    ? [{ backgroundColor: neo.well, boxShadow: neo.shadows.insetSm }, wellFallback]
+    : [
+        {
+          ...cssGradient(neo.raisedGradientCss, neo.surface),
+          boxShadow: neo.shadows.raisedSm,
+        },
+      ]
 
   return (
     <Animated.View style={[styles.secondaryWrap, animatedStyle]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={helper ? `${label}, ${helper}` : label}
+        accessibilityLabel={label}
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPressIn={() => {
@@ -298,29 +227,20 @@ function SecondaryButton({
           void triggerHaptic('light')
           onPress()
         }}
-        style={[
-          styles.secondaryBtn,
-          {
-            borderColor: border,
-            opacity: disabled ? 0.4 : 1,
-          },
-        ]}
+        style={[styles.secondaryBtn, ...material]}
         hitSlop={6}
       >
-        <MaterialIcons name={icon} size={16} color={tint} />
-        <View style={styles.secondaryLabelCol}>
-          <Text style={[styles.secondaryLabel, { color: tint }]}>{label}</Text>
-          {helper ? (
-            <Text style={[styles.secondaryHelper, { color: theme.colors.textSoft }]}>
-              {helper}
-            </Text>
-          ) : null}
-        </View>
+        <MaterialIcons color={tint} name={icon} size={16} />
+        <Text style={[styles.secondaryLabel, { color: tint }]} numberOfLines={1}>
+          {label}
+        </Text>
       </Pressable>
     </Animated.View>
   )
 }
 
+// El `fontFamily` viaja con el peso: cada peso de Nunito es un face estático
+// propio, así que sin él el 800 se renderiza como regular.
 const styles = StyleSheet.create({
   stack: { gap: 10 },
   secondaryRow: {
@@ -333,36 +253,18 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  secondaryLabelCol: { flex: 1 },
-  secondaryLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.1,
-  },
-  secondaryHelper: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  primary: {
-    minHeight: 52,
-    borderRadius: 14,
+    borderRadius: neoRadii.chip,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
     gap: 8,
   },
-  primaryText: {
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: -0.2,
+  secondaryLabel: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.1,
   },
   helperRow: {
     flexDirection: 'row',
@@ -374,6 +276,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
     textAlign: 'center',
     flexShrink: 1,

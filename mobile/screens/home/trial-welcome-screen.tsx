@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { RequireAuth } from '@/components/guards'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { BillingScreen } from '@/screens/settings/billing-screen'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
@@ -58,7 +59,7 @@ function TrialWelcomeBody({ userId }: { userId: string }) {
   // un lienzo del color del tema para no flashear contenido incorrecto.
   if (!isTrial) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <View style={{ flex: 1, backgroundColor: neoTokens(theme.mode).bg }}>
         <StatusBar style={theme.isDark ? 'light' : 'dark'} />
       </View>
     )

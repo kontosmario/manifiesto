@@ -57,6 +57,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { parsePrice } from '@/utils/money'
 import { sanitizeDisplayName } from '@/utils/sanitize-name'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface OnboardingScreenProps {
   userId: string
@@ -932,5 +933,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: 16,
   },
-  primaryCtaText: { fontSize: 15, fontWeight: '800' },
+  primaryCtaText: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })

@@ -61,6 +61,7 @@ import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HomeDashboardProps {
   dashboard: FamilyDashboard
@@ -879,7 +880,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 0,
   },
-  activityLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700' },
-  activityLink: { fontSize: 14, fontWeight: '700' },
+  activityLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
+  activityLink: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   bottomSpacer: { height: 0 },
 })

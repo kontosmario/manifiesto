@@ -17,6 +17,7 @@ import {
 } from '@/features/billing/billing-plans'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import type { EntitlementSnapshot } from '@/features/billing/entitlement-snapshot'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Paywall (Estado A). Lo ven los no-suscriptos. Si están en período libre
@@ -240,7 +241,7 @@ export const PaywallView = memo(function PaywallView({
                 <Text
                   style={[
                     theme.typography.bodySmall,
-                    { color: theme.colors.textMuted, fontWeight: '600' },
+                    { color: theme.colors.textMuted, fontWeight: '600', fontFamily: nunitoFamily('600') },
                   ]}
                 >
                   {t('billing:paywall.logout')}
@@ -271,7 +272,7 @@ export const PaywallView = memo(function PaywallView({
                 <Text
                   style={[
                     theme.typography.bodySmall,
-                    { color: theme.colors.danger, fontWeight: '600' },
+                    { color: theme.colors.danger, fontWeight: '600', fontFamily: nunitoFamily('600') },
                   ]}
                 >
                   {t('billing:paywall.deleteAccount')}
@@ -297,8 +298,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  lockText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.8 },
-  headline: { fontSize: 23, fontWeight: '900', letterSpacing: -0.9, lineHeight: 26 },
+  lockText: { fontSize: 9, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: 0.8 },
+  headline: { fontSize: 23, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.9, lineHeight: 26 },
   features: { gap: 7 },
   feat: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   disclosure: { textAlign: 'center', marginTop: 10, lineHeight: 16 },

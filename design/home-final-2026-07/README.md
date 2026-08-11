@@ -39,7 +39,7 @@ Gradiente `155deg #337B39 → #4C9A52 55% → #5FAC64`; pozo del saldo `rgba(13,
 Teléfono 46 · hero/nav 32 · cards 22–28 · pozo saldo 24 · chips 22 · pills CTA 15–24 · tiles categoría 18.
 
 ## Home — jerarquía y componentes (orden vertical)
-1. **⓿ Header** — Brot (46px) junto al saludo + ícono de momento + "buenas tardes, / Mario"; acciones IA · campana(badge) · ajustes en círculos raise 44px; chips "Miembros · N" (raise) y "Sueldo en N días" (inset, punto verde). Utilitario: no compite.
+1. **⓿ Header** — ~~Brot (46px)~~ junto al saludo + ícono de momento + "buenas tardes, / Mario"; acciones IA · campana(badge) · ajustes en círculos raise 44px; chips "Miembros · N" (raise) y "Sueldo en N días" (inset, punto verde). Utilitario: no compite. **Sin Brot en el tope de la Home** por decisión del owner (2026-07-21, reconfirmada el 2026-08-05): el saldo es el protagonista de la pantalla. El Brot de la Home vive solo en la card de racha (punto 5).
 2. **① Saldo del mes** (protagonismo MÁXIMO) — hero verde, chip "día N de 30", pozo hundido con `$2.452.537` 41px/900 + "≈ US$", chips de evento, y **medidor tier-2** colgando bajo hairline `rgba(240,248,230,0.22)`: arco 104×60 (track blanco 18%, progreso `#C9F3C6`, dasharray 163.4) + "$179k POR DÍA" + "PODÉS GASTAR HOY" + link "Proyección de cierre en Control ›". El saldo manda; el medidor es detalle.
 3. **② Resumen del ciclo** (ALTO) — una card, dos filas (VARIABLES naranja / FIJOS verde): punto de color, label, sub ("64 movs · Hogar 24%" / "13/16 · Spotify vence hoy"), monto 20px/900, chevron; divisor inset 2px.
 4. **③ Tu progreso / Meta** (MEDIO) — ícono pastel 40px, nombre, "$820k de $2,4M · falta …", % verde 17px/900, barra inset 7px con fill `90deg #63B168→#2E7434`.

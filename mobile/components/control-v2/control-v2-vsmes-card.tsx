@@ -19,6 +19,7 @@ import type {
   MonthlyByMemberEntry,
   MonthlyCategoryBreakdownEntry,
 } from '@/features/insights/control-v2-adapter'
+import { nunitoFamily } from '@/theme/typography'
 
 type Mood = 'green' | 'yellow' | 'red' | null
 
@@ -313,13 +314,13 @@ function ControlV2VsMesCardImpl({
             <MaterialIcons name="event-available" size={13} color={theme.colors.textMuted} />
             <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
               {t('control:vsmes.recapGastaste', { mes: mesPasadoNombre })}
-              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+              <Text style={{ color: theme.colors.text, fontWeight: '700', fontFamily: nunitoFamily('700') }}>
                 {formatMoneyShort(mesPasadoTotal)}
               </Text>
               {mesPasadoSavingsDelta > 0 ? (
                 <>
                   {t('control:vsmes.recapAhorraste')}
-                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>
+                  <Text style={{ color: theme.colors.success, fontWeight: '700', fontFamily: nunitoFamily('700') }}>
                     {formatMoneyShort(mesPasadoSavingsDelta)}
                   </Text>
                 </>
@@ -331,7 +332,7 @@ function ControlV2VsMesCardImpl({
               <MaterialIcons name="local-mall" size={13} color={theme.colors.textMuted} />
               <Text style={[styles.recapText, { color: theme.colors.textMuted }]} numberOfLines={1}>
                 {t('control:vsmes.recapDondeMas')}
-                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                <Text style={{ color: theme.colors.text, fontWeight: '700', fontFamily: nunitoFamily('700') }}>
                   {mesPasadoTopCatLabel}
                 </Text>
               </Text>
@@ -354,13 +355,13 @@ function ControlV2VsMesCardImpl({
                   ? t('control:vsmes.recapDiaAtipico')
                   : t('control:vsmes.recapDiasAtipicos')}
                 {t('control:vsmes.recapAtipicosFueraRitmo')}
-                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                <Text style={{ color: theme.colors.text, fontWeight: '700', fontFamily: nunitoFamily('700') }}>
                   {outlierDaysExcluded}
                 </Text>
                 {outlierDaysTotal != null && outlierDaysTotal > 0 ? (
                   <>
                     {t('control:vsmes.recapAtipicosSuman')}
-                    <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
+                    <Text style={{ color: theme.colors.text, fontWeight: '700', fontFamily: nunitoFamily('700') }}>
                       {formatMoneyShort(outlierDaysTotal)}
                     </Text>
                     {t('control:vsmes.recapAtipicosExcluye')}
@@ -477,7 +478,7 @@ function CompareBar({
   return (
     <View style={styles.barRow}>
       <Text
-        style={[styles.barLabel, { color: highlight ? text : muted, fontWeight: highlight ? '800' : '700' }]}
+        style={[styles.barLabel, { color: highlight ? text : muted, fontWeight: highlight ? '800' : '700', fontFamily: nunitoFamily(highlight ? '800' : '700') }]}
         numberOfLines={1}
       >
         {label}
@@ -523,6 +524,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -538,16 +540,19 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   headline: {
     fontSize: 17,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 23,
     letterSpacing: -0.3,
   },
   headlineStrong: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   // Bars
   bars: {
@@ -577,6 +582,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     textAlign: 'right',
   },
@@ -595,6 +601,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
   // Launch CTA
   cta: {
@@ -610,6 +617,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
     textAlign: 'center',
   },

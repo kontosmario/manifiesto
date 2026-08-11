@@ -23,6 +23,7 @@ export type AuthTransitionErrorKind = BridgeErrorKind
 import { triggerHaptic } from '@/lib/haptics'
 import { verifyInternetReachable } from '@/lib/verify-internet-reachable'
 import { authTokens } from '@/theme/palette'
+import { nunitoFamily } from '@/theme/typography'
 
 interface AuthTransitionSplashProps {
   phase: AuthTransitionPhase
@@ -402,6 +403,7 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
     color: '#FFFBF2',
     textAlign: 'center',
@@ -422,6 +424,7 @@ const styles = StyleSheet.create({
   retryLabel: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
     color: '#0E3A26',
   },

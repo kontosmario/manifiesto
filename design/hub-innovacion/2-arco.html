@@ -1,0 +1,1543 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub de acciones — Arco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Motion tokens (mobile/lib/motion/tokens.ts) */
+    --d-micro: 120ms;
+    --d-quick: 180ms;
+    --d-standard: 240ms;
+    --d-deliberate: 320ms;
+    --d-breath: 2800ms;
+    --spring-radial: cubic-bezier(0.34, 1.42, 0.5, 1);
+    --spring-celebrate: cubic-bezier(0.34, 1.56, 0.46, 1);
+    --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-standard: cubic-bezier(0.22, 0.9, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: #171C16;
+    color: #E7EADE;
+    padding: 36px 28px 90px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ═══ Chrome de la página ═══ */
+  .page-head { max-width: 940px; margin: 0 auto 30px; }
+  .kicker {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #8FA089; margin: 0 0 8px;
+  }
+  h1 { font-size: 30px; font-weight: 900; letter-spacing: -.9px; margin: 0 0 12px; }
+  .lede { font-size: 14.5px; font-weight: 600; line-height: 1.6; color: #A8B4A0; margin: 0; max-width: 74ch; }
+  .lede + .lede { margin-top: 10px; }
+  .lede b { color: #C9F3C6; font-weight: 800; }
+
+  .controls {
+    max-width: 940px; margin: 24px auto 34px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--font); font-size: 14px; font-weight: 900; letter-spacing: -.2px;
+    color: #0F1E14; border: 0; cursor: pointer;
+    padding: 12px 22px; border-radius: 22px;
+    background: linear-gradient(145deg, #9FDC9F, #3E7D46);
+    box-shadow: 0 12px 24px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.3);
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .btn:active { transform: scale(.97); }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: #A8B4A0; cursor: pointer;
+    padding: 10px 16px; border-radius: 20px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle input { accent-color: #A4E3A6; width: 15px; height: 15px; }
+  .hint-inline { font-size: 12.5px; font-weight: 700; color: #7C917A; padding: 10px 0; }
+
+  .frames { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .frame-col { display: flex; flex-direction: column; gap: 13px; }
+  .frame-label {
+    text-align: center; font-size: 11px; font-weight: 800;
+    letter-spacing: .1em; color: #8FA089; text-transform: uppercase;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     EL STAGE — teléfono de 393×830
+     ══════════════════════════════════════════════════════ */
+  .stage {
+    width: 393px; height: 830px; border-radius: 46px;
+    position: relative; overflow: hidden; flex: none;
+    font-family: var(--font);
+    box-shadow: 0 34px 80px rgba(8,14,8,.55);
+    touch-action: none;
+  }
+
+  /* Tokens LITERALES de mobile/components/redesign/home/home-spec.ts (HOME_SPEC)
+     y de mobile/components/navigation/neo-tab-bar-live.tsx. No se inventa ninguno. */
+  .stage[data-theme="light"] {
+    --bg: #DCDFCD;
+    --card: #E9EBE0;
+    --sheet: #F0EFE3;
+    --text: #24382A;
+    --muted: #6C7B67;
+    --tertiary: #9AA694;
+    --green: #2E7C39;
+    --orange: #C96F3F;
+
+    --raised-lg: 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --raised-md: 6px 6px 14px rgba(151,160,136,.42), -6px -6px 14px rgba(255,255,255,.9);
+    --raised-sm: 5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    --inset-md: inset 3px 3px 7px rgba(151,160,136,.35), inset -3px -3px 7px rgba(255,255,255,.9);
+    --inset-lg: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+
+    /* NAV BAR — neo-tab-bar-live.tsx + HOME_SPEC.light */
+    --nav-grad: linear-gradient(145deg, #F0F2E7, #E1E4D6);
+    --nav-shadow: 10px 10px 22px rgba(151,160,136,.45), -10px -10px 22px rgba(255,255,255,.95);
+    --nav-well-bg: transparent;
+    --nav-well-shadow: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+    --nav-active-ink: #2E7C39;
+    --nav-idle-ink: #54644F;
+    --nav-dot: #D97E4F;
+
+    /* FAB — HOME_SPEC.light */
+    --fab-grad: linear-gradient(145deg, #6DBC71, #327E39);
+    --fab-shadow: 7px 7px 15px rgba(120,140,110,.55), -6px -6px 13px rgba(255,255,255,.9);
+    --fab-ink: #F5F2E1;
+    --fab-well-shadow: inset 4px 4px 8px rgba(18,52,24,.55), inset -4px -4px 8px rgba(170,225,170,.4);
+    --fab-pressed-shadow: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+
+    /* Hub */
+    --scrim: rgba(185,190,172,.84);
+    --on-scrim: #24382A;
+    --rim: #24382A;            /* = token `text`: 5.21:1 contra el scrim más oscuro */
+    --hint: rgba(46,124,57,.55);
+    --hero-shadow: 12px 12px 26px rgba(124,138,110,.55), -8px -8px 20px rgba(255,255,255,.85), inset 0 1px 0 rgba(255,255,255,.25);
+    background: #DCDFCD;
+  }
+
+  .stage[data-theme="dark"] {
+    --bg: #0F1A13;
+    --card: #1D3426;
+    --sheet: #1B2F22;
+    --text: #F1EEDD;
+    --muted: #93A78F;
+    --tertiary: #7C917A;
+    --green: #A4E3A6;
+    --orange: #E9A76F;
+
+    --raised-lg: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --raised-md: 6px 6px 14px rgba(0,0,0,.5), -6px -6px 14px rgba(101,152,113,.1);
+    --raised-sm: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    --inset-md: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+    --inset-lg: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.1);
+
+    --nav-grad: linear-gradient(145deg, #1D3426, #132318);
+    --nav-shadow: 10px 10px 22px rgba(0,0,0,.55), -10px -10px 22px rgba(101,152,113,.12);
+    --nav-well-bg: #142519;
+    --nav-well-shadow: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.1);
+    --nav-active-ink: #A4E3A6;
+    --nav-idle-ink: #93A78F;
+    --nav-dot: #D97E4F;
+
+    /* OJO: en oscuro el FAB va INVERTIDO — disco crema, glifo verde. */
+    --fab-grad: linear-gradient(145deg, #F2F4EA, #DCE0D0);
+    --fab-shadow: 0 0 16px rgba(140,225,150,.22), 7px 7px 15px rgba(0,0,0,.55), -6px -6px 13px rgba(101,152,113,.18);
+    --fab-ink: #2E7C39;
+    --fab-well-shadow: inset 4px 4px 8px rgba(151,160,136,.4), inset -4px -4px 8px rgba(255,255,255,.85);
+    --fab-pressed-shadow: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.1);
+
+    --scrim: rgba(10,19,13,.84);
+    --on-scrim: #F1EEDD;
+    --rim: #93A78F;
+    --hint: rgba(164,227,166,.5);
+    --hero-shadow: 14px 14px 30px rgba(0,0,0,.5), -6px -6px 16px rgba(101,152,113,.14), inset 0 1px 0 rgba(164,227,166,.18);
+    background: #0F1A13;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     LA HOME REAL (lo que se ve bajo el scrim)
+     ══════════════════════════════════════════════════════ */
+  .home { position: absolute; inset: 0; background: var(--bg); overflow: hidden; }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px 4px; color: var(--text); font-size: 15px; font-weight: 800;
+  }
+  .sb-right { display: flex; align-items: center; gap: 6px; }
+  .bars { display: flex; align-items: flex-end; gap: 2.5px; }
+  .bars i { width: 3px; border-radius: 1px; background: currentColor; display: block; }
+  .battery { width: 23px; height: 11.5px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; }
+  .battery > i { display: block; width: 62%; height: 100%; background: currentColor; border-radius: 1.5px; }
+
+  .hbody { padding: 10px 20px 0; }
+  .hhead { display: flex; align-items: flex-start; justify-content: space-between; }
+  .greet-k { display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; color: var(--muted); }
+  .greet-n { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1.05; margin-top: 1px; letter-spacing: -.5px; }
+  .hacts { display: flex; gap: 9px; padding-top: 2px; }
+  .hact {
+    width: 44px; height: 44px; border-radius: 50%; position: relative;
+    background: var(--card); box-shadow: var(--raised-md);
+    display: flex; align-items: center; justify-content: center; color: var(--text);
+  }
+  .hact-badge {
+    position: absolute; top: -3px; right: -3px; width: 19px; height: 19px; border-radius: 50%;
+    background: #D97E4F; color: #3A1B08; font-size: 11px; font-weight: 900;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hchips { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+  .hchip-raised {
+    display: flex; align-items: center; gap: 8px; border-radius: 22px; padding: 8px 15px;
+    background: var(--card); box-shadow: var(--raised-md);
+    font-size: 13px; font-weight: 800; color: var(--text);
+  }
+  .hchip-well {
+    display: flex; align-items: center; gap: 7px; border-radius: 22px; padding: 9px 14px;
+    box-shadow: var(--inset-lg); font-size: 12.5px; font-weight: 800; color: var(--text);
+  }
+  .hchip-well i { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: block; }
+
+  /* Hero verde forest — mismo par de gradiente en los dos temas */
+  .hero {
+    position: relative; margin-top: 18px; border-radius: 32px;
+    background: linear-gradient(155deg, #244235 0%, #1F590D 55%, #297811 100%);
+    box-shadow: var(--hero-shadow);
+    padding: 18px 18px 16px; color: #F7F4E4;
+  }
+  .hero-top { display: flex; align-items: center; justify-content: space-between; }
+  .hero-eyebrow {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 800; letter-spacing: .14em; color: #E4EFDA;
+  }
+  .hero-eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: #C9F3C6; display: block; }
+  .hero-chip {
+    font-size: 11.5px; font-weight: 800; color: #F2F7E6; border-radius: 14px; padding: 6px 11px;
+    background: rgba(11,30,15,.32); box-shadow: inset 0 1px 2px rgba(20,45,25,.25);
+  }
+  .hero-well {
+    margin-top: 13px; border-radius: 24px; padding: 15px 17px 13px;
+    background: rgba(13,34,18,.30);
+    box-shadow: inset 6px 6px 14px rgba(6,20,10,.5), inset -5px -5px 12px rgba(130,190,130,.18);
+  }
+  .hero-amount { font-size: 39px; font-weight: 900; color: #F7F4E4; letter-spacing: -1.4px; line-height: 1; }
+  .hero-sub { font-size: 13px; font-weight: 700; color: #DDE8D2; margin-top: 6px; }
+  .hero-pill {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
+    border-radius: 18px; padding: 9px 13px; font-size: 12px; font-weight: 800; color: #DFF7DA;
+    background: rgba(11,30,15,.32);
+    box-shadow: inset 3px 3px 7px rgba(6,20,10,.45), inset -3px -3px 7px rgba(130,190,130,.14);
+  }
+  .hero-cupo {
+    margin-top: 13px; border-top: 1.5px solid rgba(240,248,230,.22); padding-top: 13px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .cupo-k { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; color: #C9F3C6; }
+  .cupo-v { font-size: 22px; font-weight: 900; color: #F7F4E4; letter-spacing: -.8px; margin-top: 2px; }
+  .cupo-right { flex: 1; min-width: 0; }
+  .cupo-lbl { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: #C9F3C6; }
+  .cupo-lbl i { width: 6px; height: 6px; border-radius: 50%; background: #C9F3C6; display: block; }
+  .cupo-bar { height: 8px; border-radius: 5px; margin-top: 8px; background: rgba(11,30,15,.42); overflow: hidden; }
+  .cupo-bar > i { display: block; height: 100%; width: 38%; border-radius: 5px; background: #C9F3C6; }
+  .cupo-foot { display: flex; justify-content: space-between; margin-top: 7px; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; color: #E4EFDA; }
+
+  .sect {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 18px; padding: 0 4px;
+    font-size: 11.5px; font-weight: 800; letter-spacing: .16em; color: var(--muted);
+  }
+  .sect b { font-size: 12.5px; font-weight: 800; letter-spacing: 0; color: var(--green); }
+  .rows {
+    margin-top: 10px; border-radius: 24px; background: var(--card);
+    box-shadow: var(--raised-lg); padding: 6px 16px;
+  }
+  .row { display: flex; align-items: center; gap: 11px; padding: 11px 0; }
+  .row > .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .row-mid { flex: 1; min-width: 0; }
+  .row-k { font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+  .row-s { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+  .row-v { font-size: 20px; font-weight: 900; color: var(--text); letter-spacing: -.6px; }
+  .row-div { height: 2px; border-radius: 2px; box-shadow: var(--inset-lg); }
+
+  /* ══ NAV BAR real ══════════════════════════════════════
+     marginHorizontal 18 · marginBottom 22 · radius 32 ·
+     padding 12 / 20 / 13 · dos grupos flex:1 + slot fijo del FAB
+     (así el centro del FAB ES el centro de la barra).           */
+  .nav {
+    position: absolute; left: 18px; right: 18px; bottom: 22px;
+    border-radius: 32px; background: var(--nav-grad); box-shadow: var(--nav-shadow);
+    padding: 12px 20px 13px;
+    display: flex; align-items: center; justify-content: space-between; z-index: 1;
+  }
+  .nav-well {
+    position: absolute; left: 0; top: 12px; bottom: 13px; border-radius: 18px;
+    background: var(--nav-well-bg); box-shadow: var(--nav-well-shadow); pointer-events: none;
+  }
+  .nav-group { flex: 1; display: flex; align-items: center; justify-content: space-between; }
+  .nav-item {
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    gap: 4px; padding: 8px 6px; color: var(--nav-idle-ink);
+  }
+  .nav-item.is-active { color: var(--nav-active-ink); }
+  .nav-item span { font-size: 10.5px; font-weight: 800; line-height: 1; }
+  .nav-item.is-active span { font-weight: 900; }
+  .nav-dot { position: absolute; top: 3px; right: 6px; width: 8px; height: 8px; border-radius: 4px; background: var(--nav-dot); }
+  /* Reserva el hueco del FAB en la barra. El FAB real se dibuja como hijo del
+     stage para poder vivir POR ENCIMA del scrim, y toma su centro de acá:
+     una sola fuente de verdad para la nav y para el arco. */
+  .fab-anchor { width: 96px; display: flex; align-items: center; justify-content: center; }
+  .fab-anchor > i { display: block; width: 62px; height: 62px; position: relative; top: -26px; margin-bottom: -26px; }
+
+  .homebar {
+    position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+    width: 132px; height: 5px; border-radius: 3px; background: var(--text); opacity: .55; z-index: 7;
+  }
+
+  /* ── Scrim ── */
+  .scrim {
+    position: absolute; inset: 0; background: var(--scrim); z-index: 2;
+    opacity: 0; pointer-events: none;
+    transition: opacity var(--d-standard) var(--ease-standard);
+  }
+  .stage.is-open .scrim { opacity: 1; pointer-events: auto; }
+
+  /* ══ EL FAB — el pivote ══════════════════════════════ */
+  .fab {
+    position: absolute; width: 62px; height: 62px; border-radius: 31px;
+    background: var(--fab-grad); box-shadow: var(--fab-shadow);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 6; cursor: grab; user-select: none; -webkit-user-select: none;
+    transition: box-shadow var(--d-quick) var(--ease-ios), transform var(--d-quick) var(--ease-ios);
+  }
+  .fab:active { cursor: grabbing; }
+  .fab-well {
+    width: 44px; height: 44px; border-radius: 22px; color: var(--fab-ink);
+    box-shadow: var(--fab-well-shadow);
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow var(--d-quick) var(--ease-ios);
+  }
+  .fab-glyph { display: block; transition: transform var(--d-standard) var(--spring-radial); }
+  .stage.is-open .fab { box-shadow: var(--fab-pressed-shadow); }
+  .stage.is-open .fab-well { box-shadow: var(--fab-pressed-shadow); }
+  .stage.is-open .fab-glyph { transform: rotate(45deg); }
+
+  /* Affordance permanente del mantener-apretado: un ping lento que sale del
+     FAB. Es la única señal que necesita el gesto, y vive SOLO con el hub
+     cerrado. Con «reducir movimiento» se congela como halo fijo. */
+  .hold-hint {
+    position: absolute; width: 62px; height: 62px; border-radius: 50%;
+    border: 2px solid var(--hint); z-index: 5; pointer-events: none;
+    opacity: 0; transform: scale(1.1);
+  }
+  .stage:not(.is-open) .hold-hint { animation: ping var(--d-breath) var(--ease-standard) infinite; }
+
+  /* ══ EL ARCO ══════════════════════════════════════════ */
+  .arc { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
+
+  /* Surco: riel neumórfico grabado en el scrim, al MISMO radio que los pucks */
+  .track { position: absolute; inset: 0; }
+  .tr {
+    fill: none; stroke-width: 34; stroke-linecap: round;
+    stroke-dasharray: 460; stroke-dashoffset: 460;
+    transition: stroke-dashoffset 520ms var(--ease-ios) 40ms, opacity var(--d-quick) linear;
+    opacity: 0;
+  }
+  .stage.is-open .tr { stroke-dashoffset: 0; opacity: 1; }
+  .stage[data-theme="light"] .tr-dark  { stroke: rgba(151,160,136,.6); }
+  .stage[data-theme="light"] .tr-light { stroke: rgba(255,255,255,.9); }
+  .stage[data-theme="light"] .tr-fill  { stroke: rgba(151,160,136,.28); }
+  .stage[data-theme="dark"] .tr-dark   { stroke: rgba(0,0,0,.72); }
+  .stage[data-theme="dark"] .tr-light  { stroke: rgba(101,152,113,.26); }
+  .stage[data-theme="dark"] .tr-fill   { stroke: rgba(0,0,0,.42); }
+  .tr-dark, .tr-light { filter: blur(4px); }
+
+  /* La zona muerta, dibujada como pozo: «acá no hay nada que elegir» */
+  .dead {
+    position: absolute; border-radius: 50%; box-shadow: var(--inset-md);
+    opacity: 0; transition: opacity var(--d-quick) linear, box-shadow var(--d-quick) linear;
+    pointer-events: none;
+  }
+  .stage.is-open .dead { opacity: 1; }
+  .stage.is-open.is-cancel .dead { box-shadow: var(--inset-lg); }
+  .dead-cap {
+    position: absolute; z-index: 5; pointer-events: none;
+    font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--on-scrim); white-space: nowrap;
+    transform: translate(-50%, -50%);
+    opacity: 0; transition: opacity var(--d-quick) linear;
+  }
+  .stage.is-open .dead-cap { opacity: 1; }
+  .stage.is-open.is-cancel .dead-cap { font-weight: 900; }
+
+  /* Los pucks */
+  .puck {
+    position: absolute; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text); cursor: pointer; pointer-events: none;
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(.12);
+    transition:
+      transform 440ms var(--spring-radial),
+      opacity 200ms linear,
+      box-shadow var(--d-micro) var(--ease-ios);
+    transition-delay: var(--d-out, 0ms);
+  }
+  .stage.is-open .puck {
+    pointer-events: auto; opacity: 1;
+    transform: translate(0,0) scale(1);
+    transition-delay: var(--d-in, 0ms);
+  }
+  /* El atenuado es SOLO de escala: bajar la opacidad hundiría el contraste
+     del ícono por debajo de 3:1 durante el gesto. */
+  .stage.is-open .puck.is-dim { transform: translate(0,0) scale(.93); }
+  .stage.is-open .puck.is-pointed { transform: translate(0,0) scale(1.16); }
+
+  /* Material: pastel de categoría + aro de definición (2px) */
+  .puck-pastel { box-shadow: var(--raised-md), 0 0 0 2px var(--rim); }
+  .puck-pastel.is-pointed { box-shadow: var(--inset-md), 0 0 0 2px var(--rim); }
+  .stage[data-theme="light"] [data-pastel="import"]   { background: #E6E0F4; }
+  .stage[data-theme="light"] [data-pastel="no-spend"] { background: #D4EBDF; }
+  .stage[data-theme="light"] [data-pastel="income"]   { background: #D6E4F0; }
+  .stage[data-theme="light"] [data-pastel="fixed"]    { background: #EDE0C8; }
+  /* Oscuro: NO es el pastel claro atenuado — compuesto sobre la superficie
+     oscura los cuatro caían en la misma casilla (~#3E5040) y el arco perdía
+     la identidad por acción que sí tiene en claro. Estos conservan el TONO
+     de cada categoría y lo bajan a una luminancia común de 0.125: con la
+     tinta dan 5.15:1 los cuatro y 3.12:1 contra el scrim compuesto. */
+  .stage[data-theme="dark"]  [data-pastel="import"]   { background: #6B5997; }
+  .stage[data-theme="dark"]  [data-pastel="no-spend"] { background: #406C55; }
+  .stage[data-theme="dark"]  [data-pastel="income"]   { background: #4A667F; }
+  .stage[data-theme="dark"]  [data-pastel="fixed"]    { background: #726143; }
+
+  /* El puck protagonista: el MISMO material del FAB, escalado. Es el «+»
+     que subió hasta ahí, no un botón nuevo. */
+  .puck-cta { background: var(--fab-grad); box-shadow: var(--fab-shadow), 0 0 0 2px var(--rim); }
+  .puck-cta.is-pointed { box-shadow: var(--fab-pressed-shadow), 0 0 0 2px var(--rim); }
+  .puck-cta > .cta-well {
+    width: 62px; height: 62px; border-radius: 31px; color: var(--fab-ink);
+    box-shadow: var(--fab-well-shadow);
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow var(--d-micro) var(--ease-ios);
+  }
+  .puck-cta.is-pointed > .cta-well { box-shadow: var(--fab-pressed-shadow); }
+
+  /* Anillo de confirmación */
+  .puck::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 3px solid var(--green); opacity: 0; pointer-events: none;
+  }
+  .puck.is-fired::after { animation: ring 520ms var(--ease-standard) forwards; }
+  .stage.is-firing .puck:not(.is-fired) {
+    opacity: 0; transform: translate(var(--tx), var(--ty)) scale(.35); transition-delay: 0ms;
+  }
+  .stage.is-firing .puck.is-fired { transform: translate(0,0) scale(1.24); }
+
+  /* Los NOMBRES — siempre visibles apenas abre el arco.
+     Una sola regla: se apoyan arriba del puck y se abren hacia afuera
+     en proporción al ángulo (dx = OUT·sen ang). Sin excepciones. */
+  .lbl {
+    position: absolute; z-index: 5; pointer-events: none;
+    transform: translate(-50%, -100%);
+    transform-origin: 50% 100%;
+    font-size: 11px; font-weight: 800; letter-spacing: .015em;
+    color: var(--on-scrim); white-space: nowrap; line-height: 1.25;
+    opacity: 0; transition: opacity var(--d-quick) linear, transform var(--d-quick) var(--ease-ios);
+    transition-delay: var(--d-out, 0ms);
+  }
+  .stage.is-open .lbl { opacity: 1; transition-delay: var(--d-in, 0ms); }
+  .stage.is-open .lbl.is-pointed { font-weight: 900; transform: translate(-50%, -100%) scale(1.09); }
+  .stage.is-firing .lbl { opacity: 0; transition-delay: 0ms; }
+
+  /* Globo + Brot. SIN colita: el aire sólo tiene que despejar los 10,2px
+     que el DIBUJO de Brot se sale de su caja por arriba en RN, para no
+     guillotinar las hojas al saltar.
+
+     OJO al verificar acá: este componente web recorta exacto al viewBox, así
+     que en el prototipo Brot nunca usa ese aire y el globo se ve más suelto
+     que en device. El número se mantiene igual que en RN (15) a propósito,
+     para que no haya dos geometrías. */
+  .brot-slot {
+    position: absolute; left: 0; right: 0;
+    display: flex; flex-direction: column; align-items: center; gap: 15px;
+    z-index: 5; pointer-events: none;
+    opacity: 0; transform: translateY(14px) scale(.86);
+    transition: opacity var(--d-quick) linear, transform var(--d-deliberate) var(--spring-celebrate);
+  }
+  /* Alto fijo: Brot se monta y desmonta, el eyebrow no puede saltar. */
+  .brot-host { height: 92px; display: flex; align-items: flex-end; justify-content: center; }
+  .stage.is-open .brot-slot { opacity: 1; transform: translateY(0) scale(1); transition-delay: 90ms; }
+  /* GLOBO DE CHAT. El texto suelto sobre el scrim no fallaba por contraste
+     —daba 6,96:1 en claro— sino por FIGURA: 12,5px flotando sobre un scrim
+     translúcido, con la Home asomando por detrás y sin ningún plano que lo
+     contuviera. El relleno solo tampoco alcanza (1,56:1 contra el scrim en
+     claro, 1,32:1 en oscuro): lo que recorta el globo es el MISMO par que usan
+     los pucks —relieve + aro de definición— y por eso lleva el mismo `--rim`.
+     Caja baja, no el eyebrow tracked en mayúsculas: eso es un rótulo de
+     sección, y lo que hay acá es a Brot hablándote. */
+  .brot-bubble {
+    position: relative;
+    background: var(--sheet);
+    /* Esquinas de chat: tres redondas y una en punta, tomando el lenguaje
+       del brote. La punta abajo-izquierda es la del globo entrante de
+       cualquier app de mensajería. */
+    border-radius: 18px 18px 18px 4px;
+    padding: 9px 14px; box-shadow: var(--raised-md);
+    font-size: 12.5px; font-weight: 800; letter-spacing: .01em; line-height: 17px;
+    color: var(--on-scrim); text-align: center; white-space: nowrap;
+  }
+
+  /* Toast */
+  .toast {
+    position: absolute; left: 50%; bottom: 128px; z-index: 8;
+    transform: translate(-50%, 12px);
+    padding: 12px 20px; border-radius: 22px;
+    background: var(--sheet); box-shadow: var(--raised-lg);
+    color: var(--text); font-size: 13.5px; font-weight: 800; letter-spacing: -.1px;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity var(--d-quick) linear, transform var(--d-standard) var(--ease-ios);
+  }
+  .toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Puntero fantasma del replay */
+  .ghost {
+    position: absolute; left: 0; top: 0; width: 54px; height: 54px;
+    border-radius: 50%; z-index: 7; pointer-events: none;
+    background: radial-gradient(circle at 40% 34%, var(--ghost-ring), var(--ghost) 70%);
+    box-shadow: 0 0 0 2px var(--ghost-ring), 0 6px 16px rgba(0,0,0,.25);
+    opacity: 0;
+    transform: translate(calc(var(--gx, 196px) - 50%), calc(var(--gy, 757px) - 50%));
+    transition: opacity var(--d-quick) linear;
+  }
+  .stage[data-theme="light"] .ghost { --ghost: rgba(36,56,42,.16); --ghost-ring: rgba(36,56,42,.32); }
+  .stage[data-theme="dark"]  .ghost { --ghost: rgba(241,238,221,.16); --ghost-ring: rgba(241,238,221,.34); }
+  .ghost.is-on { opacity: 1; }
+
+  @keyframes ping {
+    0%   { opacity: 0;   transform: scale(1.02); }
+    18%  { opacity: 1;   transform: scale(1.14); }
+    100% { opacity: 0;   transform: scale(1.62); }
+  }
+  @keyframes ring {
+    from { opacity: .95; transform: scale(1); }
+    to   { opacity: 0;   transform: scale(2.1); }
+  }
+
+  /* Reducir movimiento */
+  body.reduced .stage *, body.reduced .stage { transition-duration: 1ms !important; transition-delay: 0ms !important; }
+  body.reduced .hold-hint { animation: none !important; opacity: .7 !important; transform: scale(1.22) !important; }
+  body.reduced .puck.is-fired::after { animation: none !important; }
+  body.reduced .tr { transition: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage *, .stage { transition-duration: 1ms !important; transition-delay: 0ms !important; }
+    .hold-hint { animation: none !important; opacity: .7 !important; transform: scale(1.22) !important; }
+  }
+
+  /* ═══ Bloques de la página ═══ */
+  .panel {
+    max-width: 940px; margin: 54px auto 0;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    border-radius: 26px; padding: 24px 26px;
+    box-shadow: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+  }
+  .panel + .panel { margin-top: 20px; }
+  .panel h2 {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: #93A78F; margin: 0 0 18px;
+  }
+  .note-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .note {
+    background: #142519; border-radius: 22px; padding: 20px 22px;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .note-n {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; margin-bottom: 12px;
+    background: linear-gradient(145deg, #9FDC9F, #3E7D46);
+    color: #0F1E14; font-size: 13px; font-weight: 900;
+  }
+  .note h3 { font-size: 15px; font-weight: 900; color: #F1EEDD; margin: 0 0 8px; letter-spacing: -.3px; }
+  .note p { font-size: 13px; font-weight: 600; line-height: 1.55; color: #A8B4A0; margin: 0; }
+  .note p + p { margin-top: 9px; }
+  .note code, .panel code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: #C9F3C6; background: rgba(164,227,166,.1);
+    padding: 1px 5px; border-radius: 5px;
+  }
+
+  .balance { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .bal-col h3 {
+    font-size: 12px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
+    margin: 0 0 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .bal-col.win h3 { color: #A4E3A6; }
+  .bal-col.risk h3 { color: #E9C08A; }
+  .bal-col ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .bal-col li {
+    font-size: 13px; font-weight: 600; line-height: 1.5; color: #A8B4A0;
+    padding: 12px 15px; border-radius: 16px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .bal-col li b { color: #F1EEDD; font-weight: 800; }
+
+  table.wcag { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.wcag th {
+    text-align: left; font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: #7C917A; padding: 0 10px 10px; font-weight: 800;
+  }
+  table.wcag td { padding: 9px 10px; color: #A8B4A0; font-weight: 600; vertical-align: middle; }
+  table.wcag tbody tr { background: #142519; }
+  table.wcag tbody tr:nth-child(even) { background: #182B1D; }
+  table.wcag tbody tr td:first-child { border-radius: 12px 0 0 12px; }
+  table.wcag tbody tr td:last-child { border-radius: 0 12px 12px 0; }
+  .ratio { font-weight: 900; color: #F1EEDD; font-variant-numeric: tabular-nums; }
+  .pass { color: #A4E3A6; font-weight: 900; }
+  .fail { color: #E9A08A; font-weight: 900; }
+  .wcag-note { font-size: 12.5px; font-weight: 600; line-height: 1.6; color: #93A78F; margin: 16px 0 0; }
+  .wcag-note b { color: #F1EEDD; font-weight: 800; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <p class="kicker">Hub de acciones · dirección elegida</p>
+  <h1>Arco</h1>
+  <p class="lede">
+    El FAB deja de ser un botón que <i>abre otra cosa</i> y pasa a ser un <b>pivote</b>. Al mantenerlo
+    apretado, las cinco acciones brotan en un <b>arco de 144°</b> alrededor del dedo —los cinco al
+    mismo radio y con el mismo salto angular— y se elige <b>deslizando y soltando</b>: un solo gesto
+    continuo, sin levantar la mano ni leer una lista.
+  </p>
+  <p class="lede">
+    Los <b>cinco nombres se ven desde el primer instante</b>, no hace falta apuntar para saber qué hay.
+    La jerarquía es física: <b>Gasto</b> —el 80% de las aperturas— es el puck más grande, lleva el
+    material del propio FAB y está justo arriba del pulgar. Para quien no descubre el arrastre hay un
+    camino idéntico por tap: <b>tocá y soltá</b> el FAB y el arco queda abierto; después elegís con
+    un toque.
+  </p>
+</div>
+
+<div class="controls">
+  <button class="btn" id="replay">Reproducir la apertura</button>
+  <label class="toggle"><input type="checkbox" id="reduced"> Simular «reducir movimiento»</label>
+  <span class="hint-inline">Probalo: apretá el «+» y arrastrá sin soltar · o hacé un tap seco en el «+»</span>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<div class="panel">
+  <h2>Las decisiones que estás aprobando</h2>
+  <div class="note-grid">
+    <div class="note">
+      <span class="note-n">1</span>
+      <h3>La geometría es derivada, no dibujada</h3>
+      <p>Hay <b>una sola fuente de verdad</b> —<code>ARC = {cx, cy, radio, apertura, orden}</code>— y de
+      ahí salen el ángulo, el radio, el tamaño y la posición de cada puck. El centro
+      (<code>cx, cy</code>) no está escrito a mano: se <b>mide del hueco real del FAB</b> en la barra de
+      navegación, así que el arco no puede desalinearse del pivote.</p>
+      <p>Medido en el DOM con el arco asentado: los cinco pucks al <b>mismo radio</b>
+      (150,00–150,01px, desvío <b>0,01px</b>), saltos de <b>36°</b> (desvío 0,02°), simetría espejo
+      exacta, cero colisiones y <b>25,8px</b> de aire al borde en los pucks de las puntas
+      (21,4px en la etiqueta más al borde, «Ingreso»).</p>
+    </div>
+    <div class="note">
+      <span class="note-n">2</span>
+      <h3>Nadie tiene que adivinar</h3>
+      <p>El FAB emite un <b>ping lento</b> mientras el hub está cerrado: es la única señal que anuncia
+      «esto se mantiene apretado», y desaparece apenas abrís.</p>
+      <p>Con el arco abierto, los <b>cinco nombres están puestos</b> por una regla única —se apoyan
+      arriba del puck y se abren hacia afuera en proporción al ángulo— y el <b>pozo</b> alrededor del
+      FAB, con la palabra «cancelar», dice que ahí no se elige nada. El «+» rota a «×» para
+      confirmarlo.</p>
+    </div>
+    <div class="note">
+      <span class="note-n">3</span>
+      <h3>Material real, no aproximado</h3>
+      <p>La barra, el surco de la tab activa, el FAB (con su <b>inversión a crema en oscuro</b>) y la
+      Home de atrás usan los tokens <b>literales</b> de <code>HOME_SPEC</code> y
+      <code>neo-tab-bar-live.tsx</code>. El puck de Gasto lleva el mismo gradiente y el mismo surco
+      interior que el FAB: se lee como el «+» que subió hasta ahí.</p>
+      <p>El apuntado <b>crece a 1.16 y se hunde</b>; los demás bajan a 0.93 <i>sin</i> perder opacidad
+      —atenuar por transparencia hundiría el contraste del ícono por debajo de 3:1 justo cuando se
+      está eligiendo.</p>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Qué gana / qué arriesga</h2>
+  <div class="balance">
+    <div class="bal-col win">
+      <h3>Qué gana</h3>
+      <ul>
+        <li><b>La acción dominante cuesta un gesto.</b> Apretar y soltar sin mover = Gasto. Se van
+        ~600ms y un tap de la interacción más repetida de la app.</li>
+        <li><b>La mano nunca sube.</b> Todo el hub vive a 150px del pulgar; hoy la hoja obliga a
+        recorrer 300px hacia arriba con el dedo.</li>
+        <li><b>Se lee sin apuntar.</b> Los cinco nombres están a la vista desde que abre, así que el
+        primer uso no depende de descubrir nada.</li>
+        <li><b>Se vuelve muscular.</b> Con saltos parejos de 36°, «izquierda del todo es Fijo» se
+        aprende en una semana y se elige sin mirar.</li>
+        <li><b>Reversible sin costo.</b> El pozo alrededor del FAB dice «cancelar»; soltar ahí no
+        deja ningún estado que deshacer.</li>
+      </ul>
+    </div>
+    <div class="bal-col risk">
+      <h3>Qué arriesga</h3>
+      <ul>
+        <li><b>Ergonomía zurda.</b> El arco está calibrado para pulgar derecho. Pide un
+        <b>espejado por preferencia</b>, o sea una preferencia más en Ajustes.</li>
+        <li><b>Accesibilidad: el radial es el peor caso.</b> Con VoiceOver/TalkBack un gesto continuo
+        con destino angular <b>no existe</b>. El camino por tap lo cubre (arco abierto + cinco
+        destinos tocables de 56–88px), pero <b>hay que mantener la hoja actual</b> como alternativa
+        para toque asistido. Son dos hubs, no uno.</li>
+        <li><b>El ping educa, no enseña.</b> Anuncia que hay un gesto, no cuál. Una parte del padrón
+        va a usar siempre el camino por tap — que está completo, pero es dos toques.</li>
+        <li><b>Los nombres son cortos por obligación.</b> En 393px entran «Fijo», «Importar»,
+        «Gasto», «Sin gasto», «Ingreso». El nombre largo («Día sin gasto») vive en el toast, no en el
+        arco.</li>
+        <li><b>Código nuevo, y no poco.</b> Gesture Handler con pan continuo, hit-test angular en un
+        worklet, cinco entradas escalonadas con spring y el fallback de hoja.
+        Estimado <b>3–5 días</b> + el espejado.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>Contraste WCAG — calculado sobre el scrim compuesto de esta pantalla</h2>
+  <table class="wcag">
+    <thead>
+      <tr><th>Par</th><th>Tema</th><th>Umbral</th><th>Ratio</th><th></th></tr>
+    </thead>
+    <tbody id="wcag-body"></tbody>
+  </table>
+  <p class="wcag-note">
+    <b>Cómo se midió.</b> El scrim es translúcido, así que los ratios se calculan contra el
+    <b>compuesto</b> —scrim sobre lo que hay detrás— tomando siempre el peor caso de la pantalla:
+    en claro el scrim sobre el hero verde (<code>#A1AA99</code>) y en oscuro el scrim sobre el hero
+    (<code>#0F230E</code>).
+  </p>
+  <p class="wcag-note">
+    <b>Dos correcciones respecto de la versión anterior.</b> (1) El aro de definición de los pucks
+    estaba en <code>muted</code> #54644F y daba <b>2,63:1</b> contra el scrim claro más oscuro: no
+    llegaba al 3:1 de componentes. Pasa a <code>text</code> #24382A (5,21:1), que además sube a
+    9,6:1 contra los pastel. (2) El puck de Gasto tampoco llegaba solo (2,09:1), así que el aro es
+    ahora <b>regla única para los cinco</b>. Los pucks atenuados <b>ya no bajan de opacidad</b>
+    —sólo de escala— porque atenuar durante el gesto tiraba el ícono por debajo del umbral.
+  </p>
+  <p class="wcag-note">
+    <b>Dos hallazgos que vienen de producción y NO se alteran acá</b> (cambiarlos rompería el
+    objetivo de que el prototipo sea el material real): el glifo del FAB <code>#F5F2E1</code> sobre
+    su propio gradiente da <b>2,97:1</b> en claro —0,03 por debajo del 3:1— y el punto de
+    notificación <code>#D97E4F</code> sobre la barra clara da <b>2,31:1</b>. Los dos pasan holgado
+    en oscuro. Van al reporte como cambio sugerido a <code>HOME_SPEC.light</code>, no como parche
+    del prototipo.
+  </p>
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var RAD = Math.PI / 180;
+
+  /* ══════════════════════════════════════════════════════════════
+     ARC — LA ÚNICA FUENTE DE VERDAD DE LA GEOMETRÍA.
+     cx/cy se MIDEN del hueco real del FAB en la barra de navegación
+     (measure()); todo lo demás se deriva de acá. Ningún puck tiene
+     coordenadas propias escritas a mano.
+     ══════════════════════════════════════════════════════════════ */
+  var ARC = {
+    cx: 0,            // medido
+    cy: 0,            // medido
+    radius: 150,      // idéntico para los cinco
+    spread: 144,      // apertura total en grados (±72)
+    // Gasto al centro, y a sus lados las otras dos altas (Fijo e Ingreso).
+    // Las puntas — donde el pulgar llega peor — son para lo ocasional.
+    order: ['import', 'fixed', 'expense', 'income', 'no-spend']
+  };
+
+  // Tabla de tamaños por peso (la jerarquía aprobada: principal > diaria > mensual)
+  var SIZE = { primary: 88, daily: 64, monthly: 56 };
+
+  /** El peso lo decide la POSICIÓN, no la acción: centro principal,
+      contiguos diarios, puntas mensuales. Derivado, para que reordenar
+      `ARC.order` no pueda dejar una punta más grande que su vecina. */
+  function weightForIndex(i, n) {
+    var d = Math.abs(i - (n - 1) / 2);
+    return d === 0 ? 'primary' : d <= 1 ? 'daily' : 'monthly';
+  }
+
+  var LABEL_GAP = 9;    // del borde del puck al nombre
+  var LABEL_OUT = 13;   // apertura horizontal del nombre = LABEL_OUT · sen(ang)
+
+  // Sin `weight`: el tamaño sale de la posición en ARC.order (weightForIndex).
+  var CATALOG = {
+    fixed:     { name: 'Fijo',      pose: 'think', toast: 'Gasto fijo · lo que se repite todos los meses' },
+    'import':  { name: 'Importar',  pose: 'magic', toast: 'Importar captura · leyendo el ticket' },
+    expense:   { name: 'Gasto',     pose: 'wow',   toast: 'Gasto · el monto ya te está esperando' },
+    'no-spend':{ name: 'Sin gasto', pose: 'zen',   toast: 'Día sin gasto · sumaste una plantita al jardín' },
+    income:    { name: 'Ingreso',   pose: 'cheer', toast: 'Ingreso · sumá lo que entró' }
+  };
+
+  /* Los mensajitos de Brot: uno por apertura, distinto cada vez. Brot ya NO
+     cambia de pose según la acción apuntada — se elige uno al abrir y se
+     sostiene toda la interacción, así el arco deja de tener una mascota que
+     salta. La pose viaja con el mensaje. */
+  var BROT_MESSAGES = [
+    ['¡Qué bueno verte!', 'wave'],
+    ['Se me durmió una raíz', 'shy'],
+    ['Sin prisa', 'zen'],
+    ['¿Tú también fotosintetizas?', 'cool'],
+    ['Anota con calma', 'coach'],
+    ['Un caracol me saludó', 'wow'],
+    ['Aquí estoy, sin juzgar', 'love'],
+    ['Modo jardín', 'cool'],
+    ['Me regué encima', 'shy'],
+    ['¿Día pesado?', 'think'],
+    ['Dos hojas y mucha energía', 'cheer'],
+    ['La maceta me queda grande', 'seed'],
+    ['Pensaba en la lluvia', 'think'],
+    ['Hola, soy yo otra vez', 'wave'],
+    ['Somos dos, y uno es planta', 'laugh'],
+    ['Hoy hay sol aquí adentro', 'radiant'],
+    ['Toca sin miedo', 'wave'],
+    ['Mi hoja izquierda bosteza', 'idle'],
+    ['Crecer da cosquillas', 'laugh'],
+    ['La tierra está tibia hoy', 'seed'],
+    ['No sé sumar, soy planta', 'shy'],
+    ['¿Qué plantamos hoy?', 'think'],
+    ['El viento me despeinó', 'sproutA'],
+    ['Nadie te pide nada', 'shy'],
+    ['Soy casi todo agua', 'idle'],
+    ['Seguimos cuando quieras', 'radiant'],
+    ['¿Te hago sombra un rato?', 'love'],
+    ['Recién salgo de la tierra', 'sproutA'],
+    ['Practiqué este saludo', 'wave'],
+    ['¡Tengo las hojas contentas!', 'cheer'],
+    ['¿Pesa el globo o soy yo?', 'wow'],
+    ['Tu ritmo, tu manera', 'cool'],
+    ['Un poquito de agua y listo', 'idle'],
+    ['Ningún gasto te define', 'love'],
+    ['Me estiré para saludarte', 'sprout'],
+    ['Una hormiga me hizo reír', 'laugh'],
+    ['¿Regamos el jardín?', 'sprout'],
+    ['Hoy basta con estar aquí', 'sproutA'],
+    ['Elige, yo espero aquí', 'zen'],
+    ['Cinco caminos, un brote', 'wow']
+  ];
+
+  /* Selector "de bolsa": reparte los 40 en orden aleatorio y no repite hasta
+     agotarlos. Un Math.random() suelto no alcanza para que se sienta distinto
+     —con 40 entradas la chance de ver un repetido en las primeras diez
+     tiradas pasa el 70%— y repetir es justo lo que se nota. Al recargar
+     evita que la última de una vuelta quede pegada a la primera de la que
+     sigue: ese empalme es el único punto donde el barajado se delata. */
+  var brotBag = [], brotLast = -1;
+  function nextBrot() {
+    if (!brotBag.length) {
+      for (var i = 0; i < BROT_MESSAGES.length; i++) brotBag.push(i);
+      for (var j = brotBag.length - 1; j > 0; j--) {
+        var k = Math.floor(Math.random() * (j + 1)), t = brotBag[j];
+        brotBag[j] = brotBag[k]; brotBag[k] = t;
+      }
+      if (brotBag[brotBag.length - 1] === brotLast) {
+        var s = brotBag[brotBag.length - 1];
+        brotBag[brotBag.length - 1] = brotBag[0]; brotBag[0] = s;
+      }
+    }
+    brotLast = brotBag.pop();
+    return BROT_MESSAGES[brotLast];
+  }
+
+  var REST_POSE = 'coach';
+  var ITEMS = [];
+
+  /** Deriva ángulo / radio / tamaño / posición de los cinco pucks. */
+  function deriveItems() {
+    var n = ARC.order.length;
+    var step = ARC.spread / (n - 1);
+    ITEMS = ARC.order.map(function (key, i) {
+      var meta = CATALOG[key];
+      var ang = -ARC.spread / 2 + i * step;
+      var size = SIZE[weightForIndex(i, n)];
+      var s = Math.sin(ang * RAD), c = Math.cos(ang * RAD);
+      return {
+        key: key,
+        name: meta.name,
+        pose: meta.pose,
+        toast: meta.toast,
+        ang: ang,
+        r: ARC.radius,
+        size: size,
+        x: ARC.cx + ARC.radius * s,
+        y: ARC.cy - ARC.radius * c,
+        lx: ARC.cx + ARC.radius * s + LABEL_OUT * s,
+        ly: ARC.cy - ARC.radius * c - size / 2 - LABEL_GAP,
+        stagger: Math.round(Math.abs(ang) / (ARC.spread / 2) * 100)
+      };
+    });
+    return ITEMS;
+  }
+
+  function angStep() { return ARC.spread / (ARC.order.length - 1); }
+
+  var DEAD_ZONE = 56;                 // radio del pozo: soltar acá = cancelar
+  function maxReach() { return ARC.radius + 92; }
+
+  /** Hit-test angular. Sectores contiguos de `step` grados: no hay huecos
+   *  entre pucks, así que un dedo tembloroso siempre cae en alguno. */
+  function hit(px, py) {
+    var dx = px - ARC.cx, dy = ARC.cy - py;      // dy positivo = hacia arriba
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < DEAD_ZONE || dist > maxReach()) return null;
+    if (dy < -12) return null;
+    var ang = Math.atan2(dx, dy) / RAD;
+    var tol = angStep() / 2;
+    if (Math.abs(ang) > ARC.spread / 2 + tol) return null;
+    var best = null, bestD = 1e9;
+    for (var i = 0; i < ITEMS.length; i++) {
+      var d = Math.abs(ang - ITEMS[i].ang);
+      if (d < bestD) { bestD = d; best = ITEMS[i]; }
+    }
+    return best ? best.key : null;
+  }
+
+  /* ══ Glifos ══════════════════════════════════════════════════ */
+  function svg(paths, size, filled, sw) {
+    var attrs = filled
+      ? 'fill="currentColor" stroke="none"'
+      : 'fill="none" stroke="currentColor" stroke-width="' + (sw || 2.4) + '" stroke-linecap="round" stroke-linejoin="round"';
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" ' + attrs + '>' + paths + '</svg>';
+  }
+  var GLYPH = {
+    plus:       '<path d="M12 5.5v13M5.5 12h13"/>',
+    expense:    '<path d="M12 5.5v13M5.5 12h13"/>',
+    'import':   '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/>',
+    'no-spend': '<path d="M6.05 8.05c-2.73 2.73-2.73 7.15-.02 9.88 1.47-3.4 4.09-6.24 7.36-7.93' +
+                '-2.77 2.34-4.71 5.61-5.39 9.32 2.6 1.23 5.8.78 7.95-1.37C19.43 14.47 20 4 20 4S9.53 4.57 6.05 8.05z"/>',
+    income:     '<path d="M3.5 17l6-6 3.5 3.5L20.5 7"/><path d="M15.5 7h5v5"/>',
+    fixed:      '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>' +
+                '<path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/>' +
+                '<path d="M9.2 16.6a3 3 0 1 1 1.1 2.3"/><path d="M9.2 13.9v2.7h2.7"/>',
+    // Íconos LITERALES de mobile/components/navigation/neo-tab-icons.tsx
+    navHome:    '<path d="M4 11.2L12 4.6l8 6.6V20h-5.6v-4.8h-4.8V20H4z"/>',
+    navExp:     '<rect x="6" y="4" width="12" height="16" rx="2.5"/><path d="M9.5 9h5M9.5 13h5"/>',
+    navFixed:   '<rect x="3.5" y="7" width="17" height="10" rx="3"/><circle cx="12" cy="12" r="2.3"/>',
+    navControl: '<path d="M4 16.5l4.5-5.5 3.5 4L20 7"/><path d="M16.5 7H20v3.5"/>'
+  };
+  var BARS = '<div class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.35"></i></div>';
+
+  /* ══ La Home real ════════════════════════════════════════════ */
+  function homeMarkup() {
+    return '' +
+    '<div class="home">' +
+      '<div class="statusbar"><span>9:41</span><span class="sb-right">' + BARS +
+        '<span class="battery"><i></i></span></span></div>' +
+      '<div class="hbody">' +
+        '<div class="hhead">' +
+          '<div>' +
+            '<div class="greet-k">' +
+              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#C96F3F" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="13" r="4"/><path d="M12 4.5V6.5M4.5 9l1.6 1M19.5 9l-1.6 1M3.5 13.5h2M18.5 13.5h2"/></svg>' +
+              'buenas tardes,' +
+            '</div>' +
+            '<div class="greet-n">Mario</div>' +
+          '</div>' +
+          '<div class="hacts">' +
+            '<div class="hact"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.1 6.9L21 12l-6.9 2.1L12 21l-2.1-6.9L3 12l6.9-2.1z"/></svg></div>' +
+            '<div class="hact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5v-5.5a6 6 0 0 1 12 0v5.5l1.6 2.5H4.4z"/></svg><div class="hact-badge">4</div></div>' +
+            '<div class="hact"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7.5h16M4 12h16M4 16.5h16"/></svg></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hchips">' +
+          '<div class="hchip-raised">Tu espacio</div>' +
+          '<div class="hchip-well"><i></i>Cobrado hoy ✓</div>' +
+        '</div>' +
+        '<div class="hero">' +
+          '<div class="hero-top">' +
+            '<span class="hero-eyebrow"><i></i>SALDO DEL MES</span>' +
+            '<span class="hero-chip">día 17 de 31</span>' +
+          '</div>' +
+          '<div class="hero-well">' +
+            '<div class="hero-amount">$2.452.537</div>' +
+            '<div class="hero-sub">≈ US$ 1.619</div>' +
+          '</div>' +
+          '<div class="hero-pill">Ahorrando $100k</div>' +
+          '<div class="hero-cupo">' +
+            '<div><div class="cupo-k">CUPO HOY</div><div class="cupo-v">$179k</div></div>' +
+            '<div class="cupo-right">' +
+              '<div class="cupo-lbl"><i></i>PODÉS GASTAR HOY</div>' +
+              '<div class="cupo-bar"><i></i></div>' +
+              '<div class="cupo-foot"><span>GASTADO $68k</span><span>DISPONIBLE $111k</span></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sect"><span>RESUMEN DEL CICLO</span><b>Ver detalle</b></div>' +
+        '<div class="rows">' +
+          '<div class="row"><span class="dot" style="background:var(--orange)"></span>' +
+            '<div class="row-mid"><div class="row-k" style="color:var(--orange)">VARIABLES</div>' +
+            '<div class="row-s">64 movs · Hogar 24%</div></div>' +
+            '<span class="row-v">$3,0M</span></div>' +
+          '<div class="row-div"></div>' +
+          '<div class="row"><span class="dot" style="background:var(--green)"></span>' +
+            '<div class="row-mid"><div class="row-k" style="color:var(--green)">FIJOS</div>' +
+            '<div class="row-s">13 de 16 pagados</div></div>' +
+            '<span class="row-v">$1,2M</span></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ══ La barra de navegación real ═════════════════════════════
+     Inicio · Gastos · [FAB] · Fijos · Control.
+     Dos grupos flex:1 + slot fijo del FAB: el centro del FAB ES el
+     centro de la barra por construcción.                        */
+  var NAV = [
+    { key: 'inicio',  glyph: 'navHome',    label: 'Inicio',  active: true },
+    { key: 'gastos',  glyph: 'navExp',     label: 'Gastos' },
+    { key: 'fijos',   glyph: 'navFixed',   label: 'Fijos', dot: true },
+    { key: 'control', glyph: 'navControl', label: 'Control' }
+  ];
+  function navItem(it) {
+    return '<div class="nav-item' + (it.active ? ' is-active' : '') + '" data-nav="' + it.key + '">' +
+      svg(GLYPH[it.glyph], 20, false, it.active ? 2.3 : 2.2) +
+      '<span>' + it.label + '</span>' +
+      (it.dot ? '<i class="nav-dot"></i>' : '') +
+    '</div>';
+  }
+  function navMarkup() {
+    return '<div class="nav">' +
+      '<div class="nav-well"></div>' +
+      '<div class="nav-group">' + navItem(NAV[0]) + navItem(NAV[1]) + '</div>' +
+      '<div class="fab-anchor"><i></i></div>' +
+      '<div class="nav-group">' + navItem(NAV[2]) + navItem(NAV[3]) + '</div>' +
+    '</div>';
+  }
+
+  /* ══ Montaje ═════════════════════════════════════════════════ */
+  var THEMES = [
+    { id: 'light', label: 'Claro · Salvia' },
+    { id: 'dark',  label: 'Oscuro · Noche de bosque' }
+  ];
+  var frames = document.getElementById('frames');
+  var S = [];
+
+  THEMES.forEach(function (th) {
+    var col = document.createElement('div');
+    col.className = 'frame-col';
+
+    var stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.setAttribute('data-theme', th.id);
+    stage.innerHTML =
+      homeMarkup() +
+      navMarkup() +
+      '<div class="scrim"></div>' +
+      '<div class="arc">' +
+        '<svg class="track" viewBox="0 0 393 830" width="393" height="830" aria-hidden="true">' +
+          '<path class="tr tr-dark"  transform="translate(3.5,3.5)"/>' +
+          '<path class="tr tr-light" transform="translate(-3.5,-3.5)"/>' +
+          '<path class="tr tr-fill"/>' +
+        '</svg>' +
+        '<div class="dead"></div>' +
+        '<div class="dead-cap">cancelar</div>' +
+        '<div class="brot-slot"><div class="brot-bubble"></div><div class="brot-host"></div></div>' +
+        '<div class="ghost"></div>' +
+      '</div>' +
+      '<div class="hold-hint"></div>' +
+      '<div class="fab" role="button" tabindex="0" aria-label="Nueva acción">' +
+        '<div class="fab-well"><span class="fab-glyph">' + svg(GLYPH.plus, 24, false, 3) + '</span></div>' +
+      '</div>' +
+      '<div class="homebar"></div>' +
+      '<div class="toast"></div>';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'frame-label';
+    lbl.textContent = th.label;
+    col.appendChild(stage);
+    col.appendChild(lbl);
+    frames.appendChild(col);
+
+    // Brot: UNA sola instancia, montada al abrir y desmontada al cerrar —
+    // así el rAF del canvas NO corre en reposo.
+    var brot = document.createElement('brot-mascot');
+    brot.setAttribute('pose', REST_POSE);
+    brot.setAttribute('size', '92');
+    brot.setAttribute('shadow', 'false');
+
+    S.push({
+      stage: stage,
+      brot: brot,
+      arc: stage.querySelector('.arc'),
+      host: stage.querySelector('.brot-host'),
+      slot: stage.querySelector('.brot-slot'),
+      eyebrow: stage.querySelector('.brot-bubble'),
+      toast: stage.querySelector('.toast'),
+      ghost: stage.querySelector('.ghost'),
+      fab: stage.querySelector('.fab'),
+      hint: stage.querySelector('.hold-hint'),
+      dead: stage.querySelector('.dead'),
+      deadCap: stage.querySelector('.dead-cap'),
+      pucks: {},
+      labels: {},
+      mode: 'closed',     // closed | drag | latched | firing
+      pointed: null,
+      downT: 0, downX: 0, downY: 0, moved: 0,
+      toastT: 0, closeT: 0
+    });
+  });
+
+  /* ══ measure(): el arco nace del FAB real ════════════════════ */
+  function measure() {
+    var probe = S[0];
+    var sr = probe.stage.getBoundingClientRect();
+    var ar = probe.stage.querySelector('.fab-anchor > i').getBoundingClientRect();
+    ARC.cx = ar.left - sr.left + ar.width / 2;
+    ARC.cy = ar.top - sr.top + ar.height / 2;
+    deriveItems();
+
+    // Surco: mismo radio que los pucks, 6° de sobra a cada punta.
+    var ext = ARC.spread / 2 + 6;
+    var ax = (ARC.cx + ARC.radius * Math.sin(-ext * RAD)).toFixed(2);
+    var ay = (ARC.cy - ARC.radius * Math.cos(ext * RAD)).toFixed(2);
+    var bx = (ARC.cx + ARC.radius * Math.sin(ext * RAD)).toFixed(2);
+    var d = 'M ' + ax + ' ' + ay + ' A ' + ARC.radius + ' ' + ARC.radius + ' 0 0 1 ' + bx + ' ' + ay;
+
+    S.forEach(function (st) {
+      // FAB + affordances, anclados al centro medido
+      st.fab.style.left = (ARC.cx - 31) + 'px';
+      st.fab.style.top  = (ARC.cy - 31) + 'px';
+      st.hint.style.left = (ARC.cx - 31) + 'px';
+      st.hint.style.top  = (ARC.cy - 31) + 'px';
+      st.dead.style.left = (ARC.cx - DEAD_ZONE) + 'px';
+      st.dead.style.top  = (ARC.cy - DEAD_ZONE) + 'px';
+      st.dead.style.width = st.dead.style.height = (DEAD_ZONE * 2) + 'px';
+      st.deadCap.style.left = ARC.cx + 'px';
+      st.deadCap.style.top  = (ARC.cy - 45) + 'px';
+
+      Array.prototype.forEach.call(st.stage.querySelectorAll('.tr'), function (p) { p.setAttribute('d', d); });
+
+      // Pucks + nombres (se reconstruyen enteros: nada acumulado)
+      Object.keys(st.pucks).forEach(function (k) { st.pucks[k].remove(); });
+      Object.keys(st.labels).forEach(function (k) { st.labels[k].remove(); });
+      st.pucks = {}; st.labels = {};
+
+      ITEMS.forEach(function (it) {
+        var half = it.size / 2;
+        var isCta = it.key === 'expense';
+
+        var p = document.createElement('div');
+        p.className = 'puck ' + (isCta ? 'puck-cta' : 'puck-pastel');
+        p.setAttribute('data-key', it.key);
+        if (!isCta) p.setAttribute('data-pastel', it.key);
+        p.setAttribute('role', 'button');
+        p.setAttribute('tabindex', '-1');
+        p.setAttribute('aria-label', it.name);
+        p.style.cssText =
+          'left:' + (it.x - half).toFixed(2) + 'px;top:' + (it.y - half).toFixed(2) + 'px;' +
+          'width:' + it.size + 'px;height:' + it.size + 'px;' +
+          '--tx:' + (ARC.cx - it.x).toFixed(2) + 'px;--ty:' + (ARC.cy - it.y).toFixed(2) + 'px;' +
+          '--d-in:' + it.stagger + 'ms;--d-out:' + (100 - it.stagger) + 'ms;';
+        p.innerHTML = isCta
+          ? '<div class="cta-well">' + svg(GLYPH.plus, 30, false, 3) + '</div>'
+          : svg(GLYPH[it.key], it.size >= 64 ? 26 : 22, it.key === 'no-spend');
+        st.arc.appendChild(p);
+        st.pucks[it.key] = p;
+
+        var l = document.createElement('div');
+        l.className = 'lbl';
+        l.setAttribute('data-key', it.key);
+        l.textContent = it.name;
+        l.style.cssText =
+          'left:' + it.lx.toFixed(2) + 'px;top:' + it.ly.toFixed(2) + 'px;' +
+          '--d-in:' + (it.stagger + 60) + 'ms;--d-out:' + (100 - it.stagger) + 'ms;';
+        st.arc.appendChild(l);
+        st.labels[it.key] = l;
+      });
+
+      // Brot vive arriba del nombre más alto (el de Gasto), con 18px de aire.
+      var topName = ITEMS.reduce(function (a, b) { return a.ly < b.ly ? a : b; });
+      st.slot.style.bottom = (830 - (topName.ly - 15 - 18)) + 'px';
+    });
+  }
+
+  /* ══ Núcleo ══════════════════════════════════════════════════ */
+  function setPose(st, pose) {
+    if (st.brot.getAttribute('pose') !== pose) st.brot.setAttribute('pose', pose);
+  }
+
+  function open(st, mode) {
+    clearTimeout(st.closeT);
+    st.mode = mode;
+    st.stage.classList.add('is-open');
+    st.stage.classList.remove('is-firing');
+    Object.keys(st.pucks).forEach(function (k) {
+      st.pucks[k].classList.remove('is-fired');
+      st.pucks[k].setAttribute('tabindex', '0');
+    });
+    if (!st.host.firstChild) st.host.appendChild(st.brot);
+    // Se sortea UNA vez por apertura y no se vuelve a tocar: es lo que hace
+    // que Brot se quede quieto mientras el dedo recorre el arco.
+    st.brotMsg = nextBrot();
+    setPose(st, st.brotMsg[1]);
+    st.pointed = null;
+    point(st, null);
+  }
+
+  function close(st) {
+    st.mode = 'closed';
+    st.stage.classList.remove('is-open', 'is-cancel');
+    st.pointed = null;
+    st.ghost.classList.remove('is-on');
+    Object.keys(st.pucks).forEach(function (k) {
+      st.pucks[k].classList.remove('is-pointed', 'is-dim', 'is-fired');
+      st.pucks[k].setAttribute('tabindex', '-1');
+      st.labels[k].classList.remove('is-pointed');
+    });
+    // Desmontar a Brot corta su requestAnimationFrame (cambiar `animated`
+    // en caliente NO lo frena: hay que sacar el elemento del DOM).
+    clearTimeout(st.closeT);
+    st.closeT = setTimeout(function () {
+      if (st.mode === 'closed' && st.brot.parentNode) st.brot.parentNode.removeChild(st.brot);
+    }, 320);
+  }
+
+  function point(st, key) {
+    // El texto se recalcula SIEMPRE (aunque el puck apuntado no cambie):
+    // pasar de arrastre a arco abierto cambia el verbo — «soltá» vs «tocá» —
+    // sin cambiar el destino, y con un early-return pelado quedaba el copy
+    // del modo anterior.
+    if (st.pointed !== key) {
+      st.pointed = key;
+      ITEMS.forEach(function (it) {
+        var on = it.key === key;
+        st.pucks[it.key].classList.toggle('is-pointed', on);
+        st.pucks[it.key].classList.toggle('is-dim', !!key && !on);
+        st.labels[it.key].classList.toggle('is-pointed', on);
+      });
+    }
+    // El pozo se marca sólo cuando soltar ahí realmente cancela (modo drag).
+    st.stage.classList.toggle('is-cancel', st.mode === 'drag' && !key);
+    // La POSE no se toca: la eligió `open()` y se sostiene toda la
+    // interacción. Lo único que cambia es la línea de texto — el mensajito de
+    // Brot es el reposo, y con un sector apuntado pasa a decir qué hace el
+    // soltar, que es el único momento en que hace falta una instrucción.
+    if (key) {
+      st.eyebrow.textContent = st.mode === 'latched' ? 'Toca para elegir' : 'Suelta para elegir';
+    } else {
+      st.eyebrow.textContent = st.brotMsg ? st.brotMsg[0] : '';
+    }
+  }
+
+  function fire(st, key) {
+    if (st.mode === 'firing') return;
+    var it = ITEMS.filter(function (i) { return i.key === key; })[0];
+    var p = st.pucks[key];
+    st.mode = 'firing';
+    st.stage.classList.remove('is-cancel');
+    p.classList.add('is-fired');
+    st.stage.classList.add('is-firing');
+    setTimeout(function () {
+      close(st);
+      st.stage.classList.remove('is-firing');
+      p.classList.remove('is-fired');
+      showToast(st, it.toast);
+    }, 460);
+  }
+
+  function showToast(st, text) {
+    st.toast.textContent = text;
+    st.toast.classList.add('is-on');
+    clearTimeout(st.toastT);
+    st.toastT = setTimeout(function () { st.toast.classList.remove('is-on'); }, 1900);
+  }
+
+  /* ══ Gesto (pointer events puros — el mouse simula el dedo) ══ */
+  S.forEach(function (st) {
+    var fab = st.fab;
+
+    function local(ev) {
+      var r = st.stage.getBoundingClientRect();
+      return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+    }
+
+    fab.addEventListener('pointerdown', function (ev) {
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'firing') return;
+      if (st.mode === 'latched') { close(st); return; }
+      try { fab.setPointerCapture(ev.pointerId); } catch (e) {}
+      var p = local(ev);
+      st.downT = Date.now(); st.downX = p.x; st.downY = p.y; st.moved = 0;
+      open(st, 'drag');
+    });
+
+    function onMove(ev) {
+      if (st.mode !== 'drag') return;
+      var p = local(ev);
+      var dd = Math.sqrt(Math.pow(p.x - st.downX, 2) + Math.pow(p.y - st.downY, 2));
+      if (dd > st.moved) st.moved = dd;
+      point(st, hit(p.x, p.y));
+    }
+    fab.addEventListener('pointermove', onMove);
+    st.stage.addEventListener('pointermove', onMove);
+
+    function release(ev) {
+      if (st.mode !== 'drag') return;
+      var p = local(ev);
+      var quick = (Date.now() - st.downT) < 300 && st.moved < 14;
+      var key = st.pointed || hit(p.x, p.y);
+      if (key) { fire(st, key); return; }
+      if (quick) {                       // tap seco: el arco queda abierto
+        st.mode = 'latched';
+        st.stage.classList.remove('is-cancel');
+        point(st, null);
+        return;
+      }
+      close(st);                          // soltó en el pozo = cancelar
+    }
+    fab.addEventListener('pointerup', release);
+    window.addEventListener('pointerup', release);
+    fab.addEventListener('pointercancel', function () { if (st.mode === 'drag') close(st); });
+
+    fab.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      ev.preventDefault();
+      cancelDemoIfUser();
+      if (st.mode === 'closed') { open(st, 'latched'); point(st, 'expense'); }
+      else close(st);
+    });
+
+    // Camino por tap: con el arco abierto se elige con un toque.
+    // pointerenter/leave son eventos, no `:hover`: el significado (el nombre)
+    // ya está siempre a la vista, esto sólo agrega énfasis.
+    st.stage.addEventListener('pointerover', function (ev) {
+      if (st.mode !== 'latched') return;
+      var p = ev.target.closest ? ev.target.closest('.puck') : null;
+      point(st, p ? p.getAttribute('data-key') : null);
+    });
+    // Sin esto, sacar el mouse del teléfono con el arco abierto dejaba un
+    // puck agrandado y hundido para siempre: `pointerover` sólo avisa de
+    // entradas, nunca de la salida del stage.
+    st.stage.addEventListener('pointerleave', function () {
+      if (st.mode === 'latched') point(st, null);
+    });
+    st.stage.addEventListener('click', function (ev) {
+      if (st.mode !== 'latched') return;
+      var p = ev.target.closest ? ev.target.closest('.puck') : null;
+      if (p) fire(st, p.getAttribute('data-key'));
+    });
+    st.stage.addEventListener('keydown', function (ev) {
+      if (st.mode !== 'latched') return;
+      var p = ev.target.closest ? ev.target.closest('.puck') : null;
+      if (!p) return;
+      if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); fire(st, p.getAttribute('data-key')); }
+    });
+    st.stage.addEventListener('focusin', function (ev) {
+      if (st.mode !== 'latched') return;
+      var p = ev.target.closest ? ev.target.closest('.puck') : null;
+      if (p) point(st, p.getAttribute('data-key'));
+    });
+
+    st.stage.querySelector('.scrim').addEventListener('pointerdown', function () {
+      if (st.mode === 'latched') close(st);
+    });
+  });
+
+  /* ══ Replay ══════════════════════════════════════════════════ */
+  var timers = [], raf = 0, demoRunning = false, userTook = false;
+
+  function clearDemo() {
+    timers.forEach(clearTimeout); timers = [];
+    cancelAnimationFrame(raf); raf = 0;
+    demoRunning = false;
+  }
+  function cancelDemoIfUser() { if (demoRunning) { userTook = true; clearDemo(); } }
+  function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+  function easeInOut(u) { return u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2; }
+
+  // Recorrido polar del fantasma, derivado de ARC (no hay ángulos sueltos).
+  function path() {
+    var h = ARC.spread / 2, R = ARC.radius;
+    return [
+      { t: 0,    ang: 0,  r: 18 },
+      { t: 400,  ang: h * 0.5, r: R },
+      { t: 720,  ang: h,       r: R },
+      { t: 1120, ang: h * 0.25, r: R },
+      { t: 1480, ang: -h * 0.5, r: R },
+      { t: 1800, ang: -h,       r: R },
+      { t: 2200, ang: 0,        r: R },
+      { t: 2460, ang: 0,        r: R }
+    ];
+  }
+
+  function sweep(sts, done) {
+    var P = path();
+    var total = P[P.length - 1].t;
+    var t0 = performance.now();
+    sts.forEach(function (st) { st.ghost.classList.add('is-on'); });
+    function frame(now) {
+      var el = now - t0;
+      if (el > total) el = total;
+      var i = 0;
+      while (i < P.length - 2 && P[i + 1].t < el) i++;
+      var a = P[i], b = P[i + 1];
+      var u = b.t === a.t ? 1 : easeInOut((el - a.t) / (b.t - a.t));
+      var ang = a.ang + (b.ang - a.ang) * u;
+      var r = a.r + (b.r - a.r) * u;
+      var gx = ARC.cx + r * Math.sin(ang * RAD);
+      var gy = ARC.cy - r * Math.cos(ang * RAD);
+      sts.forEach(function (st) {
+        st.ghost.style.setProperty('--gx', gx.toFixed(1) + 'px');
+        st.ghost.style.setProperty('--gy', gy.toFixed(1) + 'px');
+        point(st, hit(gx, gy));
+      });
+      if (el < total) raf = requestAnimationFrame(frame);
+      else done();
+    }
+    raf = requestAnimationFrame(frame);
+  }
+
+  function play() {
+    clearDemo();
+    userTook = false;
+    demoRunning = true;
+    S.forEach(function (st) {
+      clearTimeout(st.toastT);
+      st.toast.classList.remove('is-on');
+      close(st);
+      st.ghost.classList.remove('is-on');
+      st.ghost.style.setProperty('--gx', ARC.cx + 'px');
+      st.ghost.style.setProperty('--gy', ARC.cy + 'px');
+    });
+
+    if (document.body.classList.contains('reduced')) {
+      at(160, function () { S.forEach(function (st) { open(st, 'latched'); point(st, 'expense'); }); });
+      at(900, function () { S.forEach(function (st) { fire(st, 'expense'); }); demoRunning = false; });
+      return;
+    }
+
+    at(220, function () { S.forEach(function (st) { open(st, 'drag'); }); });
+    at(940, function () {
+      if (userTook) return;
+      sweep(S, function () {
+        if (userTook) return;
+        S.forEach(function (st) { st.ghost.classList.remove('is-on'); });
+        at(180, function () {
+          if (userTook) return;
+          S.forEach(function (st) { if (st.pointed) fire(st, st.pointed); else close(st); });
+          demoRunning = false;
+        });
+      });
+    });
+  }
+
+  document.getElementById('replay').addEventListener('click', play);
+  document.getElementById('reduced').addEventListener('change', function (e) {
+    document.body.classList.toggle('reduced', e.target.checked);
+    play();
+  });
+
+  /* ══ Surco de la tab activa — geometría real de la barra ═════
+     resolveWellWidth(): el ítem más ancho + 7px de padding a cada
+     lado. resolveIndicatorX(): centrado en el ítem activo.       */
+  function layoutNavWell() {
+    S.forEach(function (st) {
+      var nav = st.stage.querySelector('.nav');
+      var items = Array.prototype.slice.call(nav.querySelectorAll('.nav-item'));
+      var navR = nav.getBoundingClientRect();
+      var widest = 0;
+      items.forEach(function (el) { widest = Math.max(widest, el.getBoundingClientRect().width); });
+      var w = widest + 14;
+      var active = nav.querySelector('.nav-item.is-active').getBoundingClientRect();
+      var cx = active.left - navR.left + active.width / 2;
+      var well = st.stage.querySelector('.nav-well');
+      well.style.width = w.toFixed(2) + 'px';
+      well.style.transform = 'translateX(' + (cx - w / 2).toFixed(2) + 'px)';
+    });
+  }
+
+  /* ══ Tabla de contraste ══════════════════════════════════════
+     Ratios calculados sobre el compuesto (scrim sobre el fondo real),
+     peor caso de la pantalla en cada tema.                        */
+  var WCAG = [
+    ['Nombre del puck #24382A / scrim sobre hero #A1AA99',          'Claro', '4.5', 5.21, 0],
+    ['Eyebrow del arco #24382A / scrim sobre hero #A1AA99',         'Claro', '4.5', 5.21, 0],
+    ['«cancelar» #24382A / scrim sobre hero #A1AA99',               'Claro', '4.5', 5.21, 0],
+    ['Aro del puck #24382A / scrim sobre hero #A1AA99',             'Claro', '3',   5.21, 0],
+    ['Aro del puck #24382A / pastel más claro #EDE0C8',             'Claro', '3',   9.62, 0],
+    ['(descartado) aro en muted #54644F / scrim #A1AA99',           'Claro', '3',   2.63, 1],
+    ['(sin aro) pastel #EDE0C8 / scrim sobre card #C1C5B4',         'Claro', '3',   1.35, 1],
+    ['Ícono #24382A / puck lavanda #E6E0F4',                        'Claro', '3',   9.76, 0],
+    ['Ícono #24382A / puck menta #D4EBDF',                          'Claro', '3',  10.00, 0],
+    ['Ícono #24382A / puck azul #D6E4F0',                           'Claro', '3',   9.69, 0],
+    ['Ícono #24382A / puck arena #EDE0C8',                          'Claro', '3',   9.62, 0],
+    ['Puck de Gasto (crema/verde) #327E39 / scrim #A1AA99 — por eso lleva aro', 'Claro', '3', 2.09, 1],
+    ['Toast #24382A / hoja #F0EFE3',                                'Claro', '4.5', 10.85, 0],
+    ['Nav · label activo #2E7C39 / material #E1E4D6',               'Claro', '4.5', 4.01, 0],
+    ['Nav · label inactivo #54644F / material #E1E4D6',             'Claro', '4.5', 4.91, 0],
+    ['Hero · monto #F7F4E4 / pozo #1A490F',                         'Claro', '4.5', 9.49, 0],
+    ['Hero · «PODÉS GASTAR HOY» #C9F3C6 / verde #297811',            'Claro', '4.5', 4.52, 0],
+    ['Home · saludo #6C7B67 / fondo #DCDFCD',                       'Claro', '4.5', 4.53, 0],
+    ['⚠ producción · glifo del FAB #F5F2E1 / gradiente al 50% #509D55', 'Claro', '3', 2.97, 2],
+    ['⚠ producción · punto de notificación #D97E4F / material #E1E4D6', 'Claro', '3', 2.31, 2],
+
+    ['Nombre del puck #F1EEDD / scrim sobre hero #0F230E',          'Oscuro', '4.5', 14.22, 0],
+    ['Eyebrow del arco #F1EEDD / scrim sobre hero #0F230E',         'Oscuro', '4.5', 14.22, 0],
+    ['«cancelar» #F1EEDD / scrim sobre hero #0F230E',               'Oscuro', '4.5', 14.22, 0],
+    ['Aro del puck #93A78F / scrim sobre hero #0F230E',             'Oscuro', '3',   6.44, 0],
+    ['Aro del puck #93A78F / pastel más claro #3B5046',             'Oscuro', '3',   3.37, 0],
+    ['(sin aro) pastel #3B5046 / scrim sobre hero #0F230E',         'Oscuro', '3',   1.91, 1],
+    ['Ícono #F1EEDD / puck lavanda #3D5047',                        'Oscuro', '3',   7.39, 0],
+    ['Ícono #F1EEDD / puck menta #3A5144',                          'Oscuro', '3',   7.38, 0],
+    ['Ícono #F1EEDD / puck azul #3B5046',                           'Oscuro', '3',   7.44, 0],
+    ['Ícono #F1EEDD / puck arena #3E5040',                          'Oscuro', '3',   7.42, 0],
+    ['Puck de Gasto crema #DCE0D0 / scrim sobre hero #0F230E',      'Oscuro', '3',  12.32, 0],
+    ['Glifo del puck de Gasto #2E7C39 / crema al 50% #E7EADD',      'Oscuro', '3',   4.24, 0],
+    ['Toast #F1EEDD / hoja #1B2F22',                                'Oscuro', '4.5', 12.20, 0],
+    ['Nav · label activo #A4E3A6 / surco #142519',                  'Oscuro', '4.5', 10.79, 0],
+    ['Nav · label inactivo #93A78F / material #132318',             'Oscuro', '4.5',  6.37, 0],
+    ['Glifo del FAB #2E7C39 / crema al 50% #E7EADD',                'Oscuro', '3',    4.24, 0],
+    ['Punto de notificación #D97E4F / material #1D3426',            'Oscuro', '3',    4.48, 0],
+    ['Hero · monto #F7F4E4 / pozo #1A490F',                         'Oscuro', '4.5',  9.49, 0]
+  ];
+  var body = document.getElementById('wcag-body');
+  WCAG.forEach(function (r) {
+    var need = parseFloat(r[2]);
+    var ok = r[3] >= need;
+    var kind = r[4];   // 0 = elemento vivo · 1 = descartado a propósito · 2 = token de producción
+    var verdict = ok ? 'PASA'
+      : (kind === 1 ? 'NO PASA — por eso no se usa'
+      : (kind === 2 ? 'NO PASA — token de producción, se reporta' : 'NO PASA'));
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + ':1</td>' +
+      '<td class="ratio">' + r[3].toFixed(2) + ':1</td>' +
+      '<td class="' + (ok ? 'pass' : 'fail') + '">' + verdict + '</td>';
+    body.appendChild(tr);
+  });
+
+  /* ══ Arranque ════════════════════════════════════════════════ */
+  function boot() { measure(); layoutNavWell(); play(); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(boot);
+  else window.addEventListener('load', boot);
+
+  // Expuesto para la verificación con números.
+  window.__ARCO__ = { ARC: ARC, items: function () { return ITEMS; }, S: S, measure: measure, layoutNavWell: layoutNavWell };
+})();
+</script>
+</body>
+</html>

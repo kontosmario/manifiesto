@@ -10,9 +10,9 @@ import Animated, {
   FadeOutUp,
 } from 'react-native-reanimated'
 import { ModalCard } from '@/components/ui/modal-card'
-import { neoTokens } from '@/theme/neo-tokens'
+import { WizardSkinProvider, type WizardMode } from '@/components/wizard/wizard-skin'
 import { nunitoFamily } from '@/theme/typography'
-import { useThemeTokens } from '@/theme/theme-provider'
+import { useThemeMode } from '@/theme/theme-provider'
 import { useCategories } from '@/features/categories/use-categories'
 import { toast } from '@/lib/toast-bus'
 import { confetti } from '@/lib/confetti-bus'
@@ -31,6 +31,7 @@ import {
   ImportReviewStepIndicator,
   type StepStatus,
 } from './import-review-step-indicator'
+import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
   visible: boolean
@@ -92,8 +93,8 @@ export function ImportReviewSheet({
   previewMode = false,
   onConfirmRows,
 }: Props) {
-  const theme = useThemeTokens()
-  const neo = neoTokens(theme.mode)
+  const mode = useThemeMode().resolvedMode as WizardMode
+  const { softInk } = useImportReviewNeo()
   const { t } = useTranslation()
   const controller = useImportReviewController(initialState ?? undefined)
   const categoriesQuery = useCategories(familyId, 'expense')
@@ -383,10 +384,13 @@ export function ImportReviewSheet({
       />
     ) : undefined
 
-  // La carcasa ya es la del rediseño; las piezas del wizard
-  // (`import-review-header/-step-indicator/-row/-summary/-footer/-empty`)
-  // todavía están en V1 y viajan en su propia tanda de migración.
+  // El provider envuelve a la hoja ENTERA, no solo a sus children: el footer
+  // viaja como prop de `ModalCard` y se renderiza adentro de SU árbol, así que
+  // un provider puesto sobre los children lo dejaría afuera del contexto.
+  // Con esto los compartidos skin-aware que monta el paso (`AmountCard`,
+  // `CategoryHorizontalRail`, `TileRail`) resuelven a su rama del rediseño.
   return (
+    <WizardSkinProvider mode={mode}>
     <ModalCard
       skin="neo"
       visible={visible}
@@ -462,13 +466,14 @@ export function ImportReviewSheet({
           </View>
 
           {controller.state.unmatched > 0 && !isSummary ? (
-            <Text style={[styles.unmatched, { color: neo.textMuted }]}>
+            <Text style={[styles.unmatched, { color: softInk }]}>
               {t('gastos:import.unmatched', { count: controller.state.unmatched })}
             </Text>
           ) : null}
         </View>
       )}
     </ModalCard>
+    </WizardSkinProvider>
   )
 }
 

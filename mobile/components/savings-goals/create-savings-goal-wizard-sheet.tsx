@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { NeoButton } from '@/components/ui/neo-button'
+import { WizardSkinProvider } from '@/components/wizard/wizard-skin'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
@@ -459,8 +460,8 @@ export function CreateSavingsGoalWizardSheet({
   }
 
   const stepEntering = useMemo(() => {
-    if (reduceMotion) return FadeIn.duration(120)
-    return FadeIn.duration(280)
+    if (reduceMotion) return FadeIn.duration(motionDurations.micro)
+    return FadeIn.duration(motionDurations.enterStack)
       .easing(EXPO_OUT)
       .withInitialValues({
         opacity: 0,
@@ -476,6 +477,7 @@ export function CreateSavingsGoalWizardSheet({
       statusBarTranslucent
       onRequestClose={handleDismiss}
     >
+      <WizardSkinProvider mode={theme.mode}>
       <GestureHandlerRootView style={styles.root}>
         <Animated.View
           style={[StyleSheet.absoluteFill, backdropAnimatedStyle]}
@@ -496,7 +498,7 @@ export function CreateSavingsGoalWizardSheet({
             layout={
               reduceMotion
                 ? undefined
-                : LinearTransition.duration(280).easing(EXPO_OUT)
+                : LinearTransition.duration(motionDurations.enterStack).easing(EXPO_OUT)
             }
             style={[
               styles.sheet,
@@ -553,6 +555,7 @@ export function CreateSavingsGoalWizardSheet({
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>
+      </WizardSkinProvider>
     </Modal>
   )
 }

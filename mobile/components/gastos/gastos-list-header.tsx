@@ -31,6 +31,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import type { UseGastosControllerResult } from '@/features/gastos/use-gastos-controller'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
 import type { CategoryLite } from '@/features/gastos/gastos-aggregates.model'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface GastosListHeaderProps {
   streakData: StreakData
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     marginTop: 4,
   },
-  movimientosTitle: { fontSize: 20, fontWeight: '800', letterSpacing: -0.5 },
+  movimientosTitle: { fontSize: 20, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.5 },
   swipeHintRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1778,7 +1778,29 @@ export interface FijosTabsProps {
   vencidosCount: string
   pendientesCount: string
   pagadosCount: string
+  /**
+   * Tabs a dibujar, en orden. Una tab SIN datos no se muestra ni se puede
+   * tocar: un "Vencidos 0" no filtra nada y encima dice que existe una
+   * categoría que está vacía. Con el array vacío no se dibuja la barra.
+   *
+   * Lo calcula `use-fijos-controller`, que además redirige el tab activo
+   * cuando se queda sin datos (pagaste el último vencido ⇒ la tab desaparece
+   * y salta a la siguiente por urgencia). Sin esa redirección quedaría un tab
+   * seleccionado que ya no está en pantalla, con la lista vacía.
+   *
+   * Opcional a propósito: los previews de dev y el mockup montan este kit sin
+   * controller y quieren las tres.
+   */
+  visibleTabs?: readonly FijosTabKey[]
   onSelectTab?: (tab: FijosTabKey) => void
+}
+
+const FIJOS_TAB_ORDER = ['vencidos', 'pendientes', 'pagados'] as const
+
+const FIJOS_TAB_LABEL_KEY: Record<FijosTabKey, string> = {
+  vencidos: 'fijos:neo.tabs.overdue',
+  pendientes: 'fijos:neo.tabs.pending',
+  pagados: 'fijos:neo.tabs.paid',
 }
 
 /**
@@ -1878,32 +1900,29 @@ export function FijosTabs({
   vencidosCount,
   pendientesCount,
   pagadosCount,
+  visibleTabs,
   onSelectTab,
 }: FijosTabsProps) {
   const s = FIJOS_SPEC[mode]
+  const counts: Record<FijosTabKey, string> = {
+    vencidos: vencidosCount,
+    pendientes: pendientesCount,
+    pagados: pagadosCount,
+  }
+  const shown = visibleTabs ?? FIJOS_TAB_ORDER
+  if (shown.length === 0) return null
   return (
     <View style={styles.tabsRow}>
-      <FijosTab
-        s={s}
-        label={i18n.t('fijos:neo.tabs.overdue')}
-        count={vencidosCount}
-        active={activeTab === 'vencidos'}
-        onPress={onSelectTab ? () => onSelectTab('vencidos') : undefined}
-      />
-      <FijosTab
-        s={s}
-        label={i18n.t('fijos:neo.tabs.pending')}
-        count={pendientesCount}
-        active={activeTab === 'pendientes'}
-        onPress={onSelectTab ? () => onSelectTab('pendientes') : undefined}
-      />
-      <FijosTab
-        s={s}
-        label={i18n.t('fijos:neo.tabs.paid')}
-        count={pagadosCount}
-        active={activeTab === 'pagados'}
-        onPress={onSelectTab ? () => onSelectTab('pagados') : undefined}
-      />
+      {FIJOS_TAB_ORDER.filter((key) => shown.includes(key)).map((key) => (
+        <FijosTab
+          key={key}
+          s={s}
+          label={i18n.t(FIJOS_TAB_LABEL_KEY[key])}
+          count={counts[key]}
+          active={activeTab === key}
+          onPress={onSelectTab ? () => onSelectTab(key) : undefined}
+        />
+      ))}
     </View>
   )
 }

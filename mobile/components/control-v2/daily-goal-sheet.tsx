@@ -186,7 +186,7 @@ export function DailyGoalSheet({
   // ahí — y sólo ahí — cae un hairline.
   const flatFallback = SUPPORTS_INSET_SHADOW
     ? null
-    : { borderWidth: 1, borderColor: theme.colors.border }
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
 
   // ── Dynamic CTA copy ───────────────────────────────────────────
   // The single primary action shifts label based on intent so the
@@ -319,7 +319,7 @@ export function DailyGoalSheet({
                   flatFallback
                     ? {
                         borderWidth: active ? 2.5 : 1,
-                        borderColor: active ? neo.green : theme.colors.border,
+                        borderColor: active ? neo.green : neo.sheetDivider,
                       }
                     : null,
                   { opacity: pressed ? 0.78 : 1 },

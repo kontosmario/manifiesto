@@ -21,6 +21,7 @@ import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { ControlV2AlcanciaCardEmpty } from './alcancia-parts/control-v2-alcancia-card-empty'
 import { ReserveBlock } from './alcancia-parts/reserve-block'
 import { toast } from '@/lib/toast-bus'
+import { nunitoFamily } from '@/theme/typography'
 
 const MIN_DIAS = 3
 // La sugerencia de ahorro necesita gasto en varios días para no contar
@@ -489,6 +490,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flexShrink: 1,
   },
   metaChip: {
@@ -505,6 +507,7 @@ const styles = StyleSheet.create({
   metaChipText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   heroRow: {
@@ -522,6 +525,7 @@ const styles = StyleSheet.create({
   plus: {
     fontSize: 26,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1,
     lineHeight: 30,
     marginRight: 2,
@@ -529,12 +533,14 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 30,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.2,
     lineHeight: 32,
   },
   amountSub: {
     fontSize: 12,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     marginTop: 4,
     lineHeight: 16,
   },
@@ -558,6 +564,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   tilesRow: {

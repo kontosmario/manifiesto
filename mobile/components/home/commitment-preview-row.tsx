@@ -8,6 +8,7 @@ import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import { nunitoFamily } from '@/theme/typography'
 
 const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   rowMeta: {
     fontSize: 12,
@@ -99,6 +101,7 @@ const styles = StyleSheet.create({
   rowAmount: {
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.35,
     textAlign: 'right',
   },

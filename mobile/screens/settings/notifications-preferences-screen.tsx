@@ -5,7 +5,6 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
 import { SectionHeader } from '@/components/ui/section-header'
 import { Screen } from '@/components/ui/screen'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { SettingsRow, SettingsSwitchRow } from '@/components/settings/settings-primitives'
 import {
   NOTIFICATION_KIND_GROUPS,
@@ -151,7 +150,6 @@ export function NotificationsPreferencesScreen() {
       subtitle={t('settings:notif.subtitle')}
     >
       <View style={styles.stack}>
-        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
         <RiseView>
           <View style={styles.section}>
             <SectionHeader

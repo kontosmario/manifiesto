@@ -14,7 +14,6 @@
 // reparte props a los pasos.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   Keyboard,
   StyleSheet,
   Text,
@@ -61,6 +60,7 @@ import {
   type IncomeEventKind,
 } from '@/features/income/use-income-events'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 import { serializePrice } from '@/utils/money'
@@ -139,9 +139,9 @@ export function AddIncomeV2Screen({ familyId, userId }: AddIncomeV2ScreenProps) 
   // estado con estado dispara renders en cascada (regla `set-state-in-effect`).
   // Mismo tratamiento que el alta de gasto.
   const formKey = `${form.amount}|${form.kind ?? ''}|${form.description}|${form.dayOffset}`
-  // Último error de guardado, además del Alert: cerrado el Alert no quedaba
-  // NINGUNA huella de que el guardado falló y el CTA volvía a decir "Confirmar"
-  // como si nada hubiera pasado.
+  // Último error de guardado, además del toast: el toast se va solo a los
+  // segundos y sin esto no queda NINGUNA huella de que el guardado falló —
+  // el CTA vuelve a decir "Confirmar" como si nada hubiera pasado.
   const [lastSubmitError, setLastSubmitError] = useState<
     { formKey: string; message: string } | null
   >(null)
@@ -340,7 +340,7 @@ export function AddIncomeV2Screen({ familyId, userId }: AddIncomeV2ScreenProps) 
   // continuación del `await` sigue viva. Sin este guard, el `handleClose()` del
   // éxito corría 2-3s después y hacía `router.back()` sobre la pantalla que
   // para entonces está arriba, sacando de la vista al usuario que ya se había
-  // ido a otro lado. Idem el Alert del fallo. Mismo guard que el alta de gasto.
+  // ido a otro lado. Idem el aviso del fallo. Mismo guard que el alta de gasto.
   const isMountedRef = useRef(true)
   useEffect(() => {
     isMountedRef.current = true
@@ -378,12 +378,12 @@ export function AddIncomeV2Screen({ familyId, userId }: AddIncomeV2ScreenProps) 
       if (!isMountedRef.current) return
       void triggerHaptic('error')
       const message = getErrorMessage(error, t('gastos:addIncome.retryLater'))
-      // Persistido además del Alert: cerrado el Alert no quedaba ninguna huella
-      // del fallo y el CTA volvía a "Confirmar" como si nada. Anclado a los
-      // datos que fallaron (ver `formKey`): apenas el usuario edita algo, el
-      // mensaje dejó de describir el estado y se va solo.
+      // Persistido además del toast: apagado el toast no quedaría ninguna
+      // huella del fallo y el CTA volvería a "Confirmar" como si nada. Anclado
+      // a los datos que fallaron (ver `formKey`): apenas el usuario edita algo,
+      // el mensaje dejó de describir el estado y se va solo.
       setLastSubmitError({ formKey, message })
-      Alert.alert(t('gastos:addIncome.wizard.errors.createFailed'), message)
+      toast.error(`${t('gastos:addIncome.wizard.errors.createFailed')} · ${message}`)
     }
   }, [createMutation, familyId, form, formKey, handleClose, t])
 

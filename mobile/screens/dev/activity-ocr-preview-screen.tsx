@@ -8,6 +8,7 @@ import { getImageWidth } from '@/features/activity-ocr/get-image-width'
 import { normalize } from '@/features/activity-ocr/parser/normalize'
 import { parseActivityLines } from '@/features/activity-ocr/parse-activity-lines'
 import type { ParseResult } from '@/features/activity-ocr/types'
+import { nunitoFamily } from '@/theme/typography'
 
 type Stage =
   | { kind: 'idle' }
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
-  ctaText: { fontSize: 16, fontWeight: '800', color: '#0F2D06' },
-  status: { fontSize: 12, fontWeight: '700' },
+  ctaText: { fontSize: 16, fontWeight: '800', fontFamily: nunitoFamily('800'), color: '#0F2D06' },
+  status: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   results: { gap: 12 },
   thumb: {
     width: '100%',
@@ -171,7 +172,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
   },
-  error: { fontSize: 14, fontWeight: '700' },
+  error: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
 })

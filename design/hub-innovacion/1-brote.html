@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub · Dirección 1 — Brote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Motion */
+    --d-micro: 120ms;
+    --d-quick: 180ms;
+    --d-standard: 240ms;
+    --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-standard: cubic-bezier(0.22, 0.9, 0.3, 1);
+    --ease-grow: cubic-bezier(0.12, 0.86, 0.26, 1);   /* rápido al salir, desacelera */
+    --ease-retract: cubic-bezier(0.6, 0.02, 0.86, 0.3);
+    --spring-bud: cubic-bezier(0.34, 1.5, 0.5, 1);
+
+    --t-stem: 640ms;
+    --t-stem-back: 300ms;
+    --t-bud: 320ms;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: #171C16;
+    color: #E7EADE;
+    padding: 36px 28px 90px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ───────── Chrome de la página ───────── */
+  .wrap { max-width: 980px; margin: 0 auto; }
+  .kicker { font-size: 11.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #8FA089; margin: 0 0 8px; }
+  h1 { font-size: 30px; font-weight: 900; letter-spacing: -.7px; margin: 0 0 12px; }
+  .lede { font-size: 15px; font-weight: 600; line-height: 1.6; color: #A8B4A0; margin: 0; max-width: 74ch; }
+  .lede b { color: #C9F3C6; font-weight: 800; }
+
+  .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 24px 0 32px; }
+  .btn {
+    font-family: var(--font); font-size: 14px; font-weight: 900; letter-spacing: -.2px;
+    color: #0F1E14; border: 0; cursor: pointer; padding: 12px 22px; border-radius: 22px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    box-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost {
+    background: linear-gradient(145deg, #1D3426, #132318); color: #C9F3C6;
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: #A8B4A0; cursor: pointer;
+    padding: 10px 16px; border-radius: 20px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle input { accent-color: #A4E3A6; width: 15px; height: 15px; }
+
+  .hint-row { font-size: 12.5px; font-weight: 700; color: #8FA089; margin: -18px 0 30px; line-height: 1.6; }
+  .hint-row code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px;
+    color: #C9F3C6; background: rgba(164,227,166,.1); padding: 1px 6px; border-radius: 5px;
+  }
+
+  .frames { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .frame-col { display: flex; flex-direction: column; gap: 13px; }
+  .frame-label { text-align: center; font-size: 11.5px; font-weight: 800; letter-spacing: .08em; color: #8FA089; text-transform: uppercase; }
+
+  /* ══════════════════════════════════════════
+     STAGE — teléfono 393 × 830
+     ══════════════════════════════════════════ */
+  .stage {
+    width: 393px; height: 830px; border-radius: 46px;
+    position: relative; overflow: hidden; flex: none;
+    font-family: var(--font); user-select: none;
+    box-shadow: 0 34px 80px rgba(8,14,8,.55);
+    touch-action: none;
+  }
+
+  .stage[data-theme="light"] {
+    --bg: #DCDFCD;
+    --sheet: #F0EFE3;
+    --well: #E9EBE0;
+    --ink: #24382A;
+    --ink-2: #3E4E3B;
+    --muted: #54644F;
+    --tertiary: #9AA694;
+    --green: #2E7C39;
+    --green-deep: #1F5429;
+    --cta-fill: radial-gradient(circle at 32% 28%, #489350, #2E7434 85%);
+    --cta-ink: #F5F2E1;
+    --scrim: rgba(195,203,178,.96);
+    --scrim-tint: radial-gradient(circle at 50% 93%, rgba(46,124,57,.30), rgba(46,124,57,.06) 55%, transparent 74%);
+    --raised-bg: linear-gradient(145deg, #ECEEE3, #E1E4D6);
+    --raised-lg: 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --raised-md: 6px 6px 12px rgba(151,160,136,.4), -6px -6px 12px rgba(255,255,255,.9);
+    --raised-sm: 5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    --inset-md: inset 3px 3px 7px rgba(151,160,136,.35), inset -3px -3px 7px rgba(255,255,255,.9);
+    --inset-lg: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+    --cta-shadow: 0 12px 24px rgba(46,116,52,.4), inset 0 2px 3px rgba(255,255,255,.3);
+    --sheet-shadow: 0 -20px 50px rgba(20,30,18,.35);
+    --stem-a: #1F5429; --stem-b: #2E7C39; --stem-c: #4E9A55;
+    --tile-lip: inset 0 1px 0 rgba(255,255,255,.55);
+    --glow: rgba(46,124,57,.4);
+    background: #B9BEAC;
+  }
+
+  .stage[data-theme="dark"] {
+    --bg: #0F1A13;
+    --sheet: #1B2F22;
+    --well: #142519;
+    --ink: #F1EEDD;
+    --ink-2: #93A78F;
+    --muted: #93A78F;
+    --tertiary: #7C917A;
+    --green: #A4E3A6;
+    --green-deep: #1F5429;
+    --cta-fill: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    --cta-ink: #0F1E14;
+    --scrim: rgba(13,24,17,.96);
+    --scrim-tint: radial-gradient(circle at 50% 93%, rgba(140,225,150,.20), rgba(140,225,150,.05) 55%, transparent 74%);
+    --raised-bg: linear-gradient(145deg, #1D3426, #132318);
+    --raised-lg: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --raised-md: 6px 6px 12px rgba(0,0,0,.5), -6px -6px 12px rgba(101,152,113,.1);
+    --raised-sm: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    --inset-md: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+    --inset-lg: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.08);
+    --cta-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    --sheet-shadow: 0 -20px 50px rgba(0,0,0,.6);
+    --stem-a: #3E7D46; --stem-b: #6FB871; --stem-c: #A4E3A6;
+    --tile-lip: inset 0 1px 0 rgba(164,227,166,.1);
+    --glow: rgba(140,225,150,.38);
+    background: #0A130D;
+  }
+
+  /* ───────── Home de fondo ───────── */
+  .home { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .statusbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 28px 4px; color: var(--ink); font-size: 15px; font-weight: 800; }
+  .sb-right { display: flex; align-items: center; gap: 6px; }
+  .bars { display: flex; align-items: flex-end; gap: 2.5px; }
+  .bars i { width: 3px; border-radius: 1px; background: currentColor; display: block; }
+  .battery { width: 23px; height: 11.5px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; }
+  .battery > i { display: block; width: 62%; height: 100%; background: currentColor; border-radius: 1.5px; }
+
+  .home-head { display: flex; align-items: center; gap: 12px; padding: 14px 22px 0; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+  .home-title { font-size: 21px; font-weight: 900; color: var(--ink); letter-spacing: -.5px; }
+  .home-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+  .hero {
+    margin: 16px 20px 0; height: 172px; border-radius: 32px;
+    background: linear-gradient(155deg, #244235, #1F590D 55%, #297811);
+    box-shadow: 12px 12px 26px rgba(124,138,110,.55);
+    padding: 22px 24px; color: #F7F4E4;
+  }
+  .stage[data-theme="dark"] .hero { box-shadow: 12px 12px 26px rgba(0,0,0,.6); }
+  .hero-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .16em; }
+  .hero-amount { font-size: 42px; font-weight: 900; letter-spacing: -1.6px; margin-top: 8px; }
+  .hero-meter { height: 9px; border-radius: 6px; background: rgba(255,255,255,.24); margin-top: 20px; overflow: hidden; }
+  .hero-meter > i { display: block; height: 100%; width: 63%; border-radius: 6px; background: #C9F3C6; }
+  .hero-foot { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 10px; }
+
+  .chips { display: flex; gap: 10px; margin: 16px 20px 0; }
+  .chip {
+    flex: 1; height: 74px; border-radius: 22px; background: var(--raised-bg); box-shadow: var(--raised-sm);
+    padding: 12px 13px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .chip .c-lbl { font-size: 9.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .chip .c-val { font-size: 16px; font-weight: 900; letter-spacing: -.5px; color: var(--ink); }
+  .rows-bg { margin: 16px 20px 0; display: flex; flex-direction: column; gap: 9px; }
+  .row-bg { height: 56px; border-radius: 20px; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+
+  /* ───────── Nav + FAB ───────── */
+  .nav {
+    position: absolute; left: 16px; right: 16px; bottom: 26px; height: 68px; z-index: 3;
+    border-radius: 32px; background: var(--raised-bg); box-shadow: var(--raised-lg);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 26px;
+    transition: opacity var(--d-standard) var(--ease-standard);
+  }
+  .nav i { width: 22px; height: 22px; border-radius: 7px; background: var(--tertiary); opacity: .5; display: block; }
+  .stage.sc-scrim .nav { opacity: .18; }
+
+  .fab {
+    position: absolute; left: 50%; bottom: 42px; width: 62px; height: 62px;
+    margin-left: -31px; border-radius: 50%;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center; color: var(--cta-ink);
+    z-index: 8; cursor: pointer;
+    transition: transform var(--d-quick) var(--ease-ios);
+  }
+  .fab svg { transition: transform 380ms var(--spring-bud); }
+  .stage.sc-plant .fab svg { transform: rotate(135deg); }
+  .fab.is-down { transform: scale(.94); }
+
+  .homebar { position: absolute; left: 50%; bottom: 9px; margin-left: -66px; width: 132px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .5; z-index: 9; }
+
+  /* ───────── Scrim ───────── */
+  .scrim {
+    position: absolute; inset: 0; z-index: 2; background: var(--scrim);
+    opacity: 0; pointer-events: none;
+    transition: opacity 280ms var(--ease-standard);
+  }
+  .scrim::after { content: ''; position: absolute; inset: 0; background: var(--scrim-tint); }
+  .stage.sc-scrim .scrim { opacity: 1; pointer-events: auto; }
+
+  /* ══════════════════════════════════════════
+     LA PLANTA
+     ══════════════════════════════════════════ */
+  .plant { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+  .plant svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  .stem, .branch {
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: var(--len); stroke-dashoffset: var(--len);
+    transition: stroke-dashoffset var(--t-stem-back) var(--ease-retract);
+  }
+  .stem   { stroke: var(--stem-url, #2E7C39); stroke-width: 7; }
+  .branch { stroke: var(--stem-url, #2E7C39); stroke-width: 4.5; }
+
+  .stage.sc-plant .stem {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset var(--t-stem) var(--ease-grow);
+  }
+  .stage.sc-plant .branch {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 240ms var(--ease-grow);
+    transition-delay: var(--delay);
+  }
+
+  .leaflet {
+    fill: var(--stem-b); transform-box: fill-box; transform-origin: 0% 50%;
+    transform: scale(0); opacity: 0;
+    transition: transform 200ms var(--ease-retract), opacity 160ms linear;
+  }
+  .stage.sc-plant .leaflet {
+    transform: scale(1); opacity: .95;
+    transition: transform 300ms var(--spring-bud) var(--delay), opacity 160ms linear var(--delay);
+  }
+
+  /* ── Brot en la punta del tallo ── */
+  .tip-brot {
+    position: absolute; z-index: 6; pointer-events: none; line-height: 0;
+    transform-origin: 50% 100%;
+    transform: translateY(26px) scale(.24); opacity: 0;
+    transition: transform 200ms var(--ease-retract), opacity 140ms linear;
+  }
+  .stage.sc-plant .tip-brot {
+    transform: translateY(0) scale(1); opacity: 1;
+    transition: transform 460ms var(--spring-bud) 420ms, opacity 220ms linear 420ms;
+  }
+
+  /* ── Brotes (acciones) ── */
+  .bud {
+    position: absolute; z-index: 7; display: flex; align-items: center; gap: 9px;
+    pointer-events: auto; cursor: pointer; padding: 6px 4px;
+    opacity: 0; transform: scale(.18);
+    transition: transform 180ms var(--ease-retract), opacity 140ms linear;
+  }
+  .bud.left  { flex-direction: row-reverse; transform-origin: 100% 50%; text-align: right; }
+  .bud.right { transform-origin: 0% 50%; }
+  .stage.sc-plant .bud {
+    opacity: 1; transform: scale(1);
+    transition: transform var(--t-bud) var(--spring-bud) var(--delay), opacity 180ms linear var(--delay);
+  }
+
+  .pod {
+    width: 50px; height: 50px; border-radius: 18px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ink); box-shadow: var(--raised-md), var(--tile-lip);
+    transition: transform var(--d-quick) var(--ease-ios), box-shadow var(--d-quick) var(--ease-ios);
+  }
+  .bud-label {
+    font-size: 13.5px; font-weight: 900; line-height: 1.16; letter-spacing: -.2px;
+    color: var(--ink); max-width: 86px;
+    text-shadow: 0 1px 0 rgba(255,255,255,.35);
+  }
+  .stage[data-theme="dark"] .bud-label { text-shadow: 0 1px 2px rgba(0,0,0,.5); }
+  .bud.is-hot .pod { transform: scale(1.14) translateY(-2px); box-shadow: var(--raised-lg), var(--tile-lip); }
+  .bud.is-down .pod { transform: scale(.96); box-shadow: var(--inset-md); }
+
+  .stage[data-theme="light"] [data-pastel="import"]   { background: #E6E0F4; }
+  .stage[data-theme="light"] [data-pastel="no-spend"] { background: #D4EBDF; }
+  .stage[data-theme="light"] [data-pastel="income"]   { background: #D6E4F0; }
+  .stage[data-theme="light"] [data-pastel="fixed"]    { background: #EDE0C8; }
+  .stage[data-theme="dark"]  [data-pastel="import"]   { background: rgba(230,224,244,.16); color: var(--green); }
+  .stage[data-theme="dark"]  [data-pastel="no-spend"] { background: rgba(212,235,223,.16); color: var(--green); }
+  .stage[data-theme="dark"]  [data-pastel="income"]   { background: rgba(214,228,240,.16); color: var(--green); }
+  .stage[data-theme="dark"]  [data-pastel="fixed"]    { background: rgba(237,224,200,.16); color: var(--green); }
+
+  /* ── El fruto: Gasto ── */
+  .fruit {
+    position: absolute; z-index: 7; width: 200px; height: 76px; border-radius: 28px;
+    display: flex; align-items: center; gap: 12px; padding: 0 16px;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    color: var(--cta-ink); cursor: pointer; pointer-events: auto;
+    transform-origin: 50% 118%;
+    opacity: 0; transform: scale(.2);
+    transition: transform 180ms var(--ease-retract), opacity 140ms linear;
+  }
+  .stage.sc-plant .fruit {
+    opacity: 1; transform: scale(1);
+    transition: transform 420ms var(--spring-bud) 120ms, opacity 200ms linear 120ms;
+  }
+  .fruit.is-hot { filter: brightness(1.06); }
+  .fruit.is-down { transform: scale(.965); filter: brightness(.95); }
+  .fruit-disc {
+    width: 42px; height: 42px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.22); box-shadow: inset 0 1.5px 3px rgba(20,45,25,.3);
+  }
+  .stage[data-theme="dark"] .fruit-disc { background: rgba(15,30,20,.22); }
+  .fruit-col { display: flex; flex-direction: column; gap: 1px; }
+  .fruit-label { font-size: 20px; font-weight: 900; letter-spacing: -.5px; }
+  .fruit-sub { font-size: 11px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
+
+  .fruit-halo {
+    position: absolute; z-index: 6; border-radius: 34px; background: var(--glow);
+    filter: blur(18px); pointer-events: none; opacity: 0;
+    transition: opacity 200ms linear;
+  }
+  .stage.sc-plant .fruit-halo { opacity: .5; animation: breathe 2800ms ease-in-out 700ms infinite; }
+  @keyframes breathe { 0%,100% { opacity: .32; transform: scale(.97); } 50% { opacity: .66; transform: scale(1.04); } }
+
+  /* ── Toast de confirmación ── */
+  .toast {
+    position: absolute; left: 50%; top: 168px; transform: translate(-50%, 8px) scale(.9);
+    z-index: 9; padding: 12px 20px; border-radius: 22px;
+    background: var(--sheet); box-shadow: var(--raised-lg);
+    font-size: 14px; font-weight: 900; color: var(--ink); letter-spacing: -.2px;
+    opacity: 0; pointer-events: none; text-align: center; max-width: 300px;
+    transition: opacity 160ms linear, transform 260ms var(--spring-bud);
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  .toast small { display: block; font-size: 11.5px; font-weight: 800; color: var(--ink-2); margin-top: 3px; letter-spacing: .02em; }
+
+  /* ══════════════════════════════════════════
+     PANEL DE MONTO — el atajo del tap corto
+     ══════════════════════════════════════════ */
+  .amount {
+    position: absolute; left: 14px; right: 14px; bottom: 22px; z-index: 10;
+    border-radius: 34px; background: var(--sheet); box-shadow: var(--sheet-shadow);
+    padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px;
+    transform: translateY(560px); opacity: 0; pointer-events: none;
+    transition: transform 300ms var(--ease-retract), opacity 160ms linear;
+  }
+  .stage.sc-amount .amount {
+    transform: translateY(0); opacity: 1; pointer-events: auto;
+    transition: transform 460ms var(--ease-grow), opacity 200ms linear;
+  }
+  .amt-head { display: flex; align-items: center; gap: 10px; }
+  .amt-eyebrow { flex: 1; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+  .amt-x {
+    width: 34px; height: 34px; border-radius: 50%; flex: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--ink);
+    background: var(--raised-bg); box-shadow: var(--raised-sm);
+  }
+  .amt-body { display: flex; align-items: flex-end; gap: 8px; }
+  .amt-value {
+    flex: 1; font-size: 46px; font-weight: 900; letter-spacing: -2px; color: var(--ink);
+    line-height: 1.05; font-variant-numeric: tabular-nums;
+  }
+  .amt-value.zero { color: var(--ink-2); }
+  .amt-brot { flex: none; line-height: 0; margin-bottom: -4px; }
+  .amt-caption { font-size: 12.5px; font-weight: 800; color: var(--ink-2); margin-top: -6px; }
+
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .key {
+    height: 54px; border-radius: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 900; letter-spacing: -.5px; color: var(--ink);
+    background: var(--raised-bg); box-shadow: var(--raised-sm);
+    transition: box-shadow var(--d-micro) var(--ease-ios), transform var(--d-micro) var(--ease-ios);
+  }
+  .key.is-down { background: var(--well); box-shadow: var(--inset-md); transform: scale(.98); }
+  .amt-cta {
+    height: 58px; border-radius: 24px; cursor: pointer; margin-top: 2px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow); color: var(--cta-ink);
+    font-size: 17px; font-weight: 900; letter-spacing: -.3px;
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .amt-cta.is-down { transform: scale(.98); }
+
+  /* ── Reduced motion ── */
+  body.reduced .stage * { transition-duration: 1ms !important; transition-delay: 0ms !important; animation: none !important; }
+  @media (prefers-reduced-motion: reduce) {
+    .stage * { transition-duration: 1ms !important; transition-delay: 0ms !important; animation: none !important; }
+  }
+
+  /* ───────── Bloques de análisis ───────── */
+  .panel {
+    margin: 46px 0 0; border-radius: 26px; padding: 26px 28px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+  }
+  .panel h2 { font-size: 11.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #93A78F; margin: 0 0 18px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .col h3 { font-size: 16px; font-weight: 900; margin: 0 0 12px; letter-spacing: -.3px; }
+  .col.win h3 { color: #A4E3A6; }
+  .col.risk h3 { color: #E8C48A; }
+  ul { margin: 0; padding-left: 0; list-style: none; }
+  li { font-size: 13.5px; font-weight: 600; line-height: 1.6; color: #B7C2AE; margin-bottom: 11px; padding-left: 20px; position: relative; }
+  li::before { content: ''; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; border-radius: 3px; }
+  .col.win li::before { background: #A4E3A6; }
+  .col.risk li::before { background: #E8C48A; }
+  li b { color: #EFF3E9; font-weight: 800; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #7F9179; padding: 0 10px 10px 0; }
+  td { padding: 9px 10px 9px 0; border-top: 1px solid rgba(147,167,143,.16); color: #B7C2AE; font-weight: 700; vertical-align: top; }
+  td.ratio { font-weight: 900; color: #EFF3E9; white-space: nowrap; }
+  .ok { color: #A4E3A6; font-weight: 900; }
+  .warn { color: #E8C48A; font-weight: 900; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid rgba(255,255,255,.14); }
+  .note-p { font-size: 13px; font-weight: 600; line-height: 1.6; color: #A8B4A0; margin: 16px 0 0; }
+  .note-p code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #C9F3C6; background: rgba(164,227,166,.1); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <p class="kicker">Hub de acciones · dirección 1 de 3</p>
+  <h1>Brote — el hub es una planta que crece desde el FAB</h1>
+  <p class="lede">
+    La app <b>ya es un jardín</b> (Mi jardín, la racha, Brot que es un brote, los días cumplidos que son
+    plantitas) y el hub era lo único que no lo sabía. Acá cargar algo deja de ser “abrir un menú” y pasa a
+    ser <b>plantar</b>: del FAB nace un tallo que se traza hacia arriba y de él brotan las acciones como
+    hojas, alternando lado a lado. <b>Gasto es el fruto de la base</b> — el más grande y el más cercano al
+    pulgar, no la flor de la punta — y un <b>tap corto en el FAB</b> lo abre directo con el numpad,
+    matando el tap intermedio que hoy cuesta el 80&nbsp;% de las aperturas. Brot no decora: es la
+    <b>punta del tallo</b>, y reacciona a la hoja que estás por elegir.
+  </p>
+
+  <div class="controls">
+    <button class="btn" id="replay">▶︎ Reproducir la apertura</button>
+    <button class="btn ghost" id="close">Retraer la planta</button>
+    <label class="toggle"><input type="checkbox" id="reduced"> Simular «reducir movimiento»</label>
+  </div>
+
+  <p class="hint-row">
+    <b style="color:#C9F3C6">Pruébalo con el mouse.</b>
+    <code>mantén apretado el FAB</code> → la planta crece mientras sostenés; <code>arrastra</code> hasta un brote y
+    <code>suelta</code> → eliges esa acción sin levantar el dedo. &nbsp;·&nbsp;
+    <code>click corto en el FAB</code> → Gasto directo con el monto (el atajo). &nbsp;·&nbsp;
+    <code>hover sobre un brote</code> → Brot cambia de pose. &nbsp;·&nbsp;
+    click en el scrim o en el FAB abierto → se retrae.
+  </p>
+
+  <div class="frames" id="frames"></div>
+
+  <div class="panel">
+    <h2>Qué gana · qué arriesga</h2>
+    <div class="two">
+      <div class="col win">
+        <h3>Qué gana</h3>
+        <ul>
+          <li><b>Gasto en un solo tap.</b> El tap corto del FAB abre directo el monto. Hoy son dos taps y una
+          espera de hoja antes de poder tipear un número — sobre el 80&nbsp;% de las aperturas, es el ahorro
+          más grande que hay disponible en toda la app.</li>
+          <li><b>El gesto entero vive en el pulgar.</b> Presionar, arrastrar y soltar es un solo movimiento
+          continuo que nace en el FAB. No hay viaje de ida al menú y vuelta al botón.</li>
+          <li><b>La jerarquía se lee sin texto.</b> Tamaño + distancia al pulgar codifican la frecuencia:
+          el fruto grande abajo es lo que haces siempre; cuanto más arriba, más raro. Una lista de 5 filas
+          iguales no puede decir eso.</li>
+          <li><b>Identidad imposible de confundir.</b> Es literalmente la metáfora del producto ejecutada en
+          el gesto. Ninguna app de finanzas tiene esto, y es 100&nbsp;% coherente con Mi jardín y con Brot.</li>
+          <li><b>Cero piel nueva.</b> Reusa el vocabulario neo tal cual: pods raised con los pasteles por
+          acción, CTA radial para el fruto, pozos para el numpad. La innovación está en la estructura.</li>
+          <li><b>Brot pasa a ser estructura.</b> Deja de ser un sticker al costado: sostiene la punta del
+          tallo y reacciona a lo que estás por elegir. Es el diferencial de marca haciendo trabajo real.</li>
+        </ul>
+      </div>
+      <div class="col risk">
+        <h3>Qué arriesga (lo real)</h3>
+        <ul>
+          <li><b>Ergonomía: los dos brotes de arriba se van del arco del pulgar.</b> Medido en el prototipo,
+          el fruto “Gasto” queda a <b>98&nbsp;px</b> del centro del FAB, “Día sin gasto” a 223, “Importar” a
+          305, “Ingreso” a <b>388</b> y “Gasto fijo” a <b>449</b>. En un teléfono de 6,7" los dos últimos están
+          en el borde del alcance cómodo. Mitigación: son las dos acciones más raras, y el tap
+          sigue funcionando aunque tengas que reacomodar la mano. <b>Hay que medirlo en device antes de
+          comprometerse</b>, no en el navegador.</li>
+          <li><b>Descubribilidad del atajo.</b> “Tap corto = Gasto” es invisible: no hay affordance que lo
+          anuncie. Necesita coach de primer uso y que el destello del tallo lo enseñe. Si el usuario nunca
+          lo descubre, la dirección queda igual de larga que hoy pero más rara.</li>
+          <li><b>Accesibilidad.</b> Un menú de posición libre no tiene orden de lectura obvio: hay que fijar
+          el orden del foco para VoiceOver/TalkBack a mano, y el drag-to-select no existe para quien navega
+          por asistencia — el tap simple sobre cada brote tiene que seguir andando siempre. Con Dynamic Type
+          grande o en inglés (“Import receipt”) los labels de 2 líneas rompen el layout: hace falta plan de
+          truncado o labels debajo del pod.</li>
+          <li><b>El ancho ya está al tope.</b> Con 393&nbsp;px de pantalla, el brote más ancho ocupa de
+          x&nbsp;46 a x&nbsp;160 (izquierda) y de 224 a 348 (derecha): entra, pero sin aire de sobra. El label
+          está capado a 86&nbsp;px y por eso “Día sin gasto” e “Importar captura” van a dos líneas. En un
+          iPhone SE (375) o con Dynamic Type grande hay que decidir entre truncar o mover el label debajo
+          del pod.</li>
+          <li><b>Es la propuesta más cara de las tres.</b> Pide un componente nuevo con SVG animado
+          (react-native-svg), el trazo del tallo en Reanimated, hit-testing manual del drag con Gesture
+          Handler, y un layout absoluto que se recalcula por altura de pantalla. Estimo ~500 líneas nuevas
+          más tokens de layout por breakpoint — nada reutilizable del sheet actual.</li>
+          <li><b>Riesgo de performance conocido en este proyecto.</b> Animar <code>stroke-dashoffset</code> en
+          react-native-svg no siempre corre en el UI thread; en Android de gama baja puede tironear. Plan B
+          verificable: reemplazar el trazo por una máscara/clip animada, o por un tallo de 3 segmentos con
+          escala en Y.</li>
+          <li><b>El scrim verde lava la Home.</b> Al 96&nbsp;% de opacidad el fondo casi desaparece; hay que
+          confirmar que el tinte verde no se lea como “estado especial” o error, sobre todo en claro.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note-p">
+      <b style="color:#EFF3E9">La decisión que estás aprobando:</b> Gasto va <b>abajo, sobre el tallo, como
+      fruto</b> — no como flor en la punta. La flor arriba se ve mejor en una captura, pero pone la acción
+      dominante en el punto más lejano del pulgar y obliga a recorrer toda la planta con la vista cada vez.
+      Acá el orden es por frecuencia y por alcance: Gasto (fruto) → Día sin gasto → Importar captura →
+      Ingreso → Gasto fijo. “Día sin gasto” va segundo porque es el compañero diario de Gasto: o gastaste,
+      o no gastaste.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Contraste WCAG — pares reales del prototipo</h2>
+    <table>
+      <thead>
+        <tr><th style="width:31%">Par</th><th style="width:20%">Tema claro</th><th style="width:20%">Tema oscuro</th><th>Requisito</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Label del brote sobre el scrim<br><span style="color:#7F9179">#24382A / #C3CBB2 · #F1EEDD / #0D1811</span></td>
+          <td class="ratio">7,47:1 <span class="ok">✓</span></td>
+          <td class="ratio">15,58:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+        <tr>
+          <td>Sub/eyebrow secundario sobre el scrim<br><span style="color:#7F9179">#3E4E3B / #C3CBB2 · #93A78F / #0D1811</span></td>
+          <td class="ratio">5,30:1 <span class="ok">✓</span></td>
+          <td class="ratio">7,07:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+        <tr>
+          <td>Label del brote sobre scrim <b>+ tinte verde</b>, en su punto más cargado (brote más bajo)<br><span style="color:#7F9179">#24382A / #A9BD9D · #F1EEDD / #1C3021</span></td>
+          <td class="ratio">6,24:1 <span class="ok">✓</span></td>
+          <td class="ratio">12,06:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+        <tr>
+          <td>Ícono en el pod pastel — peor caso arena<br><span style="color:#7F9179">#24382A / <span class="sw" style="background:#EDE0C8"></span>#EDE0C8 · #A4E3A6 / #3C4A3C</span></td>
+          <td class="ratio">9,61:1 <span class="ok">✓</span></td>
+          <td class="ratio">6,28:1 <span class="ok">✓</span></td>
+          <td>3:1 (UI)</td>
+        </tr>
+        <tr>
+          <td>Tinta del fruto sobre el CTA radial — 85&nbsp;% del gradiente<br><span style="color:#7F9179">#F5F2E1 / #2E7434 · #0F1E14 / #9FDC9F</span></td>
+          <td class="ratio">5,10:1 <span class="ok">✓</span></td>
+          <td class="ratio">10,86:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+        <tr>
+          <td>Tinta del fruto en el extremo opuesto del radial<br><span style="color:#7F9179">#F5F2E1 / #489350 · #0F1E14 / #3E7D46</span></td>
+          <td class="ratio">3,36:1 <span class="warn">△</span></td>
+          <td class="ratio">3,47:1 <span class="warn">△</span></td>
+          <td>3:1 (texto grande ≥18,66&nbsp;px&nbsp;bold)</td>
+        </tr>
+        <tr>
+          <td>Trazo del tallo sobre el scrim (elemento de UI)<br><span style="color:#7F9179">#2E7C39 / #C3CBB2 · #A4E3A6 / #0D1811</span></td>
+          <td class="ratio">3,08:1 <span class="ok">✓</span></td>
+          <td class="ratio">12,21:1 <span class="ok">✓</span></td>
+          <td>3:1 (UI)</td>
+        </tr>
+        <tr>
+          <td>Monto en el panel, sobre la hoja<br><span style="color:#7F9179">#24382A / #F0EFE3 · #F1EEDD / #1B2F22</span></td>
+          <td class="ratio">10,85:1 <span class="ok">✓</span></td>
+          <td class="ratio">12,20:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+        <tr>
+          <td>Tecla del numpad sobre material raised<br><span style="color:#7F9179">#24382A / #E1E4D6 · #F1EEDD / #132318</span></td>
+          <td class="ratio">9,71:1 <span class="ok">✓</span></td>
+          <td class="ratio">14,06:1 <span class="ok">✓</span></td>
+          <td>4,5:1 (texto)</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note-p">
+      El scrim se calculó como color efectivo: claro <code>#C3CBB2</code> (rgba(195,203,178,.96) sobre la Home),
+      oscuro <code>#0D1811</code>. Se subió la opacidad a 0,96 justamente para que el contraste de los labels
+      sobre el scrim sea <b>determinístico</b> y no dependa de qué haya atrás (con el scrim de 0,84 del sheet
+      actual, un label sobre el hero verde caía a ~5,5:1 y sobre el fondo a 7,4:1 — un rango que no se puede
+      certificar). Encima del scrim va el tinte verde que sube desde el FAB; su punto más cargado a la altura
+      de un label es ~17&nbsp;% de alfa (claro) y ~12&nbsp;% (oscuro) — esa es la fila «scrim + tinte», que es
+      el peor caso real y sigue pasando 4,5:1.
+      <br><br>
+      La única fila amarilla es el gradiente radial del CTA, que ya se comporta así en producción: el punto
+      más claro del radial está arriba a la izquierda y el texto se ubica fuera de ese hotspot, donde mide
+      5,10:1. Cumple igual como <b>texto grande</b> (el label “Gasto” es 20&nbsp;px/900). El sub del fruto va
+      con la tinta al 100&nbsp;% (sin <code>opacity</code>) precisamente para no perder ese margen — bajarlo a
+      0,85 lo tiraba a 4,1:1.
+      <br><br>
+      Se evitó a propósito <code>--muted</code> (#54644F) sobre el scrim claro: da <b>3,77:1</b> y no llega.
+      Por eso el prototipo usa <code>#3E4E3B</code> para el texto secundario del tema claro.
+    </p>
+  </div>
+
+  <div class="panel">
+    <h2>Poses de Brot en esta dirección</h2>
+    <div id="poses" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    <p class="note-p">
+      Brot vive en la <b>punta del tallo</b>. Mientras la planta crece va en <code>magic</code> (las chispas
+      leen como “esto está creciendo”), en reposo pasa a <code>coach</code>, y al pasar por cada brote toma la
+      pose de esa acción. En el panel de monto aparece en <code>wow</code> y salta a <code>cheer</code> cuando
+      el monto deja de ser cero. Los Brot de esta leyenda están con <code>animated="false"</code>: en toda la
+      página nunca hay más de <b>dos canvas animándose</b> (uno por teléfono).
+    </p>
+  </div>
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Datos ────────────────────────────────────────────── */
+  var REST_POSE = 'coach';
+  var GROW_POSE = 'magic';
+
+  // Orden por cercanía al pulgar = orden por frecuencia.
+  var BUDS = [
+    { key: 'no-spend', label: 'Día sin<br>gasto',    plain: 'Día sin gasto',    side: 'left',  y: 566, pose: 'zen',   why: 'calma, no gastaste' },
+    { key: 'import',   label: 'Importar<br>captura', plain: 'Importar captura', side: 'right', y: 478, pose: 'wow',   why: 'la foto se vuelve gasto' },
+    { key: 'income',   label: 'Ingreso',             plain: 'Ingreso',          side: 'left',  y: 392, pose: 'cheer', why: 'entra plata' },
+    { key: 'fixed',    label: 'Gasto<br>fijo',       plain: 'Gasto fijo',       side: 'right', y: 326, pose: 'think', why: 'algo que se repite' }
+  ];
+  var FRUIT_Y = 662;
+
+  /* ── Glifos ───────────────────────────────────────────── */
+  function svg(paths, size, filled) {
+    var attrs = filled
+      ? 'fill="currentColor" stroke="none"'
+      : 'fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" ' + attrs + '>' + paths + '</svg>';
+  }
+  var GLYPH = {
+    plus:     '<path d="M12 5.5v13M5.5 12h13"/>',
+    close:    '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+    back:     '<path d="M20 6.5H9.5L4 12l5.5 5.5H20z"/><path d="M15.5 9.5l-4 5M11.5 9.5l4 5"/>',
+    check:    '<path d="M4.5 12.5l5 5 10-11"/>',
+    'import': '<path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M4 12h16"/>',
+    'no-spend': '<path d="M6.05 8.05c-2.73 2.73-2.73 7.15-.02 9.88 1.47-3.4 4.09-6.24 7.36-7.93' +
+                '-2.77 2.34-4.71 5.61-5.39 9.32 2.6 1.23 5.8.78 7.95-1.37C19.43 14.47 20 4 20 4S9.53 4.57 6.05 8.05z"/>',
+    income:   '<path d="M3.5 17l6-6 3.5 3.5L20.5 7"/><path d="M15.5 7h5v5"/>',
+    fixed:    '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/>' +
+              '<path d="M3.5 10h17M8 3.2v3.6M16 3.2v3.6"/>' +
+              '<path d="M9.2 16.6a3 3 0 1 1 1.1 2.3"/><path d="M9.2 13.9v2.7h2.7"/>'
+  };
+
+  var STEM_D =
+    'M196 740 C196 706, 187 700, 189 662 ' +
+    'C191 622, 176 604, 178 566 ' +
+    'C180 528, 205 516, 205 478 ' +
+    'C205 440, 178 430, 179 392 ' +
+    'C180 358, 198 356, 199 326 ' +
+    'C200 306, 206 300, 205 288';
+
+  var BARS = '<div class="bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px;opacity:.35"></i></div>';
+
+  function homeMarkup() {
+    return '' +
+      '<div class="home">' +
+        '<div class="statusbar"><span>9:41</span><span class="sb-right">' + BARS + '<span class="battery"><i></i></span></span></div>' +
+        '<div class="home-head"><div class="avatar"></div><div>' +
+          '<div class="home-title">Hola, Mario</div>' +
+          '<div class="home-sub">Ciclo del 1 al 31 de agosto</div>' +
+        '</div></div>' +
+        '<div class="hero">' +
+          '<div class="hero-eyebrow">LIBRE ESTE MES</div>' +
+          '<div class="hero-amount">$184.320</div>' +
+          '<div class="hero-meter"><i></i></div>' +
+          '<div class="hero-foot"><span>Gastado $315.680</span><span>63%</span></div>' +
+        '</div>' +
+        '<div class="chips">' +
+          '<div class="chip"><span class="c-lbl">Por día</span><span class="c-val">$6.140</span></div>' +
+          '<div class="chip"><span class="c-lbl">Mi jardín</span><span class="c-val">12 días</span></div>' +
+          '<div class="chip"><span class="c-lbl">Ahorro</span><span class="c-val">$42.000</span></div>' +
+        '</div>' +
+        '<div class="rows-bg"><div class="row-bg"></div><div class="row-bg"></div><div class="row-bg"></div></div>' +
+      '</div>' +
+      '<div class="nav"><i></i><i></i><i style="opacity:0"></i><i></i><i></i></div>' +
+      '<div class="scrim"></div>';
+  }
+
+  function plantMarkup(themeId) {
+    var branches = '', leaflets = '';
+    for (var i = 0; i < BUDS.length; i++) {
+      branches += '<path class="branch" data-i="' + i + '"></path>';
+    }
+    for (var j = 0; j < 3; j++) leaflets += '<path class="leaflet" data-j="' + j + '"></path>';
+    return '' +
+      '<div class="plant">' +
+        '<svg viewBox="0 0 393 830" aria-hidden="true">' +
+          '<defs><linearGradient id="stemGrad-' + themeId + '" x1="0" y1="1" x2="0" y2="0">' +
+            '<stop offset="0" stop-color="var(--stem-a)"/>' +
+            '<stop offset="0.55" stop-color="var(--stem-b)"/>' +
+            '<stop offset="1" stop-color="var(--stem-c)"/>' +
+          '</linearGradient></defs>' +
+          branches + leaflets +
+          '<path class="stem" d="' + STEM_D + '"></path>' +
+        '</svg>' +
+      '</div>';
+  }
+
+  function budsMarkup() {
+    var out = '<div class="fruit-halo"></div>' +
+      '<div class="fruit" data-key="expense" data-pose="wow" role="button" tabindex="0" aria-label="Gasto">' +
+        '<div class="fruit-disc">' + svg(GLYPH.plus, 24) + '</div>' +
+        '<div class="fruit-col">' +
+          '<span class="fruit-label">Gasto</span>' +
+          '<span class="fruit-sub">escribe el monto</span>' +
+        '</div>' +
+      '</div>';
+    for (var i = 0; i < BUDS.length; i++) {
+      var b = BUDS[i];
+      out += '<div class="bud ' + b.side + '" data-i="' + i + '" data-key="' + b.key + '" data-pose="' + b.pose + '" ' +
+             'role="button" tabindex="0" aria-label="' + b.plain + '">' +
+               '<div class="pod" data-pastel="' + b.key + '">' + svg(GLYPH[b.key], 22, b.key === 'no-spend') + '</div>' +
+               '<span class="bud-label">' + b.label + '</span>' +
+             '</div>';
+    }
+    return out;
+  }
+
+  function amountMarkup() {
+    var keys = ['1','2','3','4','5','6','7','8','9','000','0','back'];
+    var pad = '';
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      pad += '<div class="key" data-k="' + k + '">' + (k === 'back' ? svg(GLYPH.back, 24) : k) + '</div>';
+    }
+    return '' +
+      '<div class="amount">' +
+        '<div class="amt-head">' +
+          '<span class="amt-eyebrow">Nuevo gasto · paso 1 de 2</span>' +
+          '<div class="amt-x" data-act="close-amount">' + svg(GLYPH.close, 16) + '</div>' +
+        '</div>' +
+        '<div class="amt-body">' +
+          '<div class="amt-value zero">$0</div>' +
+          '<div class="amt-brot"></div>' +
+        '</div>' +
+        '<div class="amt-caption">Un tap corto en el “+” y ya estás acá.</div>' +
+        '<div class="pad">' + pad + '</div>' +
+        '<div class="amt-cta" data-act="save">' + svg(GLYPH.check, 20) + ' Continuar</div>' +
+      '</div>';
+  }
+
+  /* ── Montaje ──────────────────────────────────────────── */
+  var THEMES = [
+    { id: 'light', label: 'Claro · Salvia' },
+    { id: 'dark',  label: 'Oscuro · Noche de bosque' }
+  ];
+  var frames = document.getElementById('frames');
+  var units = [];
+
+  THEMES.forEach(function (th) {
+    var col = document.createElement('div');
+    col.className = 'frame-col';
+
+    var stage = document.createElement('div');
+    stage.className = 'stage';
+    stage.setAttribute('data-theme', th.id);
+    stage.innerHTML =
+      homeMarkup() +
+      plantMarkup(th.id) +
+      budsMarkup() +
+      '<div class="toast"></div>' +
+      amountMarkup() +
+      '<div class="fab" role="button" tabindex="0" aria-label="Agregar">' + svg(GLYPH.plus, 26) + '</div>' +
+      '<div class="homebar"></div>';
+
+    var lbl = document.createElement('div');
+    lbl.className = 'frame-label';
+    lbl.textContent = th.label;
+
+    col.appendChild(stage);
+    col.appendChild(lbl);
+    frames.appendChild(col);
+
+    // El gradiente necesita un id único por tema; el CSS lo toma por variable
+    // (un `stroke` en CSS le gana al atributo de presentación).
+    stage.style.setProperty('--stem-url', 'url(#stemGrad-' + th.id + ')');
+
+    units.push({ stage: stage, theme: th.id });
+  });
+
+  /* ── Geometría: se resuelve sobre el path real ────────── */
+  function pointAtY(path, targetY) {
+    var L = path.getTotalLength();
+    var best = null, bestD = 1e9;
+    for (var i = 0; i <= 500; i++) {
+      var p = path.getPointAtLength(L * i / 500);
+      var d = Math.abs(p.y - targetY);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  units.forEach(function (u) {
+    var stage = u.stage;
+    var stem = stage.querySelector('.stem');
+    var stemLen = stem.getTotalLength();
+    stem.style.setProperty('--len', stemLen);
+
+    var tip = stem.getPointAtLength(stemLen);
+
+    // Brot en la punta, apoyado un poco a la izquierda del tallo.
+    var brotSize = 78;
+    var brotW = brotSize * 84 / 108;
+    var tipBrot = document.createElement('div');
+    tipBrot.className = 'tip-brot';
+    tipBrot.style.left = (tip.x - brotW / 2 - 16) + 'px';
+    tipBrot.style.top = (tip.y - brotSize + 8) + 'px';
+    var bTip = document.createElement('brot-mascot');
+    bTip.setAttribute('pose', REST_POSE);
+    bTip.setAttribute('size', String(brotSize));
+    bTip.setAttribute('shadow', 'false');
+    bTip.setAttribute('animated', 'false');
+    tipBrot.appendChild(bTip);
+    stage.appendChild(tipBrot);
+    u.tipBrot = bTip;
+
+    // Fruto (Gasto) — sobre el tallo, straddling, cerca del FAB.
+    var fp = pointAtY(stem, FRUIT_Y);
+    var fruit = stage.querySelector('.fruit');
+    var halo = stage.querySelector('.fruit-halo');
+    var fw = 200, fh = 76;
+    var fx = fp.x - 68, fy = fp.y - fh / 2;
+    fruit.style.left = fx + 'px';
+    fruit.style.top = fy + 'px';
+    halo.style.left = (fx + 10) + 'px';
+    halo.style.top = (fy + 8) + 'px';
+    halo.style.width = (fw - 20) + 'px';
+    halo.style.height = (fh - 16) + 'px';
+
+    // Brotes laterales + sus ramitas.
+    var branches = stage.querySelectorAll('.branch');
+    Array.prototype.forEach.call(stage.querySelectorAll('.bud'), function (bud, i) {
+      var cfg = BUDS[i];
+      var a = pointAtY(stem, cfg.y);
+      var dir = cfg.side === 'left' ? -1 : 1;
+      var reach = 19;                        // largo de la ramita
+      var lift = 12;                         // la hoja sube un poco, como una hoja real
+      var ex = a.x + dir * reach, ey = a.y - lift;
+
+      var br = branches[i];
+      br.setAttribute('d',
+        'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+        ' C' + (a.x + dir * 8).toFixed(1) + ' ' + (a.y - 1).toFixed(1) +
+        ', ' + (a.x + dir * 14).toFixed(1) + ' ' + (a.y - 8).toFixed(1) +
+        ', ' + ex.toFixed(1) + ' ' + ey.toFixed(1));
+      var bl = br.getTotalLength();
+      br.style.setProperty('--len', bl);
+      br.style.setProperty('--delay', (140 + i * 78) + 'ms');
+
+      bud.style.top = (ey - 31) + 'px';
+      if (cfg.side === 'left') bud.style.right = (393 - ex) + 'px';
+      else bud.style.left = ex + 'px';
+      bud.style.setProperty('--delay', (200 + i * 78) + 'ms');
+    });
+
+    // Hojitas decorativas sobre el tallo.
+    var leafYs = [700, 615, 430];
+    Array.prototype.forEach.call(stage.querySelectorAll('.leaflet'), function (lf, j) {
+      var a = pointAtY(stem, leafYs[j]);
+      var dir = j % 2 === 0 ? 1 : -1;
+      var d = 'M' + a.x.toFixed(1) + ' ' + a.y.toFixed(1) +
+              ' q' + (dir * 13) + ' -12 ' + (dir * 24) + ' -4' +
+              ' q' + (-dir * 12) + ' 12 ' + (-dir * 24) + ' 4 z';
+      lf.setAttribute('d', d);
+      lf.style.setProperty('--delay', (260 + j * 90) + 'ms');
+      // la hojita crece desde donde se pega al tallo
+      lf.style.transformOrigin = (dir > 0 ? 'left' : 'right') + ' center';
+    });
+
+    // Brot del panel de monto.
+    var amtSlot = stage.querySelector('.amt-brot');
+    var bAmt = document.createElement('brot-mascot');
+    bAmt.setAttribute('pose', 'wow');
+    bAmt.setAttribute('size', '62');
+    bAmt.setAttribute('shadow', 'false');
+    bAmt.setAttribute('animated', 'false');
+    amtSlot.appendChild(bAmt);
+    u.amtBrot = bAmt;
+  });
+
+  /* ── Estado ───────────────────────────────────────────── */
+  function setPose(u, pose) {
+    if (u.tipBrot.getAttribute('pose') !== pose) u.tipBrot.setAttribute('pose', pose);
+  }
+  // brot.js arranca/corta su rAF en connected/disconnectedCallback: cambiar el
+  // atributo `animated` en caliente NO enciende ni apaga el loop. Para prender o
+  // apagar de verdad hay que reinsertar el elemento con el atributo ya puesto.
+  function setAnimated(el, on) {
+    var want = on ? 'true' : 'false';
+    if (el.getAttribute('animated') === want) return;
+    var parent = el.parentNode, next = el.nextSibling;
+    if (parent) parent.removeChild(el);
+    el.setAttribute('animated', want);
+    if (parent) parent.insertBefore(el, next);
+  }
+  // Sólo el protagonista de cada teléfono anima (máximo 2 canvas vivos).
+  function liveBrot(u, which) {
+    setAnimated(u.tipBrot, which === 'tip');
+    setAnimated(u.amtBrot, which === 'amt');
+  }
+
+  function openPlant(u) {
+    u.stage.classList.add('sc-scrim', 'sc-plant');
+    u.stage.classList.remove('sc-amount');
+    setPose(u, GROW_POSE);
+    liveBrot(u, 'tip');
+    clearTimeout(u.restT);
+    u.restT = setTimeout(function () { setPose(u, REST_POSE); }, 1150);
+  }
+  function closeAll(u) {
+    clearTimeout(u.restT); clearTimeout(u.toastT);
+    u.stage.classList.remove('sc-scrim', 'sc-plant', 'sc-amount');
+    u.stage.querySelector('.toast').classList.remove('on');
+    liveBrot(u, 'none');
+    setPose(u, REST_POSE);
+    clearHot(u);
+  }
+  function openAmount(u) {
+    clearTimeout(u.restT);
+    u.stage.classList.remove('sc-plant');
+    u.stage.classList.add('sc-scrim', 'sc-amount');
+    liveBrot(u, 'amt');
+    setAmount(u, '');
+    clearHot(u);
+  }
+
+  function toast(u, title, sub) {
+    var t = u.stage.querySelector('.toast');
+    t.innerHTML = title + (sub ? '<small>' + sub + '</small>' : '');
+    t.classList.add('on');
+    clearTimeout(u.toastT);
+    u.toastT = setTimeout(function () { t.classList.remove('on'); }, 1300);
+  }
+
+  /* ── Monto ────────────────────────────────────────────── */
+  var NF = new Intl.NumberFormat('es-AR');
+  function setAmount(u, digits) {
+    u.digits = digits;
+    var el = u.stage.querySelector('.amt-value');
+    var n = digits === '' ? 0 : parseInt(digits, 10);
+    el.textContent = '$' + NF.format(n);
+    el.classList.toggle('zero', n === 0);
+    var pose = n === 0 ? 'wow' : 'cheer';
+    if (u.amtBrot.getAttribute('pose') !== pose) u.amtBrot.setAttribute('pose', pose);
+  }
+
+  /* ── Interacción ──────────────────────────────────────── */
+  function clearHot(u) {
+    Array.prototype.forEach.call(u.stage.querySelectorAll('.bud, .fruit'), function (el) {
+      el.classList.remove('is-hot', 'is-down');
+    });
+  }
+  function markHot(u, el) {
+    Array.prototype.forEach.call(u.stage.querySelectorAll('.bud, .fruit'), function (e) {
+      e.classList.toggle('is-hot', e === el);
+    });
+  }
+
+  function activate(u, el) {
+    if (!el) return;
+    var key = el.getAttribute('data-key');
+    if (key === 'expense') { openAmount(u); return; }
+    var cfg = null;
+    for (var i = 0; i < BUDS.length; i++) if (BUDS[i].key === key) cfg = BUDS[i];
+    if (!cfg) return;
+    setPose(u, cfg.pose);
+    if (key === 'no-spend') {
+      setPose(u, 'cheer');
+      toast(u, '¡Listo! Día sin gasto', 'Sumaste una plantita a tu jardín');
+    } else {
+      toast(u, 'Abre «' + cfg.plain + '»', 'en el prototipo termina acá');
+    }
+    setTimeout(function () { closeAll(u); }, 1150);
+  }
+
+  units.forEach(function (u) {
+    var stage = u.stage;
+    var fab = stage.querySelector('.fab');
+    var scrim = stage.querySelector('.scrim');
+
+    // ── El FAB: hold para crecer, drag para elegir, tap corto = Gasto ──
+    var pressT = 0, dragged = false, pointerActive = false;
+
+    function budUnder(x, y) {
+      var r = stage.getBoundingClientRect();
+      var el = document.elementFromPoint(r.left + x, r.top + y);
+      while (el && el !== stage) {
+        if (el.classList && (el.classList.contains('bud') || el.classList.contains('fruit'))) return el;
+        el = el.parentNode;
+      }
+      return null;
+    }
+
+    fab.addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      if (stage.classList.contains('sc-amount')) { closeAll(u); return; }
+      if (stage.classList.contains('sc-plant')) { closeAll(u); return; }
+      pointerActive = true; dragged = false; pressT = Date.now();
+      fab.classList.add('is-down');
+      fab.setPointerCapture(e.pointerId);
+      openPlant(u);
+    });
+
+    fab.addEventListener('pointermove', function (e) {
+      if (!pointerActive) return;
+      var r = stage.getBoundingClientRect();
+      var x = e.clientX - r.left, y = e.clientY - r.top;
+      var dx = x - 196, dy = y - 757;
+      if (Math.sqrt(dx * dx + dy * dy) > 34) dragged = true;
+      var el = budUnder(x, y);
+      markHot(u, el);
+      if (el) {
+        var pose = el.getAttribute('data-pose');
+        clearTimeout(u.restT);
+        setPose(u, pose);
+      } else if (dragged) {
+        setPose(u, REST_POSE);
+      }
+    });
+
+    fab.addEventListener('pointerup', function (e) {
+      if (!pointerActive) return;
+      pointerActive = false;
+      fab.classList.remove('is-down');
+      var r = stage.getBoundingClientRect();
+      var el = budUnder(e.clientX - r.left, e.clientY - r.top);
+      var quick = (Date.now() - pressT) < 260 && !dragged;
+      clearHot(u);
+      if (el) { activate(u, el); return; }
+      if (quick) { openAmount(u); return; }   // ← el atajo: tap corto = Gasto
+      // hold largo sin destino: la planta queda abierta (latched)
+    });
+
+    fab.addEventListener('pointercancel', function () {
+      pointerActive = false; fab.classList.remove('is-down'); clearHot(u);
+    });
+
+    fab.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (stage.classList.contains('sc-plant') || stage.classList.contains('sc-amount')) closeAll(u);
+        else openPlant(u);
+      }
+    });
+
+    // ── Brotes: hover previsualiza, click activa (fallback sin drag) ──
+    Array.prototype.forEach.call(stage.querySelectorAll('.bud, .fruit'), function (el) {
+      var pose = el.getAttribute('data-pose');
+      el.addEventListener('mouseenter', function () {
+        if (!stage.classList.contains('sc-plant')) return;
+        clearTimeout(u.restT); setPose(u, pose); el.classList.add('is-hot');
+      });
+      el.addEventListener('mouseleave', function () {
+        el.classList.remove('is-hot', 'is-down');
+        if (stage.classList.contains('sc-plant')) setPose(u, REST_POSE);
+      });
+      el.addEventListener('pointerdown', function (e) { e.stopPropagation(); el.classList.add('is-down'); });
+      el.addEventListener('pointerup', function (e) { e.stopPropagation(); el.classList.remove('is-down'); });
+      el.addEventListener('click', function (e) { e.stopPropagation(); activate(u, el); });
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(u, el); }
+      });
+      el.addEventListener('focus', function () { if (stage.classList.contains('sc-plant')) setPose(u, pose); });
+    });
+
+    scrim.addEventListener('click', function () { closeAll(u); });
+
+    // ── Numpad ──
+    u.digits = '';
+    Array.prototype.forEach.call(stage.querySelectorAll('.key'), function (k) {
+      k.addEventListener('pointerdown', function () { k.classList.add('is-down'); });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) {
+        k.addEventListener(ev, function () { k.classList.remove('is-down'); });
+      });
+      k.addEventListener('click', function () {
+        var v = k.getAttribute('data-k');
+        var d = u.digits || '';
+        if (v === 'back') d = d.slice(0, -1);
+        else if (v === '000') d = (d === '' ? '' : d + '000');
+        else d = (d === '' && v === '0') ? '' : d + v;
+        if (d.length > 9) d = d.slice(0, 9);
+        setAmount(u, d);
+      });
+    });
+
+    stage.querySelector('.amt-x').addEventListener('click', function () { closeAll(u); });
+    stage.querySelector('.amt-cta').addEventListener('click', function () {
+      toast(u, 'Paso 2: categoría', 'en el prototipo termina acá');
+      setTimeout(function () { closeAll(u); }, 1150);
+    });
+  });
+
+  /* ── Leyenda de poses (canvas estáticos) ──────────────── */
+  var poses = document.getElementById('poses');
+  var LEGEND = [
+    { label: 'Mientras crece', pose: 'magic', why: 'el tallo se está trazando' },
+    { label: 'En reposo',      pose: 'coach', why: 'te está ofreciendo opciones' },
+    { label: 'Gasto',          pose: 'wow',   why: 'la acción principal' },
+    { label: 'Día sin gasto',  pose: 'zen',   why: 'calma, no gastaste' },
+    { label: 'Importar',       pose: 'wow',   why: 'la foto se vuelve gasto' },
+    { label: 'Ingreso',        pose: 'cheer', why: 'entra plata' },
+    { label: 'Gasto fijo',     pose: 'think', why: 'algo que se repite' }
+  ];
+  LEGEND.forEach(function (a) {
+    var cell = document.createElement('div');
+    cell.style.cssText = 'flex:1 1 120px;display:flex;flex-direction:column;align-items:center;gap:6px;' +
+      'padding:14px 10px;border-radius:20px;background:#142519;' +
+      'box-shadow:inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);';
+    var b = document.createElement('brot-mascot');
+    b.setAttribute('pose', a.pose);
+    b.setAttribute('size', '64');
+    b.setAttribute('animated', 'false');
+    b.setAttribute('shadow', 'false');
+    cell.appendChild(b);
+    cell.insertAdjacentHTML('beforeend',
+      '<div style="font-size:12.5px;font-weight:900;color:#F1EEDD;text-align:center">' + a.label + '</div>' +
+      '<div style="font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#A4E3A6">' + a.pose + '</div>' +
+      '<div style="font-size:11px;font-weight:600;color:#93A78F;text-align:center;line-height:1.4">' + a.why + '</div>');
+    poses.appendChild(cell);
+  });
+
+  /* ── Controles ────────────────────────────────────────── */
+  function play() {
+    units.forEach(function (u) {
+      closeAll(u);
+      void u.stage.offsetWidth;
+      setTimeout(function () { openPlant(u); }, 60);
+    });
+  }
+  document.getElementById('replay').addEventListener('click', play);
+  document.getElementById('close').addEventListener('click', function () { units.forEach(closeAll); });
+  document.getElementById('reduced').addEventListener('change', function (e) {
+    document.body.classList.toggle('reduced', e.target.checked);
+    play();
+  });
+
+  play();
+})();
+</script>
+</body>
+</html>

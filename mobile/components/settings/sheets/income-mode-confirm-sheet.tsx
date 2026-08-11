@@ -2,11 +2,13 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import type { ComponentProps } from 'react'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
-import { neoTokens } from '@/theme/neo-tokens'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 type IconName = ComponentProps<typeof MaterialIcons>['name']
 
@@ -67,11 +69,10 @@ export function IncomeModeConfirmSheet({
         <View
           style={[
             styles.effects,
-            {
-              backgroundColor: neo.well,
-              boxShadow: neo.shadows.insetSm,
-              borderColor: neo.sheetDivider,
-            },
+            { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm },
+            // Android < API 29 descarta el boxShadow INSET en silencio: sin él
+            // el pozo queda del material de la hoja y el bloque desaparece.
+            SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: neo.sheetDivider },
           ]}
         >
           {EFFECTS[nextMode].map(({ icon, key }) => (
@@ -88,12 +89,16 @@ export function IncomeModeConfirmSheet({
             </View>
           ))}
         </View>
-        <AppButton
+        <NeoButton
+          block
+          haptic="light"
           label={t('settings:household.incomeModeConfirmCta')}
           loading={isSaving}
           onPress={onConfirm}
         />
-        <AppButton
+        <NeoButton
+          block
+          haptic="none"
           label={t('common:actions.cancel')}
           variant="ghost"
           disabled={isSaving}
@@ -107,12 +112,11 @@ export function IncomeModeConfirmSheet({
 const styles = StyleSheet.create({
   stack: { gap: 12 },
   effects: {
-    borderRadius: 16,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
     padding: 14,
     gap: 12,
   },
   effectRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   effectIcon: { marginTop: 1 },
-  effectText: { flex: 1, fontSize: 13, lineHeight: 19 },
+  effectText: { flex: 1, fontSize: 13, fontFamily: nunitoFamily('400'), lineHeight: 19 },
 })

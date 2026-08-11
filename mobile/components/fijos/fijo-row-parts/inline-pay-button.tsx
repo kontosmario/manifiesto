@@ -5,12 +5,13 @@ import { MaterialIcons } from '@expo/vector-icons'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Botón inline "Pagar" — pill NEUTRO con el mismo lenguaje que el CTA
- * primario de la app: fill oscuro (`theme.colors.text`) + texto crema
- * (`theme.colors.creamCard`). Confiado, on-brand, calmo (la app no usa
- * fills saturados para acciones).
+ * primario de la app: fill y tinta son el par de máximo contraste del tema,
+ * nunca un color de estado. Confiado, on-brand, calmo (la app no usa fills
+ * saturados para acciones).
  *
  * Igual para `pending` y `overdue` a propósito: la urgencia del vencido ya
  * la comunica el status badge de la fila ("Vencida Nd"), así que el botón
@@ -41,6 +42,7 @@ export function InlinePayButton({
   const skin = useFijosSkin()
   const { t } = useTranslation()
   const isOverdue = status === 'overdue'
+  const ink = skin.kind === 'neo' ? skin.pay.ink : theme.colors.creamCard
 
   return (
     <Pressable
@@ -57,11 +59,12 @@ export function InlinePayButton({
         style={[
           styles.inlinePayBtn,
           { backgroundColor: theme.colors.text },
-          // `neo` conserva el MISMO fill neutro — el owner no usa fills
-          // saturados para acciones. Lo único que cambia es que el pill deja
-          // de ser una calcomanía plana y se levanta como el resto del kit.
+          // El par del handoff se INVIERTE por tema: forest sobre crema en
+          // claro, crema sobre forest en oscuro — el mismo par que el tab
+          // activo, que es el ancla del "esto se toca" de la vista.
           skin.kind === 'neo'
             ? {
+                backgroundColor: skin.pay.background,
                 borderRadius: skin.pay.radius,
                 boxShadow: skin.pay.shadow,
                 paddingHorizontal: skin.pay.padH,
@@ -72,12 +75,14 @@ export function InlinePayButton({
           pressScale.animatedStyle,
         ]}
       >
-        <MaterialIcons
-          name="attach-money"
-          size={16}
-          color={theme.colors.creamCard}
-        />
-        <Text style={[styles.inlinePayLabel, { color: theme.colors.creamCard }]}>
+        <MaterialIcons name="attach-money" size={16} color={ink} />
+        <Text
+          style={[
+            styles.inlinePayLabel,
+            { color: ink },
+            skin.kind === 'neo' ? { fontFamily: skin.font('800') } : null,
+          ]}
+        >
           {t('fijos:row.pay')}
         </Text>
       </Animated.View>
@@ -105,6 +110,7 @@ const styles = StyleSheet.create({
   inlinePayLabel: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   // Ancho completo: el wrap pierde el margen izquierdo (ya no está al lado

@@ -1,8 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { TextField } from '@/components/ui/text-field'
-import { typography } from '@/theme/typography'
-import { useAppTheme } from '@/theme/theme-provider'
+import { NeoTextField } from '@/components/ui/neo-text-field'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { GoalIcon } from '../goal-icon'
 import { GOAL_STICKER_KEYS } from '@/features/savings-goals/goal-icon'
 
@@ -41,11 +43,12 @@ export function Step1Title({
   selectedEmoji,
   onSelectEmoji,
 }: Step1TitleProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   return (
     <View style={styles.step1Body}>
-      <TextField
+      <NeoTextField
         label={t('settings:savingsWizard.nameLabel')}
         value={title}
         onChangeText={(v) => onChangeTitle(v.slice(0, MAX_TITLE))}
@@ -58,14 +61,10 @@ export function Step1Title({
         helper={`${title.length}/${MAX_TITLE}`}
       />
 
-      <View
-        style={[styles.divider, { backgroundColor: theme.colors.line }]}
-      />
+      <View style={[styles.divider, { backgroundColor: neo.sheetDivider }]} />
 
       <View style={styles.emojiSection}>
-        <Text
-          style={[typography.eyebrow, { color: theme.colors.textMuted }]}
-        >
+        <Text style={[styles.eyebrow, { color: neo.textMuted }]}>
           {t('settings:savingsWizard.chooseIcon')}
         </Text>
         <ScrollView
@@ -87,18 +86,26 @@ export function Step1Title({
                 onPress={() => onSelectEmoji(value)}
                 style={({ pressed }) => [
                   styles.emojiCard,
-                  {
-                    backgroundColor: isActive
-                      ? theme.colors.primarySurface
-                      : theme.isDark
-                        ? 'rgba(255,255,255,0.04)'
-                        : 'rgba(15,42,30,0.04)',
-                    borderColor: isActive
-                      ? theme.colors.primary
-                      : theme.colors.line,
-                    borderWidth: isActive ? 2 : 1,
-                    opacity: pressed ? 0.78 : 1,
-                  },
+                  isActive
+                    ? {
+                        backgroundColor: neo.selectedTint,
+                        boxShadow: neo.shadows.ringSelected,
+                      }
+                    : {
+                        backgroundColor: neo.surface,
+                        boxShadow: neo.shadows.raisedSm,
+                      },
+                  // El tile seleccionado se comunica SOLO con relieve (pozo +
+                  // anillo). Donde el sistema descarta el `boxShadow` los 13
+                  // tiles quedarían idénticos: ahí el anillo se dibuja como
+                  // borde y el resto queda plano.
+                  SUPPORTS_INSET_SHADOW
+                    ? null
+                    : {
+                        borderWidth: isActive ? 2.5 : 1,
+                        borderColor: isActive ? neo.green : neo.sheetDivider,
+                      },
+                  { opacity: pressed ? 0.78 : 1 },
                 ]}
               >
                 <GoalIcon value={value} size={30} emojiStyle={styles.emojiGlyph} />
@@ -116,26 +123,39 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   divider: {
-    height: StyleSheet.hairlineWidth,
+    height: 1.5,
   },
   emojiSection: {
     gap: 10,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
   // Single-row horizontal scroll — pedido del owner. 12 emojis no
   // entran en ancho de pantalla; ScrollView horizontal mantiene
   // todos visibles deslizando lateral.
   emojiScroll: {
     flexGrow: 0,
+    // Sangra hacia afuera lo mismo que el padding de adentro: la fila
+    // conserva su alineación con el resto del paso y la sombra igual entra
+    // en el área de clip del ScrollView.
+    marginHorizontal: -10,
   },
   emojiScrollContent: {
-    gap: 10,
-    paddingVertical: 2,
-    paddingHorizontal: 2,
+    // El sangrado compensa el recorte de la sombra contra los bordes del
+    // ScrollView (offset 5 + blur 10 de `raisedSm`).
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
   emojiCard: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 54,
+    height: 54,
+    borderRadius: neoRadii.tile,
     alignItems: 'center',
     justifyContent: 'center',
   },

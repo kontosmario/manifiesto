@@ -1,6 +1,6 @@
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -8,21 +8,26 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
-import { LinearGradient } from 'expo-linear-gradient'
 import { CardParticles } from '@/components/ui/card-particles'
 import { SkeletonBox } from '@/components/ui/skeleton-box'
-import { FernMark } from '@/components/billing/fern-mark'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { PLAN_SPEC } from '@/components/redesign/auth/plan-spec'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
+import { cssGradient } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { BILLING_PLANS, type BillingPlanId } from '@/features/billing/billing-plans'
 
 /**
- * Tiles de plan comparables (mensual vs anual). El mensual es un tile
- * "quiet" sobre crema; el anual es el destacado: gradiente forest +
- * luciérnagas + helecho watermark + badge RECOMENDADO. El tile activo
- * se resalta con un borde + scale animado (solo transform/opacity).
- * Layout/colores espejan el mockup 03-paywall-AC-fireflies-v2 (.tl/.ti).
+ * Tiles de plan comparables (mensual vs anual) — las MISMAS cards que la
+ * pantalla de planes aprobada (4m/4mo): el mensual es la card neumórfica
+ * neutra y el anual es la verde destacada con luciérnagas y badge
+ * RECOMENDADO. Los valores salen de `PLAN_SPEC`, así que la elección de plan
+ * se ve idéntica en el paywall y en el sheet de "Cambiar de plan".
+ *
+ * La selección usa la receta del vocabulario: anillo de 2.5px sobre la sombra
+ * de la card + un scale spring corto (solo transform).
  */
 export interface PlanTilesProps {
   selected: BillingPlanId
@@ -42,177 +47,217 @@ export const PlanTiles = memo(function PlanTiles({
   productPrices,
   loading = false,
 }: PlanTilesProps) {
+  const p = PLAN_SPEC[useThemeTokens().mode]
+  const { t } = useTranslation()
+
+  const monthStorePrice = productPrices?.[MONTHLY.productId]
+  // Skeleton solo mientras StoreKit aún no respondió. Si falló (loading=false
+  // sin precio) caemos al hardcode; así nunca flasheamos un monto y lo cambiamos.
+  const monthSkeleton = !monthStorePrice && loading
+  const monthPrice = monthStorePrice ?? `$${MONTHLY.priceUsd}`
+
+  const yearStorePrice = productPrices?.[YEARLY.productId]
+  const yearSkeleton = !yearStorePrice && loading
+  const yearPrice = yearStorePrice ?? `$${YEARLY.priceUsd}`
+
   return (
     <View style={styles.row}>
-      <MonthlyTile selected={selected === MONTHLY.id} onSelect={onSelect} productPrices={productPrices} loading={loading} />
-      <YearlyTile selected={selected === YEARLY.id} onSelect={onSelect} productPrices={productPrices} loading={loading} />
+      <PlanCard
+        accessibilityLabel={
+          monthSkeleton
+            ? t('billing:planTiles.monthlyA11yLoading', { plan: MONTHLY.name })
+            : t('billing:planTiles.monthlyA11y', {
+                plan: MONTHLY.name,
+                price: monthPrice,
+              })
+        }
+        baseShadow={p.monthCardShadow}
+        flex={1}
+        onPress={() => handlePress(selected === MONTHLY.id, MONTHLY.id, onSelect)}
+        ring={p.monthRing}
+        selected={selected === MONTHLY.id}
+        style={cssGradient(p.monthCardCss, p.monthCardFallback)}
+      >
+        <Text style={[styles.label, { color: p.monthLabel }]}>
+          {t('billing:planTiles.monthly')}
+        </Text>
+        <View style={styles.priceRow}>
+          <PlanPrice
+            color={p.monthPrice}
+            skeleton={monthSkeleton}
+            text={monthPrice}
+            width={56}
+          />
+          <Text style={[styles.per, { color: p.monthPer }]}>
+            {t('billing:planTiles.perMonthSuffix')}
+          </Text>
+        </View>
+        <Text style={[styles.meta, { color: p.monthMeta }]}>
+          {t('billing:planTiles.people', { count: MONTHLY.memberCap })}
+        </Text>
+      </PlanCard>
+
+      <PlanCard
+        accessibilityLabel={
+          yearSkeleton
+            ? t('billing:planTiles.annualA11yLoading', { plan: YEARLY.name })
+            : t('billing:planTiles.annualA11y', {
+                plan: YEARLY.name,
+                price: yearPrice,
+              })
+        }
+        baseShadow={p.yearCardShadow}
+        flex={1}
+        onPress={() => handlePress(selected === YEARLY.id, YEARLY.id, onSelect)}
+        ring={p.yearRing}
+        selected={selected === YEARLY.id}
+        style={[styles.clip, cssGradient(p.yearCardCss, p.yearCardFallback)]}
+      >
+        {/* Luciérnagas de la card anual, clipeadas a su radio. */}
+        <View pointerEvents="none" style={styles.particles}>
+          <CardParticles
+            accentColor={p.yearParticles[0]}
+            color={p.yearParticles[2]}
+            count={5}
+            peachColor={p.yearParticles[1]}
+          />
+        </View>
+        <View style={styles.content}>
+          <View style={styles.yearTopRow}>
+            <Text style={[styles.label, { color: p.yearLabel }]}>
+              {t('billing:planTiles.annual')}
+            </Text>
+            <View style={[styles.badge, { backgroundColor: p.yearBadgeBackground }]}>
+              <Text style={[styles.badgeText, { color: p.yearBadgeText }]}>
+                {t('billing:planTiles.recommended')}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.priceRow}>
+            <PlanPrice
+              color={p.yearPrice}
+              skeleton={yearSkeleton}
+              skeletonStyle={styles.skeletonOnGreen}
+              text={yearPrice}
+              width={64}
+            />
+            <Text style={[styles.per, { color: p.yearPer }]}>
+              {t('billing:planTiles.perYearSuffix')}
+            </Text>
+          </View>
+          <Text style={[styles.meta, { color: p.yearMeta }]}>
+            {YEARLY.effectiveCopy
+              ? t('billing:planTiles.effectivePerMonth', {
+                  amount: (YEARLY.priceUsd / 12).toFixed(2),
+                })
+              : ''}
+            {t('billing:planTiles.people', { count: YEARLY.memberCap })}
+          </Text>
+        </View>
+      </PlanCard>
     </View>
   )
 })
 
-// ── Tile mensual (quiet) ───────────────────────────────────────────
-const MonthlyTile = memo(function MonthlyTile({
+/**
+ * Card de plan seleccionable. El anillo va como sombra `0 0 0 2.5px` sobre la
+ * receta de la card (vocabulario del rediseño). Android < API 28 descarta el
+ * boxShadow outset EN SILENCIO: ahí el anillo se dibuja como borde, siempre
+ * presente (transparente sin selección) para que el layout no salte.
+ */
+function PlanCard({
   selected,
-  onSelect,
-  productPrices,
-  loading,
+  ring,
+  baseShadow,
+  accessibilityLabel,
+  flex,
+  onPress,
+  style,
+  children,
 }: {
   selected: boolean
-  onSelect(id: BillingPlanId): void
-  productPrices?: Record<string, string>
-  loading?: boolean
+  ring: string
+  baseShadow: string
+  accessibilityLabel: string
+  flex: number
+  onPress: () => void
+  style?: StyleProp<ViewStyle>
+  children: ReactNode
 }) {
-  const { theme } = useAppTheme()
-  const { t } = useTranslation()
   const highlight = useSelectionHighlight(selected)
-  const planName = MONTHLY.name
-  const storePrice = productPrices?.[MONTHLY.productId]
-  // Skeleton solo mientras StoreKit aún no respondió. Si falló (loading=false
-  // sin precio) caemos al hardcode; así nunca flasheamos un monto y lo cambiamos.
-  const showSkeleton = !storePrice && loading
-  const price = storePrice ?? `$${MONTHLY.priceUsd}`
-
   return (
     <Pressable
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={
-        showSkeleton
-          ? t('billing:planTiles.monthlyA11yLoading', { plan: planName })
-          : t('billing:planTiles.monthlyA11y', { plan: planName, price })
-      }
-      onPress={() => handlePress(selected, MONTHLY.id, onSelect)}
-      style={styles.flex}
+      onPress={onPress}
+      style={{ flex }}
     >
       <Animated.View
         style={[
-          styles.tile,
+          styles.card,
+          style,
           {
-            backgroundColor: theme.colors.creamCard,
-            borderColor: selected ? theme.colors.primary : theme.colors.border,
-            borderWidth: selected ? 2 : 1,
+            boxShadow:
+              selected && SUPPORTS_INSET_SHADOW
+                ? `${baseShadow}, 0 0 0 2.5px ${ring}`
+                : baseShadow,
           },
+          SUPPORTS_INSET_SHADOW
+            ? null
+            : { borderWidth: 2.5, borderColor: selected ? ring : 'transparent' },
           highlight.style,
         ]}
       >
-        <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-          {t('billing:planTiles.monthly')}
-        </Text>
-        <View style={styles.priceRow}>
-          {showSkeleton ? (
-            <SkeletonBox width={56} height={20} radius={6} />
-          ) : (
-            <Animated.Text
-              entering={FadeIn.duration(240)}
-              style={[styles.price, { color: theme.colors.text }]}
-            >
-              {price}
-            </Animated.Text>
-          )}
-          <Text style={[styles.priceSuffix, { color: theme.colors.textMuted }]}>
-            {t('billing:planTiles.perMonthSuffix')}
-          </Text>
-        </View>
-        <Text style={[styles.sub, { color: theme.colors.textMuted }]}>
-          {t('billing:planTiles.people', { count: MONTHLY.memberCap })}
-        </Text>
+        {children}
       </Animated.View>
     </Pressable>
   )
-})
+}
 
-// ── Tile anual (destacado, forest) ─────────────────────────────────
-const YearlyTile = memo(function YearlyTile({
-  selected,
-  onSelect,
-  productPrices,
-  loading,
+/**
+ * Precio con skeleton mientras StoreKit no respondió; al resolver entra con
+ * FadeIn — pero SOLO si hubo skeleton antes (sin carga previa el monto monta
+ * directo, sin animación).
+ */
+function PlanPrice({
+  text,
+  skeleton,
+  color,
+  width,
+  skeletonStyle,
 }: {
-  selected: boolean
-  onSelect(id: BillingPlanId): void
-  productPrices?: Record<string, string>
-  loading?: boolean
+  text: string
+  skeleton: boolean
+  color: string
+  width: number
+  skeletonStyle?: StyleProp<ViewStyle>
 }) {
-  const { theme } = useAppTheme()
-  const { t } = useTranslation()
-  const highlight = useSelectionHighlight(selected)
-  const planName = YEARLY.name
-  const storePrice = productPrices?.[YEARLY.productId]
-  const showSkeleton = !storePrice && loading
-  const price = storePrice ?? `$${YEARLY.priceUsd}`
-
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={
-        showSkeleton
-          ? t('billing:planTiles.annualA11yLoading', { plan: planName })
-          : t('billing:planTiles.annualA11y', { plan: planName, price })
-      }
-      onPress={() => handlePress(selected, YEARLY.id, onSelect)}
-      style={styles.flex}
-    >
-      <Animated.View
-        style={[
-          styles.tile,
-          styles.tileBorderless,
-          {
-            borderColor: selected ? theme.colors.heroAccent : theme.colors.auroraA,
-            borderWidth: selected ? 2 : 1,
-          },
-          highlight.style,
-        ]}
+  const sawSkeleton = useRef(false)
+  if (skeleton) {
+    sawSkeleton.current = true
+    return (
+      <SkeletonBox
+        height={20}
+        radius={6}
+        skin="neo"
+        style={[styles.priceSkeleton, skeletonStyle]}
+        width={width}
+      />
+    )
+  }
+  if (sawSkeleton.current) {
+    return (
+      <Animated.Text
+        entering={FadeIn.duration(240)}
+        style={[styles.price, { color }]}
       >
-        <LinearGradient
-          colors={[...theme.colors.heroGradient] as unknown as readonly [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientFill}
-        >
-          {/* Luciérnagas detrás del contenido */}
-          <CardParticles count={4} color="#FFFBF2" accentColor="#A6EF8F" />
-          {/* Helecho watermark — esquina inf-derecha con bleed */}
-          <FernMark variant="cream" size={62} style={styles.fern} />
-
-          <View style={styles.content}>
-            <View style={[styles.badge, { backgroundColor: theme.colors.heroAccent }]}>
-              <Text style={[styles.badgeText, { color: theme.colors.heroGradient[1] }]}>
-                {t('billing:planTiles.recommended')}
-              </Text>
-            </View>
-            <Text style={[styles.label, { color: theme.colors.heroText }]}>
-              {t('billing:planTiles.annual')}
-            </Text>
-            <View style={styles.priceRow}>
-              {showSkeleton ? (
-                <SkeletonBox width={64} height={20} radius={6} style={styles.skeletonOnForest} />
-              ) : (
-                <Animated.Text
-                  entering={FadeIn.duration(240)}
-                  style={[styles.price, { color: theme.colors.heroText }]}
-                >
-                  {price}
-                </Animated.Text>
-              )}
-              <Text style={[styles.priceSuffix, styles.priceSuffixOnForest, { color: theme.colors.heroText }]}>
-                {t('billing:planTiles.perYearSuffix')}
-              </Text>
-            </View>
-            <Text style={[styles.sub, styles.subOnForest, { color: theme.colors.heroText }]}>
-              {YEARLY.effectiveCopy
-                ? t('billing:planTiles.effectivePerMonth', {
-                    amount: (YEARLY.priceUsd / 12).toFixed(2),
-                  })
-                : ''}
-              {t('billing:planTiles.people', { count: YEARLY.memberCap })}
-            </Text>
-          </View>
-        </LinearGradient>
-      </Animated.View>
-    </Pressable>
-  )
-})
+        {text}
+      </Animated.Text>
+    )
+  }
+  return <Text style={[styles.price, { color }]}>{text}</Text>
+}
 
 // ── Highlight animado del tile seleccionado ────────────────────────
 // Solo transform (scale). Respeta reduced-motion (snap instantáneo).
@@ -245,62 +290,72 @@ function handlePress(selected: boolean, id: BillingPlanId, onSelect: (id: Billin
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
-  flex: { flex: 1 },
-  tile: {
+  row: { flexDirection: 'row', gap: 12, alignItems: 'stretch' },
+  card: {
     flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    minHeight: 88,
-    padding: 11,
+    borderRadius: 24,
+    paddingVertical: 15,
+    paddingHorizontal: 14,
+    minHeight: 96,
   },
-  // El tile anual pinta su fondo vía gradiente; el padding vive adentro.
-  tileBorderless: { padding: 0 },
-  gradientFill: {
-    flex: 1,
+  // La card anual recorta sus luciérnagas al radio.
+  clip: { overflow: 'hidden' },
+  particles: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
     overflow: 'hidden',
-    padding: 11,
   },
   content: { flex: 1, zIndex: 2 },
-  fern: { position: 'absolute', right: -14, bottom: -16, opacity: 0.13, zIndex: 1 },
+  yearTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
   label: {
-    fontSize: 9,
+    fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.26,
   },
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 3 },
-  price: {
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  priceSuffix: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  priceSuffixOnForest: { opacity: 0.7 },
-  // El skeleton sobre el tile forest: crema translúcido (el surfaceMuted del
-  // SkeletonBox no contrasta sobre el verde). Va como override del bg.
-  skeletonOnForest: { backgroundColor: 'rgba(255, 251, 242, 0.35)', marginTop: 2 },
-  sub: {
-    fontSize: 9,
-    fontWeight: '600',
-    marginTop: 3,
-  },
-  subOnForest: {},
   badge: {
-    alignSelf: 'flex-start',
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 999,
-    zIndex: 3,
+    borderRadius: 8,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
   },
   badgeText: {
-    fontSize: 7,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 0.3,
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: 0.9,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    marginTop: 6,
+  },
+  price: {
+    fontSize: 23,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    lineHeight: 27.6,
+  },
+  // Skeleton del precio: centrado aprox. contra la caja de línea del precio.
+  priceSkeleton: { marginBottom: 5 },
+  // Sobre la card anual verde el material base del skeleton no contrasta:
+  // crema translúcido.
+  skeletonOnGreen: { backgroundColor: 'rgba(255,251,242,0.35)' },
+  per: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    marginBottom: 3,
+  },
+  meta: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    marginTop: 4,
   },
 })

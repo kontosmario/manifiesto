@@ -170,7 +170,7 @@
   },
   "addFab": {
     "label": "Add expense",
-    "hint": "Opens the menu to log an expense, income, fixed expense, import and more",
+    "hint": "Press and hold, then slide to pick — or tap to open the action arc.",
     "registered": "No-spend day logged",
     "markFailed": "Couldn't mark it. Try again in a moment.",
     "needSession": "You need to be signed in to import.",
@@ -179,6 +179,74 @@
     "preparingAccount": "We're setting up your account, try again in a moment.",
     "unmarked": "No-spend day mark removed.",
     "unmarkFailed": "Couldn't undo it. Try again in a moment."
+  },
+  "arcHub": {
+    "short": {
+      "fixed": "Fixed",
+      "import": "Import",
+      "expense": "Expense",
+      "noSpend": "No spend",
+      "noSpendMarked": "Marked",
+      "income": "Income"
+    },
+    "eyebrow": {
+      "dragPointed": "Release to pick",
+      "tapPointed": "Tap to pick"
+    },
+    "cancel": "Cancel",
+    "a11y": {
+      "opened": "Action arc open. Five options, Expense is the main one.",
+      "hint": {
+        "expense": "Opens the new expense form.",
+        "import": "Pick a screenshot to read the receipt.",
+        "noSpend": "Marks today as a no-spend day.",
+        "noSpendMarked": "Removes today's no-spend mark.",
+        "income": "Opens the new income form.",
+        "fixed": "Opens the new fixed expense form."
+      }
+    },
+    "brot": {
+      "que-bueno-verte": "So good to see you!",
+      "raiz-dormida": "One of my roots dozed off",
+      "sin-prisa": "No rush",
+      "tu-fotosintetizas": "Do you photosynthesize too?",
+      "anota-con-calma": "Add it, take your time",
+      "caracol-saludo": "A snail said hi to me",
+      "aqui-estoy-sin-juzgar": "Here, no judgment",
+      "modo-jardin": "Garden mode",
+      "me-regue-encima": "I spilled water on myself",
+      "dia-pesado": "Heavy day?",
+      "dos-hojas-energia": "Two leaves, lots of energy",
+      "maceta-grande": "This pot is too big for me",
+      "pensaba-en-la-lluvia": "Just thinking about rain",
+      "hola-otra-vez": "Hi, me again",
+      "somos-dos-y-uno-es-planta": "Two of us, one is a plant",
+      "sol-aqui-adentro": "Sunny in here today",
+      "toca-sin-miedo": "Tap away, no worries",
+      "hoja-izquierda-bosteza": "My left leaf is yawning",
+      "crecer-cosquillas": "Growing tickles a bit",
+      "tierra-tibia": "The soil is warm today",
+      "no-se-sumar-soy-planta": "Plants are bad at math",
+      "que-plantamos-hoy": "What are we planting today?",
+      "viento-despeino": "Wind messed up my leaves",
+      "nadie-te-pide-nada": "Nothing is expected here",
+      "casi-todo-agua": "Mostly water, honestly",
+      "seguimos-cuando-quieras": "Ready when you are",
+      "sombra-un-rato": "Want some shade?",
+      "recien-salgo-tierra": "Just came up from the soil",
+      "practique-este-saludo": "This wave took practice",
+      "hojas-contentas": "My leaves are happy today!",
+      "pesa-el-globo-o-soy-yo": "Heavy bubble, or is it me?",
+      "tu-ritmo-tu-manera": "Your pace, your way",
+      "poquito-de-agua": "A little water and done",
+      "ningun-gasto-te-define": "No expense defines you",
+      "me-estire-saludar": "I stretched up to say hi",
+      "risa-una-hormiga": "An ant made me laugh",
+      "regamos-el-jardin": "Water the garden?",
+      "hoy-basta-estar-aqui": "Being here is enough today",
+      "elige-yo-espero": "Pick one, I'll wait",
+      "cinco-caminos-un-brote": "Five paths, one sprout"
+    }
   },
   "permissions": {
     "notifications": {

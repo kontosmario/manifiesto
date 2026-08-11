@@ -3,6 +3,7 @@ import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { BillingScreen } from '@/screens/settings/billing-screen'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
@@ -43,7 +44,7 @@ export function SubscriptionGate() {
       // No descartable: en Android el back no cierra el paywall.
       onRequestClose={() => {}}
     >
-      <View style={[styles.root, { backgroundColor: theme.colors.canvas }]}>
+      <View style={[styles.root, { backgroundColor: neoTokens(theme.mode).bg }]}>
         <BillingScreen lockMode />
       </View>
     </Modal>

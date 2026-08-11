@@ -40,6 +40,7 @@ import {
   ZoneGauge,
   zoneForPct,
 } from './impact-card'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface Step2SummaryProps {
   name: string
@@ -904,7 +905,7 @@ function LibreBlockNeo({
 
 const styles = StyleSheet.create({
   formStack: { gap: 12 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700' },
+  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   summaryCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -924,10 +925,10 @@ const styles = StyleSheet.create({
   },
   summaryIconText: { fontSize: 22 },
   summaryIconTextNeo: { fontSize: 21 },
-  summaryName: { fontSize: 15, fontWeight: '800' },
+  summaryName: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
   summaryMeta: { fontSize: 11, marginTop: 2 },
-  summaryAmount: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
-  summaryCuotaMeta: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  summaryAmount: { fontSize: 18, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.4 },
+  summaryCuotaMeta: { fontSize: 10, fontWeight: '600', fontFamily: nunitoFamily('600'), marginTop: 2 },
   impactCard: {
     padding: 14,
     borderRadius: 18,
@@ -945,9 +946,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderStyle: 'dashed',
   },
-  libreEyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '700' },
-  librePhrase: { fontSize: 12, fontWeight: '600', letterSpacing: -0.1, marginTop: 3 },
-  libreValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6, marginTop: 2 },
+  libreEyebrow: { fontSize: 10, letterSpacing: 1.2, fontWeight: '700', fontFamily: nunitoFamily('700') },
+  librePhrase: { fontSize: 12, fontWeight: '600', fontFamily: nunitoFamily('600'), letterSpacing: -0.1, marginTop: 3 },
+  libreValue: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6, marginTop: 2 },
   reminderCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -968,6 +969,7 @@ const styles = StyleSheet.create({
   reminderText: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     marginTop: 2,
   },
   reminderToggle: {
@@ -990,16 +992,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   // 0.14em sobre 10.5px. RN no acepta em.
-  impactEyebrowNeo: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.47, flexShrink: 1 },
+  impactEyebrowNeo: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.47, flexShrink: 1 },
   // `flexShrink: 0` explícito: el que cede en un ancho apretado es el eyebrow,
   // que puede truncarse sin perder información. El chip es una CIFRA — cortarla
   // la vuelve mentira.
-  deltaChip: { fontWeight: '900', overflow: 'hidden', flexShrink: 0 },
+  deltaChip: { fontWeight: '900', fontFamily: nunitoFamily('900'), overflow: 'hidden', flexShrink: 0 },
   librePanel: { marginTop: 14 },
   libreHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   // 0.1em sobre 10px.
-  libreEyebrowNeo: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  libreValueNeo: { fontSize: 22, fontWeight: '900', marginTop: 1 },
+  libreEyebrowNeo: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1 },
+  libreValueNeo: { fontSize: 22, fontWeight: '900', fontFamily: nunitoFamily('900'), marginTop: 1 },
   zoneCaption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1007,8 +1009,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  zoneCaptionLeft: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
-  zoneCaptionRight: { fontSize: 9.5, fontWeight: '800' },
+  zoneCaptionLeft: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), flexShrink: 1 },
+  zoneCaptionRight: { fontSize: 9.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   // Sin fondo ni sombra propios: los pone `ToggleCardSurfaceNeo` en capas.
   toggleCardNeo: {
     borderRadius: 18,

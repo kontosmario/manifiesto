@@ -67,6 +67,10 @@ export function FijosTabs({ tab, setTab, visibleTabs, counts }: FijosTabsProps) 
     [setTab],
   )
 
+  // Sin ninguna tab con datos no se dibuja la barra: un riel vacío ocupa
+  // altura y no dice nada. El controller ya puede devolver el array vacío.
+  if (visibleTabs.length === 0) return null
+
   return (
     <RiseView delay={120}>
       <ScrollView

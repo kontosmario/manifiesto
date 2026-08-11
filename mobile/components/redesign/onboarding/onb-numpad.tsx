@@ -166,14 +166,14 @@ const NUMPAD: Record<OnbMode, NumpadTheme> = {
     sheetShadow: '0 -20px 50px rgba(20,30,18,0.35)',
     grabber: '#C6CAB8',
     doneText: '#F5F2E1',
-    doneGradientCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    doneGradientCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     doneFallback: '#2E7434',
     doneShadow: '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
     digitText: '#24382A',
     digitGradientCss: 'linear-gradient(145deg, #F3F4E9, #E1E4D6)',
     digitFallback: '#E9EBE0',
     digitShadow: '5px 5px 11px rgba(151,160,136,0.4), -5px -5px 11px rgba(255,255,255,0.9)',
-    insetText: '#6C7B67',
+    insetText: '#54644F',
     // Fallback SÓLIDO, no `undefined`. Las teclas "," y backspace se dibujaban
     // sólo con la sombra inset, y RN la descarta EN SILENCIO en Android < API
     // 29 (ver `SUPPORTS_INSET_SHADOW`): ahí las dos teclas se quedaban sin

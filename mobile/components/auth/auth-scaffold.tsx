@@ -15,6 +15,7 @@ import { FernLogo } from '@/components/auth/fern-logo'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface AuthShellProps {
   onBack: () => void
@@ -157,6 +158,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     marginBottom: 10,
     textAlign: 'center',
@@ -164,6 +166,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.5,
     textAlign: 'center',
   },
@@ -171,6 +174,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textAlign: 'center',
     lineHeight: 20,
   },

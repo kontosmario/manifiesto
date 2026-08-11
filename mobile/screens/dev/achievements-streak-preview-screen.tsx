@@ -24,6 +24,7 @@ import {
 } from '@/components/achievements/achievement-icon-filled'
 import type { StreakData } from '@/features/streaks/use-streak'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Dev-only preview tools for the new engagement systems (achievements
@@ -478,6 +479,7 @@ const styles = StyleSheet.create({
   sectionEyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
     marginBottom: 6,
   },
@@ -549,6 +551,7 @@ const styles = StyleSheet.create({
   iconTileTitle: {
     fontSize: 10.5,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     letterSpacing: -0.1,
   },
@@ -564,6 +567,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   previewCode: {
@@ -591,6 +595,7 @@ const styles = StyleSheet.create({
   streakCellLabel: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
     textAlign: 'center',
   },
@@ -610,6 +615,7 @@ const styles = StyleSheet.create({
   cheatTitle: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   cheatBody: {

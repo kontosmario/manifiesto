@@ -89,6 +89,15 @@ export interface FamilyDashboardSnapshot {
   usdExchangeRate: number
   variableSpentInCurrentCycle: number
   /**
+   * Gasto VARIABLE de hoy — el numerador del medidor "podés gastar hoy".
+   *
+   * Se acumula en la misma pasada y con el mismo reloj que
+   * `variableSpentInCurrentCycle`, así que las dos cifras no pueden
+   * discrepar. Bucketea por día LOCAL del device, igual que el resto del
+   * modelo (`normalizeToStartOfDay`).
+   */
+  variableSpentToday: number
+  /**
    * Régimen de ingreso del hogar. 'dynamic' = sin sueldo fijo: el
    * presupuesto del ciclo se construye con income_events y el cupo
    * diario reparte lo disponible sobre los días restantes (mismo

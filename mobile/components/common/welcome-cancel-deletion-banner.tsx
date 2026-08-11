@@ -21,14 +21,17 @@
 //   cancelled, the banner stops showing on next mount.
 
 import { useEffect, useMemo, useState } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import { NeoButton } from '@/components/ui/neo-button'
 import i18n from '@/lib/i18n'
 import { getLastUserProfile } from '@/lib/last-user-cache'
-import { radii } from '@/theme/palette'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeMode } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import { monthShort } from '@/utils/date-format'
 
 interface WelcomeCancelDeletionBannerProps {
@@ -49,7 +52,9 @@ export function WelcomeCancelDeletionBanner({
   loginHref = '/(auth)/login',
 }: WelcomeCancelDeletionBannerProps) {
   const router = useRouter()
-  const { theme } = useAppTheme()
+  const mode = useThemeMode().resolvedMode
+  const neo = neoTokens(mode)
+  const ink = neoInk(mode)
   const { t } = useTranslation()
   const [scheduledAt, setScheduledAt] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
@@ -87,39 +92,31 @@ export function WelcomeCancelDeletionBanner({
     <View
       accessibilityRole="alert"
       accessibilityLabel={accessibilityMessage}
-      style={[
-        styles.shell,
-        {
-          backgroundColor: 'rgba(0,0,0,0.55)',
-          borderColor: theme.colors.danger,
-        },
-      ]}
+      style={[styles.shell, neoMaterial(mode, 'raisedMd'), { borderColor: ink.danger }]}
     >
       <View style={styles.row}>
-        <MaterialIcons color={theme.colors.danger} name="warning-amber" size={22} />
+        <MaterialIcons color={ink.danger} name="warning-amber" size={22} />
         <View style={styles.copy}>
-          <Text style={styles.title}>{t('states:welcomeAccountDeletion.title')}</Text>
-          <Text style={styles.body}>
+          <Text style={[styles.title, { color: neo.text }]}>
+            {t('states:welcomeAccountDeletion.title')}
+          </Text>
+          <Text style={[styles.body, { color: neo.textMuted }]}>
             {formatted
               ? t('states:welcomeAccountDeletion.bodyDated', { date: formatted })
               : t('states:welcomeAccountDeletion.bodyUndated')}
           </Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: neo.textMuted }]}>
             {t('states:welcomeAccountDeletion.hint')}
           </Text>
         </View>
       </View>
-      <Pressable
-        accessibilityRole="button"
+      <NeoButton
         accessibilityLabel={t('states:welcomeAccountDeletion.ctaA11y')}
+        fullWidth
+        label={t('states:welcomeAccountDeletion.cta')}
         onPress={() => router.push(loginHref as never)}
-        style={({ pressed }) => [
-          styles.cta,
-          { backgroundColor: theme.colors.danger, opacity: pressed ? 0.85 : 1 },
-        ]}
-      >
-        <Text style={styles.ctaLabel}>{t('states:welcomeAccountDeletion.cta')}</Text>
-      </Pressable>
+        variant="ghost"
+      />
     </View>
   )
 }
@@ -127,10 +124,9 @@ export function WelcomeCancelDeletionBanner({
 const styles = StyleSheet.create({
   shell: {
     borderWidth: 2,
-    borderRadius: radii.lg,
-    padding: 14,
-    gap: 12,
-    ...(Platform.OS === 'web' ? {} : {}),
+    borderRadius: neoRadii.cardSm,
+    padding: 16,
+    gap: 14,
   },
   row: {
     flexDirection: 'row',
@@ -144,29 +140,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
-    color: '#FFFBF2',
   },
   body: {
     fontSize: 12,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 17,
-    color: 'rgba(255,251,242,0.78)',
   },
   hint: {
     fontSize: 11,
+    fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     lineHeight: 15,
-    color: 'rgba(255,251,242,0.6)',
-    fontStyle: 'italic',
-  },
-  cta: {
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  ctaLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    color: '#FFFBF2',
   },
 })

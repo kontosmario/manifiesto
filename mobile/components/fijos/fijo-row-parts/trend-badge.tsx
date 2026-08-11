@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Badge de variación de precio. Dos variantes:
@@ -19,6 +21,8 @@ export function TrendBadge({
   variant?: 'price' | 'arrears'
 }) {
   const theme = useThemeTokens()
+  const skin = useFijosSkin()
+  const neo = skin.kind === 'neo' ? skin : null
   const { t } = useTranslation()
   const up = deltaPct > 0
   const isArrears = up && variant === 'arrears'
@@ -51,7 +55,20 @@ export function TrendBadge({
     : t('fijos:trendBadge.label', { value: valueStr })
   return (
     <View
-      style={[styles.trendBadge, { backgroundColor: bg }]}
+      style={[
+        styles.trendBadge,
+        // En claro el pozo NO lleva fill: el inset se lee contra el material
+        // de la fila (el spec solo define `insBg` para oscuro).
+        { backgroundColor: neo ? neo.trend.background : bg },
+        neo
+          ? {
+              borderRadius: neo.chip.radius,
+              paddingHorizontal: neo.chip.padH,
+              paddingVertical: neo.chip.padV,
+              boxShadow: neo.chip.shadow,
+            }
+          : null,
+      ]}
       accessibilityRole="text"
       accessibilityLabel={
         isArrears
@@ -61,7 +78,23 @@ export function TrendBadge({
             : t('fijos:trendBadge.trendDownAccessibility', { pct: Math.abs(deltaPct) })
       }
     >
-      <Text style={[styles.trendBadgeText, { color: fg }]}>{label}</Text>
+      <Text
+        style={[
+          styles.trendBadgeText,
+          { color: fg },
+          neo
+            ? {
+                color: !up ? neo.trend.down : isArrears ? neo.trend.arrears : neo.trend.up,
+                fontSize: neo.chip.fontSize,
+                fontWeight: neo.chip.fontWeight,
+                fontFamily: neo.chip.fontFamily,
+                letterSpacing: 0,
+              }
+            : null,
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   )
 }
@@ -72,5 +105,5 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 999,
   },
-  trendBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: -0.2 },
+  trendBadgeText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: -0.2 },
 })

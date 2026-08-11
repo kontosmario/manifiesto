@@ -72,7 +72,6 @@ import {
 import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import { useThemeMode } from '@/theme/theme-provider'
-import { brand } from '@/theme/palette'
 
 interface NeoControlScreenProps {
   userId: string
@@ -577,10 +576,14 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
         onScrollBeginDrag={openLayoutGate}
         refreshControl={
           <RefreshControl
-            colors={[brand.deep]}
+            colors={[s.text]}
             onRefresh={handleRefresh}
+            // Android dibuja el spinner sobre un DISCO propio, blanco por
+            // default: sobre el canvas oscuro queda como un parche brillante
+            // ajeno al material. Con el color de card el disco se integra.
+            progressBackgroundColor={s.cardBackground}
             refreshing={isRefreshing}
-            tintColor={brand.bright}
+            tintColor={s.text}
           />
         }
         // 16ms = un evento por frame a 60fps: la Y trackeada alimenta el

@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { authTokens } from '@/theme/palette'
+import { nunitoFamily } from '@/theme/typography'
 
 interface WarmFernLogoProps {
   size?: number
@@ -57,6 +58,7 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: 46,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -2,
     color: '#FFFBF2',
   },

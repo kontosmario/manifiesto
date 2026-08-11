@@ -1,15 +1,20 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
-import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import {
+  BillingStatusChip,
+  useRaisedFallback,
+} from '@/components/billing/billing-neo-kit'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import type { MembershipVariant } from '@/features/billing/membership-state'
 
 /**
- * Hero de "Mi suscripción". Misma superficie que el card "TU HOGAR" de Ajustes
- * (`surfaceMuted` en oscuro / `creamCard` en claro + borde `line`), para que el
- * panel de planes pertenezca a la misma paleta que Settings. El estado lo refleja
- * el pill (`getStateTokens` según `tone`) y el `heroLine` matiza la nuance
+ * Hero de "Mi suscripción": card protagonista del vocabulario neumórfico
+ * (`raisedXl`, la receta 10/22 con línea de luz superior) al radio de card.
+ * El estado lo lleva el chip hundido y el `heroLine` matiza la nuance
  * (renovación / grace / cortesía / miembro cubierto).
  */
 export interface MembershipHeroProps {
@@ -17,96 +22,65 @@ export interface MembershipHeroProps {
   variant: MembershipVariant
 }
 
-/** tone del entitlement → estado semántico del pill. */
-const TONE_TO_STATE: Record<MembershipVariant['tone'], SemanticState> = {
-  active: 'positive',
-  warn: 'caution',
-  comped: 'neutral',
-}
-
 export const MembershipHero = memo(function MembershipHero({
   planName,
   variant,
 }: MembershipHeroProps) {
-  const { theme } = useAppTheme()
+  const neo = neoTokens(useThemeTokens().mode)
   const { t } = useTranslation()
-  const pill = getStateTokens(TONE_TO_STATE[variant.tone], theme)
+  const flatFallback = useRaisedFallback()
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.isDark
-            ? theme.colors.surfaceMuted
-            : theme.colors.creamCard,
-          borderColor: theme.colors.line,
-        },
-      ]}
+    <NeoSurface
+      radius={neoRadii.card}
+      style={[styles.card, flatFallback]}
+      variant="raisedXl"
     >
       <View style={styles.headerRow}>
-        <Text style={[theme.typography.eyebrow, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.eyebrow, { color: neo.textMuted }]}>
           {t('billing:membershipHero.eyebrow')}
         </Text>
-        <View
-          style={[styles.pill, { backgroundColor: pill.bg, borderColor: pill.border }]}
-        >
-          <View style={[styles.pillDot, { backgroundColor: pill.fg }]} />
-          <Text style={[styles.pillLabel, { color: pill.fg }]}>
-            {variant.statusLabel}
-          </Text>
-        </View>
+        <BillingStatusChip label={variant.statusLabel} tone={variant.tone} />
       </View>
 
-      <Text style={[styles.planName, { color: theme.colors.text }]}>
-        {planName}
-      </Text>
-      <Text style={[styles.heroLine, { color: theme.colors.textMuted }]}>
+      <Text style={[styles.planName, { color: neo.text }]}>{planName}</Text>
+      <Text style={[styles.heroLine, { color: neo.textMuted }]}>
         {variant.heroLine}
       </Text>
-    </View>
+    </NeoSurface>
   )
 })
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 10,
   },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  pillDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 999,
-  },
-  pillLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
+  eyebrow: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
   },
   planName: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
-    marginTop: 10,
+    marginTop: 12,
   },
   heroLine: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     marginTop: 3,
   },
 })

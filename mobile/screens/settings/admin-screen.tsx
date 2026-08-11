@@ -8,16 +8,19 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Screen } from '@/components/ui/screen'
-import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { withAlpha } from '@/theme/color-utils'
+import type { SemanticState } from '@/theme/state-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
-import { neoInk } from '@/theme/neo-ink'
-import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
+import { neoInk, type NeoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoRadii, neoTokens, type NeoTokens } from '@/theme/neo-tokens'
 import {
   useAdminSearchUsers,
   useAdminSetMvp,
   useIsSuperAdmin,
   type AdminAccess,
 } from '@/features/admin/use-super-admin'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Estado de acceso → chip claro (distingue quién paga de quién está cubierto).
  *  El label se resuelve por i18n vía `settings:adminChip.<access>`. */
@@ -30,6 +33,20 @@ const ACCESS_CHIP_STATE: Record<AdminAccess, SemanticState> = {
   none: 'neutral',
 }
 
+/** Chip de estado en el vocabulario neo: fill tintado + tinta, sin contorno. */
+function chipTokens(state: SemanticState, neo: NeoTokens, ink: NeoInk) {
+  switch (state) {
+    case 'positive':
+      return { bg: neo.selectedTint, fg: ink.accent }
+    case 'caution':
+      return { bg: withAlpha(neo.warm, 0.16), fg: ink.warn }
+    case 'critical':
+      return { bg: withAlpha(neo.danger, 0.16), fg: ink.danger }
+    default:
+      return { bg: withAlpha(neo.textMuted, 0.14), fg: neo.textMuted }
+  }
+}
+
 /**
  * Panel de super admin — SOLO accesible desde kontosmario@gmail.com. Busca
  * usuarios por email y togglea su acceso MVP (full de por vida). El gate de
@@ -40,6 +57,12 @@ export function AdminScreen() {
   const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
   const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  // Android < API 28/29 descarta el boxShadow EN SILENCIO: sin relieve el pozo
+  // del buscador y la card del resultado quedan del material del fondo. Sólo
+  // en ese piso cae un contorno.
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
   const { t } = useTranslation()
   const isSuperAdmin = useIsSuperAdmin()
   const [query, setQuery] = useState('')
@@ -92,6 +115,7 @@ export function AdminScreen() {
               boxShadow: neo.shadows.insetLg,
               color: neo.text,
             },
+            flatFallback,
           ]}
         />
 
@@ -118,13 +142,7 @@ export function AdminScreen() {
         {results.map((u) => (
           <View
             key={u.userId}
-            style={[
-              styles.row,
-              {
-                ...cardMaterial,
-                borderColor: neo.sheetDivider,
-              },
-            ]}
+            style={[styles.row, cardMaterial, flatFallback]}
           >
             <View style={styles.mid}>
               <Text
@@ -138,13 +156,13 @@ export function AdminScreen() {
                 // en cache) cae a 'none' en vez de crashear.
                 const chipState = ACCESS_CHIP_STATE[u.access] ?? ACCESS_CHIP_STATE.none
                 const chipLabel = t(`settings:adminChip.${ACCESS_CHIP_STATE[u.access] ? u.access : 'none'}`)
-                const tokens = getStateTokens(chipState, theme)
+                const tokens = chipTokens(chipState, neo, ink)
                 return (
                   <View style={styles.statusRow}>
                     <View
                       style={[
                         styles.chip,
-                        { backgroundColor: tokens.bg, borderColor: tokens.border },
+                        { backgroundColor: tokens.bg },
                       ]}
                     >
                       <Text style={[styles.chipText, { color: tokens.fg }]}>
@@ -193,8 +211,7 @@ const styles = StyleSheet.create({
   body: { gap: 10, paddingBottom: 16 },
   empty: { padding: 16 },
   input: {
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: neoRadii.input,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
@@ -203,20 +220,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
     paddingHorizontal: 13,
     paddingVertical: 11,
   },
   mid: { flex: 1, gap: 3 },
-  email: { fontSize: 14, fontWeight: '800' },
-  sub: { fontSize: 11, fontWeight: '600' },
+  email: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  sub: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600') },
   statusRow: { flexDirection: 'row' },
   chip: {
-    borderWidth: 1,
-    borderRadius: 999,
+    borderRadius: neoRadii.pill,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  chipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
+  chipText: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.2 },
 })

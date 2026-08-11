@@ -9,6 +9,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { WeekDayState, WeekStripDay } from '@/features/garden/garden-model'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StreakWeekWidgetProps {
   /** Requerido en Home; se omite en modo `preview` (pre-auth, sin familia). */
@@ -83,6 +84,7 @@ function StreakWeekWidgetImpl({ familyId, userId, preview }: StreakWeekWidgetPro
                   {
                     color: day.isToday ? theme.colors.text : theme.colors.textMuted,
                     fontWeight: day.isToday ? '800' : '600',
+                    fontFamily: nunitoFamily(day.isToday ? '800' : '600'),
                     opacity: day.state === 'future' ? 0.7 : 1,
                   },
                 ]}

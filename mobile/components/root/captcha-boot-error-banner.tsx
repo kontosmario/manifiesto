@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { getCaptchaBootError } from '@/lib/captcha-config'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Sprint I · I-6 — surfaces `getCaptchaBootError()` to the UI.
@@ -66,6 +67,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
 })

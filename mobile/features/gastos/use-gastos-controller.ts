@@ -307,6 +307,7 @@ export function useGastosController(
         // Re-resolvemos por id contra el mapa ya localizado; si la
         // categoría no está en el mapa (raro), caemos al name del RPC.
         label: categoriesById.get(r.id)?.name ?? r.name,
+        rawName: r.name,
         color: r.color,
         amount: r.amount,
         percent: r.percent,
@@ -391,6 +392,7 @@ export function useGastosController(
         return {
           id,
           label: c?.name ?? i18n.t('gastos:movementRow.noCategory'),
+          rawName: c?.rawName ?? '',
           color: c?.color ?? '#888',
           amount,
           percent: Math.round((amount / dayTotal) * 100),

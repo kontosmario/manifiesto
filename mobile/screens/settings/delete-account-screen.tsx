@@ -12,9 +12,7 @@ import * as LocalAuthentication from 'expo-local-authentication'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
 import { PinPad } from '@/components/auth/pin-pad'
 import { isPinComplete } from '@/components/auth/pin-pad-model'
 import { Screen } from '@/components/ui/screen'
@@ -32,11 +30,11 @@ import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { supabase } from '@/lib/supabase'
-import { radii } from '@/theme/palette'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
-import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
-import { typography } from '@/theme/typography'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily, typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 
 interface DeleteAccountScreenProps {
@@ -81,6 +79,11 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
   const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
   const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  // Android < API 28 descarta el boxShadow OUTSET en silencio: sin relieve la
+  // card queda del material del fondo y el bloque desaparece.
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
   const { t } = useTranslation()
   const CONFIRM_PHRASE = t('settings:deleteAccount.confirmPhrase')
   const router = useRouter()
@@ -386,9 +389,6 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
         title={t('settings:deleteAccount.title')}
       >
         <View style={styles.sectionStack}>
-          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
           <View
             style={[
               styles.warningCard,
@@ -413,7 +413,13 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               </Text>
             </View>
           </View>
-          <AppButton label={t('common:actions.understood')} onPress={handleCancel} variant="ghost" />
+          <NeoButton
+            block
+            haptic="none"
+            label={t('common:actions.understood')}
+            onPress={handleCancel}
+            variant="ghost"
+          />
         </View>
       </Screen>
     )
@@ -439,9 +445,6 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
       title={t('settings:deleteAccount.title')}
     >
       <View style={styles.sectionStack}>
-        {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-        <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
         {step === 'review' ? (
           <>
             {/* DISCLAIMER fuerte */}
@@ -478,10 +481,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             <View
               style={[
                 styles.tableCard,
-                {
-                  ...cardMaterial,
-                  borderColor: neo.sheetDivider,
-                },
+                cardMaterial,
+                flatFallback,
               ]}
             >
               <Text
@@ -521,21 +522,21 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 {t('settings:deleteAccount.preservedTitle')}
               </Text>
               <ImpactRow
-                color={neo.greenDeep}
+                color={ink.accent}
                 colorMuted={neo.textMuted}
                 colorText={neo.text}
                 icon="history"
                 label={t('settings:deleteAccount.preservedHistory')}
               />
               <ImpactRow
-                color={neo.greenDeep}
+                color={ink.accent}
                 colorMuted={neo.textMuted}
                 colorText={neo.text}
                 icon="group"
                 label={t('settings:deleteAccount.preservedFamily')}
               />
               <ImpactRow
-                color={neo.greenDeep}
+                color={ink.accent}
                 colorMuted={neo.textMuted}
                 colorText={neo.text}
                 icon="schedule"
@@ -544,12 +545,16 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             </View>
 
             <View style={styles.row}>
-              <AppButton
+              <NeoButton
+                block
+                haptic="none"
                 label={t('common:actions.cancel')}
                 onPress={handleCancel}
                 variant="ghost"
               />
-              <AppButton
+              <NeoButton
+                block
+                haptic="warning"
                 label={t('common:actions.continue')}
                 onPress={handleStartConfirm}
                 variant="danger"
@@ -563,17 +568,15 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             <View
               style={[
                 styles.tableCard,
-                {
-                  ...cardMaterial,
-                  borderColor: neo.sheetDivider,
-                },
+                cardMaterial,
+                flatFallback,
               ]}
             >
               <Text
                 style={[styles.confirmHelper, { color: neo.textMuted }]}
               >
                 {t('settings:deleteAccount.confirmHelperPrefix')}{' '}
-                <Text style={{ color: ink.danger, fontWeight: '800' }}>
+                <Text style={{ color: ink.danger, fontWeight: '800', fontFamily: nunitoFamily('800') }}>
                   {CONFIRM_PHRASE}
                 </Text>{' '}
                 {t('settings:deleteAccount.confirmHelperSuffix')}
@@ -594,9 +597,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                   {
                     backgroundColor: neo.well,
                     boxShadow: neo.shadows.insetLg,
-                    borderColor: matchesPhrase
-                      ? ink.danger
-                      : neo.sheetDivider,
+                    borderColor: matchesPhrase ? ink.danger : 'transparent',
                     color: neo.text,
                   },
                 ]}
@@ -625,13 +626,17 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             </View>
 
             <View style={styles.row}>
-              <AppButton
+              <NeoButton
+                block
+                haptic="none"
                 label={t('common:actions.back')}
                 onPress={handleBackToReview}
                 variant="ghost"
               />
-              <AppButton
+              <NeoButton
+                block
                 disabled={!matchesPhrase || requestDeletion.isPending}
+                haptic="warning"
                 label={t('settings:deleteAccount.deleteCta')}
                 loading={requestDeletion.isPending}
                 onPress={handleConfirmTyped}
@@ -646,10 +651,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             <View
               style={[
                 styles.tableCard,
-                {
-                  ...cardMaterial,
-                  borderColor: neo.sheetDivider,
-                },
+                cardMaterial,
+                flatFallback,
               ]}
             >
               <Text style={[styles.reauthTitle, { color: neo.text }]}>
@@ -705,10 +708,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             <View
               style={[
                 styles.tableCard,
-                {
-                  ...cardMaterial,
-                  borderColor: neo.sheetDivider,
-                },
+                cardMaterial,
+                flatFallback,
               ]}
             >
               <Text style={[styles.reauthTitle, { color: neo.text }]}>
@@ -750,7 +751,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                     // tiene valor propio por tema y no lo necesita.
                     backgroundColor: neo.well,
                     boxShadow: neo.shadows.insetLg,
-                    borderColor: passwordError ? ink.danger : neo.sheetDivider,
+                    borderColor: passwordError ? ink.danger : 'transparent',
                     color: neo.text,
                     letterSpacing: 0.5,
                   },
@@ -768,12 +769,14 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
                 </Text>
               ) : null}
 
-              <AppButton
+              <NeoButton
+                block
                 disabled={
                   isReauthChecking ||
                   requestDeletion.isPending ||
                   passwordValue.length === 0
                 }
+                haptic="warning"
                 label={t('settings:deleteAccount.deleteCta')}
                 loading={isReauthChecking || requestDeletion.isPending}
                 onPress={() => void handlePasswordSubmit()}
@@ -801,14 +804,12 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
             <View
               style={[
                 styles.tableCard,
-                {
-                  ...cardMaterial,
-                  borderColor: neo.sheetDivider,
-                },
+                cardMaterial,
+                flatFallback,
               ]}
             >
               <MaterialIcons
-                color={neo.greenDeep}
+                color={ink.accent}
                 name="fingerprint"
                 size={36}
                 style={{ alignSelf: 'center' }}
@@ -823,8 +824,10 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
               >
                 {t('settings:deleteAccount.biometricRetryHelper')}
               </Text>
-              <AppButton
+              <NeoButton
+                block
                 disabled={isReauthChecking || requestDeletion.isPending}
+                haptic="warning"
                 label={t('common:actions.retry')}
                 loading={isReauthChecking || requestDeletion.isPending}
                 onPress={() => void runBiometricChallenge()}
@@ -880,22 +883,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     padding: 16,
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.card,
     borderWidth: 1,
     alignItems: 'flex-start',
   },
   warningTitle: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   warningBody: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   tableCard: {
-    borderWidth: 1,
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.card,
     padding: 16,
     gap: 12,
   },
@@ -910,6 +914,7 @@ const styles = StyleSheet.create({
   },
   impactText: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
     flex: 1,
   },
@@ -924,27 +929,32 @@ const styles = StyleSheet.create({
   },
   confirmHelper: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   helperHint: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
     fontStyle: Platform.OS === 'ios' ? 'italic' : 'normal',
   },
   input: {
-    borderRadius: radii.lg,
+    borderRadius: neoRadii.input,
     borderWidth: 2,
     paddingHorizontal: 14,
     paddingVertical: 14,
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.5,
   },
   errorText: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
   },
   reauthTitle: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     textAlign: 'center',
   },
@@ -955,15 +965,19 @@ const styles = StyleSheet.create({
   lockoutText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
+  // `minHeight` y no `height`: con la tipografía del sistema al máximo el label
+  // de 14px pasa de 44 y se desbordaba de la caja.
   backLink: {
-    height: 44,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backLinkText: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
 })

@@ -57,6 +57,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 // Brand primary stays static across themes — CTA is meant to read as
 // "Manifiesto" regardless of light/dark canvas (same idea as Apple's
@@ -939,6 +940,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.4,
     lineHeight: 36,
   },
@@ -966,6 +968,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   googleButton: {
@@ -975,6 +978,7 @@ const styles = StyleSheet.create({
   googleLabel: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   // Divider
@@ -990,6 +994,7 @@ const styles = StyleSheet.create({
   dividerLabel: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 1,
   },
   // Form
@@ -1029,6 +1034,7 @@ const styles = StyleSheet.create({
   strengthLabel: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.5,
     minWidth: 70,
     textAlign: 'right',
@@ -1050,6 +1056,7 @@ const styles = StyleSheet.create({
   submitLabel: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
   },
   // Fineprint
@@ -1072,6 +1079,7 @@ const styles = StyleSheet.create({
   confirmationTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   confirmationBody: {
     fontSize: 12,
@@ -1092,6 +1100,7 @@ const styles = StyleSheet.create({
   confirmationPrimaryLabel: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   confirmationSecondary: {
     paddingVertical: 12,
@@ -1103,6 +1112,7 @@ const styles = StyleSheet.create({
   confirmationSecondaryLabel: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   confirmationLoginLink: {
     marginTop: 6,
@@ -1113,6 +1123,7 @@ const styles = StyleSheet.create({
   confirmationLoginLinkLabel: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
     textDecorationLine: 'underline',
   },

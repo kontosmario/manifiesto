@@ -31,6 +31,7 @@ import {
   computeStatusOverlay,
   statusAccessibilityLabel,
 } from './fijo-row-parts/fijo-row-styling'
+import { nunitoFamily } from '@/theme/typography'
 
 interface FijoRowProps {
   item?: FijoItem
@@ -281,6 +282,7 @@ function FijoRowReal({
       // Matchea el borderRadius del card interno para que el clip y los
       // bordes redondeados del panel de acción terminen en la misma curva.
       borderRadius={skin.kind === 'neo' ? (open ? skin.card.radius : skin.row.radius) : 16}
+      skin={skin.kind}
     >
       <Animated.View layout={rowLayout}>
         <Pressable
@@ -508,6 +510,7 @@ function FijoRowReal({
                       color: accent.solid,
                       fontWeight:
                         status === 'overdue' || detail.isToday ? '800' : '700',
+                      fontFamily: nunitoFamily(status === 'overdue' || detail.isToday ? '800' : '700'),
                     },
                     skin.kind === 'neo'
                       ? { ...neoChipTextStyle(skin), color: skin.accent(status).ink }
@@ -656,11 +659,12 @@ const styles = StyleSheet.create({
   },
   body: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { fontSize: 14, fontWeight: '700', flexShrink: 1 },
+  name: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700'), flexShrink: 1 },
   // Categoría como texto inline en el body (línea 2 del top row).
   catLine: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
     marginTop: 3,
   },
@@ -700,10 +704,11 @@ const styles = StyleSheet.create({
   monthChipText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   amountBlock: { alignItems: 'flex-end', gap: 2 },
-  amount: { fontSize: 16, fontWeight: '800', letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
+  amount: { fontSize: 16, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.4, fontVariant: ['tabular-nums'] },
 })
 
 /**

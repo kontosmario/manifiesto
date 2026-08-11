@@ -26,6 +26,7 @@ import {
   SCROLL_EDGE_THRESHOLD,
   ScreenEdgeEffect,
   type EdgeLayer,
+  type ScreenEdgeSide,
 } from '@/components/ui/screen-edge-effect'
 import { withAlpha } from '@/theme/color-utils'
 import { useAppTheme, useThemeTokens } from '@/theme/theme-provider'
@@ -70,6 +71,13 @@ import { nunitoFamily } from '@/theme/typography'
  *  ▸ Steppers N/K/p: recalculan la curva en vivo con la misma fórmula
  *    que producción (`buildEdgeLayers`). El valor elegido se transcribe
  *    tal cual a `EDGE_CURVE`.
+ *  ▸ Borde: arriba / abajo. Es LA MISMA curva espejada, así que los
+ *    steppers valen para las dos; lo que hay que juzgar por separado es
+ *    la franja (abajo el inset es ~34 contra ~59 arriba, o sea la mitad
+ *    de recorrido para repartir los mismos N escalones) y el contenido
+ *    que pasa por detrás. El panel de controles se ancla al borde
+ *    OPUESTO al que se está probando: si tapara la franja bajo estudio
+ *    no habría nada que mirar.
  *
  * Ojo: es un banco de pruebas del COMPORTAMIENTO (aparece/desaparece,
  * el contenido atraviesa la franja). El MATERIAL en sí sigue siendo
@@ -88,6 +96,8 @@ type BackdropKind = 'filas' | 'plano' | 'rampa' | 'contraste'
 
 const BACKDROPS: readonly BackdropKind[] = ['filas', 'plano', 'rampa', 'contraste']
 const ZOOMS = [1, 2, 3] as const
+const EDGES: readonly ScreenEdgeSide[] = ['top', 'bottom']
+const EDGE_LABELS: Record<ScreenEdgeSide, string> = { top: 'arriba', bottom: 'abajo' }
 
 function Pill({
   label,
@@ -252,10 +262,16 @@ export function EdgeEffectPreviewScreen() {
   const { theme } = useAppTheme()
 
   const [zoom, setZoom] = useState<(typeof ZOOMS)[number]>(1)
+  const [edge, setEdge] = useState<ScreenEdgeSide>('top')
   const [backdrop, setBackdrop] = useState<BackdropKind>('filas')
   const [split, setSplit] = useState(true)
   const [frozen, setFrozen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  // Arranca en `true`: todos los fondos de este banco desbordan la
+  // pantalla por varias veces, así que en el primer frame YA hay
+  // contenido por debajo — igual que en una pantalla real, donde el
+  // material de abajo nace visible y se apaga recién al tocar el fondo.
+  const [hasContentBelow, setHasContentBelow] = useState(true)
   const [showVeil, setShowVeil] = useState(true)
   const [showBlur, setShowBlur] = useState(true)
   const [legacyOrder, setLegacyOrder] = useState(false)
@@ -264,12 +280,19 @@ export function EdgeEffectPreviewScreen() {
   const [density, setDensity] = useState(EDGE_CURVE.density)
   const [falloff, setFalloff] = useState(EDGE_CURVE.falloff)
 
+  // La lupa amplía LOS DOS insets: el que está bajo estudio para separar
+  // los bordes de las capas, y el otro para que la geometría de la
+  // pantalla siga siendo la de un device (si solo creciera uno, el
+  // contenido se correría respecto de lo que se ve en el iPhone).
   const topInset = BASE_TOP_INSET * zoom
+  const bottomInset = BASE_BOTTOM_INSET * zoom
   const insets = useMemo<EdgeInsets>(
-    () => ({ top: topInset, left: 0, right: 0, bottom: BASE_BOTTOM_INSET }),
-    [topInset],
+    () => ({ top: topInset, left: 0, right: 0, bottom: bottomInset }),
+    [topInset, bottomInset],
   )
-  const fadeHeight = Math.round(topInset * 1.35)
+  const isBottom = edge === 'bottom'
+  const edgeInset = isBottom ? bottomInset : topInset
+  const fadeHeight = Math.round(edgeInset * 1.35)
 
   const curve = useMemo(() => ({ count, density, falloff }), [count, density, falloff])
   const nextLayers = useMemo(() => buildEdgeLayers(curve), [curve])
@@ -288,11 +311,19 @@ export function EdgeEffectPreviewScreen() {
     [showBlur],
   )
 
-  const active = frozen || scrolled
+  // Cada borde tiene SU condición: arriba se activa con contenido por
+  // encima, abajo mientras quede contenido por debajo. "congelar" las
+  // fuerza para poder capturar la franja sin sostener el gesto.
+  const active = frozen || (isBottom ? hasContentBelow : scrolled)
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = event.nativeEvent.contentOffset.y
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
     setScrolled((prev) => {
-      const next = y > SCROLL_EDGE_THRESHOLD
+      const next = contentOffset.y > SCROLL_EDGE_THRESHOLD
+      return prev === next ? prev : next
+    })
+    const hiddenBelow = contentSize.height - layoutMeasurement.height - contentOffset.y
+    setHasContentBelow((prev) => {
+      const next = hiddenBelow > SCROLL_EDGE_THRESHOLD
       return prev === next ? prev : next
     })
   }, [])
@@ -304,7 +335,8 @@ export function EdgeEffectPreviewScreen() {
   const edgeProps = {
     active,
     backgroundColor: theme.colors.background,
-    height: topInset,
+    edge,
+    height: edgeInset,
     veil: showVeil ? nextVeil : null,
   }
 
@@ -314,19 +346,22 @@ export function EdgeEffectPreviewScreen() {
         <View style={[styles.host, { backgroundColor: theme.colors.background }]}>
           <Screen
             backgroundColor={theme.colors.background}
-            // El panel de controles es un overlay fijo abajo: hay que
-            // reservarle el alto para que el final del contenido siga
-            // siendo alcanzable.
-            contentContainerStyle={styles.scrollContent}
+            // El panel de controles es un overlay fijo contra un borde:
+            // hay que reservarle el alto de los DOS lados para que el
+            // contenido siga siendo alcanzable sin importar dónde se
+            // ancle.
+            contentContainerStyle={
+              isBottom ? [styles.scrollContent, styles.scrollContentPanelTop] : styles.scrollContent
+            }
             disableEdgeEffect
             onScroll={handleScroll}
             scrollable
           >
             <Text style={[styles.title, { color: theme.colors.text }]}>Scroll edge effect</Text>
             <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-              Inset simulado: top {topInset} · franja {fadeHeight}pt. Arriba del todo es
-              transparente; al scrollear aparece el material. El veredicto sale del iPhone: en web
-              el blur es una aproximación.
+              Borde {EDGE_LABELS[edge]} · inset simulado {edgeInset} · franja {fadeHeight}pt. Sin
+              contenido cruzando el borde es transparente; con contenido detrás aparece el
+              material. El veredicto sale del iPhone: en web el blur es una aproximación.
             </Text>
             <Backdrop kind={backdrop} />
           </Screen>
@@ -351,10 +386,16 @@ export function EdgeEffectPreviewScreen() {
                 <View
                   style={[
                     styles.splitSeam,
+                    isBottom ? styles.splitSeamBottom : styles.splitSeamTop,
                     { backgroundColor: withAlpha(theme.colors.text, 0.35), height: fadeHeight },
                   ]}
                 />
-                <View style={[styles.splitLabels, { top: fadeHeight + 4 }]}>
+                <View
+                  style={[
+                    styles.splitLabels,
+                    isBottom ? { bottom: fadeHeight + 4 } : { top: fadeHeight + 4 },
+                  ]}
+                >
                   <Text style={[styles.splitLabel, { color: theme.colors.textMuted }]}>
                     ← anterior ({LEGACY_BLUR_LAYERS.length} capas)
                   </Text>
@@ -368,32 +409,46 @@ export function EdgeEffectPreviewScreen() {
             )}
 
             {rulers
-              ? nextLayers.map((layer) => (
+              ? nextLayers.map((layer) => {
+                  // La regla marca el borde INTERIOR de cada capa, o sea
+                  // se mide desde el borde bajo estudio.
+                  const offset = PixelRatio.roundToNearestPixel(fadeHeight * layer.heightRatio)
+                  return (
                   <View
                     key={layer.heightRatio}
                     style={[
                       styles.ruler,
-                      {
-                        backgroundColor: withAlpha(theme.colors.text, 0.5),
-                        top: PixelRatio.roundToNearestPixel(fadeHeight * layer.heightRatio),
-                      },
+                      { backgroundColor: withAlpha(theme.colors.text, 0.5) },
+                      isBottom ? { bottom: offset } : { top: offset },
                     ]}
                   >
                     <Text style={[styles.rulerLabel, { color: theme.colors.text }]}>
                       {layer.intensity}
                     </Text>
                   </View>
-                ))
+                  )
+                })
               : null}
           </View>
 
           <View
             style={[
               styles.panel,
+              // El panel se va al borde OPUESTO al que se está probando:
+              // anclado contra la franja bajo estudio la taparía entera.
+              isBottom ? styles.panelTop : styles.panelBottom,
               { backgroundColor: theme.colors.creamCard, borderColor: theme.colors.border },
             ]}
           >
             <View style={styles.pillRow}>
+              {EDGES.map((side) => (
+                <Pill
+                  active={edge === side}
+                  key={side}
+                  label={EDGE_LABELS[side]}
+                  onPress={() => setEdge(side)}
+                />
+              ))}
               <Pill active={split} label="A/B" onPress={() => setSplit((v) => !v)} />
               <Pill active={frozen} label="congelar" onPress={() => setFrozen((v) => !v)} />
               <Pill active={rulers} label="reglas" onPress={() => setRulers((v) => !v)} />
@@ -459,6 +514,10 @@ export function EdgeEffectPreviewScreen() {
 const styles = StyleSheet.create({
   host: { flex: 1 },
   scrollContent: { paddingBottom: 240 },
+  // Colchón del panel cuando se ancla arriba. Compite con el inset que
+  // el Screen inyecta (`Math.max`) y 240 gana siempre, así que el
+  // contenido arranca debajo del panel aunque la lupa esté en 3×.
+  scrollContentPanelTop: { paddingTop: 240 },
   title: { fontFamily: nunitoFamily('900'), fontSize: 24, fontWeight: '900' },
   body: { fontFamily: nunitoFamily('600'), fontSize: 13, lineHeight: 19 },
   row: { borderRadius: 16, paddingHorizontal: 16, paddingVertical: 18 },
@@ -477,7 +536,9 @@ const styles = StyleSheet.create({
   half: { bottom: 0, overflow: 'hidden', position: 'absolute', top: 0, width: '50%' },
   halfLeft: { left: 0 },
   halfRight: { right: 0 },
-  splitSeam: { left: '50%', position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
+  splitSeam: { left: '50%', position: 'absolute', width: StyleSheet.hairlineWidth },
+  splitSeamTop: { top: 0 },
+  splitSeamBottom: { bottom: 0 },
   splitLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -496,15 +557,25 @@ const styles = StyleSheet.create({
   },
   rulerLabel: { fontFamily: nunitoFamily('700'), fontSize: 9, fontWeight: '700', marginRight: 4 },
   panel: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    bottom: 0,
     gap: 8,
     left: 0,
-    paddingBottom: 28,
     paddingHorizontal: 12,
-    paddingTop: 10,
     position: 'absolute',
     right: 0,
+  },
+  // El hairline va del lado por el que el panel se despega del borde, y
+  // el padding grueso del lado del safe area que lo aloja.
+  panelBottom: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    bottom: 0,
+    paddingBottom: 28,
+    paddingTop: 10,
+  },
+  panelTop: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: 10,
+    paddingTop: 64,
+    top: 0,
   },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pill: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5 },

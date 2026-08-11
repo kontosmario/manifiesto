@@ -1,0 +1,1204 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub de acciones — Dirección 3: Directo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Motion tokens — espejo de mobile/lib/motion/tokens.ts */
+    --d-micro: 120ms;
+    --d-quick: 180ms;
+    --d-standard: 240ms;
+    --d-deliberate: 320ms;
+    --d-scrim-in: 260ms;
+    --d-breath: 2800ms;
+    --spring-radial: cubic-bezier(0.34, 1.42, 0.5, 1);
+    --spring-celebrate: cubic-bezier(0.34, 1.56, 0.46, 1);
+    --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
+    --ease-standard: cubic-bezier(0.22, 0.9, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: #171C16;
+    color: #E7EADE;
+    padding: 36px 28px 90px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ══ Chrome de la página ══ */
+  .page-head { max-width: 940px; margin: 0 auto 26px; }
+  .kicker {
+    font-size: 11.5px; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: #8FA089; margin: 0 0 8px;
+  }
+  h1 { font-size: 30px; font-weight: 900; letter-spacing: -.8px; margin: 0 0 12px; }
+  h1 em { font-style: normal; color: #A4E3A6; }
+  .lede { font-size: 14.5px; font-weight: 600; line-height: 1.6; color: #A8B4A0; margin: 0 0 10px; max-width: 74ch; }
+  .lede b { color: #C9F3C6; font-weight: 800; }
+
+  .controls {
+    max-width: 940px; margin: 22px auto 34px;
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+  .btn {
+    font-family: var(--font); font-size: 14px; font-weight: 900; letter-spacing: -.2px;
+    color: #0F1E14; border: 0; cursor: pointer;
+    padding: 12px 22px; border-radius: 22px;
+    background: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    box-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost {
+    background: linear-gradient(145deg, #1D3426, #132318); color: #C9F3C6;
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 800; color: #A8B4A0; cursor: pointer;
+    padding: 11px 16px; border-radius: 20px;
+    background: linear-gradient(145deg, #1D3426, #132318);
+    box-shadow: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+  }
+  .toggle input { accent-color: #A4E3A6; width: 15px; height: 15px; }
+  .hint-line { font-size: 12.5px; font-weight: 700; color: #7C917A; }
+
+  .frames { display: flex; gap: 48px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .frame-col { display: flex; flex-direction: column; gap: 13px; }
+  .frame-label {
+    text-align: center; font-size: 11.5px; font-weight: 800;
+    letter-spacing: .08em; color: #8FA089; text-transform: uppercase;
+  }
+  .frames-note {
+    max-width: 720px; margin: 28px auto 0; text-align: center;
+    font-size: 12.5px; font-weight: 600; line-height: 1.65; color: #93A78F;
+  }
+  .frames-note b { color: #C3CCBB; font-weight: 800; }
+
+  /* ══════════════════════════════════════════════════════
+     EL STAGE — teléfono 393 × 830
+     ══════════════════════════════════════════════════════ */
+  .stage {
+    width: 393px; height: 830px; border-radius: 46px;
+    position: relative; overflow: hidden; flex: none;
+    font-family: var(--font);
+    box-shadow: 0 34px 80px rgba(8,14,8,.55);
+    user-select: none;
+  }
+
+  .stage[data-theme="light"] {
+    --bg: #DCDFCD;
+    --sheet: #F0EFE3;
+    --surface: #E9EBE0;
+    --well: #E9EBE0;
+    --text: #24382A;
+    --muted: #54644F;
+    --tertiary: #9AA694;
+    --green: #2E7C39;
+    --accent-ink: #1F5429;
+    --cta-fill: radial-gradient(circle at 32% 28%, #489350, #2E7434 85%);
+    --cta-ink: #F5F2E1;
+    --scrim: rgba(185,190,172,.66);
+    --raised-bg: linear-gradient(145deg, #ECEEE3, #E1E4D6);
+    --raised-lg: 8px 8px 18px rgba(151,160,136,.42), -8px -8px 18px rgba(255,255,255,.92);
+    --raised-md: 6px 6px 12px rgba(151,160,136,.4), -6px -6px 12px rgba(255,255,255,.9);
+    --raised-sm: 5px 5px 10px rgba(151,160,136,.35), -5px -5px 10px rgba(255,255,255,.85);
+    --inset-md: inset 3px 3px 7px rgba(151,160,136,.35), inset -3px -3px 7px rgba(255,255,255,.9);
+    --inset-lg: inset 4px 4px 9px rgba(151,160,136,.4), inset -4px -4px 9px rgba(255,255,255,.95);
+    --cta-shadow: 0 12px 24px rgba(46,116,52,.4), inset 0 2px 3px rgba(255,255,255,.3);
+    --sheet-shadow: 0 -22px 54px rgba(20,30,18,.34);
+    --tile-lip: inset 0 1px 0 rgba(255,255,255,.55);
+    --dash: rgba(84,100,79,.42);
+    --mode-tint: rgba(46,124,57,.30);
+    background: #B9BEAC;
+  }
+
+  .stage[data-theme="dark"] {
+    --bg: #0F1A13;
+    --sheet: #1B2F22;
+    --surface: #1D3426;
+    --well: #142519;
+    --text: #F1EEDD;
+    --muted: #93A78F;
+    --tertiary: #7C917A;
+    --green: #A4E3A6;
+    --accent-ink: #A4E3A6;
+    --cta-fill: radial-gradient(circle at 32% 28%, #9FDC9F, #3E7D46 85%);
+    --cta-ink: #0F1E14;
+    --scrim: rgba(10,19,13,.7);
+    --raised-bg: linear-gradient(145deg, #1D3426, #132318);
+    --raised-lg: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+    --raised-md: 6px 6px 12px rgba(0,0,0,.5), -6px -6px 12px rgba(101,152,113,.1);
+    --raised-sm: 5px 5px 10px rgba(0,0,0,.45), -5px -5px 10px rgba(101,152,113,.08);
+    --inset-md: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+    --inset-lg: inset 4px 4px 9px rgba(0,0,0,.5), inset -4px -4px 9px rgba(101,152,113,.08);
+    --cta-shadow: 0 12px 24px rgba(0,0,0,.45), 0 0 26px rgba(140,225,150,.3), inset 0 2px 3px rgba(255,255,255,.3);
+    --sheet-shadow: 0 -22px 54px rgba(0,0,0,.6);
+    --tile-lip: inset 0 1px 0 rgba(164,227,166,.1);
+    --dash: rgba(147,167,143,.45);
+    --mode-tint: rgba(164,227,166,.24);
+    background: #0A130D;
+  }
+
+  /* ══ Fondo: recorte de la Home ══ */
+  .home { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; }
+  .statusbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px 4px; color: var(--text); font-size: 15px; font-weight: 800;
+  }
+  .sb-right { display: flex; align-items: center; gap: 6px; }
+  .bars { display: flex; align-items: flex-end; gap: 2.5px; }
+  .bars i { width: 3px; border-radius: 1px; background: currentColor; display: block; }
+  .battery { width: 23px; height: 11.5px; border: 1.5px solid currentColor; border-radius: 3.5px; padding: 1.5px; }
+  .battery > i { display: block; width: 62%; height: 100%; background: currentColor; border-radius: 1.5px; }
+
+  .home-head { display: flex; align-items: center; gap: 12px; padding: 14px 22px 0; }
+  .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+  .home-title { font-size: 21px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
+  .home-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-top: 2px; }
+
+  .hero {
+    margin: 16px 20px 0; height: 172px; border-radius: 32px;
+    background: linear-gradient(155deg, #244235 0%, #1F590D 55%, #297811 100%);
+    box-shadow: 12px 12px 26px rgba(124,138,110,.55);
+    padding: 22px 24px; color: #F7F4E4;
+  }
+  .stage[data-theme="dark"] .hero {
+    background: linear-gradient(150deg, #234931 0%, #1B3A26 55%, #16301F 100%);
+    box-shadow: 12px 12px 26px rgba(0,0,0,.6);
+  }
+  .hero-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .16em; opacity: .88; }
+  .hero-amount { font-size: 42px; font-weight: 900; letter-spacing: -1.6px; margin-top: 8px; }
+  .hero-meter { height: 9px; border-radius: 6px; background: rgba(255,255,255,.22); margin-top: 20px; overflow: hidden; }
+  .hero-meter > i { display: block; height: 100%; width: 63%; border-radius: 6px; background: #C9F3C6; }
+  .hero-foot { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 10px; opacity: .92; }
+
+  .chips { display: flex; gap: 10px; margin: 16px 20px 0; }
+  .chip-bg { flex: 1; height: 74px; border-radius: 22px; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+  .rows-bg { margin: 16px 20px 0; display: flex; flex-direction: column; gap: 9px; }
+  .row-bg { height: 56px; border-radius: 20px; background: var(--raised-bg); box-shadow: var(--raised-sm); }
+
+  /* ══ Nav + FAB ══ */
+  .nav {
+    position: absolute; left: 16px; right: 16px; bottom: 26px; height: 68px;
+    border-radius: 32px; background: var(--raised-bg); box-shadow: var(--raised-lg);
+    display: flex; align-items: center; justify-content: space-around; padding: 0 26px;
+  }
+  .nav i { width: 22px; height: 22px; border-radius: 7px; background: var(--tertiary); opacity: .5; display: block; }
+  .fab {
+    position: absolute; left: 50%; bottom: 42px; width: 62px; height: 62px;
+    transform: translateX(-50%); border-radius: 50%;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center; color: var(--cta-ink);
+    z-index: 3;
+  }
+  .homebar {
+    position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+    width: 132px; height: 5px; border-radius: 3px; background: var(--text); opacity: .5; z-index: 9;
+  }
+  .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 2; }
+
+  /* ══════════════════════════════════════════════════════
+     EL PAD — la hoja que reemplaza al hub
+     ══════════════════════════════════════════════════════ */
+  .pad {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 4;
+    height: 594px;
+    border-radius: 32px 32px 0 0;
+    background: var(--sheet);
+    box-shadow: var(--sheet-shadow);
+    padding: 14px 16px 26px;
+    display: flex; flex-direction: column;
+    transform-origin: 50% 100%;
+  }
+
+  .grabber {
+    width: 42px; height: 4px; border-radius: 3px; margin: 0 auto 10px;
+    background: var(--tertiary); opacity: .55;
+  }
+
+  /* ── Encabezado del pad ── */
+  .pad-head { display: flex; align-items: center; justify-content: space-between; height: 34px; }
+  .pad-eyebrow {
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .close {
+    width: 34px; height: 34px; border-radius: 50%; flex: none; cursor: pointer;
+    background: var(--well); box-shadow: var(--inset-md);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 17px; font-weight: 900; line-height: 1;
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .close:active { transform: scale(.92); }
+
+  /* ── Fila de modos ── */
+  .rail { display: flex; gap: 6px; margin-top: 14px; height: 62px; }
+  .mode {
+    flex: 1; border-radius: 18px; cursor: pointer; padding: 5px 2px 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: transparent; box-shadow: none;
+    transition: background var(--d-quick) var(--ease-ios),
+                box-shadow var(--d-quick) var(--ease-ios),
+                transform var(--d-micro) var(--ease-ios);
+  }
+  .mode-tile {
+    width: 40px; height: 40px; border-radius: 14px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; line-height: 1;
+    box-shadow: var(--raised-sm), var(--tile-lip);
+    transition: transform var(--d-quick) var(--ease-ios), box-shadow var(--d-quick) var(--ease-ios), opacity var(--d-quick) linear;
+    opacity: .72;
+  }
+  .mode-label {
+    font-size: 10px; font-weight: 800; letter-spacing: .01em; color: var(--muted);
+    transition: color var(--d-quick) linear;
+    white-space: nowrap;
+  }
+  .mode:active { transform: scale(.96); }
+  .mode.is-on { background: var(--well); box-shadow: var(--inset-lg); }
+  .mode.is-on .mode-tile {
+    opacity: 1; transform: scale(1.02);
+    box-shadow: 0 0 0 2px var(--green), var(--tile-lip);
+  }
+  .mode.is-on .mode-label { color: var(--text); font-weight: 900; }
+
+  /* Pasteles por acción */
+  .stage[data-theme="light"] [data-pastel="expense"]  { background: #DDEBDD; }
+  .stage[data-theme="light"] [data-pastel="import"]   { background: #E6E0F4; }
+  .stage[data-theme="light"] [data-pastel="nospend"]  { background: #D4EBDF; }
+  .stage[data-theme="light"] [data-pastel="income"]   { background: #D6E4F0; }
+  .stage[data-theme="light"] [data-pastel="fixed"]    { background: #EDE0C8; }
+  .stage[data-theme="dark"]  [data-pastel="expense"]  { background: rgba(221,235,221,.16); }
+  .stage[data-theme="dark"]  [data-pastel="import"]   { background: rgba(230,224,244,.16); }
+  .stage[data-theme="dark"]  [data-pastel="nospend"]  { background: rgba(212,235,223,.16); }
+  .stage[data-theme="dark"]  [data-pastel="income"]   { background: rgba(214,228,240,.16); }
+  .stage[data-theme="dark"]  [data-pastel="fixed"]    { background: rgba(237,224,200,.16); }
+
+  /* ── Zona de cuerpos intercambiables ── */
+  .panels { position: relative; height: 356px; margin-top: 14px; }
+  .panel { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .panel[hidden] { display: none; }
+
+  @keyframes panelIn { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes panelOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-10px) scale(.99); } }
+  .panel.anim-in  { animation: panelIn var(--d-standard) var(--ease-ios) both; }
+  .panel.anim-out { animation: panelOut 150ms var(--ease-standard) both; }
+
+  /* ── El pozo del monto ── */
+  .well-wrap { position: relative; height: 112px; flex: none; }
+  .well-halo {
+    position: absolute; inset: 10px 26px; border-radius: 30px;
+    background: var(--mode-tint); filter: blur(19px); opacity: .85;
+    transition: background var(--d-deliberate) var(--ease-standard);
+    pointer-events: none;
+  }
+  .well {
+    position: relative; height: 112px; border-radius: 26px;
+    background: var(--well); box-shadow: var(--inset-lg);
+    padding: 14px 18px; display: flex; align-items: center; gap: 10px;
+  }
+  .well-col { flex: 1; min-width: 0; }
+  .well-eyebrow {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 800; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  .well-dot {
+    width: 9px; height: 9px; border-radius: 50%; flex: none;
+    transition: background var(--d-standard) linear;
+  }
+  .amount-row { display: flex; align-items: baseline; gap: 2px; margin-top: 5px; height: 48px; overflow: hidden; }
+  .amount {
+    font-size: 43px; font-weight: 900; letter-spacing: -1.8px; color: var(--text);
+    white-space: nowrap;
+    transition: color var(--d-quick) linear, font-size var(--d-quick) var(--ease-ios);
+  }
+  .amount.sm { font-size: 36px; letter-spacing: -1.4px; }
+  .amount.xs { font-size: 30px; letter-spacing: -1.1px; }
+  .amount.is-zero { color: var(--tertiary); }
+  .caret {
+    width: 3px; height: 36px; border-radius: 2px; background: var(--accent-ink);
+    align-self: center; margin-left: 3px; flex: none;
+    animation: blink 1.05s steps(1, end) infinite;
+  }
+  @keyframes blink { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+  .well-hint {
+    font-size: 11.5px; font-weight: 700; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .well-brot { flex: none; width: 52px; display: flex; justify-content: center; }
+
+  /* ── Teclado ── */
+  .keys {
+    margin-top: 12px; flex: 1;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  }
+  .key {
+    border-radius: 18px; cursor: pointer;
+    background: var(--raised-bg); box-shadow: var(--raised-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800; color: var(--text); letter-spacing: -.5px;
+    transition: box-shadow var(--d-micro) var(--ease-ios),
+                background var(--d-micro) var(--ease-ios),
+                transform var(--d-micro) var(--ease-ios);
+  }
+  .key.is-down { background: var(--well); box-shadow: var(--inset-md); transform: scale(.98); }
+  .key[data-k="back"] { font-size: 19px; color: var(--muted); }
+
+  /* ── Cuerpo: Importar captura ── */
+  .drop {
+    flex: 1; border-radius: 26px; cursor: pointer; position: relative;
+    background: var(--well); box-shadow: var(--inset-lg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    overflow: hidden;
+  }
+  .drop::after {
+    content: ''; position: absolute; inset: 14px; border-radius: 18px;
+    border: 2px dashed var(--dash); pointer-events: none;
+    transition: opacity var(--d-quick) linear;
+  }
+  .drop.has-file::after { opacity: 0; }
+  .drop-title { font-size: 16px; font-weight: 900; color: var(--text); letter-spacing: -.3px; }
+  .drop-sub { font-size: 12px; font-weight: 700; color: var(--muted); text-align: center; max-width: 230px; line-height: 1.45; }
+  .drop-brot { margin-bottom: 2px; }
+
+  .ticket {
+    width: 236px; border-radius: 20px; padding: 14px 16px;
+    background: var(--raised-bg); box-shadow: var(--raised-md);
+    display: flex; flex-direction: column; gap: 9px;
+  }
+  .tk-head { display: flex; align-items: center; gap: 9px; }
+  .tk-badge {
+    width: 34px; height: 34px; border-radius: 12px; flex: none;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+    box-shadow: var(--tile-lip);
+  }
+  .tk-store { font-size: 13.5px; font-weight: 900; color: var(--text); letter-spacing: -.2px; }
+  .tk-date { font-size: 11px; font-weight: 700; color: var(--muted); margin-top: 1px; }
+  .tk-line { display: flex; justify-content: space-between; align-items: baseline; }
+  .tk-lbl { font-size: 11.5px; font-weight: 800; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .tk-val { font-size: 21px; font-weight: 900; color: var(--text); letter-spacing: -.6px; }
+  .tk-foot { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+
+  /* ── Cuerpo: Día sin gasto ── */
+  .zen {
+    flex: 1; border-radius: 26px;
+    background: var(--well); box-shadow: var(--inset-lg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    padding: 16px;
+  }
+  .zen-title { font-size: 20px; font-weight: 900; color: var(--text); letter-spacing: -.5px; margin-top: 4px; }
+  .zen-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); text-align: center; max-width: 250px; line-height: 1.5; margin-top: 4px; }
+  .zen-chip {
+    margin-top: 12px; padding: 9px 15px; border-radius: 18px;
+    background: var(--raised-bg); box-shadow: var(--raised-sm);
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 900; color: var(--text);
+  }
+  .zen-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+
+  /* ── CTA ── */
+  .cta {
+    margin-top: 12px; height: 58px; border-radius: 20px; flex: none; cursor: pointer;
+    background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--cta-ink); position: relative; overflow: hidden;
+    transition: transform var(--d-micro) var(--ease-ios);
+  }
+  .cta:active { transform: scale(.985); }
+  .cta-label {
+    font-size: 19px; font-weight: 900; letter-spacing: -.4px;
+    transition: opacity 90ms linear, transform 90ms var(--ease-ios);
+  }
+  .cta-label.swapping { opacity: 0; transform: translateY(7px); }
+
+  /* Fantasma: el FAB que se convierte en el CTA */
+  .fab-ghost {
+    position: absolute; z-index: 6; opacity: 0;
+    left: 50%; margin-left: -31px; bottom: 42px; width: 62px; height: 62px;
+    border-radius: 31px; background: var(--cta-fill); box-shadow: var(--cta-shadow);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--cta-ink); pointer-events: none;
+  }
+  .fab-ghost span { font-size: 30px; font-weight: 900; line-height: 1; }
+
+  /* ══════════════════════════════════════════════════════
+     COREOGRAFÍA DE APERTURA
+     ══════════════════════════════════════════════════════ */
+  @keyframes scrimIn { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes padUp {
+    from { transform: translateY(100%) scale(.965); }
+    to   { transform: translateY(0) scale(1); }
+  }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(18px) scale(.97); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: translateY(10px) scale(.82); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes fabToCta {
+    from { left: 50%; margin-left: -31px; bottom: 42px; width: 62px; height: 62px; border-radius: 31px; }
+    to   { left: 16px; margin-left: 0; bottom: 26px; width: 361px; height: 58px; border-radius: 20px; }
+  }
+  @keyframes ghostFade { 0% { opacity: 1 } 76% { opacity: 1 } 100% { opacity: 0 } }
+  @keyframes plusFade { 0% { opacity: 1 } 30% { opacity: 0 } 100% { opacity: 0 } }
+  @keyframes ctaIn { from { opacity: 0 } to { opacity: 1 } }
+
+  .stage.play .scrim { animation: scrimIn var(--d-scrim-in) var(--ease-standard) both; }
+  .stage.play .pad   { animation: padUp 440ms var(--ease-ios) both; }
+  .stage.play .fab-ghost {
+    animation: fabToCta 460ms var(--ease-ios) both, ghostFade 460ms linear both;
+  }
+  .stage.play .fab-ghost span { animation: plusFade 460ms linear both; }
+  .stage.play .cta { animation: ctaIn 160ms 400ms both; }
+
+  /* El teclado se materializa de abajo hacia arriba: el origen es el FAB. */
+  .stage.play .key { animation: riseIn 210ms var(--ease-ios) both; }
+  .stage.play .key[data-row="3"] { animation-delay: 200ms; }
+  .stage.play .key[data-row="2"] { animation-delay: 245ms; }
+  .stage.play .key[data-row="1"] { animation-delay: 290ms; }
+  .stage.play .key[data-row="0"] { animation-delay: 335ms; }
+  .stage.play .well-wrap  { animation: riseIn var(--d-standard) var(--spring-radial) both; animation-delay: 300ms; }
+  .stage.play .well-halo  { animation: none; }
+  .stage.play .mode { animation: popIn var(--d-quick) var(--spring-celebrate) both; }
+  .stage.play .mode[data-i="0"] { animation-delay: 360ms; }
+  .stage.play .mode[data-i="1"] { animation-delay: 395ms; }
+  .stage.play .mode[data-i="2"] { animation-delay: 430ms; }
+  .stage.play .mode[data-i="3"] { animation-delay: 465ms; }
+  .stage.play .mode[data-i="4"] { animation-delay: 500ms; }
+  .stage.play .pad-head { animation: riseIn var(--d-quick) var(--ease-ios) both; animation-delay: 420ms; }
+  .stage.play .grabber  { animation: ctaIn var(--d-quick) both; animation-delay: 380ms; }
+
+  /* Reducir movimiento */
+  body.reduced .stage.play .scrim,
+  body.reduced .stage.play .pad,
+  body.reduced .stage.play .key,
+  body.reduced .stage.play .well-wrap,
+  body.reduced .stage.play .mode,
+  body.reduced .stage.play .pad-head,
+  body.reduced .stage.play .grabber,
+  body.reduced .stage.play .cta { animation: none !important; }
+  body.reduced .stage.play .fab-ghost,
+  body.reduced .stage.play .fab-ghost span { animation: none !important; opacity: 0 !important; }
+  body.reduced .caret { animation: none !important; opacity: 1; }
+  body.reduced .panel.anim-in, body.reduced .panel.anim-out { animation: none !important; }
+  body.reduced .key, body.reduced .mode, body.reduced .cta-label { transition: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage.play * { animation-duration: 1ms !important; }
+    .caret { animation: none !important; }
+  }
+
+  /* ══ Bloques de reporte ══ */
+  .report { max-width: 940px; margin: 54px auto 0; display: flex; flex-direction: column; gap: 18px; }
+  .card-r {
+    background: linear-gradient(145deg, #1D3426, #132318);
+    border-radius: 26px; padding: 24px 26px;
+    box-shadow: 8px 8px 18px rgba(0,0,0,.5), -8px -8px 18px rgba(101,152,113,.1);
+  }
+  .card-r h2 {
+    font-size: 11.5px; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: #93A78F; margin: 0 0 18px;
+  }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .bal { border-radius: 22px; padding: 20px 22px; background: #142519;
+         box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08); }
+  .bal h3 { font-size: 14px; font-weight: 900; margin: 0 0 14px; letter-spacing: -.2px; }
+  .bal.win h3 { color: #A4E3A6; }
+  .bal.risk h3 { color: #F2A87E; }
+  .bal ul { margin: 0; padding-left: 18px; }
+  .bal li { font-size: 13px; font-weight: 600; line-height: 1.6; color: #C3CCBB; margin-bottom: 11px; }
+  .bal li:last-child { margin-bottom: 0; }
+  .bal li b { color: #F1EEDD; font-weight: 800; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 9px 10px; font-size: 12.5px; }
+  th { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #93A78F; }
+  td { font-weight: 700; color: #C3CCBB; border-top: 1px solid rgba(147,167,143,.14); }
+  td.n { font-variant-numeric: tabular-nums; font-weight: 900; color: #F1EEDD; }
+  .ok { color: #A4E3A6; font-weight: 900; }
+  .warn { color: #F2A87E; font-weight: 900; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; }
+  .tbl-note { font-size: 12px; font-weight: 600; color: #93A78F; margin: 14px 0 0; line-height: 1.6; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: #C9F3C6; background: rgba(164,227,166,.1);
+    padding: 1px 5px; border-radius: 5px;
+  }
+  .poses { display: flex; gap: 10px; flex-wrap: wrap; }
+  .pose {
+    flex: 1 1 158px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 14px 10px; border-radius: 20px; background: #142519;
+    box-shadow: inset 3px 3px 7px rgba(0,0,0,.5), inset -3px -3px 7px rgba(101,152,113,.08);
+  }
+  .pose-action { font-size: 13px; font-weight: 900; color: #F1EEDD; text-align: center; }
+  .pose-name { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #A4E3A6; }
+  .pose-why { font-size: 11.5px; font-weight: 600; color: #93A78F; text-align: center; line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<div class="page-head">
+  <p class="kicker">Hub de acciones · dirección 3 de 3</p>
+  <h1>Directo — <em>abrís y ya estás cargando</em></h1>
+  <p class="lede">
+    Acá la innovación no es de piel sino de <b>flujo</b>. Hoy el camino más transitado de la app
+    —cargar un gasto, el 80% de las aperturas— cuesta <b>dos toques y una transición</b> antes de
+    poder tipear el primer número. En esta dirección el FAB abre <b>directo el pad de monto</b> con
+    “Gasto” ya elegido: el caret late en el instante 0.
+  </p>
+  <p class="lede">
+    Las otras cuatro acciones no desaparecen: se vuelven una <b>fila de modos</b> arriba del pad.
+    Tocar una no navega a ningún lado — <b>re-etiqueta el mismo pad</b>. El hub deja de ser una
+    pantalla intermedia y pasa a ser el encabezado de la pantalla que ya te sirve.
+  </p>
+</div>
+
+<div class="controls">
+  <button class="btn" id="replay">▶︎ Reproducir la apertura</button>
+  <button class="btn ghost" id="tour">▶︎ Ver el cambio de modo</button>
+  <label class="toggle"><input type="checkbox" id="reduced"> Simular «reducir movimiento»</label>
+  <span class="hint-line">Tocá los números, cambiá de modo, borrá con ⌫ — los dos teléfonos son de verdad.</span>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<p class="frames-note">
+  En reposo el pad tapa la nav: acá <b>el pad es la superficie</b>, igual que el teclado del sistema.
+  La nav y el FAB están abajo y se ven al arrancar la animación — tocá «Reproducir la apertura» y
+  mirá el círculo verde del FAB <b>estirarse hasta convertirse en el botón de guardar</b>.
+</p>
+
+<div class="report">
+
+  <div class="card-r">
+    <h2>Brot por modo — el pad tiene un acompañante, no un ícono</h2>
+    <div class="poses" id="poses"></div>
+  </div>
+
+  <div class="card-r">
+    <h2>Qué gana / qué arriesga</h2>
+    <div class="two">
+      <div class="bal win">
+        <h3>Qué gana</h3>
+        <ul>
+          <li><b>Dos toques menos en el 80% de los casos.</b> El camino dominante pasa de
+            FAB → Gasto → numpad a <b>FAB → numpad</b>. Se ahorra un toque y, sobre todo, una
+            transición de 320ms que hoy corta el impulso de “lo anoto ya”.</li>
+          <li><b>El FAB se convierte en el botón de guardar.</b> La animación morfea el círculo del
+            FAB en el CTA del pad: no aparece una pantalla nueva, se estira la que tocaste.
+            El origen del gesto y su cierre son el mismo objeto.</li>
+          <li><b>Cambiar de modo deja de ser navegar.</b> Sin push, sin back, sin perder lo tipeado:
+            si escribiste 4.500 y te das cuenta de que era un ingreso, tocás “Ingreso” y el monto
+            sigue ahí. Hoy eso es cerrar, reabrir y volver a tipear.</li>
+          <li><b>Menos superficie que mantener.</b> Un pad con cinco encabezados en lugar de una hoja
+            de menú + tres formularios de alta que repiten el mismo teclado.</li>
+        </ul>
+      </div>
+      <div class="bal risk">
+        <h3>Qué arriesga</h3>
+        <ul>
+          <li><b>Ergonomía invertida.</b> La fila de modos queda arriba del pad, a ~560px del borde
+            inferior: es el punto <b>más lejos del pulgar</b> de toda la hoja. Se toca poco (4 de cada
+            5 veces no la necesitás), pero cuando la necesitás está incómoda. Mitigación posible:
+            duplicar el cambio de modo en un swipe horizontal sobre el pozo del monto.</li>
+          <li><b>Descubribilidad de las otras cuatro.</b> Pasan de fila de 62px con nombre completo a
+            chip de 40px con etiqueta de 10px. “Importar captura” se lee “Captura”. Alguien que
+            entra a cargar un gasto puede no registrar nunca que ahí abajo hay OCR.</li>
+          <li><b>Accesibilidad del texto chico.</b> 10px en las etiquetas de modo es el piso del
+            sistema; con Dynamic Type grande la fila se rompe. Hay que definir el fallback
+            (¿scroll horizontal? ¿dos filas? ¿íconos sin texto con label de VoiceOver?).</li>
+          <li><b>El hub deja de ser neutro.</b> Le da un lugar privilegiado a Gasto por diseño. Si
+            mañana el mix cambia —por ejemplo, si Importar captura crece— la estructura ya tomó
+            partido y hay que rediseñarla, no reordenar una lista.</li>
+          <li><b>Back y cerrar se vuelven ambiguos.</b> Como no hay pantalla intermedia, la “×”
+            cierra todo de una: si tipeaste 4.500 y cerrás, se pierde. Hace falta una confirmación de
+            descarte —o guardar borrador— que hoy no existe en ninguna hoja de la app.</li>
+          <li><b>Código nuevo: medio.</b> Un componente de pad numérico compartido con máquina de
+            modos, más los dos cuerpos alternativos (dropzone y confirmación). Reemplaza el sheet
+            actual y absorbe los pasos “monto” de los wizards de alta, así que también hay que
+            decidir qué pasa con el resto del wizard (categoría, fecha, nota): el CTA guarda con
+            valores por defecto y abre el detalle después, o el pad crece a un paso 2.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-r">
+    <h2>Contraste WCAG — pares realmente usados</h2>
+    <table>
+      <thead>
+        <tr><th>Par</th><th>Frente</th><th>Fondo</th><th>Ratio</th><th>Umbral</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Claro · monto en el pozo</td><td><span class="sw" style="background:#24382A"></span>#24382A</td><td><span class="sw" style="background:#E9EBE0"></span>#E9EBE0</td><td class="n">10,41</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Claro · eyebrow y hint del pozo</td><td><span class="sw" style="background:#54644F"></span>#54644F</td><td><span class="sw" style="background:#E9EBE0"></span>#E9EBE0</td><td class="n">5,26</td><td>4,5</td><td class="ok">AA</td></tr>
+        <tr><td>Claro · dígitos del teclado (peor tramo del raised)</td><td><span class="sw" style="background:#24382A"></span>#24382A</td><td><span class="sw" style="background:#E1E4D6"></span>#E1E4D6</td><td class="n">9,72</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Claro · etiqueta de modo inactiva</td><td><span class="sw" style="background:#54644F"></span>#54644F</td><td><span class="sw" style="background:#F0EFE3"></span>#F0EFE3</td><td class="n">5,48</td><td>4,5</td><td class="ok">AA</td></tr>
+        <tr><td>Claro · etiqueta de modo activa</td><td><span class="sw" style="background:#24382A"></span>#24382A</td><td><span class="sw" style="background:#E9EBE0"></span>#E9EBE0</td><td class="n">10,41</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Claro · anillo del chip activo + caret (UI)</td><td><span class="sw" style="background:#2E7C39"></span>#2E7C39</td><td><span class="sw" style="background:#E9EBE0"></span>#E9EBE0</td><td class="n">4,29</td><td>3,0</td><td class="ok">AA UI</td></tr>
+        <tr><td>Claro · texto sobre pastel arena (peor de los 5)</td><td><span class="sw" style="background:#24382A"></span>#24382A</td><td><span class="sw" style="background:#EDE0C8"></span>#EDE0C8</td><td class="n">9,62</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Claro · CTA 19px/900 sobre el tono dominante</td><td><span class="sw" style="background:#F5F2E1"></span>#F5F2E1</td><td><span class="sw" style="background:#2E7434"></span>#2E7434</td><td class="n">5,10</td><td>4,5</td><td class="ok">AA</td></tr>
+        <tr><td>Claro · CTA sobre el foco del radial</td><td><span class="sw" style="background:#F5F2E1"></span>#F5F2E1</td><td><span class="sw" style="background:#489350"></span>#489350</td><td class="n">3,36</td><td>3,0</td><td class="warn">AA large</td></tr>
+        <tr><td>Oscuro · monto en el pozo</td><td><span class="sw" style="background:#F1EEDD"></span>#F1EEDD</td><td><span class="sw" style="background:#142519"></span>#142519</td><td class="n">13,77</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Oscuro · eyebrow y hint del pozo</td><td><span class="sw" style="background:#93A78F"></span>#93A78F</td><td><span class="sw" style="background:#142519"></span>#142519</td><td class="n">6,24</td><td>4,5</td><td class="ok">AA</td></tr>
+        <tr><td>Oscuro · dígitos del teclado (peor tramo del raised)</td><td><span class="sw" style="background:#F1EEDD"></span>#F1EEDD</td><td><span class="sw" style="background:#1D3426"></span>#1D3426</td><td class="n">11,46</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Oscuro · etiqueta de modo inactiva</td><td><span class="sw" style="background:#93A78F"></span>#93A78F</td><td><span class="sw" style="background:#1B2F22"></span>#1B2F22</td><td class="n">5,53</td><td>4,5</td><td class="ok">AA</td></tr>
+        <tr><td>Oscuro · anillo del chip activo + caret (UI)</td><td><span class="sw" style="background:#A4E3A6"></span>#A4E3A6</td><td><span class="sw" style="background:#142519"></span>#142519</td><td class="n">10,79</td><td>3,0</td><td class="ok">AA UI</td></tr>
+        <tr><td>Oscuro · texto sobre pastel arena al 16%</td><td><span class="sw" style="background:#F1EEDD"></span>#F1EEDD</td><td><span class="sw" style="background:#3E5040"></span>#3E5040</td><td class="n">7,42</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Oscuro · CTA 19px/900 sobre el foco del radial</td><td><span class="sw" style="background:#0F1E14"></span>#0F1E14</td><td><span class="sw" style="background:#9FDC9F"></span>#9FDC9F</td><td class="n">10,86</td><td>4,5</td><td class="ok">AAA</td></tr>
+        <tr><td>Oscuro · CTA sobre el borde del radial</td><td><span class="sw" style="background:#0F1E14"></span>#0F1E14</td><td><span class="sw" style="background:#3E7D46"></span>#3E7D46</td><td class="n">3,48</td><td>3,0</td><td class="warn">AA large</td></tr>
+      </tbody>
+    </table>
+    <p class="tbl-note">
+      Las dos filas naranjas son el CTA radial del sistema, que en su punto más claro (claro) y más
+      oscuro (oscuro) cae por debajo de 4,5:1 — el mismo compromiso ya evaluado y aprobado en
+      <code>design/contraste-cta/</code>. Por eso <b>la etiqueta del CTA es 19px/900</b>: a ≥18,66px en
+      negrita el umbral aplicable es 3:1 y los dos temas pasan. El resto del pad no depende del
+      degradé. El <span class="warn">tertiary #9AA694</span> queda prohibido para texto en este pad
+      (1,97:1 sobre el raised claro): sólo se usa en el grabber y en el “$0” de placeholder, que es
+      decorativo y está duplicado por el caret y el hint.
+    </p>
+  </div>
+
+  <div class="card-r">
+    <h2>Notas de implementación</h2>
+    <div class="two">
+      <div class="bal">
+        <h3>Qué se conserva al cambiar de modo</h3>
+        <ul>
+          <li><b>Gasto ↔ Ingreso ↔ Gasto fijo</b> comparten el mismo pozo: el monto tipeado se
+            mantiene. Es el mismo dato con distinto signo y destino.</li>
+          <li><b>Importar captura</b> y <b>Día sin gasto</b> no tienen monto, así que reemplazan el
+            cuerpo entero. Al volver a un modo con teclado, el monto vuelve tal como estaba —
+            nunca se pierde por explorar.</li>
+          <li>El pozo, la fila de modos y el CTA <b>no se mueven de lugar</b> en ningún modo. Lo único
+            que cambia es el cuerpo. Eso es lo que hace que no se lea como navegación.</li>
+        </ul>
+      </div>
+      <div class="bal">
+        <h3>Rendimiento de este prototipo</h3>
+        <ul>
+          <li>Brot es el <b>web component real</b> del handoff (<code>../rediseno-2026-07/brot.js</code>),
+            canvas vanilla — no hay placeholder en ningún lado.</li>
+          <li>Sólo corre <b>un canvas animado por teléfono</b> (el Brot del modo visible). Los Brot de
+            los cuerpos ocultos y los de esta leyenda van con <code>animated="false"</code>: dibujan un
+            cuadro y se apagan.</li>
+          <li>El cambio de modo <b>desmonta y remonta</b> el Brot que sale para cortarle el
+            <code>requestAnimationFrame</code>: el componente arranca su loop en <code>connectedCallback</code>
+            y no lo frena por atributo.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../rediseno-2026-07/brot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ══ Modelo de modos ══════════════════════════════════ */
+  var MODES = [
+    { key: 'expense', chip: 'Gasto',   emoji: '🧾', body: 'pad',
+      eyebrow: 'GASTO', hint: 'Sale de tu disponible de hoy',
+      cta: 'Guardar gasto', pose: 'idle',
+      why: 'Es el modo por defecto: acompaña, no interrumpe.' },
+    { key: 'import',  chip: 'Captura', emoji: '📸', body: 'import',
+      cta: 'Leer la captura', pose: 'magic',
+      why: 'El OCR es magia: chispas mientras lee el ticket.' },
+    { key: 'nospend', chip: 'Sin gasto', emoji: '🌿', body: 'zen',
+      cta: 'Sumar el día a mi jardín', pose: 'zen',
+      why: 'No gastaste: es calma, y Brot pasa a protagonista.' },
+    { key: 'income',  chip: 'Ingreso', emoji: '💵', body: 'pad',
+      eyebrow: 'INGRESO', hint: 'Suma a lo que tenés este ciclo',
+      cta: 'Guardar ingreso', pose: 'cheer',
+      why: 'Entra plata al hogar: es la única buena noticia del pad.' },
+    { key: 'fixed',   chip: 'Fijo',    emoji: '📅', body: 'pad',
+      eyebrow: 'GASTO FIJO', hint: 'Se repite todos los meses',
+      cta: 'Guardar gasto fijo', pose: 'think',
+      why: 'Algo que se repite: hay que pensar el día y el monto.' }
+  ];
+
+  var TINT = {
+    light: { expense: 'rgba(46,124,57,.30)', import: 'rgba(150,124,206,.34)',
+             nospend: 'rgba(86,168,126,.32)', income: 'rgba(92,140,186,.32)',
+             fixed: 'rgba(184,146,84,.34)' },
+    dark:  { expense: 'rgba(164,227,166,.24)', import: 'rgba(198,184,240,.20)',
+             nospend: 'rgba(160,224,192,.20)', income: 'rgba(168,200,232,.20)',
+             fixed: 'rgba(226,200,150,.20)' }
+  };
+  var DOT = {
+    light: { expense: '#2E7C39', import: '#7C63B8', nospend: '#3E8F63', income: '#3F72A6', fixed: '#9A7327' },
+    dark:  { expense: '#A4E3A6', import: '#C6B8F0', nospend: '#A0E0C0', income: '#A8C8E8', fixed: '#E2C896' }
+  };
+
+  var KEYS = ['1','2','3','4','5','6','7','8','9',',','0','back'];
+
+  /* ══ Utilidades ═══════════════════════════════════════ */
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+
+  function fmt(raw) {
+    if (!raw) return '0';
+    var parts = raw.split(',');
+    var int = parts[0] || '0';
+    int = int.replace(/^0+(?=\d)/, '');
+    var grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return parts.length > 1 ? grouped + ',' + parts[1] : grouped;
+  }
+
+  /* Brot arranca su RAF en connectedCallback y no lo frena por atributo:
+     para prender/apagar hay que desmontar y remontar. */
+  function brotSet(node, pose, animated) {
+    var parent = node.parentNode;
+    if (!parent) return;
+    var next = node.nextSibling;
+    parent.removeChild(node);
+    if (pose) node.setAttribute('pose', pose);
+    node.setAttribute('animated', animated ? 'true' : 'false');
+    parent.insertBefore(node, next);
+  }
+
+  /* ══ Construcción de un teléfono ══════════════════════ */
+  function buildStage(theme) {
+    var stage = el('div', 'stage');
+    stage.setAttribute('data-theme', theme);
+
+    /* — Home de fondo — */
+    var home = el('div', 'home');
+    home.appendChild(el('div', 'statusbar',
+      '<span>9:41</span>' +
+      '<span class="sb-right">' +
+        '<span class="bars"><i style="height:5px"></i><i style="height:8px"></i><i style="height:11px"></i><i style="height:13px"></i></span>' +
+        '<span class="battery"><i></i></span>' +
+      '</span>'));
+    home.appendChild(el('div', 'home-head',
+      '<div class="avatar"></div>' +
+      '<div><div class="home-title">Hola, Marcos</div>' +
+      '<div class="home-sub">Ciclo del 5 al 4 · día 12 de 30</div></div>'));
+    home.appendChild(el('div', 'hero',
+      '<div class="hero-eyebrow">LIBRE ESTE MES</div>' +
+      '<div class="hero-amount">$184.320</div>' +
+      '<div class="hero-meter"><i></i></div>' +
+      '<div class="hero-foot"><span>Gastado $315.680</span><span>63%</span></div>'));
+    home.appendChild(el('div', 'chips',
+      '<div class="chip-bg"></div><div class="chip-bg"></div><div class="chip-bg"></div>'));
+    home.appendChild(el('div', 'rows-bg',
+      '<div class="row-bg"></div><div class="row-bg"></div><div class="row-bg"></div>'));
+    stage.appendChild(home);
+
+    stage.appendChild(el('div', 'nav', '<i></i><i></i><i style="opacity:0"></i><i></i><i></i>'));
+    stage.appendChild(el('div', 'fab',
+      '<span style="font-size:30px;font-weight:900;line-height:1">+</span>'));
+    stage.appendChild(el('div', 'scrim'));
+
+    /* — El pad — */
+    var pad = el('div', 'pad');
+    pad.appendChild(el('div', 'grabber'));
+
+    var head = el('div', 'pad-head');
+    head.appendChild(el('div', 'pad-eyebrow', 'CARGAR'));
+    var close = el('div', 'close', '✕');
+    head.appendChild(close);
+    pad.appendChild(head);
+
+    /* Fila de modos */
+    var rail = el('div', 'rail');
+    MODES.forEach(function (m, i) {
+      var chip = el('div', 'mode');
+      chip.setAttribute('data-i', String(i));
+      chip.setAttribute('data-key', m.key);
+      var tile = el('div', 'mode-tile', m.emoji);
+      tile.setAttribute('data-pastel', m.key);
+      chip.appendChild(tile);
+      chip.appendChild(el('div', 'mode-label', m.chip));
+      rail.appendChild(chip);
+    });
+    pad.appendChild(rail);
+
+    /* Cuerpos */
+    var panels = el('div', 'panels');
+
+    /* · cuerpo pad (monto + teclado) */
+    var pPad = el('div', 'panel');
+    pPad.setAttribute('data-body', 'pad');
+    var wellWrap = el('div', 'well-wrap');
+    wellWrap.appendChild(el('div', 'well-halo'));
+    var well = el('div', 'well');
+    var wcol = el('div', 'well-col');
+    wcol.appendChild(el('div', 'well-eyebrow',
+      '<span class="well-dot"></span><span class="well-eyebrow-txt">GASTO</span>'));
+    var amountRow = el('div', 'amount-row');
+    amountRow.appendChild(el('div', 'amount is-zero', '$0'));
+    amountRow.appendChild(el('div', 'caret'));
+    wcol.appendChild(amountRow);
+    wcol.appendChild(el('div', 'well-hint', 'Sale de tu disponible de hoy'));
+    well.appendChild(wcol);
+    var wbrot = el('div', 'well-brot');
+    var brotPad = document.createElement('brot-mascot');
+    brotPad.setAttribute('pose', 'idle');
+    brotPad.setAttribute('size', '74');
+    brotPad.setAttribute('shadow', 'false');
+    wbrot.appendChild(brotPad);
+    well.appendChild(wbrot);
+    wellWrap.appendChild(well);
+    pPad.appendChild(wellWrap);
+
+    var keys = el('div', 'keys');
+    KEYS.forEach(function (k, i) {
+      var key = el('div', 'key', k === 'back' ? '⌫' : k);
+      key.setAttribute('data-k', k);
+      key.setAttribute('data-row', String(Math.floor(i / 3)));
+      keys.appendChild(key);
+    });
+    pPad.appendChild(keys);
+    panels.appendChild(pPad);
+
+    /* · cuerpo importar */
+    var pImp = el('div', 'panel');
+    pImp.setAttribute('data-body', 'import');
+    pImp.hidden = true;
+    var drop = el('div', 'drop');
+    var dropEmpty = el('div', 'drop-empty');
+    dropEmpty.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px';
+    var dbrotWrap = el('div', 'drop-brot');
+    var brotImp = document.createElement('brot-mascot');
+    brotImp.setAttribute('pose', 'magic');
+    brotImp.setAttribute('size', '96');
+    brotImp.setAttribute('animated', 'false');
+    brotImp.setAttribute('shadow', 'false');
+    dbrotWrap.appendChild(brotImp);
+    dropEmpty.appendChild(dbrotWrap);
+    dropEmpty.appendChild(el('div', 'drop-title', 'Soltá o elegí una captura'));
+    dropEmpty.appendChild(el('div', 'drop-sub',
+      'Sirve la foto del ticket o el screenshot de la transferencia. Brot lee el monto y el comercio.'));
+    drop.appendChild(dropEmpty);
+    var dropFull = el('div', 'drop-full');
+    dropFull.style.cssText = 'display:none;flex-direction:column;align-items:center;gap:10px';
+    var ticket = el('div', 'ticket',
+      '<div class="tk-head">' +
+        '<div class="tk-badge" data-pastel="import">🧾</div>' +
+        '<div><div class="tk-store">Coto Barrio Norte</div><div class="tk-date">Hoy · 19:42</div></div>' +
+      '</div>' +
+      '<div class="tk-line"><span class="tk-lbl">Total leído</span><span class="tk-val">$12.480</span></div>' +
+      '<div class="tk-foot">3 renglones · categoría sugerida Mercado</div>');
+    dropFull.appendChild(ticket);
+    dropFull.appendChild(el('div', 'drop-sub', 'Revisás y confirmás en el paso siguiente.'));
+    drop.appendChild(dropFull);
+    pImp.appendChild(drop);
+    panels.appendChild(pImp);
+
+    /* · cuerpo día sin gasto */
+    var pZen = el('div', 'panel');
+    pZen.setAttribute('data-body', 'zen');
+    pZen.hidden = true;
+    var zen = el('div', 'zen');
+    var brotZen = document.createElement('brot-mascot');
+    brotZen.setAttribute('pose', 'zen');
+    brotZen.setAttribute('size', '128');
+    brotZen.setAttribute('animated', 'false');
+    brotZen.setAttribute('shadow', 'false');
+    zen.appendChild(brotZen);
+    zen.appendChild(el('div', 'zen-title', 'Hoy no gastaste nada'));
+    zen.appendChild(el('div', 'zen-sub',
+      'No hace falta monto. Confirmás el día y queda registrado en tu jardín.'));
+    zen.appendChild(el('div', 'zen-chip',
+      '<span class="zen-dot"></span>Sería tu día 12 seguido'));
+    pZen.appendChild(zen);
+    panels.appendChild(pZen);
+
+    pad.appendChild(panels);
+
+    var cta = el('div', 'cta', '<span class="cta-label">Guardar gasto</span>');
+    pad.appendChild(cta);
+
+    stage.appendChild(pad);
+
+    var ghost = el('div', 'fab-ghost', '<span>+</span>');
+    stage.appendChild(ghost);
+    stage.appendChild(el('div', 'homebar'));
+
+    /* ══ Estado y comportamiento ══ */
+    var S = {
+      mode: MODES[0],
+      raw: '',
+      hasFile: false,
+      timers: []
+    };
+    var q = function (sel) { return stage.querySelector(sel); };
+    var amountEl = q('.amount');
+    var caretEl = q('.caret');
+    var hintEl = q('.well-hint');
+    var eyebrowEl = q('.well-eyebrow-txt');
+    var dotEl = q('.well-dot');
+    var haloEl = q('.well-halo');
+    var ctaLabel = q('.cta-label');
+
+    function later(fn, ms) { var t = setTimeout(fn, ms); S.timers.push(t); return t; }
+    function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; }
+
+    function renderAmount() {
+      var zero = S.raw === '';
+      var txt = '$' + fmt(S.raw);
+      amountEl.textContent = txt;
+      amountEl.classList.toggle('is-zero', zero);
+      amountEl.classList.toggle('sm', txt.length > 9 && txt.length <= 11);
+      amountEl.classList.toggle('xs', txt.length > 11);
+    }
+
+    function press(k) {
+      if (S.mode.body !== 'pad') return;
+      if (k === 'back') {
+        S.raw = S.raw.slice(0, -1);
+      } else if (k === ',') {
+        if (S.raw.indexOf(',') === -1 && S.raw !== '') S.raw += ',';
+      } else {
+        var parts = S.raw.split(',');
+        if (parts.length > 1 && parts[1].length >= 2) return;
+        if (parts.length === 1 && parts[0].replace(/^0+/, '').length >= 9) return;
+        S.raw += k;
+      }
+      renderAmount();
+    }
+
+    function swapCta(text) {
+      ctaLabel.classList.add('swapping');
+      later(function () {
+        ctaLabel.textContent = text;
+        ctaLabel.classList.remove('swapping');
+      }, 100);
+    }
+
+    function showPanel(bodyKey) {
+      var panels = stage.querySelectorAll('.panel');
+      Array.prototype.forEach.call(panels, function (p) {
+        var isTarget = p.getAttribute('data-body') === bodyKey;
+        p.classList.remove('anim-in', 'anim-out');
+        if (isTarget) {
+          p.hidden = false;
+          void p.offsetWidth;
+          p.classList.add('anim-in');
+        } else if (!p.hidden) {
+          void p.offsetWidth;
+          p.classList.add('anim-out');
+          (function (node) {
+            later(function () { node.hidden = true; node.classList.remove('anim-out'); }, 150);
+          })(p);
+        }
+      });
+    }
+
+    function setMode(key, opts) {
+      opts = opts || {};
+      var m = null;
+      MODES.forEach(function (x) { if (x.key === key) m = x; });
+      if (!m || (m === S.mode && !opts.force)) return;
+      var prevBody = S.mode.body;
+      S.mode = m;
+
+      Array.prototype.forEach.call(stage.querySelectorAll('.mode'), function (c) {
+        c.classList.toggle('is-on', c.getAttribute('data-key') === key);
+      });
+
+      haloEl.style.background = TINT[theme][key];
+      dotEl.style.background = DOT[theme][key];
+
+      if (m.body === 'pad') {
+        eyebrowEl.textContent = m.eyebrow;
+        hintEl.textContent = m.hint;
+        renderAmount();
+      }
+
+      if (prevBody !== m.body || opts.force) showPanel(m.body);
+
+      /* Un solo canvas animado por teléfono: se apaga el que sale. */
+      brotSet(brotPad, m.body === 'pad' ? m.pose : 'idle', m.body === 'pad');
+      brotSet(brotImp, 'magic', m.body === 'import');
+      brotSet(brotZen, 'zen', m.body === 'zen');
+
+      swapCta(m.cta);
+    }
+
+    /* Interacción */
+    Array.prototype.forEach.call(stage.querySelectorAll('.mode'), function (c) {
+      c.addEventListener('click', function () {
+        setActive(stage);
+        setMode(c.getAttribute('data-key'));
+      });
+    });
+
+    Array.prototype.forEach.call(stage.querySelectorAll('.key'), function (k) {
+      var down = function () {
+        setActive(stage);
+        k.classList.add('is-down');
+        press(k.getAttribute('data-k'));
+      };
+      var up = function () { k.classList.remove('is-down'); };
+      k.addEventListener('mousedown', down);
+      k.addEventListener('mouseup', up);
+      k.addEventListener('mouseleave', up);
+      k.addEventListener('touchstart', function (e) { e.preventDefault(); down(); }, { passive: false });
+      k.addEventListener('touchend', up);
+    });
+
+    drop.addEventListener('click', function () {
+      S.hasFile = !S.hasFile;
+      drop.classList.toggle('has-file', S.hasFile);
+      dropEmpty.style.display = S.hasFile ? 'none' : 'flex';
+      dropFull.style.display = S.hasFile ? 'flex' : 'none';
+      swapCta(S.hasFile ? 'Revisar los 3 gastos' : 'Leer la captura');
+    });
+
+    close.addEventListener('click', function () { replay(stage); });
+    stage.addEventListener('mouseenter', function () { setActive(stage); });
+
+    /* API interna del stage */
+    stage.__api = {
+      reset: function () {
+        clearTimers();
+        S.raw = '';
+        S.hasFile = false;
+        drop.classList.remove('has-file');
+        dropEmpty.style.display = 'flex';
+        dropFull.style.display = 'none';
+        ctaLabel.classList.remove('swapping');
+        ctaLabel.textContent = MODES[0].cta;
+        S.mode = MODES[1]; /* fuerza el diff hacia expense */
+        setMode('expense', { force: true });
+        renderAmount();
+      },
+      type: function (seq, startAt, step) {
+        seq.split('').forEach(function (ch, i) {
+          later(function () {
+            var node = stage.querySelector('.key[data-k="' + ch + '"]');
+            if (node) {
+              node.classList.add('is-down');
+              later(function () { node.classList.remove('is-down'); }, 110);
+            }
+            press(ch);
+          }, startAt + i * step);
+        });
+      },
+      later: later,
+      clearTimers: clearTimers,
+      setMode: setMode,
+      state: S
+    };
+
+    return stage;
+  }
+
+  /* ══ Montaje ══════════════════════════════════════════ */
+  var frames = document.getElementById('frames');
+  var stages = [];
+  [['light', 'Claro · Salvia'], ['dark', 'Noche de bosque']].forEach(function (pair) {
+    var col = el('div', 'frame-col');
+    var st = buildStage(pair[0]);
+    col.appendChild(st);
+    col.appendChild(el('div', 'frame-label', pair[1]));
+    frames.appendChild(col);
+    stages.push(st);
+  });
+
+  var activeStage = stages[0];
+  function setActive(s) { activeStage = s; }
+  window.__setActive = setActive;
+
+  stages.forEach(function (s) { s.__api.reset(); });
+
+  /* ══ Reproducir la apertura ══ */
+  function replay(stage) {
+    var api = stage.__api;
+    api.reset();
+    stage.classList.remove('play');
+    void stage.offsetWidth;
+    stage.classList.add('play');
+    if (!document.body.classList.contains('reduced')) {
+      api.type('4500', 900, 150);
+    }
+  }
+  function replayAll() { stages.forEach(replay); }
+
+  document.getElementById('replay').addEventListener('click', replayAll);
+
+  /* ══ Ver el cambio de modo ══ */
+  document.getElementById('tour').addEventListener('click', function () {
+    stages.forEach(function (stage) {
+      var api = stage.__api;
+      api.clearTimers();
+      api.setMode('expense', { force: true });
+      api.state.raw = '';
+      api.type('12800', 120, 130);
+      api.later(function () { api.setMode('fixed'); }, 1150);
+      api.later(function () { api.setMode('income'); }, 2100);
+      api.later(function () { api.setMode('nospend'); }, 3050);
+      api.later(function () { api.setMode('import'); }, 4400);
+      api.later(function () { api.setMode('expense'); }, 5750);
+    });
+  });
+
+  /* ══ Reducir movimiento ══ */
+  document.getElementById('reduced').addEventListener('change', function (e) {
+    document.body.classList.toggle('reduced', e.target.checked);
+  });
+
+  /* ══ Teclado físico sobre el último teléfono tocado ══ */
+  document.addEventListener('keydown', function (e) {
+    if (!activeStage) return;
+    var k = null;
+    if (/^[0-9]$/.test(e.key)) k = e.key;
+    else if (e.key === ',' || e.key === '.') k = ',';
+    else if (e.key === 'Backspace') k = 'back';
+    if (!k) return;
+    e.preventDefault();
+    var node = activeStage.querySelector('.key[data-k="' + k + '"]');
+    if (node) {
+      node.classList.add('is-down');
+      setTimeout(function () { node.classList.remove('is-down'); }, 110);
+      node.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      node.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    }
+  });
+
+  /* ══ Leyenda de poses (todos apagados) ══ */
+  var poses = document.getElementById('poses');
+  MODES.forEach(function (m) {
+    var card = el('div', 'pose');
+    var b = document.createElement('brot-mascot');
+    b.setAttribute('pose', m.pose);
+    b.setAttribute('size', '78');
+    b.setAttribute('animated', 'false');
+    b.setAttribute('shadow', 'false');
+    card.appendChild(b);
+    card.appendChild(el('div', 'pose-action', m.chip));
+    card.appendChild(el('div', 'pose-name', m.pose));
+    card.appendChild(el('div', 'pose-why', m.why));
+    poses.appendChild(card);
+  });
+
+  /* Apertura automática al cargar */
+  setTimeout(replayAll, 260);
+})();
+</script>
+
+</body>
+</html>

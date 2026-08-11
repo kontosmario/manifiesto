@@ -6,6 +6,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Zonas del medidor, en los términos del handoff: sana ≤30%, media 30-50%,
  *  alta >50% de la base. NO son los umbrales viejos de la rama classic
@@ -101,5 +102,5 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
-  healthBadgeText: { fontSize: 11, fontWeight: '800' },
+  healthBadgeText: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })

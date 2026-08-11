@@ -77,10 +77,10 @@ export const PLAN_SPEC: Record<AuthMode, PlanSpec> = {
     monthCardFallback: '#ECEDE1',
     monthCardShadow:
       '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)',
-    monthLabel: '#6C7B67',
+    monthLabel: '#54644F',
     monthPrice: '#24382A',
-    monthPer: '#6C7B67',
-    monthMeta: '#6C7B67',
+    monthPer: '#54644F',
+    monthMeta: '#54644F',
     yearCardCss: 'linear-gradient(155deg, #337B39 0%, #4C9A52 55%, #5FAC64 100%)',
     yearCardFallback: '#4C9A52',
     yearCardShadow:

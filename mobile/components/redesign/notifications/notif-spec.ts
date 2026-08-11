@@ -10,10 +10,24 @@
  * Se pasan a `pastelDarkSolid` (skill color-palette: matiz preservado, L
  * de dark, S subida) para que en oscuro también tengan color distinto —
  * mismo tratamiento que la grilla de avatares de 5b.
+ *
+ * FUERA DEL MOCKUP: 7a/7b no dibujan la pill de severidad (es un arrastre
+ * semántico del feed vigente) ni contemplan los Android que descartan la
+ * sombra inset. Los tokens `pill*` y `hairline` se derivan del vocabulario
+ * neo, no del markup — por eso llevan su propia justificación.
  */
+import type { NotificationSeverity } from '@/features/notifications/use-notifications'
+import i18n from '@/lib/i18n'
 import { pastelDarkSolid } from '@/theme/neo-tokens'
+import type { SeverityPill } from '@/utils/notifications'
 
 export type NotifMode = 'light' | 'dark'
+
+/** Par tinta/fondo de la pill de severidad, ya resuelto para el tema. */
+interface NotifSeverityPill {
+  surface: string
+  ink: string
+}
 
 export interface NotifSpec {
   bg: string
@@ -56,6 +70,17 @@ export interface NotifSpec {
   emptyTitle: string
   emptyBody: string
   emptyChipDot: string
+  /**
+   * Línea de reemplazo para los pozos (chip / check / pozo del empty) cuando
+   * el device no dibuja `boxShadow` inset: sin ella esos tres elementos —uno
+   * de ellos el target del único gesto de la vista— se leen SOLO por su
+   * sombra y desaparecen. Mismo valor que `neo.sheetDivider`.
+   */
+  hairline: string
+  /** Pill de severidad de la card. */
+  pillSuccess: NotifSeverityPill
+  pillWarning: NotifSeverityPill
+  pillAlert: NotifSeverityPill
 }
 
 export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
@@ -77,7 +102,7 @@ export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
     cardShadow: '8px 8px 18px rgba(151,160,136,0.4), -8px -8px 18px rgba(255,255,255,0.92)',
     cardTitle: '#24382A',
     cardTime: '#9AA694',
-    cardBody: '#6C7B67',
+    cardBody: '#54644F',
     checkBackground: undefined,
     checkShadow: 'inset 3px 3px 7px rgba(151,160,136,0.38), inset -3px -3px 7px rgba(255,255,255,0.92)',
     checkStroke: '#2E7C39',
@@ -91,8 +116,17 @@ export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
     emptyWellBackground: undefined,
     emptyWellShadow: 'inset 6px 6px 13px rgba(151,160,136,0.4), inset -6px -6px 13px rgba(255,255,255,0.95)',
     emptyTitle: '#24382A',
-    emptyBody: '#6C7B67',
+    emptyBody: '#54644F',
     emptyChipDot: '#2E7C39',
+    hairline: 'rgba(151,160,136,0.25)',
+    // La pill es texto de 10px: en claro los tintes alpha del vocabulario
+    // dejan el par por debajo de AA (el verde de material da 3.76:1, el clay
+    // 3.11:1), así que el fondo es el pastel OPACO de la misma familia y la
+    // tinta el escalón profundo. `alert` invierte —fill clay + crema— porque
+    // ningún clay legible sobre pastel llegaba a 4.5:1, y de paso escala.
+    pillSuccess: { surface: '#DDEBDD', ink: '#1F5429' },
+    pillWarning: { surface: '#F7E3CF', ink: '#9A421F' },
+    pillAlert: { surface: '#A84A2F', ink: '#F5F2E1' },
   },
   dark: {
     bg: '#0F1A13',
@@ -130,5 +164,32 @@ export const NOTIF_SPEC: Record<NotifMode, NotifSpec> = {
     emptyTitle: '#F1EEDD',
     emptyBody: '#93A78F',
     emptyChipDot: '#A4E3A6',
+    hairline: 'rgba(101,152,113,0.18)',
+    pillSuccess: { surface: 'rgba(164,227,166,0.16)', ink: '#A4E3A6' },
+    pillWarning: { surface: 'rgba(242,168,126,0.16)', ink: '#F2A87E' },
+    pillAlert: { surface: '#E08765', ink: '#16271C' },
   },
+}
+
+/**
+ * Pill de severidad con el vocabulario del rediseño. Reemplaza a
+ * `pillForSeverity` (paleta de estado PRE-rediseño) dentro de la vista neo:
+ * los matices eran casi-iguales-pero-distintos a los del sistema y ninguno
+ * de los pares claros llegaba a AA.
+ */
+export function pillForSeverityNeo(
+  severity: NotificationSeverity,
+  mode: NotifMode,
+): SeverityPill | null {
+  const s = NOTIF_SPEC[mode]
+  switch (severity) {
+    case 'success':
+      return { ...s.pillSuccess, label: i18n.t('common:severity.success') }
+    case 'warning':
+      return { ...s.pillWarning, label: i18n.t('common:severity.warning') }
+    case 'alert':
+      return { ...s.pillAlert, label: i18n.t('common:severity.alert') }
+    default:
+      return null
+  }
 }

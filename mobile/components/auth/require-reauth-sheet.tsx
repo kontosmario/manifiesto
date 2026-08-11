@@ -31,7 +31,7 @@ import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as LocalAuthentication from 'expo-local-authentication'
 import { useRouter } from 'expo-router'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
 import { ModalCard } from '@/components/ui/modal-card'
 import { PinPad } from '@/components/auth/pin-pad'
 import { isPinComplete } from '@/components/auth/pin-pad-model'
@@ -43,7 +43,10 @@ import {
 import { getPinLength, getPinLockState, verifyPin } from '@/lib/pin-lock'
 import { triggerHaptic } from '@/lib/haptics'
 import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoInk } from '@/theme/neo-ink'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Sprint H · H7 — Threat model + fallback policy.
@@ -97,7 +100,9 @@ export function RequireReauthSheet({
   // capture for the rest of the app.
   useScreenCaptureProtection(visible)
   const { t } = useTranslation()
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
   const router = useRouter()
 
   const [method, setMethod] = useState<AuthMethod>('loading')
@@ -262,6 +267,7 @@ export function RequireReauthSheet({
 
   return (
     <ModalCard
+      skin="neo"
       visible={visible}
       title={t('auth:reauthSheet.title')}
       subtitle={t('auth:reauthSheet.subtitle', { action: actionLabel.toLowerCase() })}
@@ -269,7 +275,7 @@ export function RequireReauthSheet({
     >
       {method === 'loading' ? (
         <View style={styles.placeholder}>
-          <Text style={[styles.placeholderText, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.placeholderText, { color: neo.textMuted }]}>
             {t('auth:reauthSheet.loading')}
           </Text>
         </View>
@@ -278,28 +284,34 @@ export function RequireReauthSheet({
       {method === 'biometric' ? (
         <View style={styles.biometricBlock}>
           <MaterialIcons
-            color={theme.colors.primaryStrong}
+            color={ink.accent}
             name="fingerprint"
             size={48}
             style={{ alignSelf: 'center' }}
           />
-          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.biometricTitle, { color: neo.text }]}>
             {t('auth:reauthSheet.biometricTitle', {
               label: biometricState?.label ?? t('auth:reauthSheet.biometricLabelFallback'),
             })}
           </Text>
-          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.helperText, { color: neo.textMuted }]}>
             {biometricFailed
               ? t('auth:reauthSheet.biometricRetryHintFailed')
               : t('auth:reauthSheet.biometricRetryHint')}
           </Text>
           <View style={styles.actionsRow}>
-            <AppButton label={t('auth:reauthSheet.cancel')} onPress={onCancel} variant="ghost" />
-            <AppButton
+            <NeoButton
+              label={t('auth:reauthSheet.cancel')}
+              onPress={onCancel}
+              style={styles.actionButton}
+              variant="ghost"
+            />
+            <NeoButton
               disabled={isChecking}
               label={t('auth:reauthSheet.retry')}
               loading={isChecking}
               onPress={handleRetryBiometric}
+              style={styles.actionButton}
               variant="primary"
             />
           </View>
@@ -308,10 +320,10 @@ export function RequireReauthSheet({
 
       {method === 'pin' ? (
         <View style={styles.pinBlock}>
-          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.biometricTitle, { color: neo.text }]}>
             {t('auth:reauthSheet.pinTitle')}
           </Text>
-          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.helperText, { color: neo.textMuted }]}>
             {t('auth:reauthSheet.pinHelper')}
           </Text>
           <View style={styles.pinPadWrap}>
@@ -324,7 +336,7 @@ export function RequireReauthSheet({
             {pinLockoutMessage ? (
               <Text
                 accessibilityLiveRegion="polite"
-                style={[styles.lockoutText, { color: theme.colors.danger }]}
+                style={[styles.lockoutText, { color: ink.danger }]}
               >
                 {pinLockoutMessage}
               </Text>
@@ -338,7 +350,7 @@ export function RequireReauthSheet({
               { opacity: pressed ? 0.6 : 1 },
             ]}
           >
-            <Text style={[styles.cancelLinkText, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.cancelLinkText, { color: neo.textMuted }]}>
               {t('auth:reauthSheet.cancel')}
             </Text>
           </Pressable>
@@ -348,22 +360,28 @@ export function RequireReauthSheet({
       {method === 'none' ? (
         <View style={styles.placeholder}>
           <MaterialIcons
-            color={theme.colors.warning}
+            color={ink.warn}
             name="lock-outline"
             size={36}
             style={{ alignSelf: 'center' }}
           />
-          <Text style={[styles.biometricTitle, { color: theme.colors.text }]}>
+          <Text style={[styles.biometricTitle, { color: neo.text }]}>
             {t('auth:reauthSheet.noneTitle')}
           </Text>
-          <Text style={[styles.helperText, { color: theme.colors.textMuted }]}>
+          <Text style={[styles.helperText, { color: neo.textMuted }]}>
             {t('auth:reauthSheet.noneBody')}
           </Text>
           <View style={styles.actionsRow}>
-            <AppButton label={t('auth:reauthSheet.cancel')} onPress={onCancel} variant="ghost" />
-            <AppButton
+            <NeoButton
+              label={t('auth:reauthSheet.cancel')}
+              onPress={onCancel}
+              style={styles.actionButton}
+              variant="ghost"
+            />
+            <NeoButton
               label={t('auth:reauthSheet.goToSettings')}
               onPress={handleGoToSettings}
+              style={styles.actionButton}
               variant="primary"
             />
           </View>
@@ -380,6 +398,8 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   biometricBlock: {
@@ -388,12 +408,15 @@ const styles = StyleSheet.create({
   },
   biometricTitle: {
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     textAlign: 'center',
     letterSpacing: -0.2,
   },
   helperText: {
     fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
     textAlign: 'center',
   },
@@ -401,6 +424,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginTop: 8,
+  },
+  // Los dos CTA reparten el ancho: `NeoButton` no se estira solo salvo
+  // con `block`, que acá dejaría cada uno a ancho completo.
+  actionButton: {
+    flex: 1,
   },
   pinBlock: {
     gap: 12,
@@ -412,7 +440,8 @@ const styles = StyleSheet.create({
   },
   lockoutText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
   },
   cancelLink: {
@@ -422,6 +451,7 @@ const styles = StyleSheet.create({
   },
   cancelLinkText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

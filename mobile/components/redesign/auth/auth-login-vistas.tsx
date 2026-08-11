@@ -601,7 +601,11 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
-    lineHeight: 34,
+    // Headroom sobre el fontSize: el título lleva el NOMBRE del usuario, y en
+    // iOS la baseline queda a `lineHeight − descent` del tope — con
+    // `lineHeight == fontSize` una mayúscula (0.705em) o una tilde salían
+    // rebanadas arriba.
+    lineHeight: 34 * 1.2,
     marginTop: 4,
   },
   // 36 (antes 22): la cabecita de Brot asoma ~20dp sobre el medallón y

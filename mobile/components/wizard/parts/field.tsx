@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function Field({
   label,
@@ -62,16 +63,17 @@ export function Field({
 }
 
 const styles = StyleSheet.create({
-  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700' },
+  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   hintPill: {
     borderRadius: 8,
     fontSize: 9.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     marginBottom: 8,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
   // Empujado a la derecha: el label queda a la izquierda y esto al final.
-  trailing: { fontSize: 11, fontWeight: '800', marginBottom: 8, marginLeft: 'auto' },
+  trailing: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), marginBottom: 8, marginLeft: 'auto' },
 })

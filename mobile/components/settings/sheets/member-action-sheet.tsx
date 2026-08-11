@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
 import {
@@ -12,14 +12,15 @@ import {
   roleLabel,
 } from '@/features/family/member-display'
 import type { FamilyMemberStats } from '@/features/family/use-family-admin'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
-import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
 import { withAlpha } from '@/theme/color-utils'
-import { neoTokens } from '@/theme/neo-tokens'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { formatMoney } from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
+import { nunitoFamily } from '@/theme/typography'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
 type MemberAction = 'block' | 'unblock' | 'remove'
@@ -120,9 +121,14 @@ export function MemberActionSheet({
   const name = m.displayName
   // Bloques de datos y de acciones dentro de la hoja: pozo, no relieve.
   const surface = neo.well
+  // Android < API 29 descarta el boxShadow INSET en silencio: sin él el pozo
+  // queda del material de la hoja (~1.05:1 en claro) y el bloque desaparece.
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
 
   return (
-    <ModalCard visible={visible} title="" subtitle="" onClose={onClose}>
+    <ModalCard skin="neo" visible={visible} title="" subtitle="" onClose={onClose}>
       {confirm ? (
         <View style={styles.confirmCenter}>
           <View
@@ -154,7 +160,9 @@ export function MemberActionSheet({
           ) : null}
           <View style={styles.buttonRow}>
             <View style={styles.buttonCell}>
-              <AppButton
+              <NeoButton
+                block
+                haptic="none"
                 label={t('common:actions.cancel')}
                 variant="ghost"
                 disabled={submitting}
@@ -165,7 +173,9 @@ export function MemberActionSheet({
               />
             </View>
             <View style={styles.buttonCell}>
-              <AppButton
+              <NeoButton
+                block
+                haptic={confirm.danger ? 'warning' : 'light'}
                 label={confirm.cta}
                 variant={confirm.danger ? 'danger' : 'primary'}
                 loading={submitting}
@@ -205,7 +215,11 @@ export function MemberActionSheet({
 
           {/* Métricas — celdas centradas */}
           <View
-            style={[styles.statsCard, { backgroundColor: surface, borderColor: neo.sheetDivider }]}
+            style={[
+              styles.statsCard,
+              { backgroundColor: surface, boxShadow: neo.shadows.insetSm },
+              flatFallback,
+            ]}
           >
             <View style={styles.statsRow}>
               <StatCell
@@ -241,7 +255,11 @@ export function MemberActionSheet({
             </Text>
           ) : (
             <View
-              style={[styles.actionsCard, { backgroundColor: surface, borderColor: neo.sheetDivider }]}
+              style={[
+                styles.actionsCard,
+                { backgroundColor: surface, boxShadow: neo.shadows.insetSm },
+                flatFallback,
+              ]}
             >
               {m.role === 'blocked' ? (
                 <>
@@ -345,9 +363,12 @@ function ActionRow({ icon, label, destructive = false, isLast = false, onPress }
       <View
         style={[
           styles.actionRow,
+          // 1.5px es el ÚNICO hairline del vocabulario neo (el mismo que separa
+          // las filas de `SettingsGroup`). A `hairlineWidth` el trazo queda en
+          // 0.33pt contra un `sheetDivider` de bajo contraste: no se ve.
           !isLast && {
             borderBottomColor: neo.sheetDivider,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomWidth: 1.5,
           },
         ]}
       >
@@ -366,9 +387,9 @@ function RoleBadge({ role }: { role: FamilyMemberStats['role'] }) {
   if (role === 'member') return null
   const bg =
     role === 'owner' ? neo.selectedTint : withAlpha(neo.warm, 0.16)
-  const fg = role === 'owner' ? neo.greenDeep : ink.danger
+  const fg = role === 'owner' ? ink.accent : ink.danger
   return (
-    <View style={[styles.badge, { backgroundColor: bg, borderColor: neo.sheetDivider }]}>
+    <View style={[styles.badge, { backgroundColor: bg }]}>
       <Text style={[styles.badgeText, { color: fg }]}>{roleLabel(role)}</Text>
     </View>
   )
@@ -417,30 +438,31 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 19,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     textAlign: 'center',
     maxWidth: '74%',
   },
   since: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radii.pill,
-    borderWidth: 1,
+    borderRadius: neoRadii.pill,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
   // Métricas
   statsCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
     paddingVertical: 16,
     paddingHorizontal: 12,
     gap: 14,
@@ -450,7 +472,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statsDivider: {
-    height: StyleSheet.hairlineWidth,
+    height: 1.5,
     marginHorizontal: 4,
   },
   statCell: {
@@ -461,6 +483,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     textAlign: 'center',
@@ -468,18 +491,19 @@ const styles = StyleSheet.create({
   statPrimary: {
     fontSize: 17,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
   statSecondary: {
     fontSize: 11,
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   // Acciones centradas
   actionsCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
     overflow: 'hidden',
   },
   actionRow: {
@@ -494,9 +518,11 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   ownerNote: {
     fontSize: 13,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
     textAlign: 'center',
     paddingHorizontal: 8,
@@ -510,18 +536,20 @@ const styles = StyleSheet.create({
   confirmIcon: {
     width: 52,
     height: 52,
-    borderRadius: radii.pill,
+    borderRadius: neoRadii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   confirmTitle: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     textAlign: 'center',
   },
   confirmBody: {
     fontSize: 14,
+    fontFamily: nunitoFamily('400'),
     lineHeight: 20,
     textAlign: 'center',
     paddingHorizontal: 6,
@@ -529,6 +557,7 @@ const styles = StyleSheet.create({
   confirmError: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   buttonRow: {
@@ -537,8 +566,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
     alignSelf: 'stretch',
   },
-  // Celda flex:1 para que ambos botones queden 50/50 (parejos). El AppButton
-  // es fullWidth → estira al ancho de la celda; el label ya va centrado.
+  // Celda flex:1 para que ambos botones queden 50/50 (parejos). El botón va
+  // `block` → estira al ancho de la celda; el label ya va centrado.
   buttonCell: {
     flex: 1,
   },

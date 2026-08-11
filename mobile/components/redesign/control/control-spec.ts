@@ -110,7 +110,7 @@ export interface ControlSpec {
   /** raisedLg canónico (coincide con neo-tokens en ambos temas). */
   cardShadow: string
   text: string
-  /** #6C7B67 / #93A78F — texto secundario y labels de sección. */
+  /** #54644F / #93A78F — texto secundario y labels de sección. */
   sub: string
   /** #9AA694 / #7C917A — apagado (eyebrows chicos, ejes, captions). */
   faint: string
@@ -225,7 +225,7 @@ export const CONTROL_SPEC: Record<ControlMode, ControlSpec> = {
     cardGradientCss: undefined,
     cardShadow: RAISE_L,
     text: '#24382A',
-    sub: '#6C7B67',
+    sub: '#54644F',
     faint: '#9AA694',
     green: '#2E7C39',
     orange: '#C25B33',
@@ -235,7 +235,7 @@ export const CONTROL_SPEC: Record<ControlMode, ControlSpec> = {
     insDeep: INS_DEEP_L,
 
     headerTitleInk: '#24382A',
-    cycTrigInk: '#6C7B67',
+    cycTrigInk: '#54644F',
     cycTrigDot: '#2E7C39',
     scoreTrack: '#D2D6C6',
     scoreStroke: '#3E8746',
@@ -245,7 +245,7 @@ export const CONTROL_SPEC: Record<ControlMode, ControlSpec> = {
     heroShadow:
       '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.28)',
 
-    sectionLabelInk: '#6C7B67',
+    sectionLabelInk: '#54644F',
     neutralBarCss: 'linear-gradient(90deg, #D9DCCC, #C9CDBB)',
     neutralBarFallback: '#D9DCCC',
     greenBarCss: 'linear-gradient(90deg, #7FB069, #3E8746)',
@@ -271,7 +271,7 @@ export const CONTROL_SPEC: Record<ControlMode, ControlSpec> = {
     tipBgFallback: '#F4E1CD',
     tipInk: '#7A4A2E',
     tipShadow: INS_L,
-    ctaRadialCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaRadialCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaRadialFallback: '#2E7434',
     ctaInk: '#F5F2E1',
     ctaShadow: '0 6px 12px rgba(46,116,52,0.3)',
@@ -334,7 +334,7 @@ export const CONTROL_SPEC: Record<ControlMode, ControlSpec> = {
     tipBgFallback: '#32241A',
     tipInk: '#E8B79A',
     tipShadow: INS_D,
-    ctaRadialCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaRadialCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaRadialFallback: '#2E7434',
     ctaInk: '#F5F2E1',
     ctaShadow: '0 6px 12px rgba(46,116,52,0.3)',

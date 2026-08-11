@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import {
   Pressable,
   StyleSheet,
@@ -7,6 +7,8 @@ import {
   useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type TextStyle,
+  type ViewStyle,
 } from 'react-native'
 import Animated, {
   Extrapolation,
@@ -22,7 +24,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { useTranslation } from 'react-i18next'
 import { usePressScale } from '@/hooks/use-press-scale'
-import { authTokens } from '@/theme/palette'
+import { AUTH_SPEC, type AuthMode } from '@/components/redesign/auth/auth-spec'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeMode } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import {
   SlideBrand,
   SlideCta,
@@ -34,13 +40,56 @@ import {
 const SLIDE_COUNT = 5
 const LAST = SLIDE_COUNT - 1
 
-// El fondo de la intro es SIEMPRE verde oscuro de marca (BrandBackdrop +
-// WelcomeScreen, ambos theme-independent), así que el chrome —dots, "Seguir",
-// "Saltar"— usa SIEMPRE el esquema claro-sobre-oscuro (alto contraste en light
-// y dark mode por igual). Mint sobre verde y blanco sobre verde pasan WCAG AA.
-const DOT_ACTIVE = '#9FE08A'
-// 0.42 (no 0.28) → ~3.2:1 sobre el verde oscuro = pasa WCAG AA para componentes UI.
-const DOT_INACTIVE = 'rgba(255,255,255,0.42)'
+/**
+ * Chrome del pager por tema (riel de dots + CTA). Se arma una vez por modo al
+ * cargar el módulo: el render solo elige uno.
+ *
+ * Contrastes calculados (peor par de cada tema):
+ *  · dot activo — claro 4.29:1 / oscuro 10.79:1 sobre el pozo del riel.
+ *  · dot inactivo — claro 5.26:1 / oscuro 6.24:1. Ambos ≥ 3:1 de componente UI.
+ *  · label del CTA — oscuro 9.17:1. En CLARO la receta del spec da 3.36:1
+ *    sobre el stop más claro del radial: es el MISMO fill y la misma tinta
+ *    del "Empezar" de la Bienvenida a la que lleva (AuthCta variant welcome),
+ *    así que se conserva tal cual y el tamaño del label se iguala al de ese
+ *    CTA en vez de abrir una receta propia acá.
+ */
+interface ChromeInk {
+  root: ViewStyle
+  rail: ViewStyle
+  dotActive: string
+  dotInactive: string
+  next: ViewStyle
+  nextText: TextStyle
+}
+
+function buildChrome(mode: AuthMode): ChromeInk {
+  const s = AUTH_SPEC[mode]
+  const neo = neoTokens(mode)
+  return {
+    root: { backgroundColor: s.welcomeBg },
+    // Riel hundido: los puntos viven en un surco, no sueltos sobre el fondo.
+    // Android sin soporte de inset aplana el pozo en silencio → hairline.
+    rail: {
+      backgroundColor: neo.well,
+      boxShadow: neo.shadows.insetSm,
+      borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+      borderColor: neo.sheetDivider,
+    },
+    dotActive: s.linkAccent,
+    dotInactive: s.helper,
+    next: {
+      experimental_backgroundImage: s.ctaWelcomeCss,
+      backgroundColor: s.ctaWelcomeFallback,
+      boxShadow: s.ctaWelcomeShadow,
+    },
+    nextText: { color: s.ctaWelcomeText },
+  }
+}
+
+const CHROME: Record<AuthMode, ChromeInk> = {
+  light: buildChrome('light'),
+  dark: buildChrome('dark'),
+}
 
 export interface IntroScreenProps {
   /** "Crear mi hogar" → marca el intro como visto + va a signup. */
@@ -52,31 +101,45 @@ export interface IntroScreenProps {
 /**
  * Un punto del indicador. INTERPOLA por la posición real del scroll: el punto
  * activo crece (8→24) y su color hace crossfade mientras deslizás (no de golpe
- * al soltar). Colores constantes (claro-sobre-oscuro) porque el fondo siempre
- * es verde oscuro.
+ * al soltar). El relieve del riel es estático (los strings de boxShadow no son
+ * animables): lo que se anima es el ancho y el fill del punto.
  */
 function Dot({
   i,
   scrollX,
   width,
+  activeColor,
+  inactiveColor,
 }: {
   i: number
   scrollX: SharedValue<number>
   width: number
+  activeColor: string
+  inactiveColor: string
 }) {
   const style = useAnimatedStyle(() => {
     const page = width > 0 ? scrollX.value / width : 0
     const prox = interpolate(page, [i - 1, i, i + 1], [0, 1, 0], Extrapolation.CLAMP)
     return {
       width: 8 + prox * 16,
-      backgroundColor: interpolateColor(prox, [0, 1], [DOT_INACTIVE, DOT_ACTIVE]),
+      backgroundColor: interpolateColor(prox, [0, 1], [inactiveColor, activeColor]),
     }
   })
   return <Animated.View style={[styles.dot, style]} />
 }
 
-/** Botón "Seguir" — mint sobre verde con texto oscuro + press-scale. */
-function NextButton({ onPress, label }: { onPress: () => void; label: string }) {
+/** Botón "Seguir" — la receta del CTA de la Bienvenida (3a) en pastilla
+ *  compacta: mismo fill, misma sombra extruida, misma tinta y mismo cuerpo de
+ *  label que el "Empezar" al que lleva. */
+function NextButton({
+  onPress,
+  label,
+  chrome,
+}: {
+  onPress: () => void
+  label: string
+  chrome: ChromeInk
+}) {
   const press = usePressScale({ pressedScale: 0.96 })
   return (
     <Pressable
@@ -85,8 +148,8 @@ function NextButton({ onPress, label }: { onPress: () => void; label: string }) 
       onPressOut={press.onPressOut}
       accessibilityRole="button"
     >
-      <Animated.View style={[styles.next, press.animatedStyle]}>
-        <Text style={styles.nextText}>{label}</Text>
+      <Animated.View style={[styles.next, chrome.next, press.animatedStyle]}>
+        <Text style={[styles.nextText, chrome.nextText]}>{label}</Text>
       </Animated.View>
     </Pressable>
   )
@@ -94,15 +157,24 @@ function NextButton({ onPress, label }: { onPress: () => void; label: string }) 
 
 /**
  * Pre-auth onboarding intro — 5 slides a pantalla completa que reusan los
- * componentes REALES de la app (HomeHeroCard, FijosHeroCard, GastoRow,
- * IncomeRow, StreakWeekWidget) alimentados con datos ilustrativos. El slide 5
- * es la WelcomeScreen real. Pager = ScrollView horizontal paginado (flex:1, a
- * pantalla completa). El indicador y el CTA se animan por la posición del scroll.
+ * componentes REALES de la app (hero de la Home, hero de Fijos y filas del
+ * feed de Gastos, Brot y los brotes del cierre de semana) alimentados con
+ * datos ilustrativos. El slide 5 es la Bienvenida real. Pager = ScrollView
+ * horizontal paginado (flex:1, a pantalla completa). El indicador y el CTA se
+ * animan por la posición del scroll.
+ *
+ * TEMA: el pager entero sigue el tema resuelto de la app — fondo, vitrinas,
+ * chrome, StatusBar y la Bienvenida del slide 5 (que recibe el modo por
+ * `forceMode`) leen el MISMO valor. Los tres puntos van juntos: si alguno
+ * volviera a fijarse en 'dark' quedaría chrome de un tema sobre slides del
+ * otro.
  */
 export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
   const { t } = useTranslation()
   const { width } = useWindowDimensions()
   const insets = useSafeAreaInsets()
+  const mode = useThemeMode().resolvedMode
+  const chrome = CHROME[mode]
   const scrollRef = useAnimatedRef<Animated.ScrollView>()
   const scrollX = useSharedValue(0)
   const [index, setIndex] = useState(0)
@@ -134,11 +206,11 @@ export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
   )
 
   const isLast = index === LAST
+  const rootStyle = useMemo(() => [styles.root, chrome.root], [chrome])
 
   return (
-    <View style={styles.root}>
-      {/* Fondo siempre oscuro → status bar clara en light y dark mode. */}
-      <StatusBar style="light" />
+    <View style={rootStyle}>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -151,12 +223,13 @@ export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
         onMomentumScrollEnd={onMomentumEnd}
         scrollEventThrottle={16}
       >
-        <SlideBrand width={width} active={index === 0} scrollX={scrollX} index={0} />
-        <SlideNumber width={width} active={index === 1} scrollX={scrollX} index={1} />
-        <SlideMovements width={width} active={index === 2} scrollX={scrollX} index={2} />
-        <SlideGarden width={width} active={index === 3} scrollX={scrollX} index={3} />
+        <SlideBrand width={width} mode={mode} active={index === 0} scrollX={scrollX} index={0} />
+        <SlideNumber width={width} mode={mode} active={index === 1} scrollX={scrollX} index={1} />
+        <SlideMovements width={width} mode={mode} active={index === 2} scrollX={scrollX} index={2} />
+        <SlideGarden width={width} mode={mode} active={index === 3} scrollX={scrollX} index={3} />
         <SlideCta
           width={width}
+          mode={mode}
           active={index === LAST}
           scrollX={scrollX}
           index={LAST}
@@ -167,7 +240,7 @@ export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
 
       {!isLast ? (
         <View style={[styles.footer, { bottom: insets.bottom + 24 }]}>
-          <View style={styles.dots}>
+          <View style={[styles.dots, chrome.rail]}>
             {/* 4 puntos = los 4 slides del showcase. El welcome (índice 4 = LAST)
                 es el destino de "Comenzar", no un paso del showcase → sin punto. */}
             {Array.from({ length: LAST }).map((_, i) => (
@@ -178,13 +251,20 @@ export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
                 accessibilityRole="button"
                 accessibilityLabel={t('onboarding:intro.dotLabel', { n: i + 1 })}
               >
-                <Dot i={i} scrollX={scrollX} width={width} />
+                <Dot
+                  i={i}
+                  scrollX={scrollX}
+                  width={width}
+                  activeColor={chrome.dotActive}
+                  inactiveColor={chrome.dotInactive}
+                />
               </Pressable>
             ))}
           </View>
           {/* En la última slide ANTES del welcome el CTA es puntual ("Comenzar")
               en vez de "Seguir" — señala el final del showcase y la entrada al alta. */}
           <NextButton
+            chrome={chrome}
             onPress={() => goTo(index + 1)}
             label={t(index === LAST - 1 ? 'onboarding:intro.cta.begin' : 'onboarding:intro.cta.next')}
           />
@@ -195,9 +275,7 @@ export function IntroScreen({ onCreate, onLogin }: IntroScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  // Fondo oscuro (no theme.canvas) para que no haya flash claro en light mode
-  // durante el bounce del scroll; los slides lo cubren igual.
-  root: { flex: 1, backgroundColor: authTokens.welcomeBg },
+  root: { flex: 1 },
   scroll: { flex: 1 },
   footer: {
     position: 'absolute',
@@ -208,15 +286,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  dots: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: neoRadii.pill,
+  },
   dot: { height: 8, borderRadius: 4 },
   next: {
     height: 52,
     paddingHorizontal: 26,
-    borderRadius: 17,
+    borderRadius: neoRadii.input,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#9FE08A',
   },
-  nextText: { fontSize: 15.5, fontWeight: '800', color: '#0E2A19' },
+  nextText: {
+    // Mismo cuerpo que el label del CTA "Empezar" (auth-kit · ctaLabelWelcome).
+    fontSize: 16.5,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+  },
 })

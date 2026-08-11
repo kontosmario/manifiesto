@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
+import { BrotMascot } from '@/components/brot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
+import { wrappedPalette } from '@/components/wrapped/wrapped-constants'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAuthSession } from '@/features/auth/use-auth-session'
@@ -22,6 +23,8 @@ import { monthShort } from '@/utils/date-format'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
 import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import type { ResolvedThemeMode } from '@/theme/palette'
 import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapter'
 
 /**
@@ -47,7 +50,11 @@ import type { MonthlySummaryHistory } from '@/features/insights/control-v2-adapt
  */
 export function EditionsScreen() {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
+  const mode: ResolvedThemeMode = theme.isDark ? 'dark' : 'light'
+  const neo = neoTokens(mode)
+  // El escalón apagado de la paleta del Wrapped: `textMuted` sobre el
+  // fondo de la pantalla no llega a 4.5:1 y esto es una línea de 13px.
+  const outroInk = useMemo(() => wrappedPalette(mode).paper.foregroundSoft, [mode])
   const { t } = useTranslation()
   const { data: session } = useAuthSession()
   const userId = session?.user?.id
@@ -130,7 +137,6 @@ export function EditionsScreen() {
       subtitle={t('billing:editions.subtitle')}
       canGoBack
     >
-      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       {isLoading ? null : editions.length === 0 ? (
         <RiseView>
           <NeoStateBlock
@@ -156,6 +162,15 @@ export function EditionsScreen() {
               </RiseView>
             ))}
           </View>
+
+          <RiseView delay={520}>
+            <View style={styles.outro}>
+              <BrotMascot pose="zen" size={96} shadow={false} />
+              <Text style={[styles.outroCaption, { color: outroInk }]}>
+                {t('billing:editions.outroCaption')}
+              </Text>
+            </View>
+          </RiseView>
         </View>
       )}
     </Screen>
@@ -171,9 +186,10 @@ interface MastheadProps {
 
 function Masthead({ savedTotal, cycleCount }: MastheadProps) {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const mode: ResolvedThemeMode = theme.isDark ? 'dark' : 'light'
+  const neo = neoTokens(mode)
+  const cardMaterial = neoMaterial(mode)
+  const ink = neoInk(mode)
   const { t } = useTranslation()
   return (
     <View
@@ -224,12 +240,13 @@ interface EditionRowProps {
 
 function EditionRow({ edition, sobrante, onPress }: EditionRowProps) {
   const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
+  const mode: ResolvedThemeMode = theme.isDark ? 'dark' : 'light'
+  const neo = neoTokens(mode)
+  const cardMaterial = neoMaterial(mode)
   const { t } = useTranslation()
   const press = usePressScale({ pressedScale: 0.97 })
 
-  const tone = resolveTone(sobrante, theme.isDark)
+  const tone = useMemo(() => resolveTone(sobrante, mode), [sobrante, mode])
   const toneLabel = t(`billing:editions.${tone.labelKey}`)
   const range = useMemo(
     () => buildShortRange(edition.period_start, edition.period_end),
@@ -323,24 +340,38 @@ interface RowTone {
   labelKey: 'toneMargin' | 'toneExceeded' | 'toneEven'
 }
 
-function resolveTone(delta: number, isDark: boolean): RowTone {
+/**
+ * Tintas del veredicto — la fila es la miniatura de esa edición, así que
+ * salen de la misma tabla que pinta sus escenas (`wrappedPalette`).
+ *
+ * De los cinco tonos sólo se consumen los dos cuyo PANEL sigue al tema:
+ * la fila es material `surface` (clara en claro, oscura en oscuro) y
+ * `surface`/`warm` resuelven sus tintas contra ese mismo par. El tono
+ * `green` del veredicto positivo es un panel oscuro en los DOS temas —
+ * su acento está calculado para caer sobre el verde profundo y sobre la
+ * fila clara daría ~1.1:1 — así que el margen toma el acento de
+ * `surface`, que es el verde del sistema ya corregido por contraste.
+ */
+function resolveTone(delta: number, mode: ResolvedThemeMode): RowTone {
+  const palette = wrappedPalette(mode)
+  const row = palette.surface
   if (delta > 0) {
     return {
-      dotColor: isDark ? '#A6EF8F' : '#1F590D',
-      amountColor: isDark ? '#A6EF8F' : '#10410A',
+      dotColor: row.accent,
+      amountColor: row.accent,
       labelKey: 'toneMargin',
     }
   }
   if (delta < 0) {
     return {
-      dotColor: isDark ? '#F2A78C' : '#B84014',
-      amountColor: isDark ? '#F2A78C' : '#8E2A0C',
+      dotColor: palette.warm.accent,
+      amountColor: palette.warm.accent,
       labelKey: 'toneExceeded',
     }
   }
   return {
-    dotColor: isDark ? '#C3D2C9' : '#3B6D57',
-    amountColor: isDark ? '#F4FDF2' : '#12211A',
+    dotColor: row.foregroundSoft,
+    amountColor: row.foreground,
     labelKey: 'toneEven',
   }
 }
@@ -390,11 +421,13 @@ const styles = StyleSheet.create({
   mastheadEyebrow: {
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 2.2,
   },
   mastheadAmount: {
     fontSize: 36,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
@@ -411,6 +444,7 @@ const styles = StyleSheet.create({
   mastheadCaption: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.2,
   },
 
@@ -438,6 +472,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   rowMeta: {
@@ -448,6 +483,7 @@ const styles = StyleSheet.create({
   rowMetaText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.1,
   },
   rowAmountWrap: {
@@ -457,13 +493,31 @@ const styles = StyleSheet.create({
   rowAmount: {
     fontSize: 16,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
   rowAmountLabel: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.2,
     textTransform: 'uppercase',
+  },
+
+  // Cierre del archivo
+  outro: {
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  outroCaption: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    letterSpacing: 0.1,
+    textAlign: 'center',
+    maxWidth: 260,
   },
 })

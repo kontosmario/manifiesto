@@ -81,7 +81,7 @@ import {
   fijosHeroAvisosSpacing,
 } from '@/components/redesign/fijos/fijos-screen'
 import { FIJOS_RADII, FIJOS_SPEC, type FijosMode } from '@/components/redesign/fijos/fijos-spec'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
@@ -122,7 +122,6 @@ import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { motionDurations, motionEasings } from '@/lib/motion'
 import { neoConfirm } from '@/lib/confirm-bus'
 import { toast } from '@/lib/toast-bus'
-import { brand } from '@/theme/palette'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeMode } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
@@ -777,8 +776,12 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   if (controller.error && controller.allItems.length === 0) {
     return (
       <Screen backgroundColor={s.bg} scrollable={false}>
-        <ErrorState
+        <NeoStateBlock
+          icon="error-outline"
           description={getErrorMessage(controller.error, t('states:error.server'))}
+          title={t('states:errorState.title')}
+          actionLabel={t('states:errorState.action')}
+          tone="error"
           onAction={() => void snapshot.refetch()}
         />
       </Screen>
@@ -805,10 +808,14 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
       scrollEventThrottle={16}
       refreshControl={
         <RefreshControl
-          colors={[brand.deep]}
+          colors={[s.text]}
           onRefresh={handleRefresh}
+          // Android dibuja el spinner sobre un DISCO propio, blanco por
+          // default: sobre el canvas oscuro queda como un parche brillante
+          // ajeno al material. Con el color de card el disco se integra.
+          progressBackgroundColor={s.cardBackground}
           refreshing={isRefreshing}
-          tintColor={brand.bright}
+          tintColor={s.text}
         />
       }
       scrollRef={scrollRef}
@@ -898,6 +905,7 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
           pagadosCount={String(paidCount)}
           pendientesCount={String(pendingCount)}
           vencidosCount={String(overdueCount)}
+          visibleTabs={controller.visibleTabs}
         />
         <Animated.View layout={sectionLayout} style={styles.categoryList}>
           {/* `controller.groups` SÍ está filtrado por el tab activo — igual que
@@ -945,14 +953,23 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
  */
 function NeoFijosSkeleton({ mode }: { mode: FijosMode }) {
   const s = FIJOS_SPEC[mode]
+  const { t } = useTranslation()
   return (
     <View
-      accessibilityLabel="Cargando fijos"
+      accessibilityLabel={t('states:loading.fixedExpenses')}
       accessibilityRole="progressbar"
       style={styles.body}
     >
       <View style={styles.skHeaderRow}>
-        <View style={[styles.skCyclePill, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+        {/* Columna izquierda = título (lineHeight 38) + trigger de ciclo
+            (marginTop 6 + 18) del `FijosHeader` real: sin la placa del título
+            el header medía 48 y la vista saltaba 14pt al resolver. */}
+        <View>
+          <View style={styles.skTitleSlot}>
+            <View style={[styles.skTitle, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+          </View>
+          <View style={[styles.skCyclePill, { backgroundColor: s.bg, boxShadow: s.ins }]} />
+        </View>
         <View
           style={[
             styles.skCalendarBtn,
@@ -1008,13 +1025,17 @@ const styles = StyleSheet.create({
   },
   categoryList: { marginTop: 12 },
   skAvisos: { borderRadius: FIJOS_RADII.card, height: 260, marginTop: 20 },
-  skCalendarBtn: { borderRadius: 22, height: 44, width: 44 },
-  skCyclePill: { borderRadius: 14, height: 18, width: 190 },
+  // 48 + marginTop 2 = `headerIconBtn` del header real (antes 44 sin margen).
+  skCalendarBtn: { borderRadius: 22, height: 48, marginTop: 2, width: 48 },
+  skCyclePill: { borderRadius: 14, height: 18, marginTop: 6, width: 190 },
   skHeaderRow: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  // Alto de la caja del título real (fontSize 32 / lineHeight 38).
+  skTitleSlot: { height: 38, justifyContent: 'center' },
+  skTitle: { borderRadius: 14, height: 26, width: 130 },
   skHero: { borderRadius: FIJOS_RADII.hero, height: 330, marginTop: 14 },
   skRow: { borderRadius: FIJOS_RADII.row, height: 68 },
   skRows: { gap: 10, marginTop: 12 },

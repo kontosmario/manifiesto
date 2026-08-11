@@ -14,6 +14,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 type Phase = 'enter' | 'confirm'
 
@@ -213,7 +214,7 @@ export function PinSetupScreen({ onDone, onCancel }: PinSetupScreenProps) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', paddingTop: 96, paddingBottom: 48 },
-  title: { fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  title: { fontSize: 24, fontWeight: '700', fontFamily: nunitoFamily('700'), textAlign: 'center', marginBottom: 8 },
   subtitle: {
     fontSize: 15,
     textAlign: 'center',
@@ -236,11 +237,13 @@ const styles = StyleSheet.create({
   lengthChipLabel: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   errorText: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textAlign: 'center',
     marginBottom: 12,
     maxWidth: 300,
@@ -249,5 +252,5 @@ const styles = StyleSheet.create({
   },
   padWrap: { flex: 1, justifyContent: 'center' },
   cancel: { height: 44, alignItems: 'center', justifyContent: 'center' },
-  cancelText: { fontSize: 15, fontWeight: '500' },
+  cancelText: { fontSize: 15, fontWeight: '500', fontFamily: nunitoFamily('500') },
 })

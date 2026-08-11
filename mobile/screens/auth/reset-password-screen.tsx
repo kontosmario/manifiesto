@@ -26,6 +26,7 @@ import {
   checkPasswordPolicy,
   PASSWORD_POLICY,
 } from '@/features/auth/password-policy'
+import { nunitoFamily } from '@/theme/typography'
 
 const RESET_TIMEOUT_MS = 30_000
 
@@ -440,5 +441,6 @@ const styles = StyleSheet.create({
   matchText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

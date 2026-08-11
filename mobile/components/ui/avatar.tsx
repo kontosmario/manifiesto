@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
+import { nunitoFamily } from '@/theme/typography'
 
 interface AvatarProps {
   name: string
@@ -72,5 +73,5 @@ function PersonGlyph({ size, color }: { size: number; color: string }) {
 
 const styles = StyleSheet.create({
   container: { alignItems: 'center', justifyContent: 'center' },
-  initials: { fontWeight: '700', letterSpacing: 0.2 },
+  initials: { fontFamily: nunitoFamily('700'), fontWeight: '700', letterSpacing: 0.2 },
 })

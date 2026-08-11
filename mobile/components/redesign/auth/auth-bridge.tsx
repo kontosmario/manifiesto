@@ -93,7 +93,7 @@ const THEMES: Record<AuthMode, BridgeTheme> = {
     bowlInset: 'inset 6px 6px 13px rgba(151,160,136,0.4), inset -6px -6px 13px rgba(255,255,255,0.95)',
     failText: '#B05E2F',
     glow: false,
-    btnCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    btnCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     btnFallback: '#489A4E',
     btnText: '#F5F2E1',
     btnShadow: '0 10px 20px rgba(46,116,52,0.35), inset 0 2px 3px rgba(255,255,255,0.3)',

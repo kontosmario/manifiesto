@@ -14,7 +14,6 @@
 // reparte props a los pasos.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Alert,
   Keyboard,
   StyleSheet,
   useWindowDimensions,
@@ -32,8 +31,7 @@ import {
   OnbNumpad,
   useNumpadScrollAvoid,
 } from '@/components/redesign/onboarding/onb-numpad'
-import { EmptyState } from '@/components/ui/empty-state'
-import { ErrorState } from '@/components/ui/error-state'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { WizardCta } from '@/components/wizard/wizard-cta'
 import { WizardShell } from '@/components/wizard/wizard-shell'
@@ -59,6 +57,7 @@ import { classifyCyclePlacement } from '@/features/income/add-income-impact'
 import { useIncomeCycleInputs } from '@/features/income/use-income-cycle-inputs'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { triggerHaptic } from '@/lib/haptics'
+import { toast } from '@/lib/toast-bus'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getErrorMessage } from '@/utils/error-message'
 import { serializePrice } from '@/utils/money'
@@ -136,18 +135,12 @@ export function AddGastoV2Screen({
   // diario. NO se usa el cupo de la pantalla Gastos, que aplica buffer y es
   // otra superficie con otra cuenta.
   const { hero } = useHomeMetrics(familyId)
-  // Ventana del ciclo vigente + readiness + la rama por la que se compuso el
-  // cupo. Los tres salen del MISMO hook que usa el alta de ingreso para no
-  // tener dos derivaciones del ciclo que puedan separarse.
-  const { cycle, cycleStart, cycleEnd, isReady: isCycleReady } =
+  // Ventana del ciclo vigente + readiness. Salen del MISMO hook que usa el
+  // alta de ingreso para no tener dos derivaciones del ciclo que puedan
+  // separarse. (La rama por la que se compuso el cupo ya no hace falta acá: el
+  // gasto de hoy se resta en las dos, ver el impacto más abajo.)
+  const { cycleStart, cycleEnd, isReady: isCycleReady } =
     useIncomeCycleInputs(familyId)
-
-  // Con override de saldo o en modo dinámico, el cupo es `discrecional / días
-  // restantes` y el discrecional YA restó el gasto variable del ciclo — el de
-  // hoy incluido. Restarlo otra vez en el paso 2 descontaba dos veces el mismo
-  // gasto y mostraba "te pasás" mientras el Home decía que sobraba. Ver el
-  // docblock de `add-expense-impact`.
-  const cupoAlreadyNetsSpend = cycle.hasCycleOverride
 
   // Dónde cae el día destino respecto del ciclo VIGENTE. Sólo se clasifica el
   // back-date: el alta de hoy siempre habla del cupo de hoy. Un gasto fechado
@@ -173,13 +166,31 @@ export function AddGastoV2Screen({
   // un día en el que sí se gastó. Ahí se pide el total del día al MISMO
   // endpoint que alimenta el day-detail de Gastos. Para hoy la lista sirve: son
   // las filas más recientes, siempre dentro del tope.
+  // El back-date pide el día por RPC en las DOS ramas. Antes la de override se
+  // salteaba (el cupo ya venía neteado y el "antes" iba en 0); ahora que el
+  // gasto del día se resta siempre, saltearla dejaría el "antes" a merced del
+  // feed paginado, que no llega a los días viejos — que es justo el agujero
+  // que este RPC vino a tapar.
   const targetDayIso =
-    form.forDate && !cupoAlreadyNetsSpend && affectsCurrentCycle
-      ? formatLocalDateKey(form.forDate)
-      : null
+    form.forDate && affectsCurrentCycle ? formatLocalDateKey(form.forDate) : null
   const forDayQuery = useGastosExpensesForDay({ familyId, isoDate: targetDayIso })
 
+  /**
+   * Para HOY el "antes" sale del hero, no de la lista de esta pantalla.
+   *
+   * Cada superficie lo derivaba por su cuenta —el hero desde el snapshot del
+   * dashboard, el paso 2 sumando `controller.expenses` filtradas por día— y
+   * las dos listas no son la misma: la del controller es el feed paginado de
+   * Gastos. Bastaba que difirieran en una fila para que el impacto no
+   * coincidiera con la card de la Home, que es exactamente lo que reportó el
+   * owner. Con el mismo número no pueden discrepar.
+   *
+   * El back-date SÍ sigue pidiendo el día por RPC: el hero sólo sabe de hoy.
+   */
   const spentOnTargetDay = useMemo(() => {
+    if (!targetDayIso && isSameLocalDay(form.forDate ?? new Date(), new Date())) {
+      return hero.spentToday
+    }
     if (targetDayIso) {
       // Los pagos de fijos no consumen el cupo variable (el cupo ya los
       // reserva), igual que el filtro de `controller.expenses`.
@@ -188,25 +199,63 @@ export function AddGastoV2Screen({
         0,
       )
     }
-    const target = form.forDate ?? new Date()
-    return controller.expenses.reduce((sum, e) => {
-      const at = new Date(e.created_at)
-      if (Number.isNaN(at.getTime())) return sum
-      return isSameLocalDay(at, target) ? sum + e.price : sum
-    }, 0)
-  }, [controller.expenses, form.forDate, forDayQuery.data, targetDayIso])
+    // Único caso que queda: día destino FUERA del ciclo vigente. Ahí el gasto
+    // no toca el cupo de hoy, el monto entra en 0 y el bloque comparativo ni
+    // se muestra (`impactApplies`), así que no hay "antes" que afirmar.
+    return 0
+  }, [form.forDate, forDayQuery.data, targetDayIso, hero.spentToday])
 
   // El paso 2 no puede afirmar nada hasta que estén el ciclo Y el total del día
   // destino: con las queries frías el cupo vale 0, `incomeConfigured` sale
   // false y la card ofrecía el setup de ingreso a un hogar que tiene sueldo
   // cargado hace meses. Mismo gate que el alta de ingreso (`isReady`).
-  const isImpactReady = isCycleReady && !forDayQuery.isLoading
+  // `isError` además de `isLoading`: en react-query v5 `isLoading` es
+  // `isPending && isFetching`, así que con la query FALLADA vale false y el
+  // paso 2 se daba por listo con `data === undefined` — o sea "antes = $0",
+  // cupo entero libre, para un día en el que sí se había gastado.
+  const isImpactReady =
+    isCycleReady && !forDayQuery.isLoading && !forDayQuery.isError
+
+  /**
+   * El "antes" del impacto se CONGELA al confirmar.
+   *
+   * `useCreateExpense` es OPTIMISTA: en el mismo tick del confirmar la fila ya
+   * entra en la lista, y de ahí sale `hero.spentToday`. Como esta pantalla
+   * sigue montada mientras la mutación viaja (el `handleClose()` recién corre
+   * al resolver), el paso 2 recalculaba con un "antes" que YA tenía el gasto
+   * adentro y encima le volvía a restar `amount`: el impacto mostraba el gasto
+   * DOS VECES y la perilla daba un segundo salto. Reportado por el owner.
+   *
+   * Se congela lo que había ANTES de tocar Confirmar. Si la mutación falla, el
+   * optimista se revierte y se descongela para que el reintento vuelva a medir
+   * contra el estado real.
+   */
+  const [frozenImpactBase, setFrozenImpactBase] = useState<{
+    spentToday: number
+    openingDailyBudget: number
+  } | null>(null)
+  const impactSpentToday = frozenImpactBase?.spentToday ?? spentOnTargetDay
+  const impactOpeningBudget =
+    frozenImpactBase?.openingDailyBudget ?? hero.openingDailyBudget
 
   const impact = useMemo(
     () =>
       computeAddExpenseImpact({
-        dailyBudget: hero.dailyBudget,
-        spentToday: cupoAlreadyNetsSpend ? 0 : spentOnTargetDay,
+        // El cupo de APERTURA del día, el mismo que rotula la card de la Home.
+        // En la rama bruta es idéntico a `dailyBudget`; en la otra le devuelve
+        // la parte del gasto de hoy que el cupo ya tenía descontada, así las
+        // dos pantallas parten de la misma base.
+        dailyBudget: impactOpeningBudget,
+        // Se resta SIEMPRE, en las dos ramas.
+        //
+        // El viejo `cupoAlreadyNetsSpend ? 0 : …` existía porque la base era
+        // `dailyBudget`, que en la rama override YA venía con el gasto de hoy
+        // descontado. La base ahora es la APERTURA del día, que justamente le
+        // devuelve ese descuento para poder mostrarlo como "gastado": si acá
+        // se pasara 0, el "antes" saldría inflado por todo lo del día y el
+        // paso 2 volvería a contradecir a la card — el mismo síntoma, del otro
+        // lado. Con la apertura como base, las dos ramas se cuentan igual.
+        spentToday: impactSpentToday,
         // Fuera del ciclo vigente el gasto no mueve el cupo de hoy: con 0 las
         // dos columnas quedan iguales, que es la verdad (el bloque entero se
         // oculta, ver `impactApplies` del paso 2).
@@ -214,10 +263,9 @@ export function AddGastoV2Screen({
         incomeConfigured: hero.incomeConfigured,
       }),
     [
-      hero.dailyBudget,
+      impactOpeningBudget,
       hero.incomeConfigured,
-      cupoAlreadyNetsSpend,
-      spentOnTargetDay,
+      impactSpentToday,
       affectsCurrentCycle,
       form.amount,
     ],
@@ -239,9 +287,9 @@ export function AddGastoV2Screen({
   const formKey = `${form.amount}|${form.categoryId}|${form.description}|${form.notes}|${
     form.forDate?.getTime() ?? ''
   }`
-  // Último error de guardado, además del Alert: cerrado el Alert no quedaba
-  // NINGUNA huella de que el guardado falló y el CTA volvía a decir "Confirmar"
-  // como si nada hubiera pasado.
+  // Último error de guardado, además del toast: el toast se va solo a los
+  // segundos y sin esto no queda NINGUNA huella de que el guardado falló —
+  // el CTA vuelve a decir "Confirmar" como si nada hubiera pasado.
   const [lastSubmitError, setLastSubmitError] = useState<
     { formKey: string; message: string } | null
   >(null)
@@ -377,7 +425,7 @@ export function AddGastoV2Screen({
   // continuación del `await` sigue viva. Sin este guard, el `handleClose()` del
   // éxito corría 2-3s después y hacía `router.back()` sobre la pantalla que
   // para entonces está arriba — al usuario que ya había vuelto al calendario de
-  // Gastos se lo sacaba de la vista sin que tocara nada. Idem el Alert del
+  // Gastos se lo sacaba de la vista sin que tocara nada. Idem el aviso del
   // fallo, que aparecía sobre otra pantalla.
   const isMountedRef = useRef(true)
   useEffect(() => {
@@ -390,6 +438,13 @@ export function AddGastoV2Screen({
   const handleConfirm = useCallback(async () => {
     if (isSubmittingRef.current) return
     isSubmittingRef.current = true
+    // ANTES de mutar: lo que se congela es el estado previo al gasto. El
+    // optimista puede aterrizar en este mismo tick, y a partir de ahí el
+    // "antes" en vivo ya viene contaminado.
+    setFrozenImpactBase({
+      spentToday: spentOnTargetDay,
+      openingDailyBudget: hero.openingDailyBudget,
+    })
     setLastSubmitError(null)
     try {
       await controller.createExpenseMutation.mutateAsync({
@@ -425,17 +480,28 @@ export function AddGastoV2Screen({
       handleClose()
     } catch (error) {
       isSubmittingRef.current = false
+      // Falló: el optimista se revirtió, así que el "antes" en vivo vuelve a
+      // ser el bueno y el reintento tiene que medir contra él.
+      setFrozenImpactBase(null)
       if (!isMountedRef.current) return
       void triggerHaptic('error')
       const message = getErrorMessage(error, t('states:error.server'))
-      // Persistido además del Alert: cerrado el Alert no quedaba ninguna huella
-      // del fallo y el CTA volvía a "Confirmar" como si nada. Anclado a los
-      // datos que fallaron (ver `formKey`): apenas el usuario edita algo, el
-      // mensaje dejó de describir el estado y se va solo.
+      // Persistido además del toast: apagado el toast no quedaría ninguna
+      // huella del fallo y el CTA volvería a "Confirmar" como si nada. Anclado
+      // a los datos que fallaron (ver `formKey`): apenas el usuario edita algo,
+      // el mensaje dejó de describir el estado y se va solo.
       setLastSubmitError({ formKey, message })
-      Alert.alert(t('gastos:addExpense.wizard.errors.createFailed'), message)
+      toast.error(`${t('gastos:addExpense.wizard.errors.createFailed')} · ${message}`)
     }
-  }, [controller.createExpenseMutation, form, formKey, handleClose, t])
+  }, [
+    controller.createExpenseMutation,
+    form,
+    formKey,
+    handleClose,
+    t,
+    spentOnTargetDay,
+    hero.openingDailyBudget,
+  ])
 
   const onPrimaryCtaStep2 = useCallback(() => {
     if (pending || isSubmittingRef.current) return
@@ -503,12 +569,18 @@ export function AddGastoV2Screen({
           backAccessibilityLabel={t('gastos:addExpense.wizard.close')}
         />
         {shouldShowErrorState ? (
-          <ErrorState
+          <NeoStateBlock
+            icon="error-outline"
             description={getErrorMessage(categoriesLoadError, t('states:error.server'))}
             title={t('gastos:addExpense.formErrorTitle')}
+            tone="error"
           />
         ) : (
-          <EmptyState stateKey="categories" icon="category" />
+          <NeoStateBlock
+            icon="category"
+            title={t('states:empty.categories.title')}
+            description={t('states:empty.categories.description')}
+          />
         )}
       </WizardShell>
     )

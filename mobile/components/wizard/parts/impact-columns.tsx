@@ -9,6 +9,7 @@
 import { StyleSheet, Text, View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 import { useWizardSkin, type WizardNeoSkin } from '@/components/wizard/wizard-skin'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Columna ANTES o AHORA del bloque de impacto. La de la derecha alinea a la
  *  derecha; el ancho lo reparten con `flex:1`, así el par queda centrado sobre
@@ -183,8 +184,8 @@ export function ImpactColumns(props: ImpactColumnsProps) {
 
 const styles = StyleSheet.create({
   columns: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 13 },
-  colLabel: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.95 },
-  colValue: { fontWeight: '900', marginTop: 2 },
-  colSub: { fontSize: 11, fontWeight: '800' },
+  colLabel: { fontSize: 9.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.95 },
+  colValue: { fontWeight: '900', fontFamily: nunitoFamily('900'), marginTop: 2 },
+  colSub: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
   arrow: { flexGrow: 0, flexShrink: 0 },
 })

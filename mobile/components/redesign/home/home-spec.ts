@@ -159,7 +159,7 @@ export interface HomeSpec {
   streakTitle: string
   streakSub: string
   /** Sub-línea gris del estado día-cero (catálogo §8, estados.dc.html):
-   *  #6C7B67 claro / #93A78F oscuro. `streakSub` (verde) es para otros
+   *  #54644F claro / #93A78F oscuro. `streakSub` (verde) es para otros
    *  subtítulos; la línea "Registrá tu primer gasto…" va en gris. */
   streakSubMuted: string
   streakDayDone: string
@@ -223,7 +223,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     shellShadow: '0 34px 80px rgba(8,14,8,0.55)',
     statusInk: '#24382A',
 
-    greetLabel: '#6C7B67',
+    greetLabel: '#54644F',
     greetName: '#24382A',
     iconBtnGradientCss: undefined,
     iconBtnBackground: '#E9EBE0',
@@ -290,7 +290,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     ctaCreamInk: '#1F3A26',
     ctaCreamShadow: '0 8px 16px rgba(20,45,25,0.3), inset 0 2px 3px rgba(255,255,255,0.6)',
 
-    sectionLabel: '#6C7B67',
+    sectionLabel: '#54644F',
     sectionLink: '#2E7C39',
 
     cardGradientCss: undefined,
@@ -301,7 +301,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     cycleLabelVariables: '#C96F3F',
     cycleLabelFijos: '#2E7C39',
     cycleLabelVariablesMuted: '#B05E2F',
-    cycleSub: '#6C7B67',
+    cycleSub: '#54644F',
     cycleSubAlert: '#B05E2F',
     cycleAmount: '#24382A',
     cycleAmountMuted: '#9AA694',
@@ -311,7 +311,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     goalTileBackground: '#D6E4F0',
     goalTileShadow: '0 2px 5px rgba(40,70,45,0.12)',
     goalTitle: '#24382A',
-    goalSub: '#6C7B67',
+    goalSub: '#54644F',
     goalPercent: '#2E7C39',
     goalBarBackground: undefined,
     goalBarShadow: 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)',
@@ -319,7 +319,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     dashedBorder: '#C2C8B4',
     ctaGreenPillGradientCss: 'linear-gradient(145deg, #6DBC71, #327E39)',
     ctaGreenPillInk: '#F5F2E1',
-    ctaGreenRadialGradientCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaGreenRadialGradientCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaGreenRadialInk: '#F5F2E1',
     ctaGreenRadialShadow: '0 8px 16px rgba(46,116,52,0.35), inset 0 1.5px 2px rgba(255,255,255,0.3)',
 
@@ -327,7 +327,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     streakShadow: '8px 8px 18px rgba(110,140,100,0.32), -8px -8px 18px rgba(255,255,255,0.9)',
     streakTitle: '#24382A',
     streakSub: '#3E5A44',
-    streakSubMuted: '#6C7B67',
+    streakSubMuted: '#54644F',
     streakDayDone: '#2E7C39',
     streakDayToday: '#D97E4F',
     streakDayIdle: '#9AA694',
@@ -347,20 +347,20 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     activityTilePizza: '#F6D9D2',
     activityTileMercado: '#E2EDD2',
     activityTitle: '#24382A',
-    activitySub: '#6C7B67',
+    activitySub: '#54644F',
     activityAmount: '#24382A',
     activityEmptyWellBackground: undefined,
     activityEmptyWellShadow: 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)',
     activityEmptyInk: '#3E5A44',
     activityEmptyTitle: '#24382A',
-    activityEmptySub: '#6C7B67',
+    activityEmptySub: '#54644F',
 
     navGradientCss: 'linear-gradient(145deg, #F0F2E7, #E1E4D6)',
     navShadow: '10px 10px 22px rgba(151,160,136,0.45), -10px -10px 22px rgba(255,255,255,0.95)',
     navActiveBackground: undefined,
     navActiveShadow: 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)',
     navActiveInk: '#2E7C39',
-    navIdleInk: '#6C7B67',
+    navIdleInk: '#54644F',
     navItemDot: '#D97E4F',
     fabGradientCss: 'linear-gradient(145deg, #6DBC71, #327E39)',
     fabShadow: '7px 7px 15px rgba(120,140,110,0.55), -6px -6px 13px rgba(255,255,255,0.9)',

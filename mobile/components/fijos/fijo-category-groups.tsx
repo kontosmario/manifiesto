@@ -26,6 +26,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations, motionEasings, motionStagger } from '@/lib/motion'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface FijoCategoryGroupsProps {
   groups: FijoCategoryGroup[]
@@ -439,7 +440,10 @@ function neoGroupCardStyle(skin: FijosNeoSkin, tone: FijosCategoryTone | null) {
   return {
     backgroundColor: tone ? tone.surface : skin.row.background,
     experimental_backgroundImage: tone ? undefined : skin.row.gradientCss,
-    ...(tone ? { overflow: 'hidden' as const } : null),
+    // Sin `overflow: 'hidden'` acá: en iOS activa `masksToBounds`, que recorta
+    // la sombra del propio layer y deja la card con un filo cuadrado en vez de
+    // relieve. El sticker de fondo ya se clipea en `categoryBackdrop`, que
+    // repite el radio de la card.
     boxShadow: skin.row.shadow,
     borderRadius: skin.row.radius,
     paddingHorizontal: 14,
@@ -485,11 +489,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   iconText: { fontSize: 16 },
-  title: { fontSize: 14, fontWeight: '700' },
+  title: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   count: { fontSize: 11 },
   // Tabular nums para que totals por categoría alineen verticalmente
   // cuando varios groups están expandidos uno encima del otro.
-  total: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
+  total: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.3, fontVariant: ['tabular-nums'] },
   // Capa de identificación de categoría — detrás del contenido, clipeada por
   // la card. `pointerEvents:none` para no comerse el tap del colapso.
   categoryBackdrop: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', borderRadius: 22 },

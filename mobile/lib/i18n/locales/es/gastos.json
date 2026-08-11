@@ -101,6 +101,7 @@
     "noCategory": "Sin categoría",
     "incomeA11yLabel": "{{title}}, ingreso",
     "swipeToDeleteHint": "Desliza a la izquierda para eliminar",
+    "editOrDeleteHint": "Mantén presionado para editar o desliza a la izquierda para eliminar",
     "a11yLabel": "{{title}}, {{amount}} pesos en {{categoryName}}, cargado por {{whoName}} a las {{time}}."
   },
   "incomeRow": {

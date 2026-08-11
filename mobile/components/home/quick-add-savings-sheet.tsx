@@ -13,6 +13,7 @@ import { ModalCard } from '@/components/ui/modal-card'
 import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoInk } from '@/theme/neo-ink'
 import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -70,7 +71,6 @@ export function QuickAddSavingsSheet({
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
-  const isDark = theme.mode === 'dark'
 
   // The slider's "100%" reference. Prefer the suggested amount,
   // otherwise fall back to whatever's still missing on the goal so
@@ -213,25 +213,16 @@ export function QuickAddSavingsSheet({
     [neo],
   )
 
-  // Tinta verde de TEXTO. `neo.green` es el verde de MATERIAL (relleno,
-  // anillo, gradiente); como tinta a 10-12pt sobre el pozo claro
-  // (#E9EBE0) da 4.29:1 y sobre el tile seleccionado 3.97:1 — los dos
-  // por debajo de AA. `greenDeep` sobre esas mismas superficies da
-  // 7.4:1 / 6.8:1. En oscuro el verde claro ya cumple (10.8:1 / 6.5:1)
-  // y `greenDeep` sería ilegible, así que la tinta es mode-aware.
-  const accentInk = isDark ? neo.green : neo.greenDeep
-  // Alerta "te pasás de lo que falta". `neo.warm` en claro (#C96F3F)
-  // sobre la hoja da 3.09:1 a 12pt: se usa el rojo-tierra de exceso del
-  // propio rediseño (`gastos-spec.dayExcesoInk` / `fijos-spec.
-  // tagOverdueInk`), que da 4.93:1. En oscuro `neo.warm` ya da ~7:1.
-  const warnInk = isDark ? neo.warm : '#A84A2F'
+  const ink = neoInk(theme.mode)
+  const accentInk = ink.accent
+  const warnInk = ink.warn
 
   // Android < API 28/29 descarta el boxShadow EN SILENCIO. El pozo del
   // monto, el riel y los chips se leen SÓLO por su relieve (su fill es
   // casi el de la hoja), así que ahí — y sólo ahí — cae un hairline.
   const flatFallback = SUPPORTS_INSET_SHADOW
     ? null
-    : { borderWidth: 1, borderColor: theme.colors.border }
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
 
   const isValid = amount > 0
   const exceedsRemaining = isValid && remaining > 0 && amount > remaining
@@ -403,7 +394,7 @@ export function QuickAddSavingsSheet({
                   flatFallback
                     ? {
                         borderWidth: 1,
-                        borderColor: isActive ? neo.green : theme.colors.border,
+                        borderColor: isActive ? neo.green : neo.sheetDivider,
                       }
                     : null,
                   { opacity: pressed ? 0.72 : 1 },

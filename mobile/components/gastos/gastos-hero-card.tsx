@@ -12,6 +12,7 @@ import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GastosHeroCardProps {
   totalVisible?: number
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  topLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700' },
+  topLabel: { fontSize: 11, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   chip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -274,16 +275,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: '60%',
   },
-  chipText: { fontSize: 10, fontWeight: '600' },
+  chipText: { fontSize: 10, fontWeight: '600', fontFamily: nunitoFamily('600') },
   amount: {
     fontSize: 40,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.8,
     lineHeight: 42,
     marginTop: 8,
   },
   weightsBlock: { marginTop: 12 },
-  weightsLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600' },
+  weightsLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600', fontFamily: nunitoFamily('600') },
   avgRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -292,15 +294,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   avgText: { flex: 1 },
-  avgLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600' },
+  avgLabel: { fontSize: 10, letterSpacing: 1.2, fontWeight: '600', fontFamily: nunitoFamily('600') },
   avgValueRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 6,
     marginTop: 2,
   },
-  avgValue: { fontSize: 15, fontWeight: '800', letterSpacing: -0.4 },
-  avgSub: { fontSize: 11, fontWeight: '600' },
+  avgValue: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.4 },
+  avgSub: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600') },
   avgBars: {
     minWidth: 90,
     height: 24,

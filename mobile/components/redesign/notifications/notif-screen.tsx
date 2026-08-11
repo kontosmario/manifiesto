@@ -6,11 +6,11 @@ import Svg, { Path } from 'react-native-svg'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { BrotMascot } from '@/components/brot'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { pastelDarkSolid } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
-import { pillForSeverity } from '@/utils/notifications'
 import type { NotifCardVM } from './notif-visual'
-import { NOTIF_SPEC, type NotifMode } from './notif-spec'
+import { NOTIF_SPEC, pillForSeverityNeo, type NotifMode, type NotifSpec } from './notif-spec'
 
 /**
  * Notificaciones (Turno 6) — piezas del rediseño (aprobado 2026-07-18).
@@ -42,6 +42,17 @@ function CheckMark({ color }: { color: string }) {
       <Path d="M5 12.5l4.5 4.5L19 7.5" stroke={color} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   )
+}
+
+/**
+ * Los pozos del rediseño no llevan borde: la forma la dibuja la sombra inset.
+ * En los Android que la descartan (API < 29) el chip de pendientes, el check
+ * y el pozo del empty quedan invisibles, así que ahí —y sólo ahí— entra el
+ * hairline. En claro además no tienen fill propio, o sea que sin esto no
+ * queda NADA en pantalla.
+ */
+function wellFallback(s: NotifSpec) {
+  return SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: s.hairline }
 }
 
 // ─── Chrome dibujado (solo preview; la live usa insets reales) ───────
@@ -140,7 +151,7 @@ export function NotifCard({
   const isAvatar = vm.icon.type === 'avatar'
   const tileBg =
     vm.tileLight === null ? undefined : mode === 'light' ? vm.tileLight : pastelDarkSolid(vm.tileLight)
-  const pill = pillForSeverity(vm.severity, mode === 'dark')
+  const pill = pillForSeverityNeo(vm.severity, mode)
 
   return (
     <View
@@ -201,7 +212,13 @@ export function NotifCard({
 function NotifCheck({ mode, onPress, label }: { mode: NotifMode; onPress?: () => void; label?: string }) {
   const s = NOTIF_SPEC[mode]
   const inner = (
-    <View style={[styles.checkCircle, { backgroundColor: s.checkBackground, boxShadow: s.checkShadow }]}>
+    <View
+      style={[
+        styles.checkCircle,
+        { backgroundColor: s.checkBackground, boxShadow: s.checkShadow },
+        wellFallback(s),
+      ]}
+    >
       <CheckMark color={s.checkStroke} />
     </View>
   )
@@ -243,7 +260,13 @@ export function NotifEmptyBody({
           s.emptyOuterGradientCss ? { experimental_backgroundImage: s.emptyOuterGradientCss } : null,
         ]}
       >
-        <View style={[styles.emptyWell, { backgroundColor: s.emptyWellBackground, boxShadow: s.emptyWellShadow }]}>
+        <View
+          style={[
+            styles.emptyWell,
+            { backgroundColor: s.emptyWellBackground, boxShadow: s.emptyWellShadow },
+            wellFallback(s),
+          ]}
+        >
           <BrotMascot pose="zen" size={96} shadow={false} />
         </View>
       </View>
@@ -255,7 +278,13 @@ export function NotifEmptyBody({
           </>
         )}
       </Text>
-      <View style={[styles.emptyChip, { backgroundColor: s.chipBackground, boxShadow: s.chipShadow }]}>
+      <View
+        style={[
+          styles.emptyChip,
+          { backgroundColor: s.chipBackground, boxShadow: s.chipShadow },
+          wellFallback(s),
+        ]}
+      >
         <View style={[styles.chipDot, { backgroundColor: s.emptyChipDot }]} />
         <Text style={[styles.chipText, { color: s.chipText }]}>{chipLabel}</Text>
       </View>
@@ -282,7 +311,13 @@ export function NotifMetaRow({
   const s = NOTIF_SPEC[mode]
   return (
     <View style={styles.metaRow}>
-      <View style={[styles.chip, { backgroundColor: s.chipBackground, boxShadow: s.chipShadow }]}>
+      <View
+        style={[
+          styles.chip,
+          { backgroundColor: s.chipBackground, boxShadow: s.chipShadow },
+          wellFallback(s),
+        ]}
+      >
         <View style={[styles.chipDot, { backgroundColor: s.chipDot }]} />
         <Text style={[styles.chipText, { color: s.chipText }]}>{pendingLabel}</Text>
       </View>

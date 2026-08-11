@@ -2,15 +2,14 @@ import { useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
-import { MaterialIcons } from '@expo/vector-icons'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { LoadingBlock } from '@/components/ui/loading-block'
 import { Screen } from '@/components/ui/screen'
 import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
-import { MetaCard } from '@/components/home/meta-card'
+import { MetaCardNeo } from '@/components/savings-goals/meta-card-neo'
 import {
   SettingsGroup,
   SettingsRow,
@@ -26,7 +25,8 @@ import { toast } from '@/lib/toast-bus'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
-import { neoMaterial, neoTokens } from '@/theme/neo-tokens'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { currencyFormatter } from '@/utils/money'
 
 interface SavingsGoalScreenProps {
@@ -61,7 +61,7 @@ export function SavingsGoalScreen({ familyId, userId }: SavingsGoalScreenProps) 
         title={t('settings:savingsGoalScreen.title')}
         canGoBack
       >
-        <LoadingBlock label={t('settings:savingsGoalScreen.loading')} />
+        <LoadingBlock label={t('settings:savingsGoalScreen.loading')} skin="neo" />
       </Screen>
     )
   }
@@ -111,50 +111,24 @@ interface EmptyStateProps {
 }
 
 function EmptyState({ onCreatePress }: EmptyStateProps) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const cardMaterial = neoMaterial(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   return (
     <View style={styles.stack}>
-      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
       <RiseView>
-        <View
-          style={[
-            styles.emptyCard,
-            {
-              backgroundColor: neo.selectedTint,
-              borderColor: ink.accent,
-              borderRadius: theme.radii.xl,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.emptyIconWrap,
-              {
-                ...cardMaterial,
-                borderColor: neo.sheetDivider,
-              },
-            ]}
-          >
-            <MaterialIcons color={ink.accent} name="flag" size={32} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: neo.text }]}>
-            {t('settings:savingsGoalScreen.emptyTitle')}
-          </Text>
-          <Text style={[styles.emptyBody, { color: neo.textMuted }]}>
-            {t('settings:savingsGoalScreen.emptyBody')}
-          </Text>
-          <View style={styles.emptyCta}>
-            <AppButton
-              variant="primary"
-              label={t('settings:savingsGoalScreen.createGoal')}
-              onPress={onCreatePress}
-            />
-          </View>
-        </View>
+        <NeoStateBlock
+          icon="flag"
+          title={t('settings:savingsGoalScreen.emptyTitle')}
+          description={t('settings:savingsGoalScreen.emptyBody')}
+        />
+      </RiseView>
+      <RiseView delay={60}>
+        <NeoButton
+          variant="primary"
+          block
+          haptic="light"
+          label={t('settings:savingsGoalScreen.createGoal')}
+          onPress={onCreatePress}
+        />
       </RiseView>
     </View>
   )
@@ -244,9 +218,6 @@ function SavingsGoalViewer({
   const targetMonths = goal.targetMonths
   const goalDefined = Number.isFinite(goalAmount) && goalAmount > 0
   const remaining = goalDefined ? Math.max(0, goalAmount - currentAmount) : 0
-  const pct = goalDefined
-    ? Math.min(100, Math.round((currentAmount / goalAmount) * 100))
-    : 0
   const monthly =
     goalDefined && targetMonths != null && targetMonths > 0 && remaining > 0
       ? Math.ceil(remaining / targetMonths)
@@ -303,11 +274,9 @@ function SavingsGoalViewer({
 
   return (
     <View style={styles.stack}>
-      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
       {/* HERO — current goal */}
       <RiseView>
-        <MetaCard goal={goal} />
+        <MetaCardNeo goal={goal} />
       </RiseView>
 
       {/* INSIGHT — progress + plan */}
@@ -315,11 +284,8 @@ function SavingsGoalViewer({
         <View
           style={[
             styles.insightCard,
-            {
-              ...cardMaterial,
-              borderColor: neo.sheetDivider,
-              borderRadius: theme.radii.xl,
-            },
+            cardMaterial,
+            { borderRadius: neoRadii.card },
           ]}
         >
           {!goalDefined ? (
@@ -334,8 +300,10 @@ function SavingsGoalViewer({
               <Text style={[styles.insightMuted, { color: neo.textMuted }]}>
                 {t('settings:savingsGoalScreen.sequentialDisclaimer')}
               </Text>
-              <AppButton
+              <NeoButton
                 variant="primary"
+                block
+                haptic="light"
                 label={t('settings:savingsGoalScreen.createNext')}
                 loading={upsert.isPending}
                 onPress={() => void handleCreateNext()}
@@ -343,33 +311,10 @@ function SavingsGoalViewer({
             </View>
           ) : (
             <>
-              {/* Progress bar */}
-              <View style={styles.progressRow}>
-                <View
-                  style={[
-                    styles.progressTrack,
-                    { backgroundColor: neo.selectedTint },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.progressFill,
-                      {
-                        width: `${pct}%` as `${number}%`,
-                        backgroundColor: ink.accent,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={[styles.progressPct, { color: neo.textMuted }]}>
-                  {pct}%
-                </Text>
-              </View>
-
               {/* Falta */}
               <Text style={[styles.insightLine, { color: neo.text }]}>
                 {t('settings:savingsGoalScreen.remainingPrefix')}{' '}
-                <Text style={{ color: ink.accent, fontWeight: '600' }}>
+                <Text style={[styles.insightStrong, { color: ink.accent }]}>
                   {currencyFormatter.format(remaining)}
                 </Text>
               </Text>
@@ -458,78 +403,34 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   insightCard: {
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     gap: 10,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 8,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 999,
-    minWidth: 4,
-  },
-  progressPct: {
-    fontSize: 12,
-    fontVariant: ['tabular-nums'],
-    minWidth: 32,
-    textAlign: 'right',
   },
   insightLine: {
     fontSize: 14,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     lineHeight: 20,
+  },
+  insightStrong: {
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   insightMuted: {
     fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
   },
   insightCelebrate: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.2,
     lineHeight: 22,
   },
   reachedStack: {
     gap: 12,
-  },
-  emptyCard: {
-    borderWidth: 1,
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    gap: 12,
-    alignItems: 'center',
-  },
-  emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  emptyBody: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-  },
-  emptyCta: {
-    width: '100%',
-    marginTop: 8,
   },
 })

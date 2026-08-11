@@ -20,6 +20,7 @@ import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -331,6 +332,7 @@ const styles = StyleSheet.create({
   freqTileLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
     textAlign: 'center',
     width: '100%',

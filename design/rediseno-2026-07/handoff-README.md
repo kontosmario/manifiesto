@@ -74,7 +74,7 @@ Animación base en TODAS las poses: respiración (squash 1.6% @1.9rad/s), parpad
 
 **Dónde aparece Brot** (regla: protagonista en momentos emocionales, sub-protagonista en informativos):
 - Bienvenida: `wave` + burbuja "¡Hola! Soy Brot. Tu asistente y el cuidador de tu jardín." (logo de marca SIEMPRE arriba, Brot abajo — nunca reemplaza al logo)
-- Inicio: `peek` asomado al borde superior del hero de saldo
+- Inicio: ~~`peek` asomado al borde superior del hero de saldo~~ — **retirado por decisión del owner (2026-07-21, reconfirmada el 2026-08-05).** La Home NO lleva Brot: el saldo es el protagonista de esa pantalla y el hero queda limpio. Brot sigue apareciendo en el resto de las superficies de esta lista.
 - Gastos: `idle` chico en el badge del header (con contador)
 - Fijos: `worried` junto a "Avisos de aumento"
 - Control: `coach` con burbuja "Saldo holgado…" + `love` en la card de mover sobrante a meta
@@ -120,7 +120,7 @@ Flujo secuencial de 4 pasos con barra de progreso (4 segmentos, activo sólido /
 
 ### Turno 3 — Los 8 flujos core (claro + oscuro cada uno)
 - **3a Bienvenida** (= 4a).
-- **3b Inicio** (ver 1b/1c abajo, versión final con Brot peek en canvas).
+- **3b Inicio** (ver 1b/1c abajo; el Brot `peek` del canvas quedó retirado — ver "Dónde aparece Brot").
 - **3c Cargar**: modal sheet "¿Qué cargas?" sobre scrim borroso — fila protagonista "+ Gasto" (CTA verde grande) + 4 filas (Importar captura 📸, Día sin gasto 🌿, Ingreso 📈, Gasto fijo 🗓️); sheet "Agregar gasto" (monto $12.500 con caret, chips +$5k…+$100k, grid 4×2 categorías con seleccionada anillada, descripción, nota opcional, CTA); "Agregar ingreso" (fuentes 4×2, chips sugeridos de descripción, ¿Cuándo? Hoy/Ayer/Anteayer, CTA); "Nuevo fijo" paso 1/2 (progreso 2 segmentos, nombre, monto $0 gris, categorías, frecuencia 5 tiles, **CTA deshabilitado hundido "Completa los datos"** + Brot `think` con "Falta nombre, monto y categoría para continuar.").
 - **3d Gastos**: hero verde (total $3.008.920, chip movs, promedio/día con mini bar chart 7 barras, top 3 categorías con barras de progreso claras), card "TU MES EN UN VISTAZO" (leyenda bien/alerta/exceso, calendario del ciclo 20jun→19jul con estados, hoy destacado, 28 con brotecito 🌱, futuros hundidos), chips de filtro por categoría (activo CTA verde).
 - **3e Fijos**: hero verde con rango del ciclo + badge "1 VENCIDO", **timeline JUN 20 ─ HOY·DÍA 18 ─ JUL 19** (línea punteada, recorrido sólido, perilla brillante), "Ya pagaste $1.227.651 · 13" vs "Te falta $122.831 · 3", 16 píldoras de progreso (13 verdes, 2 tenues, 1 durazno), "91% pagado · Total $1.350.482", divisor dashed, "DINERO LIBRE $5.049.518" + "21% va a fijos"; card "POR PAGAR · ESTE MES" con chips [HOY sólido] Cochera $110.000 [EN 28D]…; "AVISOS DE AUMENTO" + Brot `worried` (Expensas +37% · $284.400 → $389.580 ✓, etc.); tabs Vencidos(1)/Pendientes(2)/Pagados(13); fila acordeón "Vivienda · 1 ítem vencido · $110.000".

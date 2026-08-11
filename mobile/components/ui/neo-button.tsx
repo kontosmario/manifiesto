@@ -1,15 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
-import { triggerHaptic } from '@/lib/haptics'
+import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
@@ -24,16 +25,68 @@ export type NeoButtonVariant =
   /** Secundario: tile extruido sobre la hoja, tinta apagada. */
   | 'ghost'
 
+export type NeoButtonSize = 'default' | 'compact'
+
+interface NeoButtonSizeTokens {
+  borderRadius: number
+  paddingVertical: number
+  paddingHorizontal: number
+  fontSize: number
+  gap: number
+  minHeight?: number
+}
+
+/**
+ * `default` es la banda del handoff (radio de input, 52pt de alto por
+ * padding). `compact` baja al radio de chip y garantiza el mínimo táctil
+ * de 44pt por `minHeight`, porque su padding solo llega a ~41.
+ */
+const SIZES: Record<NeoButtonSize, NeoButtonSizeTokens> = {
+  default: {
+    borderRadius: neoRadii.input,
+    paddingVertical: 15,
+    paddingHorizontal: 22,
+    fontSize: 16,
+    gap: 10,
+  },
+  compact: {
+    borderRadius: neoRadii.chip,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    fontSize: 14,
+    gap: 8,
+    minHeight: 44,
+  },
+}
+
 interface NeoButtonProps {
   label: string
-  onPress: () => void
+  onPress: (event: GestureResponderEvent) => void
   variant?: NeoButtonVariant
+  size?: NeoButtonSize
+  /** Bloquea el press y hunde el botón en la hoja. */
   disabled?: boolean
+  /**
+   * Pinta el estado hundido SIN bloquear el press. Para formularios que
+   * necesitan el tap alcanzable para rutear a su branch de "marcá lo que
+   * falta" en vez de enviar. `disabled` y `busy` sí bloquean.
+   */
+  lookDisabled?: boolean
   /** Operación en vuelo: ignora presses y muestra un spinner. */
   busy?: boolean
+  /** Alias de `busy`. Gana sobre él cuando se pasa. */
+  loading?: boolean
   /** `true` estira el botón a todo el ancho disponible. */
   block?: boolean
+  /** Alias de `block`. Gana sobre él cuando se pasa. */
+  fullWidth?: boolean
+  /** Tono del háptico al presionar; `'none'` lo apaga. */
+  haptic?: AppHapticTone
+  /** Glifo a la izquierda del label. Hereda la tinta de la variante. */
+  icon?: ReactNode
   style?: StyleProp<ViewStyle>
+  testID?: string
+  accessibilityLabel?: string
   accessibilityHint?: string
 }
 
@@ -48,22 +101,55 @@ interface NeoButtonProps {
  * forma, así que un botón destructivo no cambia de silueta — cambia de
  * tinta. El `ghost` es un tile `raisedSm`, el mismo material que los
  * chips.
+ *
+ * ESTADO APAGADO — el botón se HUNDE (`insetSm` sobre `well`, sin
+ * gradiente) en vez de bajar de opacidad. `opacity` sobre el Pressable
+ * aplana el subárbol en una capa y lo compone contra el fondo, así que
+ * desvanece el fill Y la tinta contra el mismo material: el par
+ * `#489350`/`#F5F2E1` a 0.45 colapsa a ~1.6:1. Con el pozo la tinta se
+ * elige contra un fondo conocido y sigue leyéndose. Distingue dos casos
+ * porque sólo uno está exento de WCAG 1.4.3:
+ *  · `disabled` — control inactivo (exento): `textMuted`, 3.73:1 claro /
+ *    6.24:1 oscuro sobre `well`.
+ *  · `lookDisabled` — el control SIGUE siendo operable y es el único
+ *    camino para enterarse de qué falta, así que NO está exento: `text`,
+ *    10.41:1 claro / 13.77:1 oscuro.
  */
 export function NeoButton({
   label,
   onPress,
   variant = 'primary',
+  size = 'default',
   disabled = false,
+  lookDisabled = false,
   busy = false,
+  loading,
   block = false,
+  fullWidth,
+  haptic = 'selection',
+  icon,
   style,
+  testID,
+  accessibilityLabel,
   accessibilityHint,
 }: NeoButtonProps) {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
   const isDark = theme.mode === 'dark'
+  const isBusy = loading ?? busy
+  const stretches = fullWidth ?? block
+  const inert = disabled || isBusy
+  const isDimmed = disabled || lookDisabled
+  const sizing = SIZES[size]
 
   const skin = useMemo(() => {
+    if (isDimmed) {
+      return {
+        background: { backgroundColor: neo.well } as ViewStyle,
+        shadow: neo.shadows.insetSm,
+        ink: disabled ? neo.textMuted : neo.text,
+      }
+    }
     if (variant === 'ghost') {
       return {
         // El ghost NO lleva gradiente: es el material `raised` del tema,
@@ -108,46 +194,64 @@ export function NeoButton({
       shadow,
       ink: neo.ctaText,
     }
-  }, [variant, neo, isDark])
+  }, [variant, neo, isDark, isDimmed, disabled])
 
-  const inert = disabled || busy
+  const labelNode = (
+    <Text
+      style={[styles.label, { color: skin.ink, fontSize: sizing.fontSize }]}
+      numberOfLines={1}
+    >
+      {label}
+    </Text>
+  )
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: inert, busy }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: inert, busy: isBusy }}
       accessibilityHint={accessibilityHint}
-      onPress={() => {
+      testID={testID}
+      onPress={(event) => {
         if (inert) return
-        void triggerHaptic('selection')
-        onPress()
+        // Sin háptico en el press apagado: el branch de "marcá lo que
+        // falta" del caller dispara su propio warning y duplicarlo acá
+        // ensucia el feel.
+        if (haptic !== 'none' && !isDimmed) {
+          void triggerHaptic(haptic)
+        }
+        onPress(event)
       }}
       style={({ pressed }) => [
         styles.base,
-        block ? styles.block : null,
+        stretches ? styles.block : null,
         skin.background,
         {
+          borderRadius: sizing.borderRadius,
+          paddingVertical: sizing.paddingVertical,
+          paddingHorizontal: sizing.paddingHorizontal,
+          minHeight: sizing.minHeight,
           boxShadow: skin.shadow,
-          // Android < API 28 descarta el boxShadow outset EN SILENCIO
-          // (ver `inset-shadow-support`): sin él, el `ghost` —que no
-          // tiene fill propio contra la hoja— se quedaría sin ningún
-          // límite visible. El borde sólo aparece en ese piso.
-          borderWidth: variant === 'ghost' && !SUPPORTS_INSET_SHADOW ? 1 : 0,
+          // Android < API 28 descarta el boxShadow outset EN SILENCIO y
+          // < 29 el inset (ver `inset-shadow-support`): sin él, el
+          // `ghost` y el estado hundido —que no tienen fill propio
+          // contra la hoja— se quedarían sin ningún límite visible. El
+          // borde sólo aparece en ese piso.
+          borderWidth:
+            !SUPPORTS_INSET_SHADOW && (isDimmed || variant === 'ghost') ? 1 : 0,
           borderColor: neo.sheetDivider,
-          opacity: disabled ? 0.45 : pressed ? 0.92 : 1,
+          opacity: pressed && !inert ? 0.92 : 1,
         },
         style,
       ]}
     >
-      {busy ? (
-        <View style={styles.busyRow}>
-          <ActivityIndicator color={skin.ink} size="small" />
-          <Text style={[styles.label, { color: skin.ink }]}>{label}</Text>
+      {isBusy || icon ? (
+        <View style={[styles.row, { gap: sizing.gap }]}>
+          {isBusy ? <ActivityIndicator color={skin.ink} size="small" /> : icon}
+          {labelNode}
         </View>
       ) : (
-        <Text style={[styles.label, { color: skin.ink }]} numberOfLines={1}>
-          {label}
-        </Text>
+        labelNode
       )}
     </Pressable>
   )
@@ -155,22 +259,17 @@ export function NeoButton({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: neoRadii.input,
-    paddingVertical: 15,
-    paddingHorizontal: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   block: {
     alignSelf: 'stretch',
   },
-  busyRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
   },
   label: {
-    fontSize: 16,
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
     letterSpacing: -0.2,

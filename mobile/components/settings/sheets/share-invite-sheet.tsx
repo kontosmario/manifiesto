@@ -3,8 +3,8 @@ import { Pressable, Share, StyleSheet, Text, View } from 'react-native'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import {
   useCreateFamilyInvite,
   type FamilyInviteCreated,
@@ -15,6 +15,15 @@ import { getErrorMessage } from '@/utils/error-message'
 import { useAppTheme } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
 import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+
+/**
+ * Marca de posición del código: MISMA cantidad de glifos que el código ya
+ * formateado (4 + separador + 4). Con la ristra de rayas larga que había antes,
+ * el bloque a 32px con `letterSpacing: 6` no entraba a lo ancho de la hoja y se
+ * partía en dos renglones justo antes de mostrar el código real.
+ */
+const CODE_PLACEHOLDER = '••••-••••'
 
 interface ShareInviteSheetProps {
   visible: boolean
@@ -139,6 +148,7 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
               <Text
                 style={[styles.codeText, { color: neo.text }]}
                 accessibilityLabel={t('settings:invite.codeA11y', { code: invite.code })}
+                numberOfLines={1}
                 selectable
               >
                 {formatCode(invite.code)}
@@ -148,9 +158,23 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
               </Text>
             </Pressable>
           ) : (
-            <Text style={[styles.codeText, { color: neo.textMuted }]}>
-              {createInvite.isPending ? t('settings:invite.generating') : '— — — — — — — —'}
-            </Text>
+            <View>
+              <Text
+                numberOfLines={1}
+                style={[styles.codeText, { color: neo.textMuted }]}
+              >
+                {createInvite.isPending ? t('settings:invite.generating') : CODE_PLACEHOLDER}
+              </Text>
+              {/* Reserva el renglón del hint: sin él la caja mide ~23pt menos
+                  mientras se genera y el sheet salta cuando llega el código. */}
+              <Text
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                style={[styles.codeHint, styles.codeHintSpacer]}
+              >
+                {t('settings:invite.tapToCopy')}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -159,34 +183,22 @@ export function ShareInviteSheet({ visible, onClose }: ShareInviteSheetProps) {
         </Text>
 
         <View style={styles.actions}>
-          <AppButton
+          <NeoButton
+            block
             disabled={!invite}
+            haptic="light"
             label={t('settings:invite.share')}
             onPress={handleShare}
           />
-          <Pressable
+          <NeoButton
+            block
             disabled={createInvite.isPending}
+            haptic="light"
+            icon={<MaterialIcons name="refresh" size={16} color={neo.textMuted} />}
+            label={t('settings:invite.regenerate')}
             onPress={handleRegenerate}
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.secondaryAction,
-              {
-                borderColor: neo.sheetDivider,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <MaterialIcons
-              name="refresh"
-              size={16}
-              color={neo.textMuted}
-            />
-            <Text
-              style={[styles.secondaryActionText, { color: neo.textMuted }]}
-            >
-              {t('settings:invite.regenerate')}
-            </Text>
-          </Pressable>
+            variant="ghost"
+          />
         </View>
       </View>
     </ModalCard>
@@ -246,22 +258,13 @@ const styles = StyleSheet.create({
   codeText: {
     fontSize: 32,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 6,
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
-  codeHint: { fontSize: 11, fontWeight: '600', letterSpacing: 0.4 },
-  meta: { fontSize: 13, textAlign: 'center', fontWeight: '500' },
+  codeHint: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600'), letterSpacing: 0.4 },
+  codeHintSpacer: { opacity: 0 },
+  meta: { fontSize: 13, textAlign: 'center', fontWeight: '500', fontFamily: nunitoFamily('500') },
   actions: { gap: 10 },
-  secondaryAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    minHeight: 48,
-  },
-  secondaryActionText: { fontSize: 14, fontWeight: '700' },
 })

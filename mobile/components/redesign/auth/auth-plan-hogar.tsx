@@ -607,6 +607,7 @@ function PlanPrice({
         width={width}
         height={20}
         radius={6}
+        skin="neo"
         style={[styles.priceSkeleton, skeletonStyle]}
       />
     )
@@ -852,7 +853,7 @@ const styles = StyleSheet.create({
   // Skeleton del precio (transitorio, no está en el mock): centrado
   // aprox. contra la caja de línea del precio 23.
   priceSkeleton: { marginBottom: 5 },
-  // Sobre la card anual verde el surfaceMuted del SkeletonBox no
+  // Sobre la card anual verde el material base del SkeletonBox no
   // contrasta: crema translúcido (mismo override que PlanTiles).
   priceSkeletonOnGreen: { backgroundColor: 'rgba(255,251,242,0.35)' },
   per: {

@@ -2,7 +2,9 @@ import { Image, StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoRadii } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
   /** 1-indexed position of the wizard, or the total when in summary. */
@@ -24,7 +26,7 @@ export function ImportReviewHeader({
   imageUri,
   mode = 'edit',
 }: Props) {
-  const { theme } = useAppTheme()
+  const { neo } = useImportReviewNeo()
   const { t } = useTranslation()
   const reduced = useReducedMotion()
   const headingEnter = reduced ? undefined : FadeIn.duration(200)
@@ -38,24 +40,25 @@ export function ImportReviewHeader({
   return (
     <Animated.View entering={headingEnter} style={styles.row}>
       {imageUri !== undefined && imageUri !== '' ? (
-        <Image
-          source={{ uri: imageUri }}
+        // La miniatura es un tile ELEVADO: la sombra va en el wrapper y no en
+        // la Image, así el recorte del radio no le come el relieve.
+        <View
           style={[
-            styles.thumb,
-            {
-              borderColor: theme.colors.line,
-              backgroundColor: theme.colors.surfaceMuted,
-            },
+            styles.thumbWrap,
+            { backgroundColor: neo.surface, boxShadow: neo.shadows.raisedSm },
           ]}
-          resizeMode="cover"
-          accessible
-          accessibilityLabel={t('gastos:import.header.thumbnailA11y')}
-        />
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.thumb}
+            resizeMode="cover"
+            accessible
+            accessibilityLabel={t('gastos:import.header.thumbnailA11y')}
+          />
+        </View>
       ) : null}
       <View style={styles.textCol}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>
-          {title}
-        </Text>
+        <Text style={[styles.title, { color: neo.text }]}>{title}</Text>
       </View>
     </Animated.View>
   )
@@ -69,19 +72,25 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 4,
   },
+  thumbWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: neoRadii.chip,
+    padding: 3,
+  },
   thumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
-    opacity: 0.85,
+    flex: 1,
+    borderRadius: neoRadii.chip - 3,
   },
   textCol: {
     flex: 1,
   },
+  // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
+  // estático propio, así que sin él el 900 se renderiza como regular.
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: -0.3,
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.4,
   },
 })

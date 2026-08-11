@@ -3,6 +3,7 @@ import type { PropsWithChildren } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { PreviewApprovalStatus } from '@/screens/dev/redesign/redesign-approval-status'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Piezas compartidas de los previews del rediseño 2026-07 (dev-only).
@@ -122,10 +123,12 @@ const styles = StyleSheet.create({
   labelTitle: {
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   labelSource: {
     fontSize: 11.5,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   phone: {
     borderRadius: 28,
@@ -155,10 +158,12 @@ const styles = StyleSheet.create({
   rowLabel: {
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
   },
   rowDetail: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   statusChip: {
     borderRadius: 999,
@@ -168,6 +173,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 10,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.8,
   },
 })

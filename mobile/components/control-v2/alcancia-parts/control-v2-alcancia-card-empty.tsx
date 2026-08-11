@@ -11,6 +11,7 @@ import type { SavingsGoal } from '@/features/savings-goals/savings-goal.model'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
 import { ReserveBlock } from './reserve-block'
+import { nunitoFamily } from '@/theme/typography'
 
 // Mismo umbral que el card principal — vale en este file para que el
 // callout muestre el progreso ("Gasto en X de Y días") sin necesidad
@@ -231,6 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flexShrink: 1,
   },
   heroRow: {
@@ -246,6 +248,7 @@ const styles = StyleSheet.create({
   amount: {
     fontSize: 30,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.2,
     lineHeight: 32,
   },
@@ -269,6 +272,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   tilesRow: {
@@ -292,12 +296,14 @@ const styles = StyleSheet.create({
   tileLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   tileValue: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
   },
   // ── Empty-state silhouette ──────────────────────────────────
@@ -311,7 +317,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginLeft: 'auto',
   },
-  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyPillText: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.4 },
   emptyCallout: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,7 +332,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
-  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.2 },
 })

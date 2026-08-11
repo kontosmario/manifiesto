@@ -7,6 +7,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { parsePrice } from '@/utils/money'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StepIncomeContributionProps {
   contributesIncome: boolean | null
@@ -159,7 +160,7 @@ export function ChoicePill({ label, selected, onPress, theme }: ChoicePillProps)
 
 const styles = StyleSheet.create({
   stack: { gap: 16 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 6, lineHeight: 18 },
   choices: {
     flexDirection: 'row',
@@ -178,11 +179,13 @@ const styles = StyleSheet.create({
   choiceText: {
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   eyebrow: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
     marginBottom: 8,
   },

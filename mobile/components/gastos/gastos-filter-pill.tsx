@@ -14,6 +14,7 @@ import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
 import { darkenForLightBg } from '@/utils/category-color'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GastosFilterPillProps {
   active: boolean
@@ -249,9 +250,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  label: { fontWeight: '700' },
+  label: { fontWeight: '700', fontFamily: nunitoFamily('700') },
   count: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 999 },
-  countText: { fontSize: 10, fontWeight: '700' },
+  countText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700') },
 })
 
 /**

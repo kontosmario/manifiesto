@@ -16,6 +16,7 @@ import { useCobroPending } from '@/features/finance/use-cobro-pending'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 type Surface = 'hero' | 'header'
 
@@ -183,6 +184,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   // En el header (columna) el chip se autoajusta al contenido (no full
   // width) y respira un poco abajo del subtítulo.

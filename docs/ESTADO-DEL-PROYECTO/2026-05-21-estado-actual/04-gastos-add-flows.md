@@ -10,7 +10,7 @@
 
 | Tipo | Tabla DB | Pantalla | Descripción |
 |---|---|---|---|
-| **Gasto variable** | `public.expenses` | Gastos tab + Historial | Gastos sueltos del ciclo: comida, transporte, etc. |
+| **Gasto variable** | `public.expenses` | Gastos tab (ciclo vivo + ediciones cerradas) | Gastos sueltos del ciclo: comida, transporte, etc. |
 | **Ingreso extra** | `public.income_events` | Modal add-income | Transferencias, bonos, regalos — no el sueldo base |
 | **Gasto fijo** | `public.fixed_expenses` + `public.commitments` | Fijos tab | Compromisos recurrentes (alquiler, cuotas) — fuera de scope de este doc |
 
@@ -256,20 +256,38 @@ Stack vertical con `RiseView` staggered:
 
 ---
 
-## 5. Historial, filtros y búsqueda contextual
+## 5. Ciclos cerrados, edición y filtros
 
-### ExpensesHistoryScreen
+> **Retiro del historial (2026-08-05, decisión de owner).** La pantalla
+> `/(app)/expenses-history` y su modal de filtros `/(app)/expense-filters` ya no
+> existen: duplicaban una lectura que el usuario ya tiene en el tab Gastos. Los
+> **meses pasados** viven en las ediciones de ciclos cerrados del propio tab
+> (selector de ciclo del encabezado) y la **edición de un gasto** se hace en una
+> hoja sobre el feed. Con ellas se retiraron `expenses-history-screen.tsx`, los
+> `expense-history-*.tsx`, `expense-editor-modal.tsx`,
+> `use-expense-history-controller.ts` y los helpers de snapshot
+> (`expense-history-breakdown/-grouping/.types`).
 
-| Archivo | Estado |
-|---|---|
-| `app/(app)/expenses-history.tsx` | ✅ LIVE |
-| [`expenses-history-screen.tsx`](../../../mobile/screens/home/expenses-history-screen.tsx) | ✅ LIVE |
+### Ciclos cerrados dentro del tab Gastos
 
-La pantalla de historial no es el tab activo (ese es GastosV2). Es accesible vía ruta `/expenses-history` y también desde el Insights/Control screen. Muestra `ExpenseHistoryHeroCard`, `ExpenseHistoryContentCard`, toolbar con botones a filtros y categorías.
+El selector de ciclo del encabezado (`CycleDropdown`) alterna entre el ciclo
+vivo y las ediciones cerradas que baja `useMonthlyEditions`. Una edición cerrada
+es **sólo lectura**: agregados del ciclo (total, ranking de categorías,
+calendario de intensidad), sin feed paginado, sin filtros y sin mutaciones —
+todo lo interactivo queda gateado por `isCurrent`.
 
-Consume `useExpenseHistoryController(familyId, theme)` que internamente usa `useExpenseHistoryFilters` (store), `useCategories`, `useExpenses`, `useFamilyDashboard`.
+### Edición de un gasto — `EditGastoSheet`
 
-Filtra automáticamente los gastos con `commitment_id` (fijos autopagados) — solo muestra gastos manuales.
+[`edit-gasto-sheet.tsx`](../../../mobile/components/gastos/edit-gasto-sheet.tsx)
+
+Se abre desde una fila del feed vivo (mantener presionado, o la acción `edit` de
+accesibilidad) y se monta sobre la propia lista, sin navegar.
+
+- Alcance de escritura: **monto y descripción** — exactamente lo que persiste
+  `updateExpense`. La categoría se muestra como contexto de sólo lectura.
+- La `key` versiona la sesión de edición: abrir otro movimiento remonta el
+  formulario con sus valores.
+- No se monta sobre una edición cerrada.
 
 ### Store de filtros — `expense-history-filters.store.ts`
 
@@ -283,24 +301,16 @@ Store de módulo (`useSyncExternalStore`) con estado por `familyId`. **No persis
 | `periodFilter` | `'cycle' \| 'week' \| 'today' \| 'all'` | `'cycle'` |
 | `searchQuery` | string | `''` |
 
-`filtersAreDirty` = true si alguno difiere del default. La ExpenseHistoryToolbar muestra indicador visual cuando `filtersAreDirty`.
-
-### ExpenseFiltersScreen
-
-[`expense-filters-screen.tsx`](../../../mobile/screens/home/expense-filters-screen.tsx)
-
-Modal. Muestra:
-- `TextField` con `returnKeyType="search"` para `searchQuery`
-- Chips de período: Ciclo / 7 días / Hoy / Todo
-- Chips de categoría (todas las categorías de la familia)
-
-Los cambios son drafts locales — se aplican al store solo al presionar "Aplicar filtros".
+Su único lector vivo es `ExpenseCategoriesScreen`, que resuelve con él qué
+categoría llega preseleccionada. Sin la pantalla de filtros ya no hay superficie
+que escriba `periodFilter` ni `searchQuery`: quedan en su default.
 
 ### Búsqueda contextual — decisión de owner: SKIP
 
-La búsqueda en filtros está implementada en `ExpenseFiltersScreen` (campo de texto, persistida en el store como `searchQuery`) y consumida en `useExpenseHistoryController` (normaliza a lowercase, filtra por description/category name). Esta búsqueda pertenece al flujo de **Historial**, no al Gastos tab principal.
-
-**Búsqueda global (search bar en Gastos tab): descartada por decisión de owner.** El `GastosV2Screen` no tiene search bar. Los filtros del tab Gastos (categoría + día del calendario) son el mecanismo de exploración. El historial tiene su búsqueda por texto pero está en pantalla separada.
+**Búsqueda global (search bar en Gastos tab): descartada por decisión de owner.**
+Los filtros del tab Gastos (categoría + día del calendario) son el mecanismo de
+exploración. La búsqueda por texto vivía en la pantalla de filtros y se retiró
+con ella.
 
 ---
 
@@ -318,9 +328,9 @@ Modal. Lista todas las categorías de la familia (`useCategories(familyId)`), mu
 - Renombrar (`useRenameCategory`)
 - Eliminar (`useDeleteCategory` — guarda: valida que no tenga gastos antes de eliminar, Alert si tiene)
 
-La selección activa en el modal (managed por `categoryManagementSelection`) se sincroniza con el store de filtros del historial vía `resolveSelectedCategoryId` / `resolveManagedCategoryId`.
+La selección activa en el modal (managed por `categoryManagementSelection`) se sincroniza con el store de filtros vía `resolveSelectedCategoryId` / `resolveManagedCategoryId`.
 
-La pantalla se accede desde la toolbar del `ExpensesHistoryScreen` (botón de categorías).
+La pantalla se accede desde `Control` (tarjeta de categorías del ciclo).
 
 ### use-categories.ts
 
@@ -449,11 +459,8 @@ Tercer línea en el row: `"{trimmedNotes}"` en italic, `fontSize: 11`, `color: t
 | `expense-analytics.suggestions.ts` | Sugerencias analíticas |
 | `expense-analytics.ts` | Entry point de analytics |
 | `expense-analytics.types.ts` | Tipos de analytics |
-| `expense-history-breakdown.ts` | Genera breakdown de gastos por categoría/período |
-| [`expense-history-filters.store.ts`](../../../mobile/features/expenses/expense-history-filters.store.ts) | Store de filtros del historial — ver §5 |
-| `expense-history-grouping.ts` | Agrupa gastos por día para el SectionList del historial |
-| `expense-history.ts` | Helpers de snapshot del historial (buildExpenseHistorySnapshot, etc.) |
-| `expense-history.types.ts` | Tipos del historial |
+| [`expense-history-filters.store.ts`](../../../mobile/features/expenses/expense-history-filters.store.ts) | Store de la categoría preseleccionada — ver §5 |
+| `expense-history.ts` | `ALL_CATEGORIES_KEY`, `PERIOD_OPTIONS` y los resolvers de categoría del store |
 | `expense-intelligence-model.ts` | Modelo de inteligencia para sugerencias |
 | [`expense-query-keys.ts`](../../../mobile/features/expenses/expense-query-keys.ts) | Query keys centralizadas (family, list, recent, periodTotal, monthlySpent) |
 | `expense-repository-enrichment.ts` | Enriquece rows crudas (join con profiles) |
@@ -461,7 +468,6 @@ Tercer línea en el row: `"{trimmedNotes}"` en italic, `fontSize: 11`, `color: t
 | [`expense-repository.model.ts`](../../../mobile/features/expenses/expense-repository.model.ts) | Interfaces, validaciones, builders |
 | [`expense-repository.ts`](../../../mobile/features/expenses/expense-repository.ts) | CRUD Supabase: loadExpenses, createExpense, updateExpense, deleteExpense |
 | [`use-add-expense-controller.ts`](../../../mobile/features/expenses/use-add-expense-controller.ts) | Controller del form de alta — ver §3 |
-| [`use-expense-history-controller.ts`](../../../mobile/features/expenses/use-expense-history-controller.ts) | Controller del historial — ver §5 |
 | [`use-expenses.ts`](../../../mobile/features/expenses/use-expenses.ts) | useExpenses, useRecentExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense |
 | [`variable-expense-categories.ts`](../../../mobile/features/expenses/variable-expense-categories.ts) | filterVariableExpenseCategories — ver §3 |
 
@@ -572,7 +578,9 @@ Internamente llama 4 RPCs hijas + 2 selects directos:
 - Alta de ingreso con kind picker y back-date por chips
 - Swipe-to-delete con optimistic update
 - Paginación infinita (7 días por página)
-- Filtros en historial (período, categoría, texto)
+- Filtro por categoría y foco por día en el tab Gastos
+- Lectura de ciclos cerrados desde el selector de ciclo (ediciones)
+- Edición de gasto en una hoja sobre el feed (monto + descripción)
 - Realtime en Gastos tab
 - Notas en gastos (columna DB + UI form + display en row + RPCs)
 - Catálogo de categorías con CRUD completo + templates
@@ -580,16 +588,15 @@ Internamente llama 4 RPCs hijas + 2 selects directos:
 
 ### 🟡 PARCIAL
 
-- **Búsqueda por texto**: implementada en `ExpenseFiltersScreen` (persiste en store) pero solo aplica al historial, no al Gastos tab principal. Por decisión del owner, no hay search global en el tab Gastos.
+- **Búsqueda por texto**: se retiró con la pantalla de filtros (2026-08-05). El store conserva el campo `searchQuery` pero ninguna superficie lo escribe. Por decisión del owner, no hay search global en el tab Gastos.
 - **`useCreateExpense` sin optimistic update**: a diferencia de delete, create no tiene optimistic row insertion. El gasto aparece tras el round-trip + invalidación de cache.
 
 ### ⏸️ EN PAUSA / LEGACY
 
-- `ExpensesHistoryScreen`: sigue accesible en `/expenses-history` pero no es el tab principal. Fue el diseño anterior al Cuaderno V2. Todavía útil para búsqueda textual.
 - `gastos-aggregates.model.ts`: la lógica de agregación client-side fue movida a RPCs. Solo sobrevive `groupGastosByDay` (presentacional) y los tipos.
 - Los archivos de `expense-analytics.*` (7 archivos) y `expense-intelligence-model.ts`: existentes pero no verificado en qué pantalla los consume actualmente.
 
 ### 🔴 NO EXISTE
 
 - Search bar global en el tab Gastos (descartada por decisión de owner)
-- Edición inline de gasto en el Gastos tab (solo en historial vía `ExpenseEditorModal`)
+- Cambiar la categoría de un gasto ya cargado (la hoja de edición sólo escribe monto y descripción)

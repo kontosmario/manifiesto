@@ -7,6 +7,7 @@ import { GastosHeroCard } from '@/components/gastos/gastos-hero-card'
 import { GastosMonthCalendar } from '@/components/gastos/gastos-month-calendar'
 import { GastoRow } from '@/components/gastos/gasto-row'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Which preview block a render wrapper applies to. Lets the screen map
  *  each preview to the matching guided-tour step (hero / calendar / list)
@@ -225,6 +226,7 @@ const styles = StyleSheet.create({
   introTitle: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     textAlign: 'center',
   },
@@ -242,6 +244,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
     marginTop: 6,
     marginBottom: 2,
@@ -257,6 +260,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   previewDescription: {

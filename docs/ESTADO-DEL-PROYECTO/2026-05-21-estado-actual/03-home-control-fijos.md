@@ -350,15 +350,15 @@ Formulario modal con:
 | ~~`daily-budget-ring.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (SPRINT D cleanup) |
 | `daily-budget-suggestion-card.tsx` | Card de sugerencia del presupuesto diario | (no verificado) |
 | `description-row.tsx` | Fila de descripción | (no verificado) |
-| `expense-editor-modal.tsx` | Modal para editar un gasto existente | (no verificado) |
-| `expense-history-content-card.tsx` | Card de contenido del historial de gastos | (no verificado) |
-| `expense-history-hero-card.tsx` | Hero card del historial de gastos | (no verificado) |
-| `expense-history-list.tsx` | Lista del historial de gastos | (no verificado) |
-| `expense-history-row-actions.tsx` | Acciones de una fila del historial | (no verificado) |
-| `expense-history-row-card.tsx` | Card de fila del historial | (no verificado) |
-| `expense-history-row.tsx` | Fila del historial de gastos | (no verificado) |
-| `expense-history-section-header.tsx` | Header de sección del historial | (no verificado) |
-| `expense-history-toolbar.tsx` | Toolbar del historial de gastos | (no verificado) |
+| ~~`expense-editor-modal.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — la edición de gasto se mudó a `gastos/edit-gasto-sheet.tsx`, sobre el feed |
+| ~~`expense-history-content-card.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-hero-card.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-list.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-row-actions.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-row-card.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-row.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-section-header.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
+| ~~`expense-history-toolbar.tsx`~~ | 🗑️ **Eliminado 2026-08-05** — con el retiro de la pantalla de historial |
 | ~~`expense-intelligence-panel.tsx`~~ | 🗑️ **Eliminado 2026-06-08** — 0 imports (huérfano confirmado en SPRINT D cleanup) |
 | `expense-intelligence-suggestion-card.tsx` | Card de sugerencia de inteligencia | (no verificado) |
 | `family-strip.tsx` | Strip horizontal de avatares familiares + `PaydayPillV2`. Max 4 avatares + overflow count. | `HomeDashboard` |

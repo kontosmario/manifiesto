@@ -6,6 +6,7 @@ import { formatMoneyWithSign } from '@/utils/money'
 import { withAlpha } from '@/theme/color-utils'
 import { lightenForDarkBg } from '@/utils/category-color'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface ActivityRowV2Props {
   /**
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
   iconTile: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 18 },
   flex: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '700' },
+  title: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   sub: { fontSize: 12 },
-  amount: { fontSize: 14, fontWeight: '800' },
+  amount: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800') },
 })

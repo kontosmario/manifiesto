@@ -16,6 +16,7 @@ import { useSavingsGoal } from '@/features/savings-goals/use-savings-goal'
 import { computeCycleDisponible } from '@/features/family/cycle-disponible'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
 import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
+import { computeOpeningDailyBudget } from '@/features/home/derive-gauge-state'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
 import {
@@ -53,6 +54,22 @@ export interface HomeHeroMetrics {
   cycleTotalDays: number
   cycleMonth: string
   dailyBudget: number
+  /**
+   * `true` cuando el cupo se compuso por la rama que YA descontó el gasto
+   * variable del ciclo (override de saldo o ingreso dinámico). El medidor del
+   * hero lo necesita para no restar el gasto de hoy dos veces; ver
+   * `derive-gauge-state` y `add-expense-impact`.
+   */
+  cupoNetsSpend: boolean
+  /**
+   * Gasto VARIABLE de hoy y cupo de APERTURA del día (lo que había para hoy
+   * antes de gastar). Son los dos números con los que el hero arma el medidor
+   * — y los MISMOS que consume el "revisá el impacto" del alta de gasto, para
+   * que las dos pantallas no puedan mostrar cuentas distintas del mismo gasto.
+   */
+  spentToday: number
+  openingDailyBudget: number
+  discretionaryRaw: number
   projectedClose: number
   /**
    * `true` when the user reported a cycle-specific available amount
@@ -319,6 +336,13 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       0,
       Math.round(dashboard.effectiveCommitmentReserved),
     )
+    // Rama del cupo. Se nombra acá porque además del cupo decide si el
+    // medidor del hero puede restarle el gasto de hoy: en esta rama el cupo
+    // ya lo restó (sale de `totalAvailable`) y volver a hacerlo descuenta dos
+    // veces el mismo gasto. Ver `derive-gauge-state` y `add-expense-impact`.
+    const hasCycleOverride =
+      dashboard.cycleStartingBalanceOverride !== null ||
+      dashboard.incomeMode === 'dynamic'
     const disponible = computeCycleDisponible({
       effectiveCycleIncome: dashboard.effectiveCycleIncome,
       effectiveCycleDays: dashboard.effectiveCycleDays,
@@ -330,9 +354,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       // Modo dinámico: el cupo reparte lo disponible (ingresos del ciclo
       // − gasto − fijos − ahorro) sobre los días RESTANTES — mismo path
       // que el override (espejado en SQL cycle_disponible, flag `dyn`).
-      hasCycleOverride:
-        dashboard.cycleStartingBalanceOverride !== null ||
-        dashboard.incomeMode === 'dynamic',
+      hasCycleOverride,
     })
     // Saldo del mes = plata REAL (computeCycleDisponible lo compone: discrecional
     // + fijos pendientes); el CUPO (dailyBudget) reserva los fijos → no cambia.
@@ -392,6 +414,18 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       cycleTotalDays,
       cycleMonth: formatCycleLabel(monthStart, monthEnd),
       dailyBudget,
+      /** `true` = el cupo ya descontó el gasto de hoy (rama override/dinámico). */
+      cupoNetsSpend: hasCycleOverride,
+      spentToday: dashboard.variableSpentToday,
+      /** Discrecional SIN clampear: sin él la apertura se inventa. */
+      discretionaryRaw: disponible.discretionaryRaw,
+      openingDailyBudget: computeOpeningDailyBudget({
+        dailyBudget,
+        spentToday: dashboard.variableSpentToday,
+        cupoNetsSpend: hasCycleOverride,
+        budgetDays: dashboard.effectiveCycleDays,
+        discretionaryRaw: disponible.discretionaryRaw,
+      }),
       projectedClose,
       cycleAdjusted: dashboard.cycleStartingBalanceOverride !== null,
       paydayPending: dashboard.isSalaryPendingConfirmation,
@@ -465,6 +499,10 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.monthlyAccounting,
     dashboard.totalAvailable,
     dashboard.variableSpentInCurrentCycle,
+    // Sin esto el hero NO se recalcula al cargar un gasto de hoy: el ticket y
+    // el medidor quedarían con el número del render anterior — exactamente el
+    // síntoma que se está arreglando.
+    dashboard.variableSpentToday,
     dashboard.effectiveCycleIncome,
     dashboard.effectiveCycleDays,
     dashboard.monthlyIncome,

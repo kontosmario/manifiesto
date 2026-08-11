@@ -8,6 +8,7 @@ import Animated, {
   useReducedMotion,
   Easing,
 } from 'react-native-reanimated'
+import { NeoSkeleton, type SkeletonSkin } from '@/components/ui/neo-skeleton'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { decorativeDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -17,14 +18,22 @@ interface SkeletonBoxProps {
   height?: number
   radius?: number
   style?: StyleProp<ViewStyle>
+  skin?: SkeletonSkin
 }
 
-export function SkeletonBox({
+export function SkeletonBox({ skin = 'classic', ...props }: SkeletonBoxProps) {
+  if (skin === 'neo') {
+    return <NeoSkeleton {...props} />
+  }
+  return <ClassicSkeletonBox {...props} />
+}
+
+function ClassicSkeletonBox({
   width = '100%',
   height = 16,
   radius = 8,
   style,
-}: SkeletonBoxProps) {
+}: Omit<SkeletonBoxProps, 'skin'>) {
   const { theme } = useAppTheme()
   const reduceMotion = useReducedMotion()
   const progress = useSharedValue(0)

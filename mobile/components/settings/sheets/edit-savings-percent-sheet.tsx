@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import {
   MAX_SAVINGS_GOAL_PERCENT,
   deriveSavingsGoalAmount,
 } from '@/features/finance/family-finance.model'
 import { currencyFormatter } from '@/utils/money'
+import { OnbSheetBody, OnbSheetPercentCard } from './onb-sheet-parts'
 
 interface EditSavingsPercentSheetProps {
   visible: boolean
@@ -16,6 +18,10 @@ interface EditSavingsPercentSheetProps {
   onSave: (nextValue: number) => void
 }
 
+/** Atajos del paso de ahorro del onboarding; el 10% lleva el badge. */
+const PERCENT_CHIPS = [0, 5, 10, 20, 30] as const
+const SUGGESTED_PERCENT = 10
+
 export function EditSavingsPercentSheet({
   visible,
   currentValue,
@@ -25,58 +31,64 @@ export function EditSavingsPercentSheet({
   onSave,
 }: EditSavingsPercentSheetProps) {
   const { t } = useTranslation()
-  const [draft, setDraft] = useState(() => String(currentValue))
+  const [draft, setDraft] = useState(() => clampPercent(currentValue))
 
   useEffect(() => {
     if (visible) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydrate draft when sheet opens
-      setDraft(String(currentValue))
+      setDraft(clampPercent(currentValue))
     }
   }, [visible, currentValue])
 
-  const parsed = Number(draft)
-  const isValid =
-    Number.isFinite(parsed) && parsed >= 0 && parsed <= MAX_SAVINGS_GOAL_PERCENT
-  const hasChanged = isValid && parsed !== currentValue
-  const showError = !isValid && draft.length > 0
+  const hasChanged = draft !== currentValue
 
-  const helper = useMemo(() => {
-    if (!isValid) {
-      return t('settings:editSavingsPercent.helperInvalid', { max: MAX_SAVINGS_GOAL_PERCENT })
-    }
-    const amount = deriveSavingsGoalAmount(monthlyIncome, parsed)
+  const footer = useMemo(() => {
+    const amount = deriveSavingsGoalAmount(monthlyIncome, draft)
     if (amount <= 0) {
       return t('settings:editSavingsPercent.helperNoIncome')
     }
-    return t('settings:editSavingsPercent.helperAmount', { amount: currencyFormatter.format(amount) })
-  }, [isValid, monthlyIncome, parsed, t])
+    return t('settings:editSavingsPercent.helperAmount', {
+      amount: currencyFormatter.format(amount),
+    })
+  }, [monthlyIncome, draft, t])
 
   return (
-    <NumericEditSheet
-      visible={visible}
-      title={t('settings:editSavingsPercent.title')}
-      subtitle={t('settings:editSavingsPercent.subtitle', { max: MAX_SAVINGS_GOAL_PERCENT })}
-      rawValue={draft}
-      onChangeRawValue={setDraft}
-      formatDisplay={(raw) => (raw ? `${raw}%` : '')}
-      displayEyebrow={t('settings:editSavingsPercent.eyebrow')}
-      displayPlaceholder="20%"
-      helper={helper}
-      errorText={
-        showError
-          ? t('settings:editSavingsPercent.error', { max: MAX_SAVINGS_GOAL_PERCENT })
-          : undefined
-      }
-      maxIntegerDigits={3}
-      maxDecimalDigits={0}
-      saveLabel={t('settings:editSavingsPercent.save')}
-      saveDisabled={!hasChanged}
-      isSaving={isSaving}
-      onSave={() => {
-        if (!hasChanged) return
-        onSave(parsed)
-      }}
+    <ModalCard
+      skin="neo"
       onClose={onClose}
-    />
+      subtitle={t('settings:editSavingsPercent.subtitle', { max: MAX_SAVINGS_GOAL_PERCENT })}
+      title={t('settings:editSavingsPercent.title')}
+      visible={visible}
+      footer={
+        <NeoButton
+          block
+          disabled={!hasChanged}
+          haptic="light"
+          label={t('settings:editSavingsPercent.save')}
+          loading={isSaving}
+          onPress={() => {
+            if (!hasChanged) return
+            onSave(draft)
+          }}
+        />
+      }
+    >
+      <OnbSheetBody>
+        <OnbSheetPercentCard
+          chips={PERCENT_CHIPS}
+          eyebrow={t('settings:editSavingsPercent.eyebrow')}
+          footer={footer}
+          max={MAX_SAVINGS_GOAL_PERCENT}
+          onChange={(next) => setDraft(clampPercent(next))}
+          percent={draft}
+          suggested={SUGGESTED_PERCENT}
+        />
+      </OnbSheetBody>
+    </ModalCard>
   )
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 0
+  return Math.min(MAX_SAVINGS_GOAL_PERCENT, Math.max(0, Math.round(value)))
 }

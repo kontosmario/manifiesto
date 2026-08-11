@@ -25,6 +25,7 @@ import {
   statusColor,
 } from './control-hero-helpers'
 import type { ControlHeroState } from './control-hero-states'
+import { nunitoFamily } from '@/theme/typography'
 
 const ENTER = motionEasings.enterSmooth
 
@@ -332,17 +333,20 @@ const styles = StyleSheet.create({
   metaChipLabel: {
     fontSize: 8,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.2,
   },
   metaChipValue: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.1,
     fontVariant: ['tabular-nums'],
   },
   eyebrow: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.8,
   },
   rule: {
@@ -354,12 +358,14 @@ const styles = StyleSheet.create({
   headline: {
     fontSize: 26,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     lineHeight: 30,
   },
   secondary: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     lineHeight: 18,
     marginTop: 8,
     maxWidth: 300,
@@ -370,6 +376,7 @@ const styles = StyleSheet.create({
   numberLabel: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.4,
     textTransform: 'uppercase',
     marginBottom: 4,
@@ -377,6 +384,7 @@ const styles = StyleSheet.create({
   numberValue: {
     fontSize: 40,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1.6,
     lineHeight: 44,
     fontVariant: ['tabular-nums'],
@@ -399,6 +407,7 @@ const styles = StyleSheet.create({
   footerLabel: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 3,
@@ -406,6 +415,7 @@ const styles = StyleSheet.create({
   footerValue: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     fontVariant: ['tabular-nums'],
   },

@@ -313,7 +313,10 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
-    lineHeight: 34,
+    // Headroom sobre el fontSize: en iOS la baseline queda a
+    // `lineHeight − descent` del tope y las mayúsculas de Nunito 900 suben
+    // 0.705em, así que con `lineHeight == fontSize` el título salía rebanado.
+    lineHeight: 34 * 1.2,
     marginTop: 4,
   },
   lead: {

@@ -55,6 +55,7 @@ import { authTokens } from '@/theme/palette'
 import type { ThemeColors } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 // Brand-fixed tokens — these stay constant across themes because they
 // belong to the Manifiesto identity (CTA green, peach accent, focus
@@ -1103,6 +1104,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     marginBottom: 10,
     textAlign: 'center',
@@ -1110,6 +1112,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.5,
     textAlign: 'center',
   },
@@ -1155,6 +1158,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -1162,6 +1166,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     textAlign: 'center',
   },
   primaryCta: {
@@ -1182,6 +1187,7 @@ const styles = StyleSheet.create({
     color: CREAM,
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
   },
   secondaryRow: {
@@ -1199,6 +1205,7 @@ const styles = StyleSheet.create({
   secondaryLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
   },
   passwordForm: {
@@ -1213,6 +1220,7 @@ const styles = StyleSheet.create({
   cancelLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
   },
   passwordCta: {
@@ -1241,6 +1249,7 @@ const styles = StyleSheet.create({
   appleDividerLabel: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 1.4,
   },
   appleButton: {
@@ -1257,6 +1266,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   googleButton: {
@@ -1273,6 +1283,7 @@ const styles = StyleSheet.create({
   googleButtonLabel: {
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   appleErrorLabel: {
@@ -1288,6 +1299,7 @@ const styles = StyleSheet.create({
   confirmResendLinkLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.1,
     textDecorationLine: 'underline',
   },
@@ -1300,6 +1312,7 @@ const styles = StyleSheet.create({
   unconfirmedTitle: {
     fontSize: 14,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   unconfirmedBody: {
@@ -1315,6 +1328,7 @@ const styles = StyleSheet.create({
   unconfirmedCtaLabel: {
     fontSize: 13,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   unconfirmedError: {

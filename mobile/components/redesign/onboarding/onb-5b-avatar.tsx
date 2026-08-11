@@ -26,10 +26,10 @@ import { ONB_SPEC, type OnbMode } from './onb-spec'
  */
 
 // Valores propios de 5b (no están en ONB_SPEC; el helper de 5b usa
-// #6C7B67/#93A78F, distinto del helper #8FA089/#7C917A de 5a).
+// #54644F/#93A78F, distinto del helper #8FA089/#7C917A de 5a).
 const SPEC_5B = {
   light: {
-    helper: '#6C7B67',
+    helper: '#54644F',
     link: '#2E7C39',
     ring: '#2E7C39',
     avatarShadow: '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)',
@@ -120,18 +120,31 @@ const FILAS_EXTRAS = chunk4(EXTRAS)
 const GLYPH_DESTACADO = 95
 const GLYPH_TILE = 46
 
-export function Onb5bAvatar({
+/**
+ * Cuerpo del paso: medallón del elegido + "Sorpréndeme" + grilla de
+ * populares con expansión al pack completo. Vive suelto del chrome del
+ * paso (header, hero, CTA) porque "Tu cuenta" en Ajustes ofrece la MISMA
+ * elección y tiene que hacerlo con esta superficie, no con otra.
+ *
+ * `topGap` es la separación del bloque con lo que lo precede (el hero en
+ * el flujo) y `linkColor` deja a la hoja llevar el enlace a la tinta de
+ * acento, que sobre su fondo llega a AA donde el verde de material queda
+ * en 4.47:1.
+ */
+export function Onb5bAvatarPicker({
   mode,
   avatar,
   onSelectAvatar,
-  onBack,
-  onNext,
+  helper,
+  topGap = 18,
+  linkColor,
 }: {
   mode: OnbMode
   avatar: AvatarSlug
   onSelectAvatar: (a: AvatarSlug) => void
-  onBack?: () => void
-  onNext?: () => void
+  helper?: string | null
+  topGap?: number
+  linkColor?: string
 }) {
   const s = ONB_SPEC[mode]
   const s5b = SPEC_5B[mode]
@@ -185,6 +198,89 @@ export function Onb5bAvatar({
   )
 
   return (
+    <View style={{ marginTop: topGap }}>
+      <View style={styles.destacadoCol}>
+        <View
+          style={[
+            styles.destacadoCircle,
+            {
+              backgroundColor: bgFor(avatar),
+              // Anillo de selección siempre presente en el destacado.
+              boxShadow: `${s5b.avatarShadow}, inset 0 0 0 3px ${s5b.ring}`,
+            },
+          ]}
+        >
+          {/* eslint-disable-next-line react-hooks/static-components -- lookup estable del registro congelado del pack, no un componente creado */}
+          <Destacado size={GLYPH_DESTACADO} color={glyphTint} />
+        </View>
+        <Text style={[styles.destacadoNombre, { color: s.text }]}>{AVATAR_LABELS[avatar]}</Text>
+        {helper ? (
+          <Text style={[styles.destacadoHelper, { color: s5b.helper }]}>{helper}</Text>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={sorprendeme}
+          style={[
+            styles.dice,
+            {
+              experimental_backgroundImage: s5b.diceGradientCss,
+              backgroundColor: s5b.diceFallback,
+              boxShadow: s5b.diceShadow,
+            },
+          ]}
+        >
+          <Text style={styles.diceEmoji}>🎲</Text>
+          <Text style={[styles.diceLabel, { color: s.text }]}>
+            {t('onboarding:redesign.avatar.surprise')}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.sectionRow}>
+        <Text style={[styles.sectionLabel, { color: s5b.helper }]}>
+          {t('onboarding:redesign.avatar.mostChosen')}
+        </Text>
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={() => setExpanded((e) => !e)}>
+          <Text style={[styles.sectionLink, { color: linkColor ?? s5b.link }]}>
+            {expanded
+              ? t('onboarding:redesign.avatar.seeLess')
+              : t('onboarding:redesign.avatar.seeMore')}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.grid}>
+        {FILAS_POPULARES.map(renderFila)}
+        {expanded ? (
+          <Animated.View
+            entering={FadeInDown.duration(motionDurations.standard)}
+            exiting={FadeOutDown.duration(motionDurations.quick)}
+            style={styles.gridMore}
+          >
+            {FILAS_EXTRAS.map(renderFila)}
+          </Animated.View>
+        ) : null}
+      </View>
+    </View>
+  )
+}
+
+export function Onb5bAvatar({
+  mode,
+  avatar,
+  onSelectAvatar,
+  onBack,
+  onNext,
+}: {
+  mode: OnbMode
+  avatar: AvatarSlug
+  onSelectAvatar: (a: AvatarSlug) => void
+  onBack?: () => void
+  onNext?: () => void
+}) {
+  const { t } = useTranslation()
+
+  return (
     <OnbScreenShell mode={mode}>
       <OnbScrollBody>
         <OnbHeader mode={mode} title={t('onboarding:chrome.title.avatar')} onBack={onBack} />
@@ -200,74 +296,12 @@ export function Onb5bAvatar({
           brotPose="love"
         />
 
-        <View style={styles.destacadoCol}>
-          <View
-            style={[
-              styles.destacadoCircle,
-              {
-                backgroundColor: bgFor(avatar),
-                // Anillo de selección siempre presente en el destacado.
-                boxShadow: `${s5b.avatarShadow}, inset 0 0 0 3px ${s5b.ring}`,
-              },
-            ]}
-          >
-            {/* eslint-disable-next-line react-hooks/static-components -- lookup estable del registro congelado del pack, no un componente creado */}
-            <Destacado size={GLYPH_DESTACADO} color={glyphTint} />
-          </View>
-          <Text style={[styles.destacadoNombre, { color: s.text }]}>
-            {AVATAR_LABELS[avatar]}
-          </Text>
-          <Text style={[styles.destacadoHelper, { color: s5b.helper }]}>
-            {t('onboarding:redesign.avatar.chosenHelper')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={sorprendeme}
-            style={[
-              styles.dice,
-              {
-                experimental_backgroundImage: s5b.diceGradientCss,
-                backgroundColor: s5b.diceFallback,
-                boxShadow: s5b.diceShadow,
-              },
-            ]}
-          >
-            <Text style={styles.diceEmoji}>🎲</Text>
-            <Text style={[styles.diceLabel, { color: s.text }]}>
-              {t('onboarding:redesign.avatar.surprise')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.sectionRow}>
-          <Text style={[styles.sectionLabel, { color: s5b.helper }]}>
-            {t('onboarding:redesign.avatar.mostChosen')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => setExpanded((e) => !e)}
-          >
-            <Text style={[styles.sectionLink, { color: s5b.link }]}>
-              {expanded
-                ? t('onboarding:redesign.avatar.seeLess')
-                : t('onboarding:redesign.avatar.seeMore')}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.grid}>
-          {FILAS_POPULARES.map(renderFila)}
-          {expanded ? (
-            <Animated.View
-              entering={FadeInDown.duration(motionDurations.standard)}
-              exiting={FadeOutDown.duration(motionDurations.quick)}
-              style={styles.gridMore}
-            >
-              {FILAS_EXTRAS.map(renderFila)}
-            </Animated.View>
-          ) : null}
-        </View>
+        <Onb5bAvatarPicker
+          mode={mode}
+          avatar={avatar}
+          onSelectAvatar={onSelectAvatar}
+          helper={t('onboarding:redesign.avatar.chosenHelper')}
+        />
 
         {/* El kit ancla el CTA abajo (ctaBlock marginTop:'auto' sobre el
             scroll flexGrow:1). En 5b el grid corto (8 populares) dejaba un
@@ -286,7 +320,6 @@ export function Onb5bAvatar({
 const styles = StyleSheet.create({
   destacadoCol: {
     alignItems: 'center',
-    marginTop: 18,
   },
   destacadoCircle: {
     width: 132,

@@ -1,14 +1,23 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
+import { NeoLoadingBlock, type SkeletonSkin } from '@/components/ui/neo-skeleton'
 import { SkeletonBlock } from '@/components/ui/skeleton-block'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface LoadingBlockProps {
   label?: string
+  skin?: SkeletonSkin
 }
 
-export function LoadingBlock({ label }: LoadingBlockProps) {
+export function LoadingBlock({ label, skin = 'classic' }: LoadingBlockProps) {
+  if (skin === 'neo') {
+    return <NeoLoadingBlock label={label} />
+  }
+  return <ClassicLoadingBlock label={label} />
+}
+
+function ClassicLoadingBlock({ label }: Omit<LoadingBlockProps, 'skin'>) {
   const { theme } = useAppTheme()
   const { t } = useTranslation()
   const resolvedLabel = label ?? t('states:loading.generic')

@@ -42,6 +42,7 @@ import { resolveCategoryHueByName } from '@/theme/category-hues'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import { CupoGauge, zoneForCupoPct } from './cupo-gauge'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Placeholder de una cifra que todavía no se puede afirmar (mismo recurso que
  *  el paso 2 del alta de ingreso). */
@@ -716,13 +717,14 @@ const styles = StyleSheet.create({
   },
   summaryIconText: { fontSize: 22 },
   summaryBody: { flex: 1, minWidth: 0 },
-  summaryName: { fontSize: 15, fontWeight: '800' },
+  summaryName: { fontSize: 15, fontWeight: '800', fontFamily: nunitoFamily('800') },
   summaryMeta: { fontSize: 11, marginTop: 2 },
   // `flexShrink: 0`: el que cede en un ancho apretado es la descripción, que
   // puede truncarse. La cifra cortada sería una mentira. Igual que el hermano.
   summaryAmount: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
     flexShrink: 0,
     maxWidth: 140,
@@ -740,16 +742,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   // 0.14em sobre 10.5px. RN no acepta em.
-  impactEyebrow: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.47, flexShrink: 1 },
-  deltaChip: { fontWeight: '900', overflow: 'hidden', flexShrink: 0 },
+  impactEyebrow: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.47, flexShrink: 1 },
+  deltaChip: { fontWeight: '900', fontFamily: nunitoFamily('900'), overflow: 'hidden', flexShrink: 0 },
   noBaseBlock: { marginTop: 14, gap: 10, alignItems: 'flex-start' },
-  noBaseText: { fontSize: 12.5, fontWeight: '700', lineHeight: 17 },
+  noBaseText: { fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 17 },
   remainingPanel: { marginTop: 14 },
   remainingHead: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   remainingBody: { flex: 1, minWidth: 0 },
   // 0.1em sobre 10px.
-  remainingEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  remainingValue: { fontSize: 22, fontWeight: '900', marginTop: 1 },
+  remainingEyebrow: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1 },
+  remainingValue: { fontSize: 22, fontWeight: '900', fontFamily: nunitoFamily('900'), marginTop: 1 },
   gaugeCaption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -757,14 +759,14 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
   },
-  gaugeCaptionLeft: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
-  gaugeCaptionRight: { fontSize: 11, fontWeight: '900', flexShrink: 0 },
-  exceedsHint: { fontSize: 11, fontWeight: '700', lineHeight: 15, marginTop: 8 },
+  gaugeCaptionLeft: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), flexShrink: 1 },
+  gaugeCaptionRight: { fontSize: 11, fontWeight: '900', fontFamily: nunitoFamily('900'), flexShrink: 0 },
+  exceedsHint: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 15, marginTop: 8 },
   // Mismas medidas que el aviso del alta de ingreso: los dos son el mismo
   // bloque y cualquier deriva los haría ver de familias distintas.
   noticeCard: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
-  noticeTitle: { fontSize: 12.5, fontWeight: '900', letterSpacing: -0.1 },
-  noticeBody: { fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
+  noticeTitle: { fontSize: 12.5, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.1 },
+  noticeBody: { fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 18 },
   notesWrap: { borderRadius: 14, borderWidth: 1 },
   notesInput: {
     minHeight: 72,
@@ -773,6 +775,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 19,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   dateRow: {
     paddingHorizontal: 14,
@@ -780,5 +783,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
-  dateValue: { fontSize: 14, fontWeight: '800', textTransform: 'capitalize' },
+  dateValue: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800'), textTransform: 'capitalize' },
 })

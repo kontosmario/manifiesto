@@ -21,6 +21,7 @@ import { formatMoney } from '@/utils/money'
 import { authTokens } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 interface FijosHeroCardProps {
   mes?: string
@@ -711,6 +712,7 @@ const styles = StyleSheet.create({
   titulo: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.6,
     textTransform: 'uppercase',
   },
@@ -723,6 +725,7 @@ const styles = StyleSheet.create({
   urgentBadgeText: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.2,
     color: '#FFB59E',
   },
@@ -743,6 +746,7 @@ const styles = StyleSheet.create({
   celebrateBadgeText: {
     fontSize: 9,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.2,
     color: '#A6EF8F',
   },
@@ -760,6 +764,7 @@ const styles = StyleSheet.create({
   montoSub: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.3,
     marginTop: 3,
   },
@@ -775,11 +780,13 @@ const styles = StyleSheet.create({
   stationCode: {
     fontSize: 14,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.4,
   },
   stationDate: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     fontVariant: ['tabular-nums'],
     marginTop: 1,
   },
@@ -813,6 +820,7 @@ const styles = StyleSheet.create({
     top: 18,
     fontSize: 8,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 0.5,
   },
   perforation: {
@@ -853,12 +861,14 @@ const styles = StyleSheet.create({
   montoPagado: {
     fontSize: 28,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.8,
     lineHeight: 30,
   },
   montoPendiente: {
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.4,
     lineHeight: 22,
   },
@@ -888,6 +898,7 @@ const styles = StyleSheet.create({
   progressPct: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   progressTotal: {
     fontSize: 11,
@@ -906,6 +917,7 @@ const styles = StyleSheet.create({
   bottomLabel: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
     marginBottom: 4,
     textTransform: 'uppercase',
@@ -913,6 +925,7 @@ const styles = StyleSheet.create({
   bottomMonto: {
     fontSize: 24,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
     lineHeight: 26,
   },
@@ -922,12 +935,14 @@ const styles = StyleSheet.create({
   bottomPct: {
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'right',
     fontVariant: ['tabular-nums'],
   },
   bottomPctSub: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'right',
   },
 })

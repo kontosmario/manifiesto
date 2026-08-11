@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from 'react'
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface TabSectionHeaderProps {
   /** Large screen title. Rendered at the shared 34px display scale. */
@@ -106,6 +107,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -1.2,
     lineHeight: 34,
   },

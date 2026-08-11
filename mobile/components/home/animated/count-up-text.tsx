@@ -201,6 +201,24 @@ function JsCountText({
     setDisplay(formatRef.current(n))
   }, [])
 
+  // Arranca APAGADO y sólo vive mientras dura el conteo: un callback por
+  // frame que se queda registrado para siempre cuesta un worklet por frame
+  // por instancia, y una pantalla puede montar varios (la tira del jardín
+  // monta 3) que quedan corriendo aunque la pantalla esté tapada por otra.
+  const frameCallback = useFrameCallback((info) => {
+    'worklet'
+    if (tweening.value !== 1) return
+    sampleAcc.value += info.timeSincePreviousFrame ?? 16
+    if (sampleAcc.value < SAMPLE_INTERVAL_MS) return
+    sampleAcc.value = 0
+    runOnJS(applyDisplay)(Math.round(progress.value))
+  }, false)
+
+  const setFrameActive = useCallback(
+    (active: boolean) => frameCallback.setActive(active),
+    [frameCallback],
+  )
+
   const hasRevealedRef = useRef(false)
   useEffect(() => {
     const first = !hasRevealedRef.current
@@ -217,28 +235,34 @@ function JsCountText({
     const handle = InteractionManager.runAfterInteractions(() => {
       sampleAcc.value = SAMPLE_INTERVAL_MS
       tweening.value = 1
+      setFrameActive(true)
       progress.value = withTiming(
         value,
         { duration, easing: COUNT_EASING },
         (finished) => {
           'worklet'
           tweening.value = 0
+          runOnJS(setFrameActive)(false)
           if (!finished) return
           runOnJS(applyDisplay)(value)
         },
       )
     })
-    return () => handle.cancel()
-  }, [value, duration, reduced, progress, tweening, sampleAcc, applyDisplay, debugLabel])
-
-  useFrameCallback((info) => {
-    'worklet'
-    if (tweening.value !== 1) return
-    sampleAcc.value += info.timeSincePreviousFrame ?? 16
-    if (sampleAcc.value < SAMPLE_INTERVAL_MS) return
-    sampleAcc.value = 0
-    runOnJS(applyDisplay)(Math.round(progress.value))
-  })
+    return () => {
+      handle.cancel()
+      setFrameActive(false)
+    }
+  }, [
+    value,
+    duration,
+    reduced,
+    progress,
+    tweening,
+    sampleAcc,
+    applyDisplay,
+    setFrameActive,
+    debugLabel,
+  ])
 
   return (
     <Animated.Text

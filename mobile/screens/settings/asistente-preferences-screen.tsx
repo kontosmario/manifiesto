@@ -28,7 +28,6 @@ import { Screen } from '@/components/ui/screen'
 import { ModalCard } from '@/components/ui/modal-card'
 import { HourPickerSheet } from '@/components/ui/hour-picker-sheet'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import {
   SettingsGroup,
   SettingsRow,
@@ -40,9 +39,9 @@ import { triggerHaptic } from '@/lib/haptics'
 import { supabase } from '@/lib/supabase'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { neoInk } from '@/theme/neo-ink'
-import { neoTokens } from '@/theme/neo-tokens'
-import { radii } from '@/theme/palette'
+import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
 
 import { useInteractionStats } from '@/features/insights/use-interaction-stats'
 import { useAdvisorValueSummary } from '@/features/insights/use-advisor-value-summary'
@@ -62,6 +61,7 @@ import {
   useUnblockSignalFamily,
 } from '@/features/insights/use-signal-blocklist'
 import { useQueryClient } from '@tanstack/react-query'
+import { nunitoFamily } from '@/theme/typography'
 
 type IconName = keyof typeof MaterialIcons.glyphMap
 
@@ -170,6 +170,10 @@ export function AsistentePreferencesScreen({ userId }: Props) {
   const { theme } = useAppTheme()
   const neo = neoTokens(theme.isDark ? 'dark' : 'light')
   const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  // Android < API 28/29 descarta el boxShadow EN SILENCIO: sin relieve, el
+  // tile elegido y los no elegidos quedan del mismo material y la selección
+  // deja de leerse. Sólo en ese piso cae un contorno.
+  const urgencyFlatFallback = !SUPPORTS_INSET_SHADOW
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const statsQuery = useInteractionStats(userId)
@@ -330,8 +334,6 @@ export function AsistentePreferencesScreen({ userId }: Props) {
       subtitle={t('settings:asistente.subtitle')}
       canGoBack
     >
-      <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
       {showValueCard && value ? (
         <RiseView delay={40} style={styles.block}>
           <Text style={[styles.eyebrow, { color: neo.textMuted }]}>{t('settings:asistente.valueEyebrow')}</Text>
@@ -542,11 +544,22 @@ export function AsistentePreferencesScreen({ userId }: Props) {
                 onPress={() => handlePickUrgency(urgencyValue)}
                 style={({ pressed }) => [
                   styles.urgencyOption,
-                  {
-                    borderColor: selected ? ink.accent : neo.sheetDivider,
-                    backgroundColor: selected ? neo.selectedTint : 'transparent',
-                    opacity: pressed ? 0.7 : 1,
-                  },
+                  selected
+                    ? {
+                        backgroundColor: neo.selectedTint,
+                        boxShadow: neo.shadows.ringSelected,
+                      }
+                    : {
+                        ...cssGradient(neo.raisedGradientCss, neo.surface),
+                        boxShadow: neo.shadows.raisedSm,
+                      },
+                  urgencyFlatFallback
+                    ? {
+                        borderWidth: selected ? 2.5 : 1,
+                        borderColor: selected ? neo.green : neo.sheetDivider,
+                      }
+                    : null,
+                  { opacity: pressed ? 0.7 : 1 },
                 ]}
               >
                 <View style={styles.urgencyCopy}>
@@ -575,12 +588,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.6,
     paddingHorizontal: 4,
   },
   // Card hero del valor — tinte de marca + número grande como ancla visual.
   heroCard: {
-    borderRadius: radii.xl,
+    borderRadius: neoRadii.card,
     padding: 20,
     gap: 12,
   },
@@ -593,12 +607,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroText: { flex: 1, gap: 2 },
-  heroAmount: { fontSize: 30, fontWeight: '800', letterSpacing: -0.6 },
-  heroCaption: { fontSize: 13, lineHeight: 18 },
-  heroFootnote: { fontSize: 12, lineHeight: 16 },
-  // Lista de opciones dentro del ModalCard de nivel de aviso.
-  optionList: { paddingVertical: 4, gap: 2 },
-  optionLabel: { fontSize: 15, fontWeight: '600' },
+  heroAmount: { fontSize: 30, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
+  heroCaption: { fontSize: 13, fontFamily: nunitoFamily('600'), lineHeight: 18 },
+  heroFootnote: { fontSize: 12, fontFamily: nunitoFamily('600'), lineHeight: 16 },
+  // Lista de opciones dentro del ModalCard de nivel de aviso. El gap NO puede
+  // bajar del alcance del relieve (`raisedSm` = 5 de offset + 10 de blur): a
+  // 2pt las sombras de dos tiles vecinos se montan y la separación se lee como
+  // una mancha. 10 es el mismo aire que usan los tiles del onboarding.
+  optionList: { paddingVertical: 4, gap: 10 },
+  optionLabel: { fontSize: 15, fontWeight: '600', fontFamily: nunitoFamily('600') },
   urgencyOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -606,9 +623,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: neoRadii.tile,
   },
   urgencyCopy: { flex: 1, gap: 3 },
-  urgencyHelper: { fontSize: 13, lineHeight: 18 },
+  urgencyHelper: { fontSize: 13, fontFamily: nunitoFamily('400'), lineHeight: 18 },
 })

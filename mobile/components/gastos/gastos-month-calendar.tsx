@@ -9,6 +9,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatMoney } from '@/utils/money'
 import { weekdayLongFromMondayIndex } from '@/utils/date-format'
+import { nunitoFamily } from '@/theme/typography'
 
 interface GastosMonthCalendarProps {
   dayMoods: Record<number, GastosDayMood>
@@ -627,7 +628,7 @@ function FocusMode({
               <Text style={[styles.focusDaySub, { color: theme.colors.textMuted }]}>
                 {cycleLabel}
                 {isToday ? (
-                  <Text style={{ color: theme.colors.success, fontWeight: '700' }}>{t('gastos:calendar.todaySuffix')}</Text>
+                  <Text style={{ color: theme.colors.success, fontWeight: '700', fontFamily: nunitoFamily('700') }}>{t('gastos:calendar.todaySuffix')}</Text>
                 ) : null}
               </Text>
             </Animated.View>
@@ -840,18 +841,18 @@ function ChevronBtn({
 const styles = StyleSheet.create({
   card: { borderRadius: 18, padding: 14, borderWidth: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700' },
+  eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   legend: { flexDirection: 'row', gap: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 7, height: 7, borderRadius: 4 },
-  legendLabel: { fontSize: 9, fontWeight: '600' },
-  hint: { fontSize: 10, fontWeight: '500', marginBottom: 8 },
+  legendLabel: { fontSize: 9, fontWeight: '600', fontFamily: nunitoFamily('600') },
+  hint: { fontSize: 10, fontWeight: '500', fontFamily: nunitoFamily('500'), marginBottom: 8 },
   // Must share the same gap as gridRow so weekday labels sit exactly
   // above their day cells — otherwise the 6px column gap in the grid
   // shifts every day one pixel to the right of its header.
   weekdaysRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   weekdayCell: { flex: 1, alignItems: 'center', paddingBottom: 2 },
-  weekdayText: { fontSize: 10, fontWeight: '700', letterSpacing: 1.2 },
+  weekdayText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 1.2 },
   grid: { gap: 6 },
   gridRow: { flexDirection: 'row', gap: 6 },
   // Two-layer split (introducido en re-audit Sprint B hotfix):
@@ -885,37 +886,38 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     position: 'relative',
   },
-  dayNumber: { fontSize: 13, fontWeight: '700' },
+  dayNumber: { fontSize: 13, fontWeight: '700', fontFamily: nunitoFamily('700') },
   todayDot: { position: 'absolute', bottom: 4, alignSelf: 'center' },
   // Shares the same slot as todayDot (4pt from the bottom, centered)
   // so the cell layout doesn't shift when a day toggles its marked
   // state. They're mutually exclusive at render time (see DayCell).
   noSpendLeaf: { position: 'absolute', bottom: 3, alignSelf: 'center' },
   moodPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  moodText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
+  moodText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.3 },
   focusHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 4, paddingTop: 8 },
   focusCenter: { flex: 1, alignItems: 'center' },
   focusCenterInner: { alignItems: 'center' },
-  focusDay: { fontSize: 72, fontWeight: '800', letterSpacing: -3, lineHeight: 70 },
-  focusDaySub: { fontSize: 12, fontWeight: '600', marginTop: 2 },
+  focusDay: { fontSize: 72, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -3, lineHeight: 70 },
+  focusDaySub: { fontSize: 12, fontWeight: '600', fontFamily: nunitoFamily('600'), marginTop: 2 },
   chevronBtn: {
     width: 36, height: 36, borderRadius: 999, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
   focusStats: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1 },
-  statLabel: { fontSize: 9, fontWeight: '700', letterSpacing: 1.2 },
+  statLabel: { fontSize: 9, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 1.2 },
   // Tabular nums en focus-mode stats (GASTADO + MOVIMIENTOS) — los
   // dos valores se renderean en columnas paralelas y deben alinear.
   statValue: {
     fontSize: 18,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.4,
     marginTop: 2,
     fontVariant: ['tabular-nums'],
   },
   focusBackRow: { marginTop: 12, alignItems: 'center' },
   backChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
-  backChipText: { fontSize: 12, fontWeight: '700' },
+  backChipText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   registerForgottenBtn: {
     marginTop: 14,
     flexDirection: 'row',
@@ -930,6 +932,7 @@ const styles = StyleSheet.create({
   registerForgottenText: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.1,
   },
 })

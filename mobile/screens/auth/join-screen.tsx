@@ -15,6 +15,7 @@ import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
 import { useAppTheme } from '@/theme/theme-provider'
 import { radii } from '@/theme/palette'
+import { nunitoFamily } from '@/theme/typography'
 
 type FamilyOnboardingMode = 'create' | 'join'
 
@@ -31,6 +32,7 @@ export function JoinScreen() {
   return (
     <RequireGuest allowFamilylessSession>
       <Screen
+        backgroundColor={theme.colors.background}
         contentContainerStyle={styles.screenContent}
         subtitle={t('auth:join.screenSubtitle')}
         title={t('auth:join.screenTitle')}
@@ -223,12 +225,14 @@ const styles = StyleSheet.create({
   heroLabel: {
     fontSize: 12,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   heroTitle: {
     fontSize: 30,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.8,
   },
   heroSubtitle: {
@@ -262,6 +266,7 @@ const styles = StyleSheet.create({
   choiceTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   choiceDescription: {
     fontSize: 13,
@@ -277,6 +282,7 @@ const styles = StyleSheet.create({
   feedback: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
   },
   help: {

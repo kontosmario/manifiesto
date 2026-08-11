@@ -525,10 +525,17 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('700'),
     lineHeight: 19,
   },
+  // El `ScrollView` del cuerpo RECORTA a sus bordes (clip rectangular, sin
+  // plumeado), así que la sombra de la primera y la última superficie tiene
+  // que morir DENTRO del área de scroll o se lee como un halo cuadrado. El
+  // padding cubre el alcance real de las recetas que montan los sheets:
+  // arriba el glow blanco de `raisedXl` (offset 10 + blur 22 → 21pt) y abajo
+  // la sombra del CTA primario (offset 12 + blur 24 → 24pt). Bajarlo
+  // reintroduce el corte.
   neoContent: {
     paddingHorizontal: 22,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 22,
+    paddingBottom: 28,
     gap: 14,
   },
   neoFooterBlock: {

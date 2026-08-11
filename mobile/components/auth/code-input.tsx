@@ -3,6 +3,7 @@ import * as Clipboard from 'expo-clipboard'
 import { useTranslation } from 'react-i18next'
 import { triggerHaptic } from '@/lib/haptics'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface CodeInputProps {
   value: string
@@ -101,6 +102,7 @@ const styles = StyleSheet.create({
   cellText: {
     fontSize: 24,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     fontVariant: ['tabular-nums'],
   },
 })

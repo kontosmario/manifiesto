@@ -22,6 +22,7 @@ import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { ControlAdvisorTask } from '@/features/insights/control-v2-mock'
+import { nunitoFamily } from '@/theme/typography'
 
 // Descriptores HOISTEADOS a constantes de módulo (una sola instancia
 // compartida). `componentDidUpdate` de Reanimated re-registra EXITING y LAYOUT
@@ -212,12 +213,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   bodyText: {
     fontSize: 11.5,
     lineHeight: 15,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     marginTop: 2,
   },
 })

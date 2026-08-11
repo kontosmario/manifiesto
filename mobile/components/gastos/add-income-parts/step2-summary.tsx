@@ -40,6 +40,7 @@ import type { IncomeDayOffset } from '@/features/income/use-add-income-form'
 import { formatMoney, formatMoneyWithSign } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DayChips, type DayChoice } from './day-chips'
+import { nunitoFamily } from '@/theme/typography'
 
 /** Placeholder de una cifra que todavía no se puede afirmar. */
 const PENDING_VALUE = '—'
@@ -389,12 +390,12 @@ const styles = StyleSheet.create({
   },
   summaryFallbackIcon: { fontSize: 24, lineHeight: 28, includeFontPadding: false },
   summaryText: { flex: 1, minWidth: 0 },
-  summaryTitle: { fontSize: 16, fontWeight: '900', letterSpacing: -0.3 },
-  summaryMeta: { fontSize: 11.5, fontWeight: '700', marginTop: 2 },
+  summaryTitle: { fontSize: 16, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.3 },
+  summaryMeta: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 2 },
   summaryMetaNeo: { marginTop: 0 },
   // `flexShrink: 0`: el que cede en un ancho apretado es la descripción, que
   // puede truncarse. La cifra cortada sería una mentira.
-  summaryAmount: { fontSize: 20, fontWeight: '900', flexShrink: 0, maxWidth: 140 },
+  summaryAmount: { fontSize: 20, fontWeight: '900', fontFamily: nunitoFamily('900'), flexShrink: 0, maxWidth: 140 },
   impactCard: { borderRadius: 22, paddingVertical: 15, paddingHorizontal: 16 },
   impactHead: {
     flexDirection: 'row',
@@ -404,13 +405,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   // 0.14em sobre 10.5px. RN no acepta em.
-  impactEyebrow: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.47, flexShrink: 1 },
-  deltaChip: { fontSize: 11, fontWeight: '900', overflow: 'hidden', flexShrink: 0 },
-  blockEyebrow: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  impactEyebrow: { fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.47, flexShrink: 1 },
+  deltaChip: { fontSize: 11, fontWeight: '900', fontFamily: nunitoFamily('900'), overflow: 'hidden', flexShrink: 0 },
+  blockEyebrow: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1 },
   verdict: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 15 },
   verdictText: { flex: 1, minWidth: 0 },
-  dailyText: { fontSize: 13.5, fontWeight: '700', marginTop: 5, lineHeight: 19 },
+  dailyText: { fontSize: 13.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 5, lineHeight: 19 },
   noticeCard: { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 12, gap: 4 },
-  noticeTitle: { fontSize: 12.5, fontWeight: '900', letterSpacing: -0.1 },
-  noticeBody: { fontSize: 12.5, fontWeight: '700', lineHeight: 18 },
+  noticeTitle: { fontSize: 12.5, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.1 },
+  noticeBody: { fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 18 },
 })

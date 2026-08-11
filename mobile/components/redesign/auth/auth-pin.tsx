@@ -95,7 +95,7 @@ const CHIP: Record<AuthMode, ChipTheme> = {
     idleBackground: undefined,
     idleShadow:
       'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
-    idleText: '#6C7B67',
+    idleText: '#54644F',
     selectedBackground: '#DCEBD8',
     selectedShadow: 'inset 2px 2px 5px rgba(90,110,70,0.18), 0 0 0 2.5px #2E7C39',
     selectedText: '#1F5429',

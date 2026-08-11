@@ -242,9 +242,29 @@ export interface FijosNeoSkin {
   /** Tile del header de categoría: 44px, radio 16 y SIN sombra (verificado en
    *  el markup — el relieve lo pone la fila, no el tile). */
   groupTile: { radius: number; alpha: number; opaqueInLight: boolean }
-  /** Pill "Pagar". Conserva el fill neutro de la app (el owner no usa fills
-   *  saturados para acciones); lo único que cambia es que gana profundidad. */
-  pay: { radius: number; shadow: string; padH: number; padV: number; size: number }
+  /** Pill "Pagar". Fill neutro INVERTIDO por tema (forest sobre crema en
+   *  claro, crema sobre forest en oscuro): el mismo par que el tab activo,
+   *  el recurso del handoff para "la acción de este bloque". */
+  pay: {
+    radius: number
+    shadow: string
+    padH: number
+    padV: number
+    size: number
+    background: string
+    ink: string
+  }
+  /** Variación de precio entre pagos: chip de la fila y stroke de la spark.
+   *  El chip es un pozo SIN tinte — sus dos vecinos ya llevan el tinte de
+   *  estado, y el par tinta/fondo clay del spec queda en 3.77:1 a 12px. */
+  trend: {
+    /** `undefined` en claro: el spec solo le da fill propio al pozo oscuro. */
+    background: string | undefined
+    up: string
+    down: string
+    arrears: string
+    flat: string
+  }
   /** Raise de la fila anidada — el escalón CHICO de la jerarquía. La card de
    *  categoría que la contiene usa el grande (`row.shadow`). */
   nestedRowShadow: string
@@ -300,6 +320,9 @@ export interface FijosNeoSkin {
    */
   mutedInk: string
   faintInk: string
+  /** El escalón de apagado que SÍ llega a AA sobre el fondo de pantalla:
+   *  `mutedInk` ahí da 3.32:1 en claro, insuficiente para 12px. */
+  mutedInkStrong: string
   /** Family de Nunito por peso. Sin esto, un `fontWeight` 800/900 suelto cae
    *  a la face del sistema: Nunito se carga como faces ESTÁTICAS por peso. */
   font: (weight: '700' | '800' | '900') => string
@@ -515,6 +538,17 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
       padH: 16,
       padV: 11,
       size: 14,
+      background: s.tabActiveBackground,
+      ink: s.tabActiveInk,
+    },
+    trend: {
+      background: s.insBg,
+      up: s.tagOverdueInk,
+      down: s.rowMetaOkInk,
+      arrears: STEP2[mode].accentClayInk,
+      // La curva es un objeto gráfico (3:1): `faint` sobre la fila da 2.11:1
+      // en claro, así que el tramo plano toma el apagado, no el tenue.
+      flat: s.sub,
     },
     // Números LITERALES del markup de `Detalle Fijo Manifiesto.dc.html`, no de
     // FIJOS_RADII: ese spec se transcribió de la pantalla PRINCIPAL, y la card
@@ -566,6 +600,7 @@ export function buildNeoSkin(mode: FijosMode): FijosNeoSkin {
     screenBackground: s.bg,
     mutedInk: s.sub,
     faintInk: s.faint,
+    mutedInkStrong: s.d2,
     font: (weight) => nunitoFamily(weight),
     header: {
       backSize: 44,

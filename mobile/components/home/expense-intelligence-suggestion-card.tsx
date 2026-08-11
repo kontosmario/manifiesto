@@ -3,6 +3,7 @@ import type { ExpenseAnalyticsSuggestion } from '@/features/expenses/expense-ana
 import { buildTonePalette } from '@/features/insights/control-model'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export function ExpenseIntelligenceSuggestionCard({
   suggestion,
@@ -63,6 +64,7 @@ const styles = StyleSheet.create({
   suggestionTitle: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   suggestionDetail: {},
 })

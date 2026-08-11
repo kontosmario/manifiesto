@@ -2,10 +2,12 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StyleSheet, Text, View } from 'react-native'
 import { ModalCard } from '@/components/ui/modal-card'
-import { AppButton } from '@/components/ui/button'
+import { NeoButton } from '@/components/ui/neo-button'
 import { PlanTiles } from '@/components/billing/plan-tiles'
 import { type BillingPlanId } from '@/features/billing/billing-plans'
-import { useAppTheme } from '@/theme/theme-provider'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 /**
  * Selector de plan para "Cambiar de plan" (Estado B). Reemplaza el toggle
@@ -36,42 +38,37 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
   onConfirm,
   onClose,
 }: ChangePlanSheetProps) {
-  const { theme } = useAppTheme()
+  const neo = neoTokens(useThemeTokens().mode)
   const { t } = useTranslation()
   const noChange = selected === scheduledPlanId
 
   const footer = (
-    <AppButton
-      label={t('billing:changePlan.confirm')}
-      variant="primary"
-      fullWidth
-      lookDisabled={noChange}
+    <NeoButton
       disabled={isPurchasing}
+      fullWidth
+      label={t('billing:changePlan.confirm')}
       loading={isPurchasing}
+      lookDisabled={noChange}
       onPress={() => {
         if (!noChange) onConfirm(selected)
       }}
+      variant="primary"
     />
   )
 
   return (
     <ModalCard
-      visible={visible}
-      title={t('billing:changePlan.title')}
-      subtitle={t('billing:changePlan.subtitle')}
-      onClose={onClose}
       footer={footer}
+      onClose={onClose}
+      skin="neo"
+      subtitle={t('billing:changePlan.subtitle')}
+      title={t('billing:changePlan.title')}
+      visible={visible}
     >
       <View style={styles.body}>
-        <PlanTiles selected={selected} onSelect={onSelect} />
+        <PlanTiles onSelect={onSelect} selected={selected} />
         {noChange ? (
-          <Text
-            style={[
-              theme.typography.caption,
-              styles.hint,
-              { color: theme.colors.textMuted },
-            ]}
-          >
+          <Text style={[styles.hint, { color: neo.text }]}>
             {t('billing:changePlan.noChangeHint')}
           </Text>
         ) : null}
@@ -81,6 +78,12 @@ export const ChangePlanSheet = memo(function ChangePlanSheet({
 })
 
 const styles = StyleSheet.create({
-  body: { gap: 10, paddingBottom: 4 },
-  hint: { textAlign: 'center' },
+  body: { gap: 12, paddingBottom: 4 },
+  hint: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 17,
+    textAlign: 'center',
+  },
 })

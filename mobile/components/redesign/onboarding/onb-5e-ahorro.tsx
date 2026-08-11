@@ -71,7 +71,7 @@ const SPEC_5E: Record<OnbMode, Onb5eSpec> = {
   light: {
     ...ONB_SURFACES.light,
     cardFallback: '#EBEDE0',
-    label: '#6C7B67',
+    label: '#54644F',
     body: '#3E5A44',
     accent: '#2E7C39',
     badgeText: '#F5F2E1',

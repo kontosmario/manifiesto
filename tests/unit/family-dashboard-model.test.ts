@@ -64,6 +64,59 @@ function buildFinance(
   }
 }
 
+describe('buildFamilyDashboardSnapshot — variableSpentToday', () => {
+  /**
+   * El numerador del medidor "podés gastar hoy" del hero. Antes el medidor
+   * usaba el promedio del ciclo y la barra quedaba clavada; ver
+   * `derive-gauge-state`.
+   */
+  const today = new Date('2026-04-20T09:00:00.000Z')
+
+  it('suma sólo el gasto VARIABLE de hoy', () => {
+    const snapshot = buildFamilyDashboardSnapshot({
+      expenses: [
+        buildExpense({ created_at: '2026-04-20T13:00:00.000Z', id: 'hoy-1', price: 7_000 }),
+        buildExpense({ created_at: '2026-04-20T20:00:00.000Z', id: 'hoy-2', price: 3_000 }),
+        buildExpense({ created_at: '2026-04-19T13:00:00.000Z', id: 'ayer', price: 50_000 }),
+      ],
+      finance: buildFinance(),
+      today,
+    })
+    expect(snapshot.variableSpentToday).toBe(10_000)
+    // Y el del ciclo sigue contando todo, para no romper la proyección.
+    expect(snapshot.variableSpentInCurrentCycle).toBe(60_000)
+  })
+
+  it('deja afuera los pagos de fijos, igual que el bucket del ciclo', () => {
+    const snapshot = buildFamilyDashboardSnapshot({
+      commitments: [buildFixedExpense()],
+      expenses: [
+        buildExpense({ created_at: '2026-04-20T13:00:00.000Z', id: 'variable', price: 4_000 }),
+        buildExpense({
+          commitment_id: 'commitment-1',
+          created_at: '2026-04-20T14:00:00.000Z',
+          id: 'fijo',
+          price: 30_000,
+        }),
+      ],
+      finance: buildFinance(),
+      today,
+    })
+    expect(snapshot.variableSpentToday).toBe(4_000)
+  })
+
+  it('sin gastos hoy es 0, no el promedio de nada', () => {
+    const snapshot = buildFamilyDashboardSnapshot({
+      expenses: [
+        buildExpense({ created_at: '2026-04-18T13:00:00.000Z', id: 'viejo', price: 90_000 }),
+      ],
+      finance: buildFinance(),
+      today,
+    })
+    expect(snapshot.variableSpentToday).toBe(0)
+  })
+})
+
 describe('buildFamilyDashboardSnapshot', () => {
   it('deriva balance, presión fija e histórico mensual desde una sola colección de gastos', () => {
     const snapshot = buildFamilyDashboardSnapshot({

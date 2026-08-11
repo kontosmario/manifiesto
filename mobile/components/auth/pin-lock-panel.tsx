@@ -11,6 +11,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { useScreenCaptureProtection } from '@/lib/use-screen-capture-protection'
 import { useAppTheme } from '@/theme/theme-provider'
 import { DEFAULT_HIT_SLOP } from '@/theme/interaction'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Panel de desbloqueo por PIN — embebido en BootScreen cuando la
@@ -149,14 +150,15 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
   header: { alignItems: 'center', gap: 16, marginBottom: 8 },
-  title: { fontSize: 22, fontWeight: '700' },
+  title: { fontSize: 22, fontWeight: '700', fontFamily: nunitoFamily('700') },
   padWrap: { flex: 1, justifyContent: 'center' },
   lockoutText: {
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
     marginTop: 16,
   },
   forgot: { height: 44, alignItems: 'center', justifyContent: 'center' },
-  forgotText: { fontSize: 14, fontWeight: '500' },
+  forgotText: { fontSize: 14, fontWeight: '500', fontFamily: nunitoFamily('500') },
 })

@@ -8,6 +8,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { formatMoneyShort } from '@/utils/money'
 import type { DayDetail } from '@/features/insights/control-v2-mock'
+import { nunitoFamily } from '@/theme/typography'
 
 const MIN_DIAS = 7
 // "Últimos 7 días" sincero: la ventana se activa recién con gasto en 7
@@ -408,6 +409,7 @@ function ControlV2SemanaCardImpl({
                       {
                         color: d.inProgress ? theme.colors.text : theme.colors.textMuted,
                         fontWeight: d.inProgress ? '800' : '600',
+                        fontFamily: nunitoFamily(d.inProgress ? '800' : '600'),
                       },
                     ]}
                   >
@@ -503,7 +505,7 @@ function ControlV2SemanaCardEmpty({ diasConGasto }: { diasConGasto: number }) {
                 {label}
               </Text>
               <Text
-                style={[styles.statValue, { color: theme.colors.textMuted, fontWeight: '800' }]}
+                style={[styles.statValue, { color: theme.colors.textMuted, fontWeight: '800', fontFamily: nunitoFamily('800') }]}
               >
                 —
               </Text>
@@ -595,7 +597,7 @@ function Stat({
         {label}
       </Text>
       <Text
-        style={[styles.statValue, { color: text, fontWeight: valueWeight }]}
+        style={[styles.statValue, { color: text, fontWeight: valueWeight, fontFamily: nunitoFamily(valueWeight) }]}
         numberOfLines={1}
       >
         {value}
@@ -624,6 +626,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -639,6 +642,7 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   statsRow: {
@@ -651,6 +655,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 2,
@@ -734,11 +739,13 @@ const styles = StyleSheet.create({
   cupoTagLabel: {
     fontSize: 8,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.6,
   },
   cupoTagValue: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
     marginTop: 1,
   },
@@ -787,6 +794,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
   // ── Empty-state silhouette ──────────────────────────────────
@@ -798,7 +806,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  emptyPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  emptyPillText: { fontSize: 10, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 0.4 },
   emptyBarsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -806,7 +814,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   calloutBody: { flex: 1, gap: 4 },
-  emptyProgress: { fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  emptyProgress: { fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: 0.2 },
 })
 
 // Memo: Semana muestra gastado vs presupuesto semanal con barras

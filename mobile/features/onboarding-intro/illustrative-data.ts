@@ -20,6 +20,13 @@ export const INTRO_HERO_METRICS: HomeHeroMetrics = {
   cycleTotalDays: 30,
   cycleMonth: '10 jun → 10 jul',
   dailyBudget: 13_700,
+  // Hogar con sueldo fijo y sin override: el cupo es el objetivo plano bruto,
+  // así que la apertura del día ES el cupo.
+  cupoNetsSpend: false,
+  spentToday: 4_100,
+  openingDailyBudget: 13_700,
+  // Rama bruta: nadie lee el crudo, pero el tipo lo pide.
+  discretionaryRaw: 0,
   projectedClose: 86_000,
   cycleAdjusted: false,
   paydayPending: false,

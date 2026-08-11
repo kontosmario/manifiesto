@@ -51,7 +51,15 @@ export function HeroStat({
       variant="insetSm"
     >
       <Text style={[styles.heroStatLabel, { color: neo.textMuted }]}>{label}</Text>
-      <Text numberOfLines={1} style={[styles.heroStatValue, { color: neo.text }]}>
+      {/* El valor es un dato (monto, "20% · $ 300.000"): en un tile a media
+          columna no entra a 14px y cortarlo lo vuelve ilegible. Encoge antes
+          de recortar. */}
+      <Text
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
+        numberOfLines={1}
+        style={[styles.heroStatValue, { color: neo.text }]}
+      >
         {value}
       </Text>
     </NeoSurface>
@@ -105,7 +113,9 @@ export function SettingsRow({
         </View>
 
         <View style={styles.rowTrailing}>
-          <Text style={[styles.rowValue, { color: neo.text }]}>{isLoading ? '...' : value}</Text>
+          <Text numberOfLines={1} style={[styles.rowValue, { color: neo.text }]}>
+            {isLoading ? '...' : value}
+          </Text>
           <AppSymbol
             color={neo.textMuted}
             fallback="chevron-right"
@@ -172,10 +182,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 4,
   },
+  // 46 y no 48: el `gap` de la fila se SUMA al basis, así que a 48% el segundo
+  // tile ya no entra en la línea y cada uno terminaba solo en su renglón, a
+  // media pantalla. Con 46% + grow entran de a dos y llenan el ancho.
   heroStatCompact: {
-    minWidth: '48%',
-    flexBasis: '48%',
-    flexGrow: 0,
+    flexBasis: '46%',
+    flexGrow: 1,
   },
   heroStatLabel: {
     fontSize: 11,
@@ -220,11 +232,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
+    maxWidth: '52%',
   },
   rowValue: {
     fontSize: 14,
     fontWeight: '700',
     fontFamily: nunitoFamily('700'),
+    flexShrink: 1,
   },
   switchRow: {
     flexDirection: 'row',

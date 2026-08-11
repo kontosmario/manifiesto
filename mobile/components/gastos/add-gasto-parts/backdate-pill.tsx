@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { formatForDateLabel } from './for-date-label'
+import { nunitoFamily } from '@/theme/typography'
 
 export function BackdatePill({ date }: { date: Date }) {
   const { theme } = useAppTheme()
@@ -84,6 +85,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 10.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },

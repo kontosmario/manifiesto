@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import type { StreakDerived } from '@/features/streaks/use-streak'
 import type { StatusTone } from './streak-sheet-tone'
+import { nunitoFamily } from '@/theme/typography'
 
 interface LevelProgressProps {
   derived: StreakDerived
@@ -48,6 +49,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 6,
   },
-  progressLabel: { fontSize: 11, fontWeight: '600' },
+  progressLabel: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600') },
   progressSub: { fontSize: 11, marginTop: 5 },
 })

@@ -29,7 +29,9 @@ import {
   useConsumeFamilyInvite,
   usePeekFamilyInvite,
   useSetFamilyKind,
+  useUpdateMyIncomeContribution,
 } from '@/features/family/use-family-actions'
+import { finishCreatorOnboarding } from '@/features/onboarding/finish-creator-onboarding'
 import { useUpsertSavingsGoal } from '@/features/savings-goals/use-upsert-savings-goal'
 import {
   profileQueryKey,
@@ -272,6 +274,7 @@ export function NeoOnboardingScreen({ userId }: NeoOnboardingScreenProps) {
   const setKind = useSetFamilyKind(userId)
   const peek = usePeekFamilyInvite()
   const upsertFinance = useUpsertFamilyFinance(state.familyId ?? undefined, userId)
+  const updateOwnerIncome = useUpdateMyIncomeContribution(userId, state.familyId ?? undefined)
   const upsertSavingsGoal = useUpsertSavingsGoal(state.familyId ?? '', userId)
   const consumeInvite = useConsumeFamilyInvite(userId)
   const completeOnboarding = useCompleteOnboarding(userId)
@@ -545,33 +548,33 @@ export function NeoOnboardingScreen({ userId }: NeoOnboardingScreenProps) {
           cycleLengthDays:
             cycleConfig.cycle_type === 'monthly' ? null : cycleConfig.cycle_length_days,
         } as const
-        await upsertFinance.mutateAsync(buildFamilyFinanceInput(baseSnapshot))
-
-        // El ingreso del dueño vive como su monthly_income_contribution
-        // (el total del hogar es DERIVADO por el trigger recompute).
-        const { error: ownerIncomeError } = await supabase.rpc(
-          'update_my_income_contribution',
-          { p_amount: isDynamicIncome ? 0 : monthlyIncome },
-        )
-        // supabase.rpc NO tira: sin chequear, un fallo dejaría al dueño
-        // con contribución 0 (ingreso del hogar 0).
-        if (ownerIncomeError) throw ownerIncomeError
-
-        if (goal) {
-          await upsertSavingsGoal.mutateAsync({
-            existingId: null,
-            input: {
-              title: goal.title.trim(),
-              emoji: goal.icon,
-              goalAmount: goal.monto,
-              currentAmount: 0,
-              targetMonths: goal.meses,
-              isActive: true,
-            },
-          })
-        }
-
-        await completeOnboarding.mutateAsync()
+        await finishCreatorOnboarding({
+          queryClient,
+          familyId: state.familyId,
+          userId,
+          // El ingreso del dueño vive como su monthly_income_contribution
+          // (el total del hogar es DERIVADO por el trigger recompute), así
+          // que va ANTES del upsert — ver finish-creator-onboarding.ts.
+          saveOwnerIncome: () =>
+            updateOwnerIncome.mutateAsync(isDynamicIncome ? 0 : monthlyIncome),
+          saveFinance: () =>
+            upsertFinance.mutateAsync(buildFamilyFinanceInput(baseSnapshot)),
+          saveFirstGoal: goal
+            ? () =>
+                upsertSavingsGoal.mutateAsync({
+                  existingId: null,
+                  input: {
+                    title: goal.title.trim(),
+                    emoji: goal.icon,
+                    goalAmount: goal.monto,
+                    currentAmount: 0,
+                    targetMonths: goal.meses,
+                    isActive: true,
+                  },
+                })
+            : null,
+          completeOnboarding: () => completeOnboarding.mutateAsync(),
+        })
         void triggerHaptic('success')
         // Navegación: Redirect del gate (ver nota en el branch joiner).
       } catch (error) {
@@ -592,6 +595,9 @@ export function NeoOnboardingScreen({ userId }: NeoOnboardingScreenProps) {
       cycleConfig,
       monthlyIncome,
       existingFinance,
+      queryClient,
+      userId,
+      updateOwnerIncome,
       upsertFinance,
       upsertSavingsGoal,
       consumeInvite,

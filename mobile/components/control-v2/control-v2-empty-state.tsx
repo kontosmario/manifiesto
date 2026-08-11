@@ -1,10 +1,14 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { RiseView } from '@/components/home/animated/rise-view'
-import { usePressScale } from '@/hooks/use-press-scale'
-import { useAppTheme } from '@/theme/theme-provider'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 
 interface ControlV2EmptyStateProps {
   /** True si el usuario aún no configuró su sueldo mensual. */
@@ -37,17 +41,16 @@ export function ControlV2EmptyState({
   onPressAddExpense,
   onPressAddIncome,
 }: ControlV2EmptyStateProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+  // Sin relieve la card queda del mismo material que el fondo de la
+  // pantalla y el bloque entero desaparece (Android < API 28 descarta el
+  // boxShadow outset en silencio).
+  const flatFallback = SUPPORTS_INSET_SHADOW
+    ? null
+    : { borderWidth: 1, borderColor: neo.sheetDivider }
   const { t } = useTranslation()
-  // Dark: muted surface (#0F2E1F) to match the rest of the near-black
-  // Control canvas — was hardcoded to the old creamCard dark (#305A47),
-  // which now reads too bright. Light keeps the cream shell.
-  const shellBg = theme.isDark ? theme.colors.surfaceMuted : '#FFFBF2'  // surfaceMuted dark / cream light
-  const shellBorder = theme.isDark ? '#244235' : '#D5E6DF'  // V1 surface-900 / surface-200
-  const accent = theme.colors.text
-  const muted = theme.colors.textMuted
-  // Press scale 0.97 — primary CTA del empty state, lo único interactivo.
-  const ctaPress = usePressScale({ pressedScale: 0.97 })
 
   const heading = dynamicNoIncome
     ? t('control:empty.headingDynamicNoIncome')
@@ -65,81 +68,59 @@ export function ControlV2EmptyState({
         ? t('control:empty.subtitleMissingExpenses')
         : t('control:empty.subtitleGathering')
 
+  const cta = dynamicNoIncome
+    ? {
+        label: t('control:empty.ctaAddIncome'),
+        a11y: t('control:empty.a11yAddIncome'),
+        onPress: onPressAddIncome,
+      }
+    : missingIncome
+      ? {
+          label: t('control:empty.ctaSetupIncome'),
+          a11y: t('control:empty.a11ySetupIncome'),
+          onPress: onPressSetupIncome,
+        }
+      : {
+          label: t('control:empty.ctaAddExpense'),
+          a11y: t('control:empty.a11yAddExpense'),
+          onPress: onPressAddExpense,
+        }
+
   return (
     <RiseView delay={80}>
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: shellBg, borderColor: shellBorder },
-        ]}
-      >
-        <View style={[styles.iconCircle, { borderColor: theme.colors.line }]}>
-          <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M12 5v14M5 12h14"
-              stroke={accent}
-              strokeWidth={2.4}
-              strokeLinecap="round"
-            />
-          </Svg>
+      <NeoSurface radius={neoRadii.card} style={[styles.card, flatFallback]} variant="raisedLg">
+        <View style={styles.iconTile}>
+          <NeoSurface
+            radius={neoRadii.tile}
+            style={[styles.iconTileSurface, flatFallback]}
+            variant="raisedMd"
+          >
+            <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M12 5v14M5 12h14"
+                stroke={ink.accent}
+                strokeWidth={2.4}
+                strokeLinecap="round"
+              />
+            </Svg>
+          </NeoSurface>
         </View>
 
-        <Text style={[styles.title, { color: accent }]}>{heading}</Text>
-        <Text style={[styles.body, { color: muted }]}>{subtitle}</Text>
+        <Text style={[styles.title, { color: neo.text }]}>{heading}</Text>
+        <Text style={[styles.body, { color: neo.textMuted }]}>{subtitle}</Text>
 
-        <View style={styles.ctas}>
-          {dynamicNoIncome ? (
-            <Pressable
-              onPress={onPressAddIncome}
-              onPressIn={ctaPress.onPressIn}
-              onPressOut={ctaPress.onPressOut}
-              accessibilityRole="button"
-              accessibilityLabel={t('control:empty.a11yAddIncome')}
-            >
-              <Animated.View
-                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
-              >
-                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                  {t('control:empty.ctaAddIncome')}
-                </Text>
-              </Animated.View>
-            </Pressable>
-          ) : missingIncome ? (
-            <Pressable
-              onPress={onPressSetupIncome}
-              onPressIn={ctaPress.onPressIn}
-              onPressOut={ctaPress.onPressOut}
-              accessibilityRole="button"
-              accessibilityLabel={t('control:empty.a11ySetupIncome')}
-            >
-              <Animated.View
-                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
-              >
-                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                  {t('control:empty.ctaSetupIncome')}
-                </Text>
-              </Animated.View>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={onPressAddExpense}
-              onPressIn={ctaPress.onPressIn}
-              onPressOut={ctaPress.onPressOut}
-              accessibilityRole="button"
-              accessibilityLabel={t('control:empty.a11yAddExpense')}
-            >
-              <Animated.View
-                style={[styles.primaryBtn, { backgroundColor: accent }, ctaPress.animatedStyle]}
-              >
-                <Text style={[styles.primaryText, { color: theme.colors.creamCard }]}>
-                  {t('control:empty.ctaAddExpense')}
-                </Text>
-              </Animated.View>
-            </Pressable>
-          )}
-        </View>
+        <NeoButton
+          accessibilityLabel={cta.a11y}
+          block
+          // Sin háptico propio: los tres handlers del Control ya
+          // disparan el suyo antes de rutear.
+          haptic="none"
+          label={cta.label}
+          onPress={() => cta.onPress?.()}
+          style={styles.cta}
+        />
 
-        <View style={[styles.checklist, { borderTopColor: theme.colors.line }]}>
+        <View style={styles.checklist}>
           <ChecklistRow
             done={dynamicNoIncome ? false : !missingIncome}
             text={
@@ -147,44 +128,38 @@ export function ControlV2EmptyState({
                 ? t('control:empty.checklistIncomeDynamic')
                 : t('control:empty.checklistIncome')
             }
-            textColor={accent}
-            mutedColor={muted}
-            accentColor={accent}
           />
-          <ChecklistRow
-            done={!missingExpenses}
-            text={t('control:empty.checklistExpense')}
-            textColor={accent}
-            mutedColor={muted}
-            accentColor={accent}
-          />
+          <ChecklistRow done={!missingExpenses} text={t('control:empty.checklistExpense')} />
         </View>
-      </View>
+      </NeoSurface>
     </RiseView>
   )
 }
 
-function ChecklistRow({
-  done,
-  text,
-  textColor,
-  mutedColor,
-  accentColor,
-}: {
-  done: boolean
-  text: string
-  textColor: string
-  mutedColor: string
-  accentColor: string
-}) {
+function ChecklistRow({ done, text }: { done: boolean; text: string }) {
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+
   return (
-    <View style={styles.checklistRow}>
+    <NeoSurface
+      // Cada paso es un pozo: hundido mientras falta, y el check verde
+      // (más el peso de la tinta) es lo que marca el que ya está.
+      radius={neoRadii.tile}
+      style={[
+        styles.checklistRow,
+        SUPPORTS_INSET_SHADOW
+          ? null
+          : { borderWidth: StyleSheet.hairlineWidth, borderColor: neo.sheetDivider },
+      ]}
+      variant="insetSm"
+    >
       <View
         style={[
           styles.checkCircle,
           {
-            borderColor: done ? accentColor : mutedColor,
-            backgroundColor: done ? accentColor : 'transparent',
+            borderColor: done ? ink.accent : neo.textMuted,
+            backgroundColor: done ? ink.accent : 'transparent',
           },
         ]}
       >
@@ -192,7 +167,7 @@ function ChecklistRow({
           <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
             <Path
               d="M5 12l4 4 10-10"
-              stroke="#FFFBF2"
+              stroke={neo.ctaText}
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -203,69 +178,57 @@ function ChecklistRow({
       <Text
         style={[
           styles.checklistText,
-          { color: done ? textColor : mutedColor, opacity: done ? 1 : 0.8 },
+          { color: done ? neo.text : neo.textMuted },
         ]}
       >
         {text}
       </Text>
-    </View>
+    </NeoSurface>
   )
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 24,
     padding: 22,
-    borderWidth: 1,
-    gap: 14,
+    gap: 12,
     alignItems: 'flex-start',
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 999,
-    borderWidth: 1,
+  iconTile: {
+    marginBottom: 2,
+  },
+  iconTileSurface: {
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.5,
-    lineHeight: 26,
+    lineHeight: 27,
   },
   body: {
     fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 19,
-    fontWeight: '500',
   },
-  ctas: {
-    width: '100%',
+  cta: {
     marginTop: 4,
-  },
-  primaryBtn: {
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryText: {
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.2,
   },
   checklist: {
     width: '100%',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 14,
     marginTop: 6,
-    gap: 10,
+    gap: 8,
   },
   checklistRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
   checkCircle: {
     width: 20,
@@ -276,7 +239,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checklistText: {
+    flex: 1,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
 })

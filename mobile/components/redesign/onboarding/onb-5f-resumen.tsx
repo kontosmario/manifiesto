@@ -62,7 +62,7 @@ const FIVE_F_SPEC: Record<OnbMode, Onb5fSpec> = {
     pedestalShadow:
       '14px 14px 30px rgba(151,160,136,0.46), -14px -14px 30px rgba(255,255,255,0.95)',
     nameDot: '#9AA694',
-    subText: '#6C7B67',
+    subText: '#54644F',
     cardBackground: '#ECEDE1',
     cardGradientCss: 'linear-gradient(145deg, #F3F4E9, #E4E6D8)',
     cardShadow:
@@ -74,7 +74,7 @@ const FIVE_F_SPEC: Record<OnbMode, Onb5fSpec> = {
     tileIngresos: '#DDEBDD',
     tileAhorro: '#F2ECC9',
     ctaBackground: '#489350',
-    ctaGradientCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaGradientCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaShadow: '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
     ctaText: '#F5F2E1',
     particleColors: ['#7FB069', '#E8A87C', '#9BB894'],

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native'
+import { nunitoFamily } from '@/theme/typography'
 import { SCREEN_WIDTH } from '../wrapped-constants'
 
 export const closingStyles = StyleSheet.create({
@@ -7,14 +8,28 @@ export const closingStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 18,
   },
+  // Bloque de encabezado + Brot. La mascota va en la fila del título, no
+  // flotando sobre el contenido: la escena crece hacia abajo cuando trae
+  // la decisión del sobrante y ahí no queda aire para un absoluto.
+  headRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  headCol: {
+    flex: 1,
+    minWidth: 0,
+  },
   eyebrow: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 2.4,
   },
   title: {
     fontSize: Math.min(40, SCREEN_WIDTH * 0.105),
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1.2,
     lineHeight: Math.min(46, SCREEN_WIDTH * 0.12),
     fontVariant: ['tabular-nums'],
@@ -25,6 +40,7 @@ export const closingStyles = StyleSheet.create({
   titleCompact: {
     fontSize: 34,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -1,
     lineHeight: 38,
     textAlign: 'left',
@@ -32,57 +48,58 @@ export const closingStyles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   sectionDivider: {
-    height: 1,
-    // Spec H — más sutil (0.18 → 0.10) para feel premium.
-    backgroundColor: 'rgba(244,253,242,0.10)',
+    height: 1.5,
     marginVertical: 18,
     marginHorizontal: -4,
   },
   leftoverEyebrow: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
     marginBottom: 6,
   },
   leftoverAmount: {
     fontSize: 28,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
     marginBottom: 4,
     fontVariant: ['tabular-nums'],
   },
   leftoverSubtitle: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     marginBottom: 12,
   },
   optionsStack: {
     width: '100%',
-    gap: 8,
+    gap: 10,
     marginTop: 4,
   },
   pastDecisionHint: {
     marginTop: 14,
     fontSize: 12,
-    fontWeight: '500',
-    // Spec H — más caption-y (0.62 → 0.55).
-    color: 'rgba(244,253,242,0.55)',
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     textAlign: 'center',
   },
   achievementsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 13,
+    borderRadius: 22,
     alignSelf: 'flex-start',
   },
   achievementsText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0,
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -91,10 +108,7 @@ export const closingStyles = StyleSheet.create({
     gap: 16,
   },
   summaryDivider: {
-    width: StyleSheet.hairlineWidth,
-    // Bump del divider para que se vea en pantallas tipo OLED donde
-    // la hairline a 0.32 se traga.
-    backgroundColor: 'rgba(244,253,242,0.5)',
+    width: 1.5,
   },
 })
 
@@ -106,11 +120,13 @@ export const summaryStyles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
   },
   value: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },

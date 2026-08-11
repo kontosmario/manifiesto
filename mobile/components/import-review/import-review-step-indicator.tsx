@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { useEffect } from 'react'
 import { motionDurations } from '@/lib/motion/tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useImportReviewNeo } from './import-review-neo'
 
 export type StepStatus = 'pending' | 'current' | 'done' | 'invalid' | 'skipped'
 
@@ -19,19 +19,24 @@ interface Props {
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 /**
- * Thin progress strip: one segment per movement. We deliberately keep
- * the visual language to TWO ideas — "handled" (filled, brand tint) vs
- * "still ahead" (muted) — plus a single red flag for an invalid row,
- * which is the only status that needs the user to act. The old five-color
- * scheme (done / skipped / current each its own hue, plus an advance
- * pulse) made the user learn a legend for something the "Movimiento N de
- * M" header and the slide already communicate. Less to decode, same
- * orientation.
+ * Barra de progreso del wizard: una pista HUNDIDA con un tramo por
+ * movimiento. Deliberadamente mantiene DOS ideas — "resuelto" (tramo
+ * pintado) vs "todavía adelante" (el pozo vacío) — más un único aviso para
+ * una fila inválida, que es el único estado que pide acción del usuario. El
+ * esquema de cinco colores anterior obligaba a aprender una leyenda para algo
+ * que el encabezado "Movimiento N de M" y el slide ya comunican.
  */
 export function ImportReviewStepIndicator({ statuses }: Props) {
+  const { neo, wellFallback } = useImportReviewNeo()
   if (statuses.length <= 1) return null
   return (
-    <View style={styles.row}>
+    <View
+      style={[
+        styles.track,
+        { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm },
+        wellFallback,
+      ]}
+    >
       {statuses.map((s, idx) => (
         <Segment key={idx} status={s} />
       ))}
@@ -40,12 +45,12 @@ export function ImportReviewStepIndicator({ statuses }: Props) {
 }
 
 function Segment({ status }: { status: StepStatus }) {
-  const { theme } = useAppTheme()
+  const { neo } = useImportReviewNeo()
   const filled = status !== 'pending'
-  const opacity = useSharedValue(filled ? 1 : 0.4)
+  const opacity = useSharedValue(filled ? 1 : 0)
 
   useEffect(() => {
-    opacity.value = withTiming(filled ? 1 : 0.4, {
+    opacity.value = withTiming(filled ? 1 : 0, {
       duration: motionDurations.quick,
       easing: EASE_IOS,
     })
@@ -53,15 +58,10 @@ function Segment({ status }: { status: StepStatus }) {
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
 
-  // Only two colors carry meaning: red = "fix me", brand tint = "handled".
-  // Pending segments ride the muted line color at low opacity so the
-  // filled/pending boundary itself reads as progress.
-  const color =
-    status === 'invalid'
-      ? theme.colors.danger
-      : status === 'pending'
-        ? theme.colors.line
-        : theme.colors.primary
+  // Un solo color extra carga significado: el terracota de "arreglá esto".
+  // Todo lo demás resuelto va en el verde del sistema (4.23:1 sobre el pozo en
+  // claro, 10.78:1 en oscuro — de sobra para un elemento de UI).
+  const color = status === 'invalid' ? neo.danger : neo.green
 
   return (
     <Animated.View
@@ -71,14 +71,17 @@ function Segment({ status }: { status: StepStatus }) {
 }
 
 const styles = StyleSheet.create({
-  row: {
+  track: {
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
     alignItems: 'center',
+    padding: 3,
+    borderRadius: 999,
+    marginTop: 2,
   },
   segment: {
     flex: 1,
-    height: 4,
+    height: 6,
     borderRadius: 999,
   },
 })

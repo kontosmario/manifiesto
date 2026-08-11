@@ -5,8 +5,8 @@
 // If you add/remove a slug here, update the Supabase seed in the
 // latest avatar-pack migration too.
 //
-// `AvatarAnimal` and `AvatarAnimalRow` USED to be re-exported from
-// here, but that produced a require cycle:
+// `AvatarAnimal` USED to be re-exported from here, but that produced a
+// require cycle:
 //   `assets/avatars/index.ts` → `components/ui/avatar-animal.tsx`
 //   `components/ui/avatar-animal.tsx` → `assets/avatars/index.ts`
 // Consumers should import the components directly from

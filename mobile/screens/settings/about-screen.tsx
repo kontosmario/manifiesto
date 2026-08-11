@@ -4,22 +4,21 @@ import { useTranslation } from 'react-i18next'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'
 import { toast } from '@/lib/toast-bus'
-import { CardParticles } from '@/components/ui/card-particles'
 import { FernMark } from '@/components/billing/fern-mark'
-import { AmbientBackdrop } from '@/components/ui/ambient-backdrop'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { Screen } from '@/components/ui/screen'
 import {
   SettingsGroup,
   SettingsRow,
 } from '@/components/settings/settings-grouped-list'
+import {
+  SettingsHeroCard,
+  settingsHeroInk,
+} from '@/components/settings/settings-hero-card'
 import { useIsNavigationSettled } from '@/hooks/use-is-navigation-settled'
-import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
-import { neoRadii, neoTokens } from '@/theme/neo-tokens'
-import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily, typography } from '@/theme/typography'
 import {
   PRIVACY_POLICY_URL,
   TERMS_OF_SERVICE_URL,
@@ -103,26 +102,22 @@ export function AboutScreen({ userId }: AboutScreenProps) {
     >
       <RiseViewGate skip={!isNavSettled}>
         <View style={styles.sectionStack}>
-          {!theme.isDark ? <AmbientBackdrop variant="home" /> : null}
-          <AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />
-
           {/* HERO con el logo + versión visible — Apple usa este surface
               para confirmar el match de build durante el review. */}
           <RiseView>
-            <NeoSurface
-              radius={neoRadii.hero}
+            <SettingsHeroCard
+              contentStyle={styles.heroContent}
+              particleCount={11}
               style={styles.heroCard}
-              variant="hero"
             >
-              <CardParticles count={11} accentColor={neo.heroPeach} />
               <FernMark variant="cream" size={58} />
-              <Text style={[styles.heroTitle, { color: neo.heroText }]}>
+              <Text style={[styles.heroTitle, { color: settingsHeroInk.title }]}>
                 Manifiesto
               </Text>
-              <Text style={[styles.heroVersion, { color: neo.heroTextSoft }]}>
+              <Text style={[styles.heroVersion, { color: settingsHeroInk.soft }]}>
                 {versionLabel}
               </Text>
-            </NeoSurface>
+            </SettingsHeroCard>
           </RiseView>
 
           {/* INFORMACIÓN LEGAL — solo se renderiza si al menos una URL
@@ -194,11 +189,11 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   heroCard: {
-    borderRadius: radii.xl,
     padding: 24,
+  },
+  heroContent: {
     gap: 12,
     alignItems: 'center',
-    overflow: 'hidden',
   },
   heroTitle: {
     ...typography.screenTitle,
@@ -206,11 +201,13 @@ const styles = StyleSheet.create({
   },
   heroVersion: {
     fontSize: 13,
+    fontFamily: nunitoFamily('600'),
     fontVariant: ['tabular-nums'],
   },
   footer: {
     textAlign: 'center',
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
     paddingTop: 6,
     paddingBottom: 24,
   },

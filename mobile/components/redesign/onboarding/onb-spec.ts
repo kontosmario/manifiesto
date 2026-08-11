@@ -134,7 +134,7 @@ export const ONB_SURFACES: Record<OnbMode, OnbSurfaces> = {
   light: {
     cardGradientCss: 'linear-gradient(145deg, #F3F4E9, #E4E6D8)',
     cardShadow: '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)',
-    ctaBackgroundCss: 'radial-gradient(circle at 32% 28%, #63B168, #2E7434 85%)',
+    ctaBackgroundCss: 'radial-gradient(circle at 32% 28%, #489350, #2E7434 85%)',
     ctaShadow: '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
     ctaText: '#F5F2E1',
     chipIdleBackground: undefined,

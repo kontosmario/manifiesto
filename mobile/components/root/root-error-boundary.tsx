@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import i18n from '@/lib/i18n'
+import { nunitoFamily } from '@/theme/typography'
 
 interface RootErrorBoundaryProps {
   children: ReactNode
@@ -68,7 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FDFCF9',
     gap: 12,
   },
-  title: { fontSize: 22, fontWeight: '800', color: '#0F2A1E' },
+  title: { fontSize: 22, fontWeight: '800', fontFamily: nunitoFamily('800'), color: '#0F2A1E' },
   body: { fontSize: 14, color: '#48584E', textAlign: 'center', lineHeight: 20 },
   cta: {
     marginTop: 12,
@@ -77,5 +78,5 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#0F2A1E',
   },
-  ctaText: { color: '#F6FBEF', fontWeight: '700', fontSize: 14 },
+  ctaText: { color: '#F6FBEF', fontWeight: '700', fontFamily: nunitoFamily('700'), fontSize: 14 },
 })

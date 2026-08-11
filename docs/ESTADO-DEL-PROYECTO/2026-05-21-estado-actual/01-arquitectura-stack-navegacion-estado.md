@@ -201,10 +201,8 @@ app/
     ├── add-fixed-expense.tsx → Modal gasto fijo
     ├── add-income.tsx   → Modal ingreso
     ├── household-setup.tsx → Modal config hogar
-    ├── expense-filters.tsx → Modal filtros
     ├── expense-categories.tsx → Modal categorías
     ├── asistente.tsx    → Modal asistente IA
-    ├── expenses-history.tsx → Historial gastos (stack push)
     ├── savings-goal.tsx → Formulario meta de ahorro
     ├── notifications.tsx → Notificaciones (stack push)
     ├── settings.tsx     → Ajustes raíz (stack push)
@@ -252,10 +250,8 @@ app/
 | `/(app)/add-fixed-expense` | Modal agregar gasto fijo |
 | `/(app)/add-income` | Modal agregar ingreso |
 | `/(app)/household-setup` | Modal configurar hogar / ciclo de pago |
-| `/(app)/expense-filters` | Modal filtros de gastos |
 | `/(app)/expense-categories` | Modal gestión de categorías |
 | `/(app)/asistente` | Modal asistente IA chat |
-| `/(app)/expenses-history` | Historial paginado de gastos |
 | `/(app)/savings-goal` | Formulario meta de ahorro |
 | `/(app)/notifications` | Bandeja de notificaciones |
 | `/(app)/settings` | Ajustes raíz |

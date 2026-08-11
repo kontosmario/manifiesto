@@ -44,6 +44,7 @@ import {
 } from '@/features/auth-flow/launch-splash-state'
 import { useOfflineTakeover } from '@/features/auth-flow/offline-takeover'
 import { useAuthFlowState } from '@/features/auth-flow/use-auth-flow'
+import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 let hasShownAppLaunchSplash = false
@@ -267,14 +268,15 @@ export function RootLayoutShell() {
  * entrante. Si ese parent no tiene un bg theme-aware, en dark mode
  * el default-blanco de RN se cuela como flash visible.
  *
- * Setear `backgroundColor: theme.colors.canvas` aquí garantiza que
- * incluso en el frame de overlap, el fondo expuesto sea forest deep
- * (#12211A) en dark mode o cream (#F4F2ED) en light. Sin flash.
+ * Setear el canvas del rediseño aquí garantiza que incluso en el frame
+ * de overlap, el fondo expuesto sea salvia (#DCDFCD) en light o noche de
+ * bosque (#0F1A13) en dark — el mismo que pintan las pantallas. Sin
+ * flash y sin seam.
  */
 function ThemedRoot({ children }: PropsWithChildren) {
   const { theme } = useAppTheme()
   return (
-    <View style={[styles.root, { backgroundColor: theme.colors.canvas }]}>
+    <View style={[styles.root, { backgroundColor: neoTokens(theme.mode).bg }]}>
       {children}
     </View>
   )
@@ -288,8 +290,8 @@ function ThemedRoot({ children }: PropsWithChildren) {
  * El `contentStyle.backgroundColor` cierra el white flash que se notaba
  * en dark mode: native-stack default es blanco en el screen content
  * container, y durante el slide entre dos screens hay un frame donde
- * el container default se cuela como flash visible. Forest deep
- * (#12211A) en dark mode · cream (#F4F2ED) en light. Match con el
+ * el container default se cuela como flash visible. Noche de bosque
+ * (#0F1A13) en dark mode · salvia (#DCDFCD) en light. Match con el
  * outer ThemedRoot para que NO haya seam entre capas.
  */
 function ThemedRootStack() {
@@ -303,7 +305,7 @@ function ThemedRootStack() {
         freezeOnBlur: true,
         fullScreenGestureEnabled: false,
         gestureEnabled: true,
-        contentStyle: { backgroundColor: theme.colors.canvas },
+        contentStyle: { backgroundColor: neoTokens(theme.mode).bg },
       }}
     >
       {/* `index` and `auth/callback` are NEVER user-visible in steady

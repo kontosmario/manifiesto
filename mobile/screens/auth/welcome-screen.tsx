@@ -29,6 +29,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '@/lib/legal-urls'
 import { authTokens } from '@/theme/palette'
 import { motionDurations } from '@/lib/motion/tokens'
+import { nunitoFamily } from '@/theme/typography'
 
 interface WelcomeScreenProps {
   onCreate: () => void
@@ -271,6 +272,7 @@ const styles = StyleSheet.create({
   wordmark: {
     fontSize: 46,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -2,
     color: '#FFFBF2',
   },
@@ -281,6 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 15,
     fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     letterSpacing: -0.2,
     color: 'rgba(255,251,242,0.55)',
     textAlign: 'center',
@@ -307,6 +310,7 @@ const styles = StyleSheet.create({
   primaryCtaLabel: {
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
     color: authTokens.welcomeBg,
   },
@@ -327,6 +331,7 @@ const styles = StyleSheet.create({
   secondaryCtaLabel: {
     fontSize: 15,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
     letterSpacing: -0.2,
     color: '#FFFBF2',
   },
@@ -335,6 +340,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     color: 'rgba(255,251,242,0.55)',
     textAlign: 'center',
   },
@@ -342,6 +348,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 11,
     fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     color: 'rgba(255,251,242,0.62)',
     textAlign: 'center',
   },

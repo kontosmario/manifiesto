@@ -4,6 +4,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import { weekdayShort } from '@/utils/date-format'
 import type { StatusTone } from './streak-sheet-tone'
+import { nunitoFamily } from '@/theme/typography'
 
 interface WeekActivityProps {
   weekActivity: boolean[]
@@ -75,6 +76,7 @@ export function WeekActivity({ weekActivity, tone }: WeekActivityProps) {
                     {
                       color: isToday && !logged ? tone.fg : theme.colors.textMuted,
                       fontWeight: isToday ? '800' : '600',
+                      fontFamily: nunitoFamily(isToday ? '800' : '600'),
                     },
                   ]}
                 >
@@ -98,6 +100,7 @@ const styles = StyleSheet.create({
   cardLabel: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     marginBottom: 10,
     letterSpacing: 0.6,
   },
@@ -114,6 +117,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayDotText: { fontSize: 12, fontWeight: '700' },
+  dayDotText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700') },
   dayLabel: { fontSize: 10 },
 })

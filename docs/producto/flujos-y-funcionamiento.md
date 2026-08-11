@@ -35,7 +35,7 @@ La app está organizada alrededor de una lógica central:
 El producto autenticado se apoya sobre tres pilares:
 
 - `registro`: gastos y compromisos,
-- `lectura`: home, historial y timeline,
+- `lectura`: home, gastos y timeline,
 - `interpretación`: control, presupuesto diario y proyecciones.
 
 ---
@@ -100,8 +100,6 @@ Stack:
 - `/(app)/asistente`
 - `/(app)/coach/[signalId]`
 - `/(app)/expense-categories`
-- `/(app)/expense-filters`
-- `/(app)/expenses-history`
 - `/(app)/household-setup`
 - `/(app)/notifications`
 - `/(app)/onboarding`
@@ -450,50 +448,45 @@ Al guardar:
 
 ---
 
-## 10. Flujo 6: historial de gastos
+## 10. Flujo 6: lectura y corrección de movimientos
 
 ### Objetivo
 
-Permitir lectura, búsqueda, filtrado y corrección de movimientos.
+Permitir lectura, filtrado y corrección de movimientos, tanto del ciclo en curso
+como de los ciclos ya cerrados.
 
 ### Entrada al flujo
 
-Puede verse como:
-
-- tab `Gastos`,
-- o pantalla `Historial`.
+Todo pasa dentro del tab `Gastos`: no hay pantalla de historial aparte ni modal
+de filtros. El selector de ciclo del encabezado alterna entre el ciclo vivo y
+las ediciones de los ciclos cerrados.
 
 ### Capacidades actuales
 
-- ver total filtrado,
-- ver breakdown visual,
-- agrupar movimientos,
-- buscar por texto,
-- filtrar por período,
+Sobre el ciclo vivo:
+
+- ver el gastado del ciclo y su calendario de intensidad,
+- enfocar un día y ver su detalle,
 - filtrar por categoría,
 - editar gasto,
 - borrar gasto,
-- administrar categorías.
+- administrar categorías (pantalla propia, también alcanzable desde `Control`).
 
-### Snapshot funcional del historial
-
-El historial arma una snapshot derivada con:
-
-- gastos filtrados,
-- grouping,
-- total filtrado,
-- subtítulo hero,
-- breakdown por categoría/período,
-- estados de filtros.
+Sobre un ciclo cerrado (edición): lectura de los agregados de ese ciclo —
+total, ranking de categorías, calendario. Sin mutaciones ni filtros: una
+edición es una foto.
 
 ### Edición de gasto
 
-Desde una fila:
+Desde una fila del feed (mantener presionado, o la acción `Editar` que expone
+accesibilidad) se abre una hoja sobre la propia lista:
 
-1. se abre modal de edición,
-2. se actualiza descripción/monto,
-3. se invalida data relevante,
-4. se cierra el modal.
+1. se corrigen monto y descripción — la categoría se muestra como contexto de
+   sólo lectura, moverla exigiría otro contrato de escritura,
+2. se persiste y se invalida la data relevante,
+3. se cierra la hoja sin salir del feed.
+
+La hoja sólo se monta sobre el ciclo vivo: las ediciones cerradas son de lectura.
 
 ### Borrado de gasto
 
@@ -878,7 +871,7 @@ El comportamiento de la app no depende de que “haya data”. Está preparada p
 1. abre Home,
 2. lee disponibilidad y actividad,
 3. carga un gasto,
-4. revisa historial o Control,
+4. revisa sus movimientos o Control,
 5. consulta compromisos fijos,
 6. recibe timeline/push si hay movimientos.
 

@@ -550,7 +550,17 @@ export function useUpdateExpense(familyId?: string, userId?: string) {
     mutate: (input: UpdateExpenseInput) => void
   } | null>(null)
 
-  const result = useMutation<void, Error, UpdateExpenseInput, { previous: ExpenseListSnapshot } | undefined>({
+  const result = useMutation<
+    void,
+    Error,
+    UpdateExpenseInput,
+    | {
+        previous: ExpenseListSnapshot
+        paginatedSnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+        forDaySnap: ReadonlyArray<readonly [readonly unknown[], unknown]>
+      }
+    | undefined
+  >({
     mutationFn: async ({ expenseId, description, notes, price }) => {
       if (!familyId) {
         throw new Error(i18n.t('gastos:errors.noFamilyEdit'))
@@ -592,18 +602,22 @@ export function useUpdateExpense(familyId?: string, userId?: string) {
       // Gastos v2 caches (paginated + for-day): patcheamos in-place
       // para que la edición se refleje inmediatamente en Home/Gastos
       // sin esperar el refetch. Code review M5 mobile FIX-ROUND.
+      const paginatedSnap = snapshotPaginatedCaches(queryClient, familyId)
+      const forDaySnap = snapshotForDayCaches(queryClient, familyId)
       patchPaginatedUpdate(queryClient, familyId, expenseId, {
         description,
         notes: notes ?? null,
         price,
       })
 
-      return { previous }
+      return { previous, paginatedSnap, forDaySnap }
     },
     onError: (_err, input, ctx) => {
       if (familyId && ctx?.previous) {
         restoreExpenseLists(queryClient, familyId, ctx.previous)
       }
+      if (ctx?.paginatedSnap) restoreCacheSnapshots(queryClient, ctx.paginatedSnap)
+      if (ctx?.forDaySnap) restoreCacheSnapshots(queryClient, ctx.forDaySnap)
       toast.error(i18n.t('gastos:errors.updateFailed'), {
         actionLabel: i18n.t('common:actions.retry'),
         onAction: () => ref.current?.mutate(input),

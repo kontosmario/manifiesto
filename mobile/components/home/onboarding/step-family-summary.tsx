@@ -8,6 +8,7 @@ import { isAvatarSlug, type AvatarSlug } from '@/assets/avatars'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { FamilyPeek } from '@/features/family/use-family-actions'
+import { nunitoFamily } from '@/theme/typography'
 
 interface StepFamilySummaryProps {
   /** Snapshot fetched in step 3 via `peek_family_invite`. The user is
@@ -150,11 +151,12 @@ export function StepFamilySummary({
 
 const styles = StyleSheet.create({
   stack: { gap: 18 },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: -0.6 },
   subcopy: { fontSize: 13, marginTop: 6, lineHeight: 18 },
   eyebrow: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
     marginBottom: 8,
   },
@@ -172,6 +174,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   memberText: { flex: 1, minWidth: 0, gap: 2 },
-  memberName: { fontSize: 14, fontWeight: '700', letterSpacing: -0.2 },
-  memberContribution: { fontSize: 12, fontWeight: '500' },
+  memberName: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700'), letterSpacing: -0.2 },
+  memberContribution: { fontSize: 12, fontWeight: '500', fontFamily: nunitoFamily('500') },
 })

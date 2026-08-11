@@ -8,6 +8,7 @@ import { useAppTheme } from '@/theme/theme-provider'
 import { DARK_TAB_CANVAS } from '@/theme/palette'
 import { getStateTokens, type SemanticState } from '@/theme/state-tokens'
 import { formatMoneyShort } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlV2CoberturaCardProps {
   fijosMes: number
@@ -449,6 +450,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -464,16 +466,19 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   headline: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 20,
     letterSpacing: -0.2,
   },
   headlineStrong: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   overrideRow: {
     flexDirection: 'row',
@@ -528,12 +533,14 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 9,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   statValue: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
   },
   statSub: {
@@ -553,6 +560,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 16,
   },
 })

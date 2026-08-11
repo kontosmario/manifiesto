@@ -34,7 +34,7 @@ export interface NeoInk {
   warn: string
 }
 
-export function neoInk(mode: ResolvedThemeMode): NeoInk {
+function buildInk(mode: ResolvedThemeMode): NeoInk {
   const neo = neoTokens(mode)
   const isDark = mode === 'dark'
 
@@ -43,4 +43,19 @@ export function neoInk(mode: ResolvedThemeMode): NeoInk {
     danger: isDark ? neo.danger : '#A84A2F',
     warn: isDark ? neo.warm : '#A84A2F',
   }
+}
+
+/**
+ * Singletons por modo, no un literal nuevo por llamada: los worklets de
+ * Reanimated capturan el OBJETO raíz en su `__closure` y comparan las deps por
+ * identidad, así que devolver un objeto fresco por render rearma el mapper en
+ * cada frame de render.
+ */
+const INK: Record<ResolvedThemeMode, NeoInk> = {
+  light: buildInk('light'),
+  dark: buildInk('dark'),
+}
+
+export function neoInk(mode: ResolvedThemeMode): NeoInk {
+  return INK[mode]
 }

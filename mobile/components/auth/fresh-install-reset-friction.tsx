@@ -61,6 +61,7 @@ import {
 } from '@/lib/persistent-kv'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 const COUNTDOWN_SECONDS = 10
 const SUPPORT_EMAIL = 'soporte@manifiestoapp.com'
@@ -277,6 +278,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
   body: {
@@ -287,6 +289,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   link: {
     textDecorationLine: 'underline',
@@ -299,5 +302,6 @@ const styles = StyleSheet.create({
   cancelLabel: {
     fontSize: 13,
     fontWeight: '500',
+    fontFamily: nunitoFamily('500'),
   },
 })

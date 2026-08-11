@@ -3,6 +3,7 @@ import { StyleSheet, Text } from 'react-native'
 import Animated, { FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'
+import { nunitoFamily } from '@/theme/typography'
 
 export function FeedbackPill({
   intent,
@@ -54,5 +55,6 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: authPalette.feedback.text,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

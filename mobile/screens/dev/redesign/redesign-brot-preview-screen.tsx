@@ -5,6 +5,7 @@ import {
   PreviewPhoneSection,
   PreviewSectionLabel,
 } from '@/screens/dev/redesign/redesign-preview-shared'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Preview dev-only de Brot (port Skia de brot.js) — las 21 poses
@@ -49,7 +50,7 @@ export function RedesignBrotPreviewScreen() {
             {ANIMATED_SPECIMENS.map((pose) => (
               <View key={pose} style={styles.cell}>
                 <BrotMascot animated pose={pose} size={84} />
-                <Text style={[styles.poseName, { color: '#6C7B67' }]}>{pose}</Text>
+                <Text style={[styles.poseName, { color: '#54644F' }]}>{pose}</Text>
               </View>
             ))}
           </View>
@@ -69,7 +70,7 @@ export function RedesignBrotPreviewScreen() {
                     <Text
                       style={[
                         styles.poseName,
-                        { color: mode === 'dark' ? '#93A78F' : '#6C7B67' },
+                        { color: mode === 'dark' ? '#93A78F' : '#54644F' },
                       ]}
                     >
                       {pose}
@@ -113,5 +114,6 @@ const styles = StyleSheet.create({
   poseName: {
     fontSize: 11.5,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
 })

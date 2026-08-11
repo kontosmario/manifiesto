@@ -323,7 +323,10 @@ export function ConfirmFixedPaymentSheet({
               {amountText === '' ? (
                 <Text
                   pointerEvents="none"
-                  style={[styles.amountPlaceholder, { color: neo.textTertiary }]}
+                  // `textMuted`, no `textTertiary`: el terciario sobre el pozo
+                  // claro da 2.11:1 — ni el 3:1 de texto grande. Mismo
+                  // criterio que el placeholder de `NumericEditSheet`.
+                  style={[styles.amountPlaceholder, { color: neo.textMuted }]}
                 >
                   0
                 </Text>

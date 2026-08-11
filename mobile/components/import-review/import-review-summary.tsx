@@ -5,10 +5,11 @@ import { MaterialIcons } from '@expo/vector-icons'
 import i18n from '@/lib/i18n'
 import { formatWeekdayDayMonth } from '@/utils/date-format'
 import { motionDurations } from '@/lib/motion/tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 import type { Category } from '@/features/categories/use-categories'
 import type { ReviewRow } from '@/features/import-review/types'
 import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
+import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
   rows: readonly ReviewRow[]
@@ -42,7 +43,7 @@ export function ImportReviewSummary({
   skippedCount,
   onJumpTo,
 }: Props) {
-  const { theme } = useAppTheme()
+  const { neo, softInk } = useImportReviewNeo()
   const { t } = useTranslation()
   const submittable = rows.filter((r) => r.kind !== 'skip')
 
@@ -62,12 +63,11 @@ export function ImportReviewSummary({
     <View style={styles.root}>
       <Animated.Text
         entering={FadeIn.duration(motionDurations.standard).easing(EASE_IOS)}
-        style={[
-          isEmpty ? styles.heading : styles.lead,
-          { color: theme.colors.text },
-        ]}
+        style={[isEmpty ? styles.heading : styles.lead, { color: neo.text }]}
       >
-        {isEmpty ? t('gastos:import.summary.nothingToLoad') : t('gastos:import.summary.willLoad', { summary: subtitle })}
+        {isEmpty
+          ? t('gastos:import.summary.nothingToLoad')
+          : t('gastos:import.summary.willLoad', { summary: subtitle })}
       </Animated.Text>
 
       <View style={styles.list}>
@@ -83,6 +83,9 @@ export function ImportReviewSummary({
             // Cap the stagger at 5 items: with 8-12 movements the tail used
             // to land ~1s late and the user waited to read their own list.
             delay={40 + Math.min(idx, 5) * 60}
+            // La línea de 1.5px entre ítems de una misma lista es el único
+            // hairline del vocabulario; el primer ítem no la lleva.
+            divided={idx > 0}
             onJumpTo={onJumpTo}
           />
         ))}
@@ -93,7 +96,7 @@ export function ImportReviewSummary({
           entering={FadeIn.duration(motionDurations.quick)
             .delay(40 + Math.min(submittable.length, 5) * 60 + 80)
             .easing(EASE_IOS)}
-          style={[styles.skippedLine, { color: theme.colors.textMuted }]}
+          style={[styles.skippedLine, { color: softInk }]}
         >
           {t('gastos:import.summary.skippedLine', { count: skippedCount })}
         </Animated.Text>
@@ -106,24 +109,25 @@ interface SummaryItemProps {
   row: ReviewRow
   categoryName: string | null
   delay: number
+  divided: boolean
   onJumpTo?: (rowId: string) => void
 }
 
 /**
  * One light row per movement: description + amount on the baseline, a
  * muted meta line below. No card wrapper and no GASTO/INGRESO eyebrow —
- * the `+` sign and the primary tint on income already carry the kind, so
+ * the `+` sign and the accent tint on income already carry the kind, so
  * the label was just noise. Whitespace does the grouping.
  *
  * Tappable: a summary that lists what you're about to commit should let
  * you fix any line in one tap (jump straight to its edit step) instead of
  * "Volver a editar" + paging back one by one.
  */
-function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
-  const { theme } = useAppTheme()
+function SummaryItem({ row, categoryName, delay, divided, onJumpTo }: SummaryItemProps) {
+  const { neo, ink, softInk } = useImportReviewNeo()
   const { t } = useTranslation()
   const sign = row.kind === 'income' ? '+' : ''
-  const tint = row.kind === 'income' ? theme.colors.primary : theme.colors.text
+  const tint = row.kind === 'income' ? ink.accent : neo.text
 
   const meta = (() => {
     const dateLabel = formatRelativeDate(row.date)
@@ -150,6 +154,11 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
       entering={FadeInDown.duration(motionDurations.standard)
         .delay(delay)
         .easing(EASE_IOS)}
+      style={
+        divided
+          ? { borderTopWidth: 1.5, borderTopColor: neo.sheetDivider, paddingTop: 12 }
+          : null
+      }
     >
       <Pressable
         onPress={onJumpTo ? () => onJumpTo(row.id) : undefined}
@@ -165,7 +174,7 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
       >
         <View style={styles.itemMain}>
           <Text
-            style={[styles.itemDescription, { color: theme.colors.text }]}
+            style={[styles.itemDescription, { color: neo.text }]}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -176,18 +185,11 @@ function SummaryItem({ row, categoryName, delay, onJumpTo }: SummaryItemProps) {
           </Text>
         </View>
         <View style={styles.itemBottom}>
-          <Text
-            style={[styles.itemMeta, { color: theme.colors.textMuted }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.itemMeta, { color: softInk }]} numberOfLines={1}>
             {meta}
           </Text>
           {onJumpTo ? (
-            <MaterialIcons
-              name="chevron-right"
-              size={16}
-              color={theme.colors.textMuted}
-            />
+            <MaterialIcons name="chevron-right" size={16} color={neo.textMuted} />
           ) : null}
         </View>
       </Pressable>
@@ -219,6 +221,8 @@ function formatRelativeDate(iso: string): string {
   return formatWeekdayDayMonth(target)
 }
 
+// El `fontFamily` viaja con el peso: cada peso de Nunito es un face estático
+// propio, así que sin él el 900 se renderiza como regular.
 const styles = StyleSheet.create({
   root: {
     alignItems: 'stretch',
@@ -228,16 +232,18 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.4,
     textAlign: 'center',
   },
   lead: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     marginBottom: 4,
   },
-  list: { gap: 16 },
+  list: { gap: 12 },
   item: { gap: 3 },
   itemPressed: { opacity: 0.55 },
   itemBottom: {
@@ -255,23 +261,27 @@ const styles = StyleSheet.create({
   itemDescription: {
     flex: 1,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.2,
   },
   itemAmount: {
     fontSize: 15,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.3,
   },
   itemMeta: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.1,
   },
   skippedLine: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     marginTop: 4,
   },

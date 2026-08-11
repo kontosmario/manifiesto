@@ -15,6 +15,7 @@ import { formatMoney } from '@/utils/money'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useGatedLayout, useLayoutGateOpen } from '@/hooks/use-layout-transition-gate'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface CategoryWeight {
   id: string
@@ -68,7 +69,7 @@ export function CategoryWeightsList({
             </View>
             <Text style={[styles.amountText, { color: resolvedText }]}>
               {formatMoney(item.amount)}{' '}
-              <Text style={{ color: resolvedMuted, fontWeight: '500' }}>· {item.percent}%</Text>
+              <Text style={{ color: resolvedMuted, fontWeight: '500', fontFamily: nunitoFamily('500') }}>· {item.percent}%</Text>
             </Text>
           </View>
           <View style={[styles.track, { backgroundColor: resolvedTrack }]}>
@@ -156,10 +157,10 @@ const styles = StyleSheet.create({
   },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 7, height: 7, borderRadius: 4 },
-  label: { fontSize: 12, fontWeight: '600' },
+  label: { fontSize: 12, fontWeight: '600', fontFamily: nunitoFamily('600') },
   // Tabular nums para que las columnas right-aligned de montos por
   // categoría alineen cleanly verticalmente en el hero card.
-  amountText: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  amountText: { fontSize: 12, fontWeight: '700', fontFamily: nunitoFamily('700'), fontVariant: ['tabular-nums'] },
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   barWrap: { height: '100%', borderRadius: 3, overflow: 'hidden' },
 })

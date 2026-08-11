@@ -23,12 +23,17 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { neoInk } from '@/theme/neo-ink'
+import { neoMaterial, neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { useThemeTokens } from '@/theme/theme-provider'
 import { typography } from '@/theme/typography'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 import { motionDurations } from '@/lib/motion'
 
 type MaterialIconName = ComponentProps<typeof MaterialIcons>['name']
+
+export type SwipeRowSkin = 'classic' | 'neo'
 
 export interface SwipeAction {
   label: string
@@ -51,8 +56,9 @@ interface SwipeRowProps {
   onAccessibilityAction?: (event: AccessibilityActionEvent) => void
   /** Háptico cuando la card se abre (default 'selection'). */
   onSwipeOpenHaptic?: AppHapticTone
-  /** Radius del clip exterior. Default 14. Las surfaces con card chrome
-   *  propio (ej. FijoRow 16) lo overriden para que el clip matchee. */
+  /** Radius del clip exterior. Default 14 en classic, `neoRadii.tile` en
+   *  neo (las filas altas pasan `neoRadii.card`). Las surfaces con card
+   *  chrome propio (ej. FijoRow 16) lo overriden para que el clip matchee. */
   borderRadius?: number
   /** Disable swipe + dim del contenido mientras una mutation viaja. */
   isProcessing?: boolean
@@ -61,6 +67,21 @@ interface SwipeRowProps {
   /** Ancho fijo por botón de acción. Default 96 — cómodo para tap +
    *  alcanza para 1 ícono + 1 palabra ('Eliminar', 'Listo'). */
   actionWidth?: number
+  /**
+   * Piel del chrome revelado por el swipe: paneles de acción y chip
+   * "Procesando…". El gesto, los anchos y la geometría son idénticos en
+   * las dos.
+   *
+   * `'neo'` pinta el panel con la tinta de acción del rediseño
+   * (`neoInk` — rojo-tierra en destructivo, verde en neutral) sobre un
+   * pozo `insetSm`, y el chip como pozo `neo.well` sin hairline.
+   *
+   * Es opt-in y no un swap global a propósito: el mismo SwipeRow lo
+   * montan superficies todavía V1 (la vista de gastos vieja, la actividad
+   * V1, el intro pre-auth), donde el vocabulario neo quedaría fuera de
+   * contexto.
+   */
+  skin?: SwipeRowSkin
 }
 
 // Spring único para abrir y cerrar — symmetric en gestos interactivos
@@ -105,10 +126,11 @@ export function SwipeRow({
   accessibilityActions,
   onAccessibilityAction,
   onSwipeOpenHaptic = 'selection',
-  borderRadius = 14,
+  borderRadius,
   isProcessing = false,
   processingLabel,
   actionWidth = 96,
+  skin = 'classic',
 }: SwipeRowProps) {
   // PERF · NI `useTranslation()` NI `useThemeTokens()` viven acá.
   //
@@ -140,6 +162,10 @@ export function SwipeRow({
   // realmente abrimos (transición cerrado → abierto), no cada vez que
   // termina un gesto sobre un row ya abierto.
   const wasOpen = useSharedValue(false)
+
+  // El clip lo manda el consumidor (tiene que matchear el radio del card
+  // que envuelve); sin override, cada piel cae a su propio vocabulario.
+  const clipRadius = borderRadius ?? (skin === 'neo' ? neoRadii.tile : 14)
 
   const rightWidth = rightActions.length * actionWidth
   const leftWidth = leftActions.length * actionWidth
@@ -287,7 +313,7 @@ export function SwipeRow({
       }
       onAccessibilityAction={onAccessibilityAction}
       style={{
-        borderRadius,
+        borderRadius: clipRadius,
         overflow: 'hidden',
       }}
     >
@@ -309,6 +335,7 @@ export function SwipeRow({
           actions={rightActions}
           actionWidth={actionWidth}
           translateX={translateX}
+          skin={skin}
           onActionPress={handleActionPress}
         />
       ) : null}
@@ -319,6 +346,7 @@ export function SwipeRow({
           actions={leftActions}
           actionWidth={actionWidth}
           translateX={translateX}
+          skin={skin}
           onActionPress={handleActionPress}
         />
       ) : null}
@@ -352,7 +380,7 @@ export function SwipeRow({
         </Animated.View>
       </GestureDetector>
 
-      {isProcessing ? <ProcessingChip label={processingLabel} /> : null}
+      {isProcessing ? <ProcessingChip label={processingLabel} skin={skin} /> : null}
     </View>
   )
 }
@@ -366,25 +394,43 @@ export function SwipeRow({
  * de `SwipeRow` los cobraba en las ~70 filas montadas del feed, con el agravante
  * de que `useTranslation()` re-suscribe su listener de i18n en cada render.
  */
-function ProcessingChip({ label }: { label?: string }) {
+function ProcessingChip({ label, skin }: { label?: string; skin: SwipeRowSkin }) {
   const { t } = useTranslation()
   const theme = useThemeTokens()
+  const isNeo = skin === 'neo'
+  const neo = neoTokens(theme.mode)
   return (
     <Animated.View
       entering={FadeIn.duration(motionDurations.quick)}
       exiting={FadeOut.duration(motionDurations.micro)}
       style={[
         styles.processingChip,
-        {
-          backgroundColor: theme.colors.creamCard,
-          borderColor: theme.colors.line,
-        },
+        isNeo
+          ? {
+              ...neoMaterial(theme.mode, 'insetSm'),
+              // Android < API 29 descarta el inset EN SILENCIO: sin el
+              // hairline el pozo queda como un rectángulo del mismo tono
+              // que la fila y el chip desaparece.
+              borderWidth: SUPPORTS_INSET_SHADOW ? 0 : 1,
+              borderColor: neo.sheetDivider,
+            }
+          : {
+              backgroundColor: theme.colors.creamCard,
+              borderColor: theme.colors.line,
+            },
       ]}
       pointerEvents="none"
     >
-      <ActivityIndicator size="small" color={theme.colors.primary} />
+      <ActivityIndicator
+        size="small"
+        color={isNeo ? neoInk(theme.mode).accent : theme.colors.primary}
+      />
       <Text
-        style={[styles.processingLabel, typography.buttonCompact, { color: theme.colors.text }]}
+        style={[
+          styles.processingLabel,
+          typography.buttonCompact,
+          { color: isNeo ? neo.text : theme.colors.text },
+        ]}
       >
         {label ?? t('states:swipeRow.processing')}
       </Text>
@@ -397,6 +443,7 @@ interface SwipeActionsPanelProps {
   actions: SwipeAction[]
   actionWidth: number
   translateX: SharedValue<number>
+  skin: SwipeRowSkin
   onActionPress: (action: SwipeAction) => void
 }
 
@@ -418,6 +465,7 @@ function SwipeActionsPanel({
   actions,
   actionWidth,
   translateX,
+  skin,
   onActionPress,
 }: SwipeActionsPanelProps) {
   const width = actions.length * actionWidth
@@ -438,6 +486,7 @@ function SwipeActionsPanel({
           key={`${side[0]}-${action.label}-${i}`}
           action={action}
           width={actionWidth}
+          skin={skin}
           onPress={() => onActionPress(action)}
         />
       ))}
@@ -448,18 +497,34 @@ function SwipeActionsPanel({
 interface SwipeActionButtonProps {
   action: SwipeAction
   width: number
+  skin: SwipeRowSkin
   onPress: () => void
 }
 
-function SwipeActionButton({ action, width, onPress }: SwipeActionButtonProps) {
+function SwipeActionButton({ action, width, skin, onPress }: SwipeActionButtonProps) {
   const theme = useThemeTokens()
   const isDanger = action.tone === 'danger'
-  const background = isDanger ? theme.colors.danger : theme.colors.primary
-  // fg legible sobre el fill brillante, por-modo (cream/ink) — danger y
-  // non-danger usan fills theme-paired (danger / primary), así que el mismo
-  // token sirve. Antes: blanco sobre danger dark = 2.92, brand.deep sobre
-  // primary mint = 2.89.
-  const foreground = theme.colors.textOnPrimary
+  const isNeo = skin === 'neo'
+  const neo = neoTokens(theme.mode)
+  // Piel neo: los fills salen de `neoInk` (rojo-tierra #A84A2F claro /
+  // #E08765 oscuro; verde #1F5429 / #A4E3A6) y no del material del mismo
+  // nombre — el material claro `neo.danger` #C25B33 sólo llega a 3.93:1
+  // contra la tinta de CTA y el label mide 13px. Con la tinta: danger
+  // 5.07:1 claro / 6.43:1 oscuro, neutral 7.92:1 / 11.61:1.
+  //
+  // Piel classic: fg legible sobre el fill brillante, por-modo
+  // (cream/ink) — danger y non-danger usan fills theme-paired (danger /
+  // primary), así que el mismo token sirve. Antes: blanco sobre danger
+  // dark = 2.92, brand.deep sobre primary mint = 2.89.
+  const ink = neoInk(theme.mode)
+  const background = isNeo
+    ? isDanger
+      ? ink.danger
+      : ink.accent
+    : isDanger
+      ? theme.colors.danger
+      : theme.colors.primary
+  const foreground = isNeo ? neo.ctaText : theme.colors.textOnPrimary
 
   return (
     <RectButton
@@ -467,7 +532,14 @@ function SwipeActionButton({ action, width, onPress }: SwipeActionButtonProps) {
         void triggerHaptic(isDanger ? 'warning' : 'selection')
         onPress()
       }}
-      style={[styles.actionButton, { width, backgroundColor: background }]}
+      style={[
+        styles.actionButton,
+        { width, backgroundColor: background },
+        // El panel es el hueco que queda cuando la fila se corre: en neo
+        // se lee como pozo. Sin soporte de inset (Android < 29) queda el
+        // fill plano, que ya separa el panel de la fila por sí solo.
+        isNeo && SUPPORTS_INSET_SHADOW ? { boxShadow: neo.shadows.insetSm } : null,
+      ]}
     >
       {action.icon ? (
         <MaterialIcons

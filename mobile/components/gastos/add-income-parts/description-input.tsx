@@ -28,6 +28,7 @@ import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { INCOME_DESCRIPTION_MAX_LENGTH } from '@/features/income/use-add-income-form'
 import { motionDurations } from '@/lib/motion'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface DescriptionInputProps {
   value: string
@@ -183,5 +184,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })

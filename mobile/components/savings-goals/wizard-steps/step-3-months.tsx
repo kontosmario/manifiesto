@@ -1,17 +1,20 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, {
   FadeIn,
   FadeOut,
   SlideInDown,
   SlideOutDown,
 } from 'react-native-reanimated'
-import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { NumpadGrid } from '@/components/ui/numpad-grid'
-import { motionEasings } from '@/lib/motion/tokens'
-import { radii } from '@/theme/palette'
-import { typography } from '@/theme/typography'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useWizardSkin } from '@/components/wizard/wizard-skin'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { neoInk } from '@/theme/neo-ink'
+import { neoRadii, neoTokens, type NeoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
+import { WizardValueWell } from './wizard-value-well'
 
 // CR Sprint D Minor #2: reuso del token central (misma curva que EXPO_OUT).
 const EXPO_OUT = motionEasings.enterSmooth
@@ -47,7 +50,11 @@ export function Step3Months({
   onChangeCustomText,
   onCustomDone,
 }: Step3MonthsProps) {
-  const { theme } = useAppTheme()
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+  const skin = useWizardSkin()
+  const helperInk = skin.kind === 'neo' ? skin.mutedInkStrong : neo.textMuted
   const { t } = useTranslation()
   const customDigits = customMonthsText.replace(/[^\d]/g, '')
   const customMonthsParsed = customDigits === '' ? 0 : parseInt(customDigits, 10)
@@ -64,7 +71,8 @@ export function Step3Months({
               isActive={isActive}
               onPress={() => onSelectPreset(m)}
               accessibilityLabel={t('settings:savingsWizard.monthsLabel', { count: m })}
-              theme={theme}
+              neo={neo}
+              accentInk={ink.accent}
               style={styles.monthsGridItem}
             />
           )
@@ -74,103 +82,44 @@ export function Step3Months({
           isActive={customMonthsActive}
           onPress={onToggleCustom}
           accessibilityLabel={t('settings:savingsWizard.customA11y')}
-          theme={theme}
+          neo={neo}
+          accentInk={ink.accent}
           style={styles.monthsGridFullRow}
         />
       </View>
 
       {customMonthsActive ? (
         <>
-          {/* Display tappable — mismo pattern que el monto del step 2.
-              El user ve el plazo elegido y abre el numpad al tap.
-              Usamos el numpad custom de la app (no teclado nativo). */}
-          <Pressable
-            accessibilityRole="button"
+          {/* Mismo pozo que el monto del step 2: el user ve el plazo elegido
+              y abre el numpad de la app (no el teclado nativo) al tocarlo. */}
+          <WizardValueWell
+            label={t('settings:savingsWizard.customEyebrow')}
+            value={
+              customPlaceholder
+                ? t('settings:savingsWizard.tapToType')
+                : t('settings:savingsWizard.monthsValue', { count: customMonthsParsed })
+            }
+            placeholder={customPlaceholder}
+            expanded={customMonthsNumpadExpanded}
+            onPress={onExpandCustomNumpad}
             accessibilityLabel={
               customMonthsNumpadExpanded
                 ? t('settings:savingsWizard.customExpandedA11y', { count: customMonthsParsed })
                 : t('settings:savingsWizard.customTapA11y', { count: customMonthsParsed })
             }
-            accessibilityState={{ expanded: customMonthsNumpadExpanded }}
-            onPress={() => {
-              if (!customMonthsNumpadExpanded) {
-                onExpandCustomNumpad()
-              }
-            }}
-            style={({ pressed }) => [
-              styles.displayCard,
-              {
-                backgroundColor: theme.colors.surfaceMuted,
-                borderColor: theme.colors.border,
-                opacity: pressed && !customMonthsNumpadExpanded ? 0.85 : 1,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                typography.eyebrow,
-                styles.displayEyebrow,
-                { color: theme.colors.textMuted },
-              ]}
-            >
-              {t('settings:savingsWizard.customEyebrow')}
-            </Text>
-            <View style={styles.displayValueRow}>
-              <Text
-                numberOfLines={1}
-                style={[
-                  typography.metricLarge,
-                  styles.displayValue,
-                  {
-                    color: customPlaceholder
-                      ? theme.colors.textSoft
-                      : theme.colors.text,
-                  },
-                ]}
-              >
-                {customPlaceholder
-                  ? t('settings:savingsWizard.tapToType')
-                  : t('settings:savingsWizard.monthsValue', { count: customMonthsParsed })}
-              </Text>
-              {!customMonthsNumpadExpanded ? (
-                <View
-                  style={[
-                    styles.displayEditChip,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      borderColor: theme.colors.border,
-                    },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="edit"
-                    size={14}
-                    color={theme.colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.displayEditChipText,
-                      { color: theme.colors.textMuted },
-                    ]}
-                  >
-                    {t('common:actions.edit')}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </Pressable>
+          />
 
           {customMonthsNumpadExpanded ? (
             <Animated.View
               entering={
                 reduceMotion
-                  ? FadeIn.duration(120)
-                  : SlideInDown.duration(320).easing(EXPO_OUT)
+                  ? FadeIn.duration(motionDurations.micro)
+                  : SlideInDown.duration(motionDurations.deliberate).easing(EXPO_OUT)
               }
               exiting={
                 reduceMotion
-                  ? FadeOut.duration(120)
-                  : SlideOutDown.duration(220).easing(EXPO_OUT)
+                  ? FadeOut.duration(motionDurations.micro)
+                  : SlideOutDown.duration(motionDurations.exitModal).easing(EXPO_OUT)
               }
             >
               <NumpadGrid
@@ -184,17 +133,11 @@ export function Step3Months({
             </Animated.View>
           ) : null}
 
-          {/* Helper text bajo el numpad. Antes el clamp a 240 era silencioso
+          {/* Helper bajo el numpad. Antes el clamp a 240 era silencioso
               (el `Math.min(240, value)` en el parent recortaba sin avisar)
               → el user tipeaba 999 y veía 240 sin entender por qué. Ahora
               mostramos la razón explícita y, en rango, una guía de copy. */}
-          <Text
-            style={[
-              typography.caption,
-              styles.customMonthsHelper,
-              { color: theme.colors.textMuted },
-            ]}
-          >
+          <Text style={[styles.customMonthsHelper, { color: helperInk }]}>
             {customMonthsParsed > MAX_CUSTOM_MONTHS
               ? t('settings:savingsWizard.maxMonthsHelper', { max: MAX_CUSTOM_MONTHS })
               : t('settings:savingsWizard.monthsHelper')}
@@ -210,16 +153,26 @@ interface MonthChipProps {
   isActive: boolean
   onPress: () => void
   accessibilityLabel: string
-  theme: ReturnType<typeof useAppTheme>['theme']
-  style?: object
+  neo: NeoTokens
+  /** Tinta del chip elegido — `neoInk`, la variante corregida por contraste. */
+  accentInk: string
+  style?: StyleProp<ViewStyle>
 }
 
+/**
+ * Chip de plazo: extruido en reposo (`raisedSm`), HUNDIDO con anillo verde
+ * al elegirlo (`selectedTint` + `ringSelected`) — el recurso de "presionado"
+ * del neumorfismo, el mismo que usan los tiles de categoría del alta de
+ * fijos y el stepper del cupo diario. Donde el sistema descarta el
+ * `boxShadow`, el anillo pasa a borde para que el elegido siga leyéndose.
+ */
 function MonthChip({
   label,
   isActive,
   onPress,
   accessibilityLabel,
-  theme,
+  neo,
+  accentInk,
   style,
 }: MonthChipProps) {
   return (
@@ -231,28 +184,20 @@ function MonthChip({
       style={({ pressed }) => [
         styles.monthChip,
         style,
-        {
-          backgroundColor: isActive
-            ? theme.colors.primary
-            : theme.isDark
-              ? 'rgba(255,255,255,0.05)'
-              : 'rgba(15,42,30,0.04)',
-          borderColor: isActive ? theme.colors.primary : theme.colors.line,
-          opacity: pressed ? 0.78 : 1,
-        },
+        isActive
+          ? { backgroundColor: neo.selectedTint, boxShadow: neo.shadows.ringSelected }
+          : { backgroundColor: neo.surface, boxShadow: neo.shadows.raisedSm },
+        SUPPORTS_INSET_SHADOW
+          ? null
+          : {
+              borderWidth: isActive ? 2.5 : 1,
+              borderColor: isActive ? neo.green : neo.sheetDivider,
+            },
+        { opacity: pressed ? 0.78 : 1 },
       ]}
     >
       <Text
-        style={[
-          styles.monthChipText,
-          {
-            color: isActive
-              ? theme.isDark
-                ? theme.colors.background
-                : '#FFFFFF'
-              : theme.colors.text,
-          },
-        ]}
+        style={[styles.monthChipText, { color: isActive ? accentInk : neo.text }]}
       >
         {label}
       </Text>
@@ -267,10 +212,10 @@ const styles = StyleSheet.create({
   monthsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   monthsGridItem: {
-    flexBasis: '48%',
+    flexBasis: '47%',
     flexGrow: 1,
   },
   monthsGridFullRow: {
@@ -280,56 +225,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     minHeight: 56,
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    borderRadius: neoRadii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
   monthChipText: {
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.2,
-  },
-  // ── Shared display card (mirrors step-2-amount; kept inline so each
-  //    step file is self-contained — the duplication is tiny and the
-  //    coupling cost of sharing isn't worth it for 2 callers).
-  displayCard: {
-    borderRadius: radii['2xl'],
-    borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    gap: 6,
-  },
-  displayEyebrow: {
-    letterSpacing: 1.4,
-  },
-  displayValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  displayValue: {
-    flex: 1,
-    letterSpacing: -1.2,
-  },
-  displayEditChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  displayEditChipText: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
   },
   customMonthsHelper: {
     paddingHorizontal: 4,
     marginTop: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 17,
     textAlign: 'center',
   },
 })

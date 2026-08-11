@@ -9,6 +9,7 @@ import { formatMoney } from '@/utils/money'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { IncomeEventKind } from '@/features/income/use-income-events'
 import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface IncomeRowProps {
   title?: string
@@ -169,7 +170,7 @@ const styles = StyleSheet.create({
   },
   iconText: { fontSize: 18 },
   body: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '700' },
+  title: { fontSize: 14, fontWeight: '700', fontFamily: nunitoFamily('700') },
   subRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   catChip: {
     paddingHorizontal: 7,
@@ -178,12 +179,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexShrink: 0,
   },
-  catChipText: { fontSize: 10, fontWeight: '700' },
+  catChipText: { fontSize: 10, fontWeight: '700', fontFamily: nunitoFamily('700') },
   subMeta: { fontSize: 11, flexShrink: 1 },
   amountBlock: { alignItems: 'flex-end' },
   // Same tabular nums as GastoRow.amount so the amount column aligns
   // vertically across mixed expense + income rows.
-  amount: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  amount: { fontSize: 14, fontWeight: '800', fontFamily: nunitoFamily('800'), fontVariant: ['tabular-nums'] },
 })
 
 export const IncomeRow = memo(IncomeRowImpl)

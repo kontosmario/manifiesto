@@ -1,5 +1,6 @@
 import { View } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
+import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 
 interface FijoTrendSparkProps {
@@ -18,9 +19,12 @@ interface FijoTrendSparkProps {
  * - Light: deep brand peach/forest (high contrast en cream card)
  * - Dark: light brand peach/lime (high contrast en forest card)
  * - Flat: textMuted (token-driven, ya theme-aware)
+ * En la piel `neo` el stroke sale del cluster `trend` del skin (el par del
+ * handoff), no de estos hexes.
  */
 export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSparkProps) {
   const { theme } = useAppTheme()
+  const skin = useFijosSkin()
   if (points.length < 2) {
     return <View style={{ width, height }} />
   }
@@ -29,12 +33,17 @@ export function FijoTrendSpark({ points, width = 56, height = 22 }: FijoTrendSpa
   const last = points[points.length - 1]!
   const diff = last - first
   const pctChange = first > 0 ? (diff / first) * 100 : 0
+  const trend = skin.kind === 'neo' ? skin.trend : null
   const stroke =
     pctChange >= 1.5
-      ? theme.isDark ? '#F2A78C' : '#B84014'
+      ? trend
+        ? trend.up
+        : theme.isDark ? '#F2A78C' : '#B84014'
       : pctChange <= -1.5
-        ? theme.isDark ? '#A6EF8F' : '#297811'
-        : theme.colors.textMuted
+        ? trend
+          ? trend.down
+          : theme.isDark ? '#A6EF8F' : '#297811'
+        : (trend?.flat ?? theme.colors.textMuted)
 
   const min = Math.min(...points)
   const max = Math.max(...points)

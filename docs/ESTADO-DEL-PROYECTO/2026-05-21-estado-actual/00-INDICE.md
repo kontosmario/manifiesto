@@ -68,7 +68,7 @@ Cada documento cubre un dominio del producto, con:
 | 01 | [Arquitectura, stack, navegación, estado y theme](01-arquitectura-stack-navegacion-estado.md) | Stack técnico, dependencias, expo-router layouts, navegación custom, theme system, providers, query-client, runtime/lib infra, stores de estado, hooks globales |
 | 02 | [Auth y Onboarding](02-auth-onboarding.md) | Welcome, login, signup, join, forgot/reset password, callback OAuth, Apple/Google Sign-In, biometría, **pre-onboarding biometric-setup gate** (2026-05-27), onboarding wizard, household setup, account deletion UI |
 | 03 | [Home, Control y Fijos](03-home-control-fijos.md) | Home screen, Control v2 (+ hero), gastos fijos (fijos v2/v3, alta de fijo), todos los componentes de home |
-| 04 | [Gastos y flujos de alta](04-gastos-add-flows.md) | Lista de gastos / gastos v2, alta de gasto e ingreso, historial, filtros, categorías, notas |
+| 04 | [Gastos y flujos de alta](04-gastos-add-flows.md) | Lista de gastos / gastos v2, alta de gasto e ingreso, ciclos cerrados, edición de gasto, categorías, notas |
 | 05 | [Insights, Asistente y Coach](05-insights-asistente-coach.md) | Motor de señales, asistente financiero heurístico, coach mode, achievements, streaks, finance |
 | 06 | [Settings y sistemas de engagement](06-settings-engagement.md) | Settings stack completo, family-admin, plan/billing, notificaciones, galería de logros, ediciones, Wrapped, dev tools, subscriptions-zombie, tours, bridges |
 | 07 | [Backend, servicios y base de datos](07-backend-servicios-db.md) | Edge functions, esquema DB (107 migraciones), RPCs, RLS, triggers, crons, telemetría, push, CI/CD, tests, scripts |
@@ -86,7 +86,7 @@ Cada documento cubre un dominio del producto, con:
 **Vistas — qué está LIVE vs no:**
 - ✅ Auth completo (email/pass LIVE; Apple/Google 🟡 wired pero bloqueados por Apple Dev), onboarding wizard 5 pasos, account deletion end-to-end ([02](02-auth-onboarding.md)).
 - ✅ Home + Control v2 + **FijosV2** (FijosV3 revertida). `fijos-hero-preview` (41 archivos) y variantes B-G de `control-hero-preview` fueron **eliminados el 2026-05-22** (Bucket 1 de [09](09-candidatos-a-eliminar.md)). Solo sobrevive `control-hero-a-titular` + helpers (LIVE) ([03](03-home-control-fijos.md)).
-- ✅ **GastosV2** (lista LIVE), alta de gasto/ingreso, historial, filtros, categorías, notas. Search global = SKIP por decisión owner ([04](04-gastos-add-flows.md)).
+- ✅ **GastosV2** (lista LIVE), alta de gasto/ingreso, ciclos cerrados en el propio tab, edición de gasto por hoja sobre el feed, categorías, notas. Pantalla de historial y modal de filtros **retirados el 2026-08-05**; search global = SKIP por decisión owner ([04](04-gastos-add-flows.md)).
 - ✅ Asistente financiero **100% heurístico** (`control-signals.ts`: 2171 líneas, 43 builders, 4 personas); coach mode scaffold; AI Coach LLM ⏸️ DEFERRED ([05](05-insights-asistente-coach.md)).
 - ✅ Settings completo + engagement: Logros (14 codes, realtime), Manifiesto Wrapped, Ediciones, tours, subscriptions-zombie. Billing 🟡 **MOCK** (RevenueCat en pausa) ([06](06-settings-engagement.md)).
 

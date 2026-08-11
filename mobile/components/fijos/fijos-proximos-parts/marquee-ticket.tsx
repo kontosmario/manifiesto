@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { formatMoney } from '@/utils/money'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 // ── Geometría del marquee ─────────────────────────────────────────
 // Constantes hardcodeadas para que el ancho de loop coincida exacto
@@ -137,11 +138,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12.5,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: -0.2,
   },
   ticketAmount: {
     fontSize: 12.5,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
   },
@@ -155,6 +158,7 @@ const styles = StyleSheet.create({
   timingPillText: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.6,
     fontVariant: ['tabular-nums'],
   },

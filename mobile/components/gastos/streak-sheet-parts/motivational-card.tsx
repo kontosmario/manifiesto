@@ -4,6 +4,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import type { AtRiskIntensity, StreakData, StreakDerived } from '@/features/streaks/use-streak'
 import { getAtRiskTone, getStatusTone } from './streak-sheet-tone'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * Cards mostradas debajo del WeekActivity según `derived.status`:
@@ -169,7 +170,7 @@ export function MotivationalCard({ data, derived }: MotivationalCardProps) {
           <Text
             style={[
               styles.cardBody,
-              { color: tone.fg, fontWeight: '800', marginTop: 8 },
+              { color: tone.fg, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 8 },
             ]}
           >
             {t('gastos:streakSheet.motivational.atRecord')}
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cardIconEmoji: { fontSize: 16, lineHeight: 20 },
-  cardTitle: { fontSize: 13, fontWeight: '800', marginBottom: 4 },
+  cardTitle: { fontSize: 13, fontWeight: '800', fontFamily: nunitoFamily('800'), marginBottom: 4 },
   cardBody: { fontSize: 12, lineHeight: 18 },
   consequenceRow: {
     flexDirection: 'row',
@@ -287,8 +288,8 @@ const styles = StyleSheet.create({
     padding: 12,
     alignItems: 'center',
   },
-  statLabel: { fontSize: 10, marginBottom: 4, fontWeight: '600' },
-  statValue: { fontSize: 18, fontWeight: '800' },
+  statLabel: { fontSize: 10, marginBottom: 4, fontWeight: '600', fontFamily: nunitoFamily('600') },
+  statValue: { fontSize: 18, fontWeight: '800', fontFamily: nunitoFamily('800') },
   freezeInfo: {
     fontSize: 11,
     textAlign: 'center',

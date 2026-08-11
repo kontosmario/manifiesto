@@ -1,17 +1,69 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { useMemo, type ReactNode } from 'react'
+import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { AppSymbol } from '@/components/ui/app-symbol'
+import { NeoSurface } from '@/components/ui/neo-surface'
+import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import type {
   HouseholdSavingsPreset,
   HouseholdSavingsResearchStat,
 } from '@/features/settings/household-setup-wizard.model'
 import { withAlpha } from '@/theme/color-utils'
 import { DEFAULT_HIT_SLOP, DEFAULT_PRESS_RETENTION_OFFSET } from '@/theme/interaction'
-import { useAppTheme } from '@/theme/theme-provider'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { neoInk } from '@/theme/neo-ink'
-import { neoTokens } from '@/theme/neo-tokens'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
 import { currencyFormatter } from '@/utils/money'
-import { radii } from '@/theme/palette'
+
+/**
+ * Android < API 28/29 descarta el `boxShadow` (outset e inset) EN SILENCIO:
+ * ahí el relieve no existe y las carcasas quedan a ~1.05:1 contra el fondo.
+ * Mismo criterio que `settings-primitives`. Ver `SUPPORTS_INSET_SHADOW`.
+ */
+function useFlatFallback(): ViewStyle | null {
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  return useMemo(
+    () => (SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: neo.sheetDivider }),
+    [neo],
+  )
+}
+
+/**
+ * Carcasa de un paso del wizard. El título es propio de la card (no el
+ * eyebrow de `SectionHeader`, que rotula secciones y no bloques): es el
+ * segundo nivel de la pantalla, debajo del título del paso.
+ */
+export function HouseholdSetupCard({
+  children,
+  subtitle,
+  title,
+  variant = 'raisedLg',
+}: {
+  children: ReactNode
+  subtitle?: string
+  title?: string
+  variant?: 'raisedLg' | 'raisedXl'
+}) {
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const flatFallback = useFlatFallback()
+
+  return (
+    <NeoSurface radius={neoRadii.card} style={[styles.card, flatFallback]} variant={variant}>
+      {title ? (
+        <View style={styles.cardHeading}>
+          <Text style={[styles.cardTitle, { color: neo.text }]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.cardSubtitle, { color: neo.textMuted }]}>{subtitle}</Text>
+          ) : null}
+        </View>
+      ) : null}
+      {children}
+    </NeoSurface>
+  )
+}
 
 export function HouseholdSetupProgressCard({
   currentStep,
@@ -24,24 +76,20 @@ export function HouseholdSetupProgressCard({
   title: string
   totalSteps: number
 }) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+  const flatFallback = useFlatFallback()
   const { t } = useTranslation()
 
   return (
-    <View
-      style={[
-        styles.progressCard,
-        {
-          backgroundColor: neo.well,
-          boxShadow: neo.shadows.insetSm,
-          borderColor: neo.sheetDivider,
-        },
-      ]}
+    <NeoSurface
+      radius={neoRadii.card}
+      style={[styles.progressCard, flatFallback]}
+      variant="insetMd"
     >
       <View style={styles.progressHeader}>
-        <Text style={[styles.progressEyebrow, { color: neo.greenDeep }]}>
+        <Text style={[styles.progressEyebrow, { color: ink.accent }]}>
           {t('settings:householdSetup.stepOf', { current: currentStep, total: totalSteps })}
         </Text>
         <View style={styles.progressDots}>
@@ -56,7 +104,7 @@ export function HouseholdSetupProgressCard({
                   {
                     backgroundColor: isActive
                       ? ink.accent
-                      : withAlpha(neo.text, theme.isDark ? 0.16 : 0.08),
+                      : withAlpha(neo.text, theme.isDark ? 0.16 : 0.12),
                   },
                 ]}
               />
@@ -66,7 +114,7 @@ export function HouseholdSetupProgressCard({
       </View>
       <Text style={[styles.progressTitle, { color: neo.text }]}>{title}</Text>
       <Text style={[styles.progressSubtitle, { color: neo.textMuted }]}>{subtitle}</Text>
-    </View>
+    </NeoSurface>
   )
 }
 
@@ -79,33 +127,27 @@ export function HouseholdSavingsResearchPanel({
   note: string
   stats: readonly HouseholdSavingsResearchStat[]
 }) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
+  const flatFallback = useFlatFallback()
   const { t } = useTranslation()
 
   return (
-    <View
-      style={[
-        styles.researchCard,
-        {
-          backgroundColor: neo.selectedTint,
-          borderColor: withAlpha(ink.accent, theme.isDark ? 0.24 : 0.16),
-        },
-      ]}
+    <NeoSurface
+      radius={neoRadii.card}
+      style={[styles.researchCard, flatFallback]}
+      variant="raisedLg"
     >
       <View style={styles.researchHeader}>
-        <View
-          style={[
-            styles.researchIconWrap,
-            {
-              backgroundColor: neo.sheet,
-              borderColor: withAlpha(ink.accent, 0.18),
-            },
-          ]}
-        >
-          <AppSymbol color={neo.greenDeep} fallback="insights" name="chart.bar.doc.horizontal.fill" size={18} />
-        </View>
+        <NeoSurface radius={neoRadii.pill} style={styles.researchIconWrap} variant="raisedSm">
+          <AppSymbol
+            color={ink.accent}
+            fallback="insights"
+            name="chart.bar.doc.horizontal.fill"
+            size={18}
+          />
+        </NeoSurface>
         <View style={styles.researchCopy}>
           <Text style={[styles.researchTitle, { color: neo.text }]}>
             {t('settings:householdSetup.researchTitle')}
@@ -118,38 +160,40 @@ export function HouseholdSavingsResearchPanel({
 
       <View style={styles.researchStats}>
         {stats.map((stat) => (
-          <View
+          <NeoSurface
             key={stat.label}
-            style={[
-              styles.researchStat,
-              {
-                backgroundColor: withAlpha(neo.sheet, theme.isDark ? 0.06 : 0.76),
-                borderColor: withAlpha(ink.accent, theme.isDark ? 0.2 : 0.12),
-              },
-            ]}
+            radius={neoRadii.tile}
+            style={[styles.researchStat, flatFallback]}
+            variant="insetSm"
           >
-            <Text style={[styles.researchValue, { color: neo.greenDeep }]}>
-              {stat.value}
-            </Text>
+            <Text style={[styles.researchValue, { color: ink.accent }]}>{stat.value}</Text>
             <Text style={[styles.researchLabel, { color: neo.text }]}>{stat.label}</Text>
-            <Text style={[styles.researchDetail, { color: neo.textMuted }]}>
-              {stat.detail}
-            </Text>
-            <Text style={[styles.researchSource, { color: neo.textMuted }]}>
-              {stat.source}
-            </Text>
-          </View>
+            <Text style={[styles.researchDetail, { color: neo.textMuted }]}>{stat.detail}</Text>
+            <Text style={[styles.researchSource, { color: neo.textMuted }]}>{stat.source}</Text>
+          </NeoSurface>
         ))}
       </View>
 
       <Text style={[styles.benchmarkText, { color: neo.text }]}>
-        {t('settings:householdSetup.benchmarkText', { amount: currencyFormatter.format(benchmarkFund || 0) })}
+        {t('settings:householdSetup.benchmarkText', {
+          amount: currencyFormatter.format(benchmarkFund || 0),
+        })}
       </Text>
       <Text style={[styles.researchNote, { color: neo.textMuted }]}>{note}</Text>
-    </View>
+    </NeoSurface>
   )
 }
 
+/**
+ * En el vocabulario neo el preset elegido no se marca con un borde de
+ * acento: se HUNDE (`ringSelected`, pozo + anillo verde) contra el relieve
+ * `raisedMd` de los otros. El `Pressable` queda por fuera de la superficie
+ * para que la opacidad del press atenúe también el relieve.
+ *
+ * El pozo va SIN el `selectedTint` que suele acompañar al anillo: sobre el
+ * tinte compuesto el helper de 12px cae a 3.58:1 en oscuro, y el anillo ya
+ * marca la selección por sí solo (4.01:1 claro / 8.98:1 oscuro).
+ */
 export function HouseholdSavingsPresetCard({
   isSelected,
   onPress,
@@ -159,60 +203,79 @@ export function HouseholdSavingsPresetCard({
   onPress: () => void
   preset: HouseholdSavingsPreset
 }) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
+  const ink = neoInk(theme.mode)
   const { t } = useTranslation()
+  const presetFallback = useMemo<ViewStyle | null>(
+    () =>
+      SUPPORTS_INSET_SHADOW
+        ? null
+        : { borderWidth: 1.5, borderColor: isSelected ? neo.green : neo.sheetDivider },
+    [isSelected, neo],
+  )
 
   return (
     <Pressable
       accessibilityLabel={t('settings:householdSetup.usePresetA11y', { title: preset.title })}
       accessibilityRole="button"
-      android_ripple={{
-        borderless: false,
-        color: withAlpha(ink.accent, theme.isDark ? 0.22 : 0.12),
-      }}
+      accessibilityState={{ selected: isSelected }}
       hitSlop={DEFAULT_HIT_SLOP}
       onPress={onPress}
       pressRetentionOffset={DEFAULT_PRESS_RETENTION_OFFSET}
-      style={({ pressed }) => [
-        styles.presetCard,
-        {
-          backgroundColor: isSelected ? neo.selectedTint : neo.well,
-          borderColor: isSelected ? ink.accent : neo.sheetDivider,
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
+      style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
     >
-      <View style={styles.presetHeader}>
-        <View style={styles.presetTitleWrap}>
-          <Text style={[styles.presetTitle, { color: neo.text }]}>{preset.title}</Text>
-          <Text style={[styles.presetMix, { color: neo.textMuted }]}>
-            50 / {preset.flexiblePercent} / {preset.savingsPercent}
-          </Text>
+      <NeoSurface
+        radius={neoRadii.tile}
+        style={[styles.presetCard, presetFallback]}
+        variant={isSelected ? 'ringSelected' : 'raisedMd'}
+      >
+        <View style={styles.presetHeader}>
+          <View style={styles.presetTitleWrap}>
+            <Text style={[styles.presetTitle, { color: neo.text }]}>{preset.title}</Text>
+            <Text style={[styles.presetMix, { color: neo.textMuted }]}>
+              50 / {preset.flexiblePercent} / {preset.savingsPercent}
+            </Text>
+          </View>
+          <View style={styles.presetValueWrap}>
+            <Text style={[styles.presetPercent, { color: ink.accent }]}>
+              {preset.savingsPercent}%
+            </Text>
+            <Text style={[styles.presetValue, { color: neo.textMuted }]}>
+              {currencyFormatter.format(preset.monthlyGoal)}
+            </Text>
+          </View>
         </View>
-        <View style={styles.presetValueWrap}>
-          <Text style={[styles.presetPercent, { color: neo.greenDeep }]}>
-            {preset.savingsPercent}%
-          </Text>
-          <Text style={[styles.presetValue, { color: neo.textMuted }]}>
-            {currencyFormatter.format(preset.monthlyGoal)}
-          </Text>
-        </View>
-      </View>
-      <Text style={[styles.presetSubtitle, { color: neo.textMuted }]}>
-        {preset.subtitle}
-      </Text>
-      <Text style={[styles.presetHelper, { color: neo.textMuted }]}>{preset.helper}</Text>
+        <Text style={[styles.presetSubtitle, { color: neo.textMuted }]}>{preset.subtitle}</Text>
+        <Text style={[styles.presetHelper, { color: neo.textMuted }]}>{preset.helper}</Text>
+      </NeoSurface>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
+  card: {
+    gap: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+  },
+  cardHeading: {
+    gap: 4,
+  },
+  cardTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    lineHeight: 18,
+  },
   progressCard: {
     gap: 8,
-    borderRadius: radii.xl,
-    borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
@@ -225,7 +288,8 @@ const styles = StyleSheet.create({
   progressEyebrow: {
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.7,
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   progressDots: {
@@ -234,23 +298,24 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   progressDot: {
-    borderRadius: radii.pill,
+    borderRadius: neoRadii.pill,
     height: 8,
     width: 24,
   },
   progressTitle: {
     fontSize: 24,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
   },
   progressSubtitle: {
     fontSize: 14,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 20,
   },
   researchCard: {
     gap: 14,
-    borderRadius: radii.xl,
-    borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 15,
   },
@@ -261,8 +326,6 @@ const styles = StyleSheet.create({
   },
   researchIconWrap: {
     alignItems: 'center',
-    borderRadius: radii.pill,
-    borderWidth: 1,
     height: 38,
     justifyContent: 'center',
     width: 38,
@@ -274,17 +337,18 @@ const styles = StyleSheet.create({
   researchTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   researchSubtitle: {
     fontSize: 13,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   researchStats: {
     gap: 10,
   },
   researchStat: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
     gap: 2,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -292,19 +356,24 @@ const styles = StyleSheet.create({
   researchValue: {
     fontSize: 24,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.6,
   },
   researchLabel: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   researchDetail: {
     fontSize: 13,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   researchSource: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.4,
     marginTop: 2,
     textTransform: 'uppercase',
@@ -312,16 +381,16 @@ const styles = StyleSheet.create({
   benchmarkText: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   researchNote: {
     fontSize: 12,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   presetCard: {
-    borderRadius: radii.xl,
-    borderWidth: 1,
     gap: 6,
-    overflow: 'hidden',
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
@@ -338,10 +407,12 @@ const styles = StyleSheet.create({
   presetTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   presetMix: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 0.3,
   },
   presetValueWrap: {
@@ -351,18 +422,24 @@ const styles = StyleSheet.create({
   presetPercent: {
     fontSize: 22,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: -0.5,
   },
   presetValue: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   presetSubtitle: {
     fontSize: 13,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 18,
   },
   presetHelper: {
     fontSize: 12,
+    fontWeight: '400',
+    fontFamily: nunitoFamily('400'),
     lineHeight: 17,
   },
 })

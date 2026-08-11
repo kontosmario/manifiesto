@@ -11,35 +11,41 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
+import { neoParticlePresets } from '@/theme/neo-tokens'
 import { formatMoney } from '@/utils/money'
+import type { WrappedTone } from '../wrapped-constants'
 import { closingStyles, summaryStyles } from './closing-styles'
 import { LeftoverOptionCard } from './leftover-option-card'
 import type { LeftoverOption, Scene } from './types'
 
-// 5. Closing scene — forest deep (statement de marca), monthly income
-// hero, achievements pill si hay, summary row con gastaste + movimientos,
-// CTA primary. Integra Spec B (leftover decision) cuando el payload
-// trae pending o past decision.
+// 5. Closing scene — el panel profundo del sistema (statement de marca),
+// monthly income hero, achievements chip si hay, summary row con gastaste +
+// movimientos, CTA primary. Integra Spec B (leftover decision) cuando el
+// payload trae pending o past decision.
 export function buildClosingScene(
   payload: CycleWrappedPayload,
+  tone: WrappedTone,
   leftoverSelected: LeftoverOption | null,
   onSelectLeftover: (next: LeftoverOption) => void,
 ): Scene {
   return {
     id: 'closing',
-    background: '#0F2E1F', // forest deep, brand statement
-    foreground: '#F4FDF2',
-    // Sobre forest deep el contraste es altísimo, pero bumpeamos a
-    // 0.82 para que eyebrow/labels no parezcan "apagados".
-    foregroundSoft: 'rgba(244,253,242,0.82)',
-    progressTrack: 'rgba(244,253,242,0.24)',
-    progressFill: '#A6EF8F',
-    ctaBg: '#A6EF8F',
-    ctaFg: '#0F2E1F',
+    background: tone.background,
+    foreground: tone.foreground,
+    foregroundSoft: tone.foregroundSoft,
+    progressTrack: tone.progressTrack,
+    progressFill: tone.progressFill,
+    ctaBg: tone.ctaBg,
+    ctaGradientCss: tone.ctaGradientCss,
+    ctaShadow: tone.ctaShadow,
+    ctaFg: tone.ctaFg,
+    particles: neoParticlePresets.celebrationDark,
     render: ({ reduced }) => (
       <ClosingSceneRender
         payload={payload}
+        tone={tone}
         leftoverSelected={leftoverSelected}
         onSelectLeftover={onSelectLeftover}
         reduced={reduced}
@@ -54,11 +60,13 @@ export function buildClosingScene(
 // pure function), evitando "hooks called in non-component".
 function ClosingSceneRender({
   payload,
+  tone,
   leftoverSelected,
   onSelectLeftover,
   reduced,
 }: {
   payload: CycleWrappedPayload
+  tone: WrappedTone
   leftoverSelected: LeftoverOption | null
   onSelectLeftover: (next: LeftoverOption) => void
   reduced: boolean
@@ -75,6 +83,12 @@ function ClosingSceneRender({
   const showLeftoverSection =
     hasPending || (past != null && past.decision !== 'skip')
   const goalTitle = payload.activeGoal?.title ?? null
+
+  // Brot cierra el mes: festeja si sobró plata, y si el ciclo cerró
+  // parejo o en rojo acompaña en calma en vez de celebrar.
+  const sobrante =
+    payload.pendingLeftoverDecision?.sobrante ?? past?.sobrante ?? payload.savingsDelta
+  const brotPose: BrotPose = sobrante > 0 ? 'cheer' : 'zen'
 
   // ── Pulse del amount en mode pending ────────────────────
   // Loop sutil 1 → 1.015 → 1 cada 2.5s (1250ms por dirección).
@@ -131,29 +145,34 @@ function ClosingSceneRender({
   return (
     <View style={closingStyles.stage}>
       {/* ── Sección histórica (siempre presente) ────────── */}
-      <Text style={[closingStyles.eyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
-        {i18n.t('control:wrapped.closing.eyebrow')}
-      </Text>
-      <Text
-        style={[
-          showLeftoverSection ? closingStyles.titleCompact : closingStyles.title,
-          { color: '#F4FDF2' },
-        ]}
-        accessibilityRole="header"
-      >
-        {i18n.t('control:wrapped.closing.title', {
-          amount: formatMoney(Math.round(payload.monthlyIncome)),
-        })}
-      </Text>
+      <View style={closingStyles.headRow}>
+        <View style={closingStyles.headCol}>
+          <Text style={[closingStyles.eyebrow, { color: tone.foregroundSoft }]}>
+            {i18n.t('control:wrapped.closing.eyebrow')}
+          </Text>
+          <Text
+            style={[
+              showLeftoverSection ? closingStyles.titleCompact : closingStyles.title,
+              { color: tone.foreground },
+            ]}
+            accessibilityRole="header"
+          >
+            {i18n.t('control:wrapped.closing.title', {
+              amount: formatMoney(Math.round(payload.monthlyIncome)),
+            })}
+          </Text>
+        </View>
+        <BrotMascot pose={brotPose} size={72} shadow={false} animated={!reduced} />
+      </View>
       {payload.achievementsEarnedInCycle > 0 ? (
         <View
           style={[
             closingStyles.achievementsRow,
-            { borderColor: 'rgba(166,239,143,0.55)' },
+            { backgroundColor: tone.selectedTint },
           ]}
         >
-          <MaterialIcons name="emoji-events" size={16} color="#A6EF8F" />
-          <Text style={[closingStyles.achievementsText, { color: '#A6EF8F' }]}>
+          <MaterialIcons name="emoji-events" size={16} color={tone.accent} />
+          <Text style={[closingStyles.achievementsText, { color: tone.accent }]}>
             {i18n.t('control:wrapped.closing.achievements', {
               count: payload.achievementsEarnedInCycle,
             })}
@@ -164,23 +183,32 @@ function ClosingSceneRender({
         <SummaryStat
           label={i18n.t('control:wrapped.closing.summaryGastaste')}
           value={formatMoney(Math.round(payload.totalSpent))}
-          color="#F4FDF2"
-          mutedColor="rgba(244,253,242,0.82)"
+          color={tone.foreground}
+          mutedColor={tone.foregroundSoft}
         />
-        <View style={closingStyles.summaryDivider} />
+        <View
+          style={[closingStyles.summaryDivider, { backgroundColor: tone.divider }]}
+        />
         <SummaryStat
           label={i18n.t('control:wrapped.closing.summaryMovimientos')}
           value={String(payload.expensesCount)}
-          color="#F4FDF2"
-          mutedColor="rgba(244,253,242,0.82)"
+          color={tone.foreground}
+          mutedColor={tone.foregroundSoft}
         />
       </View>
 
       {/* ── Sección decisión sobrante (pending o past) ── */}
       {showLeftoverSection ? (
         <>
-          <View style={closingStyles.sectionDivider} />
-          <Text style={[closingStyles.leftoverEyebrow, { color: 'rgba(244,253,242,0.82)' }]}>
+          <View
+            style={[
+              closingStyles.sectionDivider,
+              { backgroundColor: tone.divider },
+            ]}
+          />
+          <Text
+            style={[closingStyles.leftoverEyebrow, { color: tone.foregroundSoft }]}
+          >
             {past
               ? i18n.t('control:wrapped.closing.leftoverEyebrowDecidido')
               : i18n.t('control:wrapped.closing.leftoverEyebrowSobraron')}
@@ -189,25 +217,28 @@ function ClosingSceneRender({
             <Animated.Text
               style={[
                 closingStyles.leftoverAmount,
-                { color: '#A6EF8F' },
+                { color: tone.accent },
                 amountAnimatedStyle,
               ]}
             >
               {formatMoney(Math.round(payload.pendingLeftoverDecision!.sobrante))}
             </Animated.Text>
           ) : (
-            <Text style={[closingStyles.leftoverAmount, { color: '#A6EF8F' }]}>
+            <Text style={[closingStyles.leftoverAmount, { color: tone.accent }]}>
               {formatMoney(Math.round(past!.sobrante))}
             </Text>
           )}
           {!past ? (
-            <Text style={[closingStyles.leftoverSubtitle, { color: 'rgba(244,253,242,0.82)' }]}>
+            <Text
+              style={[closingStyles.leftoverSubtitle, { color: tone.foregroundSoft }]}
+            >
               {i18n.t('control:wrapped.closing.leftoverQueHaces')}
             </Text>
           ) : null}
           <View style={closingStyles.optionsStack}>
             <LeftoverOptionCard
               icon="track-changes"
+              tone={tone}
               title={
                 past?.decision === 'meta' && past?.metaGoalTitle
                   ? i18n.t('control:wrapped.closing.optionMetaAportaste', {
@@ -235,6 +266,7 @@ function ClosingSceneRender({
             />
             <LeftoverOptionCard
               icon="trending-up"
+              tone={tone}
               title={i18n.t('control:wrapped.closing.optionAcumularTitle')}
               subtitle={
                 past?.decision === 'acumular'
@@ -250,6 +282,7 @@ function ClosingSceneRender({
             />
             <LeftoverOptionCard
               icon="savings"
+              tone={tone}
               title={i18n.t('control:wrapped.closing.optionReservaTitle')}
               subtitle={
                 past?.decision === 'reserva'
@@ -265,7 +298,12 @@ function ClosingSceneRender({
             />
           </View>
           {past ? (
-            <Text style={closingStyles.pastDecisionHint}>
+            <Text
+              style={[
+                closingStyles.pastDecisionHint,
+                { color: tone.foregroundSoft },
+              ]}
+            >
               {i18n.t('control:wrapped.closing.pastDecisionHint', {
                 date: formatPastDate(past.decidedAt),
               })}

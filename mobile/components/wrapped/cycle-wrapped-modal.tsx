@@ -14,6 +14,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { BrotParticles } from '@/components/brot/brot-particles'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
@@ -46,10 +47,11 @@ interface CycleWrappedModalProps {
  * reconoce y comunica "esto es un momento, no un popup"; pero la
  * estética se aleja deliberadamente del cliché dark + neón:
  *
- *   • Paleta committed cream + forest green del producto (no dark).
- *   • Tipografía editorial weight-driven (sin custom font, system+800/900).
+ *   • Materiales del vocabulario neumórfico, uno por escena.
+ *   • Tipografía editorial weight-driven (Nunito 800/900).
  *   • Un solo elemento dominante por escena — sin grids de widgets.
- *   • Color strategy committed: cada escena toma su tinte saturado.
+ *   • El material CODIFICA el resultado del ciclo (verde profundo /
+ *     excedido / superficie neutra), no un hue decorativo.
  *   • Confetti restrained, solo en la escena del veredicto si ahorraste.
  *
  * Motion: ease-out-expo 360ms entre escenas, stagger 60ms eyebrow →
@@ -60,14 +62,9 @@ interface CycleWrappedModalProps {
  * orchestrator: hooks de animation top-level, scene index logic,
  * dispatch del render.
  *
- * Rediseño neo — ALCANCE DELIBERADAMENTE PARCIAL
- * ----------------------------------------------
- * Sólo se migra el CHROME del modal (scrim, fallbacks de fondo, marca,
- * hint, confeti): la "color strategy committed" de arriba es una decisión
- * de producto, y aplanar las escenas a la paleta salvia/bosque le sacaría
- * exactamente lo que lo hace un momento. Los tintes por escena siguen
- * viniendo de `./scenes/*` y NO se tocan — cambiarlos requiere decisión
- * del owner, no una migración de material.
+ * Los materiales de cada escena salen de `wrappedPalette()`
+ * (`./wrapped-constants`), que es la ÚNICA fuente: la pantalla de
+ * Ediciones y las escenas leen la misma tabla.
  */
 export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps) {
   const theme = useThemeTokens()
@@ -102,9 +99,9 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
   const scenes = useMemo(
     () =>
       payload
-        ? buildScenes(payload, theme.isDark, leftoverSelected, handleSelectLeftover)
+        ? buildScenes(payload, theme.mode, leftoverSelected, handleSelectLeftover)
         : [],
-    [payload, theme.isDark, leftoverSelected, handleSelectLeftover],
+    [payload, theme.mode, leftoverSelected, handleSelectLeftover],
   )
   const sceneCount = scenes.length
   // CR Sprint D Minor #1: derive el índice del verdict desde el array
@@ -186,14 +183,14 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     if (!payload) return
     const firstBg = scenes[0]?.background
     if (firstBg) prevSceneBgSv.value = firstBg
-    // Deps incluyen `theme.isDark` porque `buildScenes` rebuildea las
-    // escenas con esa flag — si el user switcha el tema mientras está
+    // Deps incluyen `theme.mode` porque `buildScenes` rebuildea las
+    // escenas con ese modo — si el user switcha el tema mientras está
     // abierto el wrapped, el bg base de la primera escena cambia y
     // queremos que el SharedValue refleje el nuevo tono. NO incluimos
     // `scenes` ni `leftoverSelected` (cambian al tap-ear option y
     // dispararían un reset incorrecto del bg previo).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, prevSceneBgSv, theme.isDark])
+  }, [payload, prevSceneBgSv, theme.mode])
 
   // Transición a una escena nueva. Captura el bg previo en el shared
   // value, resetea sceneAlpha/translateX/bgProgress a sus initialValues
@@ -391,6 +388,18 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           cardStyle,
         ]}
       >
+        {/* Partículas del handoff — capa de fondo de la escena que las
+            pide (veredicto positivo y cierre). Van PRIMERO para quedar
+            debajo del contenido; el gate de Reduce Motion las congela. */}
+        {scene.particles ? (
+          <BrotParticles
+            key={scene.id}
+            colors={scene.particles.colors}
+            count={scene.particles.count}
+            animated={!reduced}
+          />
+        ) : null}
+
         {/* ── Progress bars (top) ──────────────────────────── */}
         <View style={styles.progressRow}>
           {scenes.map((_, idx) => (
@@ -481,6 +490,8 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
               onDismiss={onDismiss}
               fireConfetti={fireConfettiCallback}
               ctaBg={scene.ctaBg}
+              ctaGradientCss={scene.ctaGradientCss}
+              ctaShadow={scene.ctaShadow}
               ctaFg={scene.ctaFg}
               reduced={reduced}
             />
@@ -524,18 +535,22 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
           </View>
         ) : null}
 
-        {/* Confetti solo en el veredicto positivo. SIN `colors`: el fondo
-            del veredicto sigue al tema (#E3F2D2 claro / #1F4530 oscuro),
-            que es exactamente el criterio del default de ConfettiBurst. */}
+        {/* Confetti solo en el veredicto positivo. `colors` EXPLÍCITO: el
+            veredicto positivo cae sobre el verde profundo del sistema en
+            los DOS temas, así que el default por tema no serviría en claro. */}
         {scene.confetti ? (
-          <ConfettiBurst pulseToken={sceneIndex === verdictSceneIdx ? 1 : 0} originY={200} />
+          <ConfettiBurst
+            pulseToken={sceneIndex === verdictSceneIdx ? 1 : 0}
+            originY={200}
+            colors={neoParticlePresets.celebrationDark.colors}
+          />
         ) : null}
 
         {/* Confetti al confirmar decisión de leftover real (meta /
             acumular / reserva). Disparado por setConfettiToken en el
             CTA. Skip en reduced motion (es decorativo).
-            `colors` EXPLÍCITO: cae sobre la escena de cierre, que es
-            forest fija (#0F2E1F) en los DOS temas — el default claro
+            `colors` EXPLÍCITO: cae sobre la escena de cierre, que es el
+            panel profundo del sistema en los DOS temas — el default claro
             (tokens oscuros del tema) desaparecería ahí. */}
         {!reduced ? (
           <ConfettiBurst

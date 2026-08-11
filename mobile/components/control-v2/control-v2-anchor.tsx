@@ -1,5 +1,5 @@
 import { useEffect, type PropsWithChildren } from 'react'
-import { View, type LayoutChangeEvent, type ViewStyle } from 'react-native'
+import { StyleSheet, View, type LayoutChangeEvent, type ViewStyle } from 'react-native'
 import Animated, {
   Easing,
   cancelAnimation,
@@ -12,7 +12,9 @@ import Animated, {
 import { useControlAnchors } from '@/features/insights/control-section-anchors'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
-import { useAppTheme } from '@/theme/theme-provider'
+import { withAlpha } from '@/theme/color-utils'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
+import { useThemeMode } from '@/theme/theme-provider'
 
 interface ControlV2AnchorProps extends PropsWithChildren {
   section: ControlSectionAnchor
@@ -42,7 +44,8 @@ export function ControlV2Anchor({
   register = true,
 }: ControlV2AnchorProps) {
   const { registerOffset, pulsingSection } = useControlAnchors()
-  const { theme } = useAppTheme()
+  const { resolvedMode } = useThemeMode()
+  const neo = neoTokens(resolvedMode)
   const pulse = useSharedValue(0)
 
   useEffect(() => {
@@ -70,8 +73,13 @@ export function ControlV2Anchor({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 + 0.008 * pulse.value }],
-    shadowOpacity: 0.25 * pulse.value,
   }))
+
+  // `boxShadow` es un string y Reanimated no lo interpola, así que el halo
+  // vive en una capa propia cuya OPACIDAD sí se anima — mismo recurso que el
+  // `warnRing` de `freq-tile` / `AmountCard`. La capa va detrás de los hijos
+  // y sin fill: lo único que pinta es la sombra que desborda su caja.
+  const glowStyle = useAnimatedStyle(() => ({ opacity: pulse.value }))
 
   const handleLayout = (event: LayoutChangeEvent) => {
     // `y` here is relative to the parent — the screen passes down a
@@ -80,27 +88,31 @@ export function ControlV2Anchor({
     if (register) registerOffset(section, event.nativeEvent.layout.y)
   }
 
-  // Pulse glow theme-aware. Antes hardcoded `#A6EF8F` (lime) — en dark
-  // mode lime glow sobre forest canvas = visible; en light mode lime
-  // glow sobre cream canvas = casi imperceptible (cream y lime tienen
-  // L cercanos). Switch a `primaryStrong`: dark mode #D1F7C5 lime-light
-  // (visible halo sobre forest), light mode #1F590D forest deep
-  // (visible halo dark sobre cream).
+  // El halo es mode-aware por contraste, no por gusto: en oscuro el verde
+  // claro despega del canvas de bosque; en claro el mismo verde sobre la
+  // salvia es casi imperceptible y hay que ir al verde de acción.
+  const glowColor = withAlpha(resolvedMode === 'dark' ? neo.green : neo.greenDeep, 0.45)
+
   return (
     <View onLayout={handleLayout} style={style}>
-      <Animated.View
-        style={[
-          {
-            shadowColor: theme.colors.primaryStrong,
-            shadowOffset: { width: 0, height: 0 },
-            shadowRadius: 20,
-            shadowOpacity: 0,
-          },
-          animatedStyle,
-        ]}
-      >
+      <Animated.View style={animatedStyle}>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFill,
+            styles.glow,
+            { boxShadow: `0 0 20px 2px ${glowColor}` },
+            glowStyle,
+          ]}
+        />
         {children}
       </Animated.View>
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  glow: {
+    borderRadius: neoRadii.card,
+  },
+})

@@ -1,15 +1,19 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native'
-import { MaterialIcons } from '@expo/vector-icons'
+import { StyleSheet, Switch, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
 import { SUPPORTED_CURRENCIES } from '@/features/finance/family-finance.model'
 import { useUsdRate } from '@/features/finance/use-usd-rate'
-import { radii } from '@/theme/palette'
 import { triggerHaptic } from '@/lib/haptics'
-import { useAppTheme } from '@/theme/theme-provider'
-import { neoInk } from '@/theme/neo-ink'
+import { useThemeTokens } from '@/theme/theme-provider'
 import { neoTokens } from '@/theme/neo-tokens'
 import { formatMoney } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
+import {
+  OnbSheetBody,
+  OnbSheetChoiceRow,
+  OnbSheetHelper,
+  OnbSheetLabel,
+} from './onb-sheet-parts'
 
 // Solo la bandera (emoji) vive acá; el nombre se resuelve por i18n vía
 // `settings:currency.<code>`.
@@ -52,13 +56,9 @@ export function ConversionSettingsSheet({
   onSelectCurrency,
   onClose,
 }: ConversionSettingsSheetProps) {
-  const { theme } = useAppTheme()
-  const neo = neoTokens(theme.isDark ? 'dark' : 'light')
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
+  const theme = useThemeTokens()
+  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
-  // Dentro de una hoja neo, un tile NO seleccionado se dibuja hundido: el
-  // relieve queda reservado para el estado activo.
-  const surface = neo.well
 
   // Cotización del seleccionado, solo para mostrarla en este sheet (no en el
   // hero). Disabled si no aplica → no fetchea.
@@ -73,82 +73,58 @@ export function ConversionSettingsSheet({
       subtitle={t('settings:conversion.sheetSubtitle')}
       onClose={onClose}
     >
-      <View style={[styles.toggleRow, { borderColor: neo.sheetDivider }]}>
-        <View style={styles.toggleCopy}>
-          <Text style={[styles.toggleLabel, { color: neo.text }]}>
-            {t('settings:conversion.toggleLabel')}
-          </Text>
-          <Text style={[styles.toggleHelper, { color: neo.textMuted }]}>
-            {t('settings:conversion.toggleHelper')}
-          </Text>
-        </View>
-        <Switch
-          accessibilityLabel={t('settings:conversion.toggleLabel')}
-          disabled={isSaving}
-          onValueChange={onToggle}
-          value={enabled}
-        />
-      </View>
-
-      {enabled ? (
-        <View style={styles.pickerWrap}>
-          <Text style={[styles.pickerLabel, { color: neo.textMuted }]}>
-            {currency ? t('settings:conversion.yourCurrency') : t('settings:conversion.chooseCurrency')}
-          </Text>
-          <View style={styles.list}>
-            {SUPPORTED_CURRENCIES.map((code) => {
-              const flag = CURRENCY_FLAGS[code]
-              const name = t(`settings:currency.${code}`)
-              const active = code === currency
-              return (
-                <Pressable
-                  key={code}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${code} · ${name}`}
-                  accessibilityState={{ selected: active }}
-                  disabled={isSaving}
-                  onPress={() => {
-                    void triggerHaptic('selection')
-                    onSelectCurrency(code)
-                  }}
-                  style={({ pressed }) => [
-                    styles.row,
-                    {
-                      backgroundColor: active ? neo.selectedTint : surface,
-                      borderColor: active ? ink.accent : neo.sheetDivider,
-                      opacity: pressed ? 0.92 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={styles.flag}>{flag}</Text>
-                  <View style={styles.copy}>
-                    <Text style={[styles.code, { color: neo.text }]}>{code}</Text>
-                    <Text style={[styles.name, { color: neo.textMuted }]}>
-                      {name}
-                    </Text>
-                  </View>
-                  {active ? (
-                    <MaterialIcons
-                      name="check-circle"
-                      size={20}
-                      color={neo.greenDeep}
-                    />
-                  ) : null}
-                </Pressable>
-              )
-            })}
-          </View>
-
-          {rateActive && rateQuery.data ? (
-            <Text style={[styles.rateNote, { color: neo.textMuted }]}>
-              {t('settings:conversion.rateInUse', {
-                rate: formatMoney(rateQuery.data.ratePerUsd),
-                suffix: rateQuery.data.source.startsWith('dolarapi') ? ' · blue' : '',
-              })}
+      <OnbSheetBody>
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleCopy}>
+            <Text style={[styles.toggleLabel, { color: neo.text }]}>
+              {t('settings:conversion.toggleLabel')}
             </Text>
-          ) : null}
+            <Text style={[styles.toggleHelper, { color: neo.textMuted }]}>
+              {t('settings:conversion.toggleHelper')}
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel={t('settings:conversion.toggleLabel')}
+            disabled={isSaving}
+            onValueChange={onToggle}
+            value={enabled}
+          />
         </View>
-      ) : null}
+
+        {enabled ? (
+          <>
+            <OnbSheetLabel>
+              {currency
+                ? t('settings:conversion.yourCurrency')
+                : t('settings:conversion.chooseCurrency')}
+            </OnbSheetLabel>
+            {SUPPORTED_CURRENCIES.map((code) => (
+              <OnbSheetChoiceRow
+                key={code}
+                accessibilityLabel={`${code} · ${t(`settings:currency.${code}`)}`}
+                disabled={isSaving}
+                leading={<Text style={styles.flag}>{CURRENCY_FLAGS[code]}</Text>}
+                onPress={() => {
+                  void triggerHaptic('selection')
+                  onSelectCurrency(code)
+                }}
+                selected={code === currency}
+                subtitle={t(`settings:currency.${code}`)}
+                title={code}
+              />
+            ))}
+
+            {rateActive && rateQuery.data ? (
+              <OnbSheetHelper>
+                {t('settings:conversion.rateInUse', {
+                  rate: formatMoney(rateQuery.data.ratePerUsd),
+                  suffix: rateQuery.data.source.startsWith('dolarapi') ? ' · blue' : '',
+                })}
+              </OnbSheetHelper>
+            ) : null}
+          </>
+        ) : null}
+      </OnbSheetBody>
     </ModalCard>
   )
 }
@@ -160,8 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     paddingVertical: 4,
-    paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   toggleCopy: {
     flex: 1,
@@ -169,52 +143,15 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   toggleHelper: {
     fontSize: 12,
-  },
-  pickerWrap: {
-    marginTop: 14,
-    gap: 10,
-  },
-  pickerLabel: {
-    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  list: {
-    gap: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: radii.lg,
-    borderWidth: 1,
+    fontFamily: nunitoFamily('700'),
   },
   flag: {
     fontSize: 24,
-  },
-  copy: {
-    flex: 1,
-    gap: 1,
-  },
-  code: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  name: {
-    fontSize: 12,
-  },
-  rateNote: {
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-    marginTop: 2,
   },
 })

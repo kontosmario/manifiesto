@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
-import { AppButton } from '@/components/ui/button'
 import { ModalCard } from '@/components/ui/modal-card'
-import { TextField } from '@/components/ui/text-field'
-import { useAppTheme } from '@/theme/theme-provider'
-import { neoInk } from '@/theme/neo-ink'
+import { NeoButton } from '@/components/ui/neo-button'
+import { NeoTextField } from '@/components/ui/neo-text-field'
 
 interface EditDisplayNameSheetProps {
   visible: boolean
@@ -22,8 +20,6 @@ export function EditDisplayNameSheet({
   onClose,
   onSave,
 }: EditDisplayNameSheetProps) {
-  const { theme } = useAppTheme()
-  const ink = neoInk(theme.isDark ? 'dark' : 'light')
   const { t } = useTranslation()
   const [draft, setDraft] = useState(currentName)
 
@@ -47,9 +43,10 @@ export function EditDisplayNameSheet({
       visible={visible}
     >
       <View style={styles.stack}>
-        <TextField
+        <NeoTextField
           autoFocus
           autoCapitalize="words"
+          error={isInvalid ? t('settings:editName.invalid') : undefined}
           label={t('settings:editName.title')}
           maxLength={40}
           onChangeText={setDraft}
@@ -57,13 +54,10 @@ export function EditDisplayNameSheet({
           returnKeyType="done"
           value={draft}
         />
-        {isInvalid ? (
-          <Text style={[styles.error, { color: ink.danger }]}>
-            {t('settings:editName.invalid')}
-          </Text>
-        ) : null}
-        <AppButton
+        <NeoButton
+          block
           disabled={!canSave}
+          haptic="light"
           label={t('settings:editName.save')}
           loading={isSaving}
           onPress={() => {
@@ -78,5 +72,4 @@ export function EditDisplayNameSheet({
 
 const styles = StyleSheet.create({
   stack: { gap: 14 },
-  error: { fontSize: 12, fontWeight: '600', paddingHorizontal: 2 },
 })

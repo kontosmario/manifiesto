@@ -28,6 +28,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface HelperLine {
   icon: ComponentProps<typeof MaterialIcons>['name']
@@ -94,6 +95,7 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
     textAlign: 'center',
     flexShrink: 1,

@@ -79,13 +79,8 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated'
-
-// Forest-deep — matches the dark-mode canvas (see palette.ts surface-950
-// + dark-mode canvas mapping). Solid colour is enough; the overlay is
-// only meant to obscure sensitive UI, not communicate brand. If we ever
-// want a logo here, render <FernLogo /> centred inside — keep it static
-// (no animation) so the captured snapshot stays consistent.
-const OVERLAY_COLOR = '#12211A'
+import { neoTokens } from '@/theme/neo-tokens'
+import { useAppTheme } from '@/theme/theme-provider'
 
 // ─── Kill-switch (decisión owner 2026-06-11) ─────────────────────────
 // El owner pidió que el contenido NO desaparezca en el app switcher
@@ -99,6 +94,15 @@ const OVERLAY_COLOR = '#12211A'
 const SNAPSHOT_COVER_ENABLED = false
 
 export function BackgroundSnapshotOverlay() {
+  // Canvas del modo activo: el cover tiene que ser el MISMO material que
+  // la app pinta debajo, o el frame que iOS captura (y el que el usuario
+  // ve al volver, antes de que el watchdog descubra) muestra un color
+  // ajeno. Solid colour is enough; the overlay is only meant to obscure
+  // sensitive UI, not communicate brand. If we ever want a logo here,
+  // render <FernLogo /> centred inside — keep it static (no animation)
+  // so the captured snapshot stays consistent.
+  const { theme } = useAppTheme()
+  const coverColor = neoTokens(theme.mode).bg
   // 0 = hidden (interactive), 1 = visible (opaque cover). Driven on
   // the UI thread by the AppState handler — we assign directly so the
   // first commit lands on the next frame, racing the iOS snapshot.
@@ -192,7 +196,7 @@ export function BackgroundSnapshotOverlay() {
       pointerEvents={covered ? 'auto' : 'none'}
       style={[StyleSheet.absoluteFillObject, styles.overlay, animatedStyle]}
     >
-      <View style={[StyleSheet.absoluteFillObject, styles.cover]} />
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: coverColor }]} />
     </Animated.View>
   )
 }
@@ -202,8 +206,5 @@ const styles = StyleSheet.create({
     // z-index above the auth transition splash (50) so even mid-auth
     // transitions, backgrounding still hides sensitive UI.
     zIndex: 100,
-  },
-  cover: {
-    backgroundColor: OVERLAY_COLOR,
   },
 })

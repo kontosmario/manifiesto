@@ -2,16 +2,17 @@ import { useCallback, useMemo, useState } from 'react'
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
-import { AmbientBlobs } from '@/components/home/ambient-blobs'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { SettingsGroup } from '@/components/settings/settings-grouped-list'
+import {
+  SettingsHeroCard,
+  settingsHeroInk,
+} from '@/components/settings/settings-hero-card'
 import { MemberActionSheet } from '@/components/settings/sheets/member-action-sheet'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
-import { CardParticles } from '@/components/ui/card-particles'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { Screen } from '@/components/ui/screen'
-import { radii } from '@/theme/palette'
 import {
   useBlockMember,
   useFamilyMemberStats,
@@ -21,12 +22,12 @@ import {
 } from '@/features/family/use-family-admin'
 import { formatMemberSince, roleLabel } from '@/features/family/member-display'
 import { triggerHaptic } from '@/lib/haptics'
-import { NeoSurface } from '@/components/ui/neo-surface'
 import { useAppTheme } from '@/theme/theme-provider'
 import { withAlpha } from '@/theme/color-utils'
 import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { getErrorMessage } from '@/utils/error-message'
+import { nunitoFamily } from '@/theme/typography'
 
 interface FamilyAdminScreenProps {
   userId: string
@@ -75,7 +76,6 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
         title={t('settings:familyAdmin.title')}
         subtitle={t('settings:familyAdmin.subtitleError')}
         canGoBack
-        backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       >
         <RiseView>
           <NeoStateBlock
@@ -104,7 +104,6 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
       subtitle={t('settings:familyAdmin.subtitle')}
       canGoBack
       bodyStyle={styles.body}
-      backgroundSlot={<AmbientBlobs tone={theme.isDark ? 'calm' : 'aurora'} />}
       refreshControl={
         <RefreshControl
           refreshing={statsQuery.isRefetching}
@@ -116,22 +115,17 @@ export function FamilyAdminScreen({ userId }: FamilyAdminScreenProps) {
       }
     >
       <RiseView>
-        <NeoSurface
-          radius={neoRadii.hero}
-          style={styles.hero}
-          variant="hero"
-        >
-          <CardParticles count={9} accentColor={neo.heroPeach} />
-          <Text style={[styles.heroEyebrow, { color: neo.heroGreen }]}>
+        <SettingsHeroCard particleCount={9}>
+          <Text style={[styles.heroEyebrow, { color: settingsHeroInk.accent }]}>
             {t('settings:familyAdmin.heroEyebrow')}
           </Text>
-          <Text style={[styles.heroCount, { color: neo.heroText }]}>
+          <Text style={[styles.heroCount, { color: settingsHeroInk.title }]}>
             {t('settings:familyAdmin.memberCount', { count: totalMembers })}
           </Text>
-          <Text style={[styles.heroSummary, { color: neo.heroTextSoft }]}>
+          <Text style={[styles.heroSummary, { color: settingsHeroInk.soft }]}>
             {heroSummary}
           </Text>
-        </NeoSurface>
+        </SettingsHeroCard>
       </RiseView>
 
       <RiseView delay={80}>
@@ -194,9 +188,11 @@ interface MemberRowProps {
 }
 
 /**
- * Fila de integrante — replica el chrome de `SettingsRow` (alto 56, divisor
- * hairline, chevron) pero con avatar en vez del icon-tile. Vive dentro del
- * card del `SettingsGroup`.
+ * Fila de integrante — replica el chrome de `SettingsRow` (alto 56, divisor de
+ * 1.5px, chevron) pero con avatar en vez del icon-tile. Vive dentro del card
+ * del `SettingsGroup`, así que el divisor tiene que ser EL MISMO que el de las
+ * filas del grupo: a `hairlineWidth` (0.33pt en 3x) desaparecía contra el
+ * `sheetDivider` y las dos listas se leían con pesos distintos.
  */
 function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
   const { theme } = useAppTheme()
@@ -206,8 +202,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
   const showBadge = member.role !== 'member'
   const badgeBg =
     member.role === 'owner' ? neo.selectedTint : withAlpha(neo.warm, 0.16)
-  const badgeColor =
-    member.role === 'owner' ? neo.greenDeep : ink.danger
+  const badgeColor = member.role === 'owner' ? ink.accent : ink.danger
 
   return (
     <Pressable
@@ -221,7 +216,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
           styles.memberRow,
           !isLast && {
             borderBottomColor: neo.sheetDivider,
-            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomWidth: 1.5,
           },
         ]}
       >
@@ -241,10 +236,7 @@ function MemberRow({ member, isMe, isLast, onPress }: MemberRowProps) {
             </Text>
             {showBadge ? (
               <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: badgeBg, borderColor: neo.sheetDivider },
-                ]}
+                style={[styles.badge, { backgroundColor: badgeBg }]}
               >
                 <Text style={[styles.badgeText, { color: badgeColor }]}>
                   {roleLabel(member.role)}
@@ -282,24 +274,21 @@ const styles = StyleSheet.create({
   body: {
     gap: 24,
   },
-  hero: {
-    borderRadius: radii.xl,
-    padding: 20,
-    gap: 6,
-    overflow: 'hidden',
-  },
   heroEyebrow: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: 1.6,
   },
   heroCount: {
     fontSize: 30,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.6,
   },
   heroSummary: {
     fontSize: 13,
+    fontFamily: nunitoFamily('600'),
     lineHeight: 18,
   },
   memberRow: {
@@ -323,20 +312,22 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 15,
     fontWeight: '600',
-    maxWidth: '70%',
+    fontFamily: nunitoFamily('600'),
+    flexShrink: 1,
   },
   memberSince: {
     fontSize: 12,
+    fontFamily: nunitoFamily('600'),
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radii.pill,
-    borderWidth: 1,
+    borderRadius: neoRadii.pill,
   },
   badgeText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -346,5 +337,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
+    fontFamily: nunitoFamily('400'),
   },
 })

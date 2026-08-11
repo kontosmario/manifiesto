@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { useAppTheme } from '@/theme/theme-provider'
+import { nunitoFamily } from '@/theme/typography'
 
 interface PaydayPillV2Props {
   daysUntilPayday: number | null
@@ -72,7 +73,7 @@ export function PaydayPillV2({ daysUntilPayday, isPending = false, onPress }: Pa
       ) : (
         <View style={[styles.staticDot, { backgroundColor: dotColor }]} />
       )}
-      <Text style={[styles.label, { color: labelColor, fontWeight: showsAccent ? '700' : '600' }]}>
+      <Text style={[styles.label, { color: labelColor, fontWeight: showsAccent ? '700' : '600', fontFamily: nunitoFamily(showsAccent ? '700' : '600') }]}>
         {label}
       </Text>
       {/*
@@ -129,6 +130,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 999,
   },
-  label: { fontSize: 11, fontWeight: '600' },
+  label: { fontSize: 11, fontWeight: '600', fontFamily: nunitoFamily('600') },
   staticDot: { width: 6, height: 6, borderRadius: 3 },
 })

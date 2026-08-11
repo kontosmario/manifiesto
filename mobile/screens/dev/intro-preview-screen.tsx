@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { IntroScreen } from '@/screens/auth/intro/intro-screen'
+import { nunitoFamily } from '@/theme/typography'
 
 /**
  * DEV-only: previsualiza el intro pre-auth (5 slides) estando LOGUEADO, sin
@@ -43,5 +44,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  closeText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13.5 },
+  closeText: { color: '#FFFFFF', fontWeight: '700', fontFamily: nunitoFamily('700'), fontSize: 13.5 },
 })

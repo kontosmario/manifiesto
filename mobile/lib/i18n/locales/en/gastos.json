@@ -101,6 +101,7 @@
     "noCategory": "No category",
     "incomeA11yLabel": "{{title}}, income",
     "swipeToDeleteHint": "Swipe left to delete",
+    "editOrDeleteHint": "Press and hold to edit, or swipe left to delete",
     "a11yLabel": "{{title}}, {{amount}} pesos in {{categoryName}}, logged by {{whoName}} at {{time}}."
   },
   "incomeRow": {

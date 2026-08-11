@@ -11,6 +11,7 @@ import type { IngresosCiclo } from '@/features/insights/use-control-v2-data'
 import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import { formatMoney, formatMoneyShort } from '@/utils/money'
 import { monthShort } from '@/utils/date-format'
+import { nunitoFamily } from '@/theme/typography'
 
 interface ControlV2IngresosCardProps {
   ingresos: IngresosCiclo
@@ -204,6 +205,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     flex: 1,
   },
   statePill: {
@@ -219,16 +221,19 @@ const styles = StyleSheet.create({
   statePillText: {
     fontSize: 10,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: 0.2,
   },
   headline: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     lineHeight: 20,
     letterSpacing: -0.2,
   },
   headlineStrong: {
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   list: {
     borderRadius: 12,
@@ -251,6 +256,7 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: 12.5,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     letterSpacing: -0.1,
   },
   rowSub: {
@@ -259,6 +265,7 @@ const styles = StyleSheet.create({
   rowAmount: {
     fontSize: 13,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     letterSpacing: -0.3,
     fontVariant: ['tabular-nums'],
     // El monto no se comprime: el label cede primero (rowBody minWidth:0).
@@ -267,6 +274,7 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
 })
 

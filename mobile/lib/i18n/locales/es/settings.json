@@ -768,43 +768,18 @@
     "lenderPlaceholder": "Ej: Banco / Familiar"
   },
   "cycleConfig": {
-    "type": {
-      "monthly": {
-        "title": "Mensual",
-        "subtitle": "Una vez al mes"
-      },
-      "biweekly": {
-        "title": "Quincenal",
-        "subtitle": "Cada 14 días"
-      },
-      "weekly": {
-        "title": "Semanal",
-        "subtitle": "Cada 7 días"
-      },
-      "custom": {
-        "title": "Custom",
-        "subtitle": "Cada N días"
-      }
-    },
-    "helper": {
-      "monthly": "El ciclo dura 28-31 días según el mes.",
-      "biweekly": "A partir de esta fecha, cada 14 días.",
-      "weekly": "A partir de esta fecha, cada 7 días.",
-      "custom": "Indica la fecha del próximo cobro y cuántos días dura el ciclo."
+    "dayLabel": {
+      "monthly": "¿QUÉ DÍA COBRAS?",
+      "biweekly": "¿QUÉ DÍA EMPIEZA TU QUINCENA?",
+      "weekly": "¿QUÉ DÍA DE LA SEMANA?",
+      "custom": "¿QUÉ DÍA EMPIEZA?"
     },
     "transitionNotice": "Estás cambiando tu ciclo de {{from}} a {{to}}. El cambio aplica al próximo cobro que indicaste.",
-    "monthDayLabel": "DÍA DEL MES EN QUE COBRÁS",
-    "nextPaydayLabel": "¿CUÁNDO ES TU PRÓXIMO COBRO?",
-    "everyNDaysLabel": "CADA CUÁNTOS DÍAS COBRÁS",
     "minusDay": "Restar un día",
     "plusDay": "Sumar un día",
-    "days_one": "día",
-    "days_other": "días",
     "cycleCopy": {
-      "monthDayLabel": "DÍA DEL MES EN QUE EMPIEZA TU CICLO",
-      "nextStartLabel": "¿CUÁNDO EMPIEZA TU PRÓXIMO CICLO?",
+      "monthDayLabel": "¿QUÉ DÍA EMPIEZA TU CICLO?",
       "everyNDaysLabel": "CADA CUÁNTOS DÍAS SE REPITE",
-      "helperCustom": "Indica cuándo empieza el próximo ciclo y cuántos días dura.",
       "transitionNotice": "Estás cambiando tu ciclo de {{from}} a {{to}}. El cambio aplica al próximo ciclo — el actual sigue su curso."
     }
   },

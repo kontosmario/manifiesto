@@ -1,15 +1,18 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
-import { AppButton } from '@/components/ui/button'
-import { useAppTheme } from '@/theme/theme-provider'
+import { Linking, StyleSheet, Text, View } from 'react-native'
+import { NeoButton } from '@/components/ui/neo-button'
+import { BillingLink } from '@/components/billing/billing-neo-kit'
+import { neoTokens } from '@/theme/neo-tokens'
+import { nunitoFamily } from '@/theme/typography'
+import { useThemeTokens } from '@/theme/theme-provider'
 import type { MembershipVariant } from '@/features/billing/membership-state'
 
 /**
- * Acciones del hero "Mi suscripción" (región `.acts6` del mockup v2).
- * Columna de botones + link de restaurar. La variante decide si arriba
- * aparece un CTA primario (reactivar / arreglar pago); "Cambiar de plan"
- * y "Administrar en App Store" están siempre.
+ * Acciones de "Mi suscripción". Columna de botones del vocabulario neo +
+ * link de restaurar. La variante decide si arriba aparece un CTA primario
+ * (reactivar / arreglar pago); "Cambiar de plan" y "Administrar en App Store"
+ * están siempre.
  */
 export interface MembershipActionsProps {
   variant: MembershipVariant
@@ -29,25 +32,25 @@ export const MembershipActions = memo(function MembershipActions({
   onChangePlan,
   onRestore,
 }: MembershipActionsProps) {
-  const { theme } = useAppTheme()
+  const neo = neoTokens(useThemeTokens().mode)
   const { t } = useTranslation()
 
   return (
-    <View style={{ gap: theme.spacing.xs }}>
+    <View style={styles.stack}>
       {/* CTA primario contextual según el estado del entitlement. */}
       {variant.primaryAction === 'reactivate' ? (
-        <AppButton
-          variant="primary"
-          label={t('billing:actions.reactivate')}
+        <NeoButton
           fullWidth
+          label={t('billing:actions.reactivate')}
           onPress={onChangePlan}
+          variant="primary"
         />
       ) : variant.primaryAction === 'fixPayment' ? (
-        <AppButton
-          variant="primary"
-          label={t('billing:actions.fixPayment')}
+        <NeoButton
           fullWidth
+          label={t('billing:actions.fixPayment')}
           onPress={openManage}
+          variant="primary"
         />
       ) : null}
 
@@ -55,49 +58,43 @@ export const MembershipActions = memo(function MembershipActions({
           cubierto por el hogar (o cortesía) no gestiona un plan ajeno. */}
       {variant.canManage ? (
         <>
-          <AppButton
-            variant="secondary"
+          <NeoButton
+            fullWidth
             label={t('billing:actions.changePlan')}
-            fullWidth
             onPress={onChangePlan}
-          />
-          <AppButton
             variant="ghost"
-            label={t('billing:actions.manageOrCancel')}
+          />
+          <NeoButton
             fullWidth
+            label={t('billing:actions.manageOrCancel')}
             onPress={openManage}
+            variant="ghost"
           />
         </>
       ) : variant.note ? (
-        <Text
-          style={[
-            theme.typography.bodySmall,
-            styles.note,
-            { color: theme.colors.textMuted },
-          ]}
-        >
-          {variant.note}
-        </Text>
+        <Text style={[styles.note, { color: neo.text }]}>{variant.note}</Text>
       ) : null}
 
       {/* Link discreto — recupera compras previas sin volver a pagar. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('billing:actions.restorePurchases')}
-        hitSlop={8}
+      <BillingLink
+        label={t('billing:actions.restorePurchases')}
         onPress={onRestore}
-        style={styles.restoreHit}
-      >
-        <Text style={[theme.typography.bodySmall, styles.restore, { color: theme.colors.textMuted }]}>
-          {t('billing:actions.restorePurchases')}
-        </Text>
-      </Pressable>
+        style={styles.restore}
+      />
     </View>
   )
 })
 
 const styles = StyleSheet.create({
-  restoreHit: { alignSelf: 'center', paddingVertical: 6 },
-  restore: { fontWeight: '700', textAlign: 'center' },
-  note: { textAlign: 'center', paddingHorizontal: 8, paddingVertical: 4 },
+  stack: { gap: 10 },
+  restore: { alignSelf: 'center', paddingVertical: 6 },
+  note: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 18,
+    textAlign: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
 })

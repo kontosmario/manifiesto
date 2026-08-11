@@ -5,6 +5,7 @@ import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'
 import { currencyFormatter } from '@/utils/money'
 import { getDateTimeFormat } from '@/lib/i18n/active-locale'
+import { nunitoFamily } from '@/theme/typography'
 
 const shortDateOptions: Intl.DateTimeFormatOptions = {
   day: '2-digit',
@@ -137,10 +138,12 @@ const styles = StyleSheet.create({
   forecastTitle: {
     fontSize: 15,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   forecastLegend: {
     fontSize: 11,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
   },
   forecastRow: {
     flexDirection: 'row',
@@ -158,6 +161,7 @@ const styles = StyleSheet.create({
   forecastWeekday: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
     textTransform: 'uppercase',
   },
   forecastTrack: {
@@ -187,9 +191,11 @@ const styles = StyleSheet.create({
   forecastValue: {
     fontSize: 11,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
   forecastDay: {
     fontSize: 11,
     fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
 })

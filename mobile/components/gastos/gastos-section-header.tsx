@@ -12,6 +12,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useAppTheme } from '@/theme/theme-provider'
 import { sectionMetaCopy, type MovimientosSection } from '@/features/gastos/gastos-helpers'
 import { formatMoney } from '@/utils/money'
+import { nunitoFamily } from '@/theme/typography'
 
 export interface GastosSectionHeaderProps {
   section: MovimientosSection
@@ -107,11 +108,13 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: 11,
     fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
     letterSpacing: 1.2,
   },
   groupMeta: {
     fontSize: 10,
     fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
     letterSpacing: 0.2,
   },
   // Tabular nums aquí porque el total se renderea en columna right-aligned
@@ -121,6 +124,7 @@ const styles = StyleSheet.create({
   groupTotal: {
     fontSize: 14,
     fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.2,
   },
