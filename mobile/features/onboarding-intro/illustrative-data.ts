@@ -85,18 +85,21 @@ export const INTRO_INCOME_PROPS: IncomeRowProps = {
 // renderiza (usa el eyebrow + count localizados + el título/subtítulo del slide).
 export const INTRO_WEEK_CLOSE: WeekClose = {
   score: 7,
+  // La semana 7/7 es la `perfecta` del cierre rediseñado; el preview sólo
+  // renderiza el conteo y los 7 brotes, pero el tipo pide la variante.
+  variant: 'perfecta',
   stage: 'fern',
   bloom: true,
   label: 'Semana floreciente',
   title: 'Tu jardín floreció', // @i18n-ignore: valor del tipo WeekClose que el preview NO renderiza (ver comentario arriba)
   sub: 'Mantén el ritmo y cada semana cierra en flor.',
   days: [
-    { letter: 'L', registered: true, recovered: false },
-    { letter: 'M', registered: true, recovered: false },
-    { letter: 'M', registered: true, recovered: false },
-    { letter: 'J', registered: true, recovered: false },
-    { letter: 'V', registered: true, recovered: false },
-    { letter: 'S', registered: true, recovered: false },
-    { letter: 'D', registered: true, recovered: false },
+    { letter: 'L', registered: true, recovered: false, calma: false },
+    { letter: 'M', registered: true, recovered: false, calma: false },
+    { letter: 'M', registered: true, recovered: false, calma: false },
+    { letter: 'J', registered: true, recovered: false, calma: false },
+    { letter: 'V', registered: true, recovered: false, calma: false },
+    { letter: 'S', registered: true, recovered: false, calma: false },
+    { letter: 'D', registered: true, recovered: false, calma: false },
   ],
 }

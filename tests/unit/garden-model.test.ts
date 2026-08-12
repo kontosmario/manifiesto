@@ -174,6 +174,123 @@ describe('deriveWeekClose', () => {
   })
 })
 
+describe('deriveWeekClose · las 4 variantes del cierre (T10)', () => {
+  const weekDayIso = (i: number) =>
+    new Date(Date.UTC(2026, 5, 16) + i * 86_400_000).toISOString().slice(0, 10)
+  const NONE = new Set<string>()
+  /** Los primeros `n` días de la semana, plantados. */
+  const mk = (n: number) => new Set(Array.from({ length: n }, (_, i) => weekDayIso(i)))
+  const variantOf = (n: number, opts?: { streakAlive?: boolean }) =>
+    deriveWeekClose(mk(n), NONE, weekDayIso, opts).variant
+
+  it('7 → perfecta (la única que florece)', () => {
+    const wc = deriveWeekClose(mk(7), NONE, weekDayIso)
+    expect(wc.variant).toBe('perfecta')
+    expect(wc.bloom).toBe(true)
+  })
+
+  it('6 y 5 → buena', () => {
+    expect(variantOf(6)).toBe('buena')
+    expect(variantOf(5)).toBe('buena')
+    expect(deriveWeekClose(mk(6), NONE, weekDayIso).bloom).toBe(false)
+  })
+
+  it('4, 3 y 2 → floja', () => {
+    expect(variantOf(4)).toBe('floja')
+    expect(variantOf(3)).toBe('floja')
+    expect(variantOf(2)).toBe('floja')
+  })
+
+  it('1 y 0 con la racha MUERTA → cortada', () => {
+    expect(variantOf(1)).toBe('cortada')
+    expect(variantOf(0)).toBe('cortada')
+    expect(variantOf(1, { streakAlive: false })).toBe('cortada')
+    expect(variantOf(0, { streakAlive: false })).toBe('cortada')
+  })
+
+  it('1 y 0 con la racha VIVA → floja: decir "se cortó" mentiría', () => {
+    // Si la única actividad de la semana fue el domingo, la racha cruza viva
+    // al lunes: la semana fue floja, pero NO se cortó nada.
+    expect(variantOf(1, { streakAlive: true })).toBe('floja')
+    expect(variantOf(0, { streakAlive: true })).toBe('floja')
+  })
+
+  it('la guarda de racha viva NO toca los tramos de arriba', () => {
+    expect(variantOf(7, { streakAlive: true })).toBe('perfecta')
+    expect(variantOf(5, { streakAlive: true })).toBe('buena')
+    expect(variantOf(2, { streakAlive: true })).toBe('floja')
+  })
+
+  it('el copy sale del tramo: label/title/sub por variante', () => {
+    expect(deriveWeekClose(mk(7), NONE, weekDayIso).label).toBe('Semana perfecta')
+    expect(deriveWeekClose(mk(5), NONE, weekDayIso).label).toBe('Buena semana')
+    expect(deriveWeekClose(mk(3), NONE, weekDayIso).label).toBe('Semana floja')
+    expect(deriveWeekClose(mk(0), NONE, weekDayIso).title).toBe('Tu racha se cortó.')
+    // La misma semana vacía con la racha viva NO puede decir que se cortó.
+    expect(deriveWeekClose(mk(0), NONE, weekDayIso, { streakAlive: true }).title).not.toContain(
+      'cortó',
+    )
+  })
+
+  it('conserva stage/bloom (los consumen la celebración vieja y el preview de la intro)', () => {
+    const wc = deriveWeekClose(mk(4), NONE, weekDayIso)
+    expect(wc.stage).toBe('germ')
+    expect(wc.bloom).toBe(false)
+  })
+})
+
+describe('deriveWeekClose · día en calma', () => {
+  const weekDayIso = (i: number) =>
+    new Date(Date.UTC(2026, 5, 16) + i * 86_400_000).toISOString().slice(0, 10)
+  const NONE = new Set<string>()
+
+  it('sin markedDaysIso ningún día es calma (aunque estén plantados)', () => {
+    const all = new Set(Array.from({ length: 7 }, (_, i) => weekDayIso(i)))
+    const wc = deriveWeekClose(all, NONE, weekDayIso)
+    expect(wc.days.every((d) => d.calma === false)).toBe(true)
+  })
+
+  it('marcado y SIN gastos discrecionales → calma (y sigue contando al score)', () => {
+    const miercoles = weekDayIso(2)
+    const wc = deriveWeekClose(new Set([miercoles]), NONE, weekDayIso, {
+      markedDaysIso: [miercoles],
+      discrecionalesPorDia: new Map(),
+    })
+    expect(wc.days[2].calma).toBe(true)
+    expect(wc.days[2].registered).toBe(true)
+    expect(wc.score).toBe(1)
+    expect(wc.days[1].calma).toBe(false)
+  })
+
+  it('un día con pagos de FIJOS igual está en calma (la regla mira discrecionales)', () => {
+    const jueves = weekDayIso(3)
+    const wc = deriveWeekClose(new Set([jueves]), NONE, weekDayIso, {
+      markedDaysIso: [jueves],
+      // 2 pagos de fijos ese día: `todos` los cuenta, `discrecionales` no.
+      discrecionalesPorDia: new Map([[jueves, 0]]),
+    })
+    expect(wc.days[3].calma).toBe(true)
+  })
+
+  it('marcado con force sobre un día CON compras → NO es calma', () => {
+    const viernes = weekDayIso(4)
+    const wc = deriveWeekClose(new Set([viernes]), NONE, weekDayIso, {
+      markedDaysIso: [viernes],
+      discrecionalesPorDia: new Map([[viernes, 3]]),
+    })
+    expect(wc.days[4].calma).toBe(false)
+    expect(wc.days[4].registered).toBe(true)
+  })
+
+  it('acepta un Set de días marcados igual que un array', () => {
+    const lunes = weekDayIso(0)
+    const wc = deriveWeekClose(new Set([lunes]), NONE, weekDayIso, {
+      markedDaysIso: new Set([lunes]),
+    })
+    expect(wc.days[0].calma).toBe(true)
+  })
+})
+
 describe('deriveWeekStrip', () => {
   // Semana Lun 6/16 .. Dom 6/22; hoy = 6/19 (índice 3).
   const weekDayIso = (i: number) =>
