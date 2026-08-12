@@ -104,23 +104,41 @@
  *          de la barra.
  *      Los valores oscuros van literales: ahí el handoff ya pasa AA.
  *
- *  [D] Hero por ESTADO, no un forest único. Las otras cuatro tabs
- *      unificaron su hero al "Home forest" (`gastos-spec` [OWNER-F],
- *      `fijos-spec` [D], `garden-spec` [A]). Acá NO: el hero del jardín
- *      tiene seis estados y dos de ellos —2a "empezar" y 2f "cortada"—
- *      cambian de gradiente a propósito (2a es más claro porque todavía
- *      no hay jardín; 2f está desaturado porque la racha se cortó).
- *      Aplanarlos al forest borraría la mitad del sistema de estados. Los
- *      tres gradientes van literales del handoff; el owner los juzga en
- *      el preview.
+ *  [D] Hero unificado al FOREST del sistema — DESVÍO EXPLÍCITO DEL OWNER
+ *      (2026-08-11: "que coincida con el resto de las hero de otras
+ *      vistas"). REEMPLAZA al [D] anterior, que mantenía los tres verdes
+ *      del handoff (uno por familia de estado) para no aplanar el sistema
+ *      de seis heroes; el owner vio el resultado integrado y pidió lo
+ *      contrario.
  *
- *  [E] Derivaciones del tema oscuro. El handoff dibuja en un solo tema:
- *      el hero 2a/2e/2f, el CTA ámbar y el sheet de historial (sólo
- *      claro). Sus contrapartes oscuras están derivadas con el
- *      vocabulario oscuro del sistema y marcadas campo por campo con
- *      "derivado". El gradiente de 2f se usa IDÉNTICO en los dos temas —
- *      ya es oscuro y desaturado, y derivar un gris nuevo sería inventar
- *      color fuera del design system.
+ *      Los cinco estados VIVOS —2a "empezar" y 2b–2e— comparten ahora el
+ *      MISMO material que Inicio / Gastos / Fijos / Control / Ajustes:
+ *      `HERO_FOREST_CSS`, byte a byte y en los dos temas (ese gradiente
+ *      es theme-invariante en los 5 call-sites del sistema).
+ *
+ *      La diferenciación por estado NO se pierde: la cargan el Brot y su
+ *      pose, el copy, el chip, el halo de 2d, la barra ámbar de 2e y el
+ *      count de partículas. Lo único que deja de diferenciar es el fondo.
+ *      2f "cortada" conserva su tratamiento apagado, pero DERIVADO del
+ *      forest (`HERO_CORTADA_CSS`), no el gris verdoso del handoff.
+ *
+ *      Consecuencia obligada: todo lo que se dibuja SOBRE el hero deja de
+ *      estar partido por tema y pasa a la paleta única del sistema. Con
+ *      el mismo material en claro y en oscuro, las tintas grises de
+ *      canvas oscuro (`#9FB89C`, `#93A78F`) quedarían ilegibles sobre el
+ *      verde. Lo que SÍ sigue partido por tema son las sombras
+ *      EXTERIORES (`heroShadow`, `heroCortadaShadow`): se proyectan sobre
+ *      el canvas, no sobre el hero — y `heroShadow` oscura se alinea de
+ *      paso al par canónico de Home/Gastos/Fijos.
+ *
+ *  [E] Derivaciones del tema oscuro. El handoff dibuja en un solo tema: el
+ *      CTA ámbar y el sheet de historial (sólo claro). Sus contrapartes
+ *      oscuras están derivadas con el vocabulario oscuro del sistema y
+ *      marcadas campo por campo con "derivado".
+ *      El hero YA NO entra acá: desde [D] su material y sus tintas son
+ *      theme-invariantes y no hay nada que derivar. Lo que se conserva de
+ *      la regla original es que el 2f "cortada" se usa IDÉNTICO en los
+ *      dos temas — ahora derivado del forest, no del gris del handoff.
  *
  * ─────────────────────────────────────────────────────────────────────
  * INCONSISTENCIAS DEL HANDOFF (informativo — no se "arreglan" acá)
@@ -186,6 +204,35 @@ const BAR_TRACK_D = 'inset 2px 2px 4px rgba(0,0,0,0.55), inset -2px -2px 4px rgb
 /** Tiles y chips hundidos del cierre neutro (3/6 · alfa 0.5). */
 const INS_TILE_L = 'inset 3px 3px 6px rgba(151,160,136,0.5), inset -3px -3px 6px rgba(255,255,255,0.9)'
 const INS_TILE_D = 'inset 3px 3px 6px rgba(0,0,0,0.55), inset -3px -3px 6px rgba(101,152,113,0.08)'
+
+// ─────────────────────────────────────────────────────────────────────
+// Material del hero — el canónico del sistema, ver [D] (2026-08-11).
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * El "forest" de Inicio / Gastos / Fijos / Control / Ajustes, byte a byte
+ * y en los DOS temas (`home-spec` :254 y :406, `gastos-spec` :366 y :570,
+ * `fijos-spec` :404 y :561, `control-hero` :90, `settings-hero-card` :63).
+ */
+const HERO_FOREST_CSS =
+  'linear-gradient(155deg, #244235 0%, #1F590D 33%, #297811 67%, #297811 100%)'
+/** Fallback sólido = PRIMER stop (criterio de `fijos-spec` / `control-spec`). */
+const HERO_FOREST_FALLBACK = '#244235'
+
+/**
+ * 2f "cortada": el MISMO forest apagado, no un gris nuevo. Cada stop pasa
+ * por un único filtro —desaturar al 35% contra su propia luma Rec.709 y
+ * bajar el brillo al 72%— conservando ángulo y posiciones:
+ *   #244235 → #252C29 · #1F590D → #293825 · #297811 → #374B31
+ * Idéntico en los dos temas, como el 2f del handoff (ver [E]): ya es
+ * oscuro y desaturado, y derivar un segundo gris sería inventar color.
+ * Contraste sobre el stop MÁS CLARO (#374B31): título `#EDEEE6` 8.12:1 ·
+ * sub `rgba(237,238,230,0.72)` 5.10:1 — los dos por encima del 4.43/5.09
+ * del gradiente anterior.
+ */
+const HERO_CORTADA_CSS =
+  'linear-gradient(155deg, #252C29 0%, #293825 33%, #374B31 67%, #374B31 100%)'
+const HERO_CORTADA_FALLBACK = '#252C29'
 
 export interface JardinSpec {
   // ═══════════════════════════════════════════════════════════════════
@@ -253,18 +300,23 @@ export interface JardinSpec {
   legendInk: string
 
   // ═══════════════════════════════════════════════════════════════════
-  // ③ Hero — un gradiente por familia de estado (HTML:333–444) · [D]
+  // ③ Hero — el forest del sistema en los 5 estados vivos (HTML:333–444) · [D]
+  //
+  // TODO lo que se dibuja SOBRE el hero es THEME-INVARIANTE: el material
+  // es el mismo en claro y en oscuro, así que las tintas también. Sólo
+  // las sombras EXTERIORES (`heroShadow`, `heroCortadaShadow`) cambian
+  // con el tema, porque caen sobre el canvas.
   // ═══════════════════════════════════════════════════════════════════
-  /** 2a "empezar": más claro, todavía no hay jardín. */
+  /** 2a "empezar": el forest canónico (antes era un verde más claro) — [D]. */
   heroEmpezarGradientCss: string
   heroEmpezarFallback: string
-  /** 2b–2e: el forest vivo del handoff (= `neoTokens.heroGradientCss`). */
+  /** 2b–2e: el forest canónico, el mismo material de las otras 4 vistas — [D]. */
   heroVivoGradientCss: string
   heroVivoFallback: string
-  /** 2f "cortada": desaturado. Idéntico en los dos temas, ver [E]. */
+  /** 2f "cortada": el forest desaturado/oscurecido. Idéntico en ambos temas. */
   heroCortadaGradientCss: string
   heroCortadaFallback: string
-  /** Sombra del hero del teléfono (HTML:484) — el par canónico del sistema. */
+  /** Sombra del hero sobre el CANVAS — el par canónico del sistema, por tema. */
   heroShadow: string
   /** Sombra del hero cortado: sin verde, apagada. */
   heroCortadaShadow: string
@@ -358,8 +410,12 @@ export interface JardinSpec {
   historyDotFull: string
   historyDotPartial: string
   historyDotMissed: string
-  sheetTitleInk: string
-  sheetMonthInk: string
+  /**
+   * El sheet NO trae tintas de título ni de mes: desde 2026-08-11 la
+   * carcasa es `ModalCard skin="neo"`, que pinta su header con
+   * `neo.text` / `neo.textMuted` como los ~44 sheets del resto de la app.
+   * Acá viven sólo las tintas del CUERPO, que son propias del jardín.
+   */
   sheetRangeInk: string
   /** Chip "Florecida". */
   sheetChipOkBackground: string
@@ -527,36 +583,45 @@ export const JARDIN_SPEC: Record<ResolvedThemeMode, JardinSpec> = {
     chipInk: '#24382A',
     legendInk: '#54644F',
 
-    // ③ Hero
-    heroEmpezarGradientCss: 'linear-gradient(155deg, #4C7A50 0%, #5FA064 55%, #6FB074 100%)',
-    heroEmpezarFallback: '#5FA064',
-    heroVivoGradientCss: 'linear-gradient(155deg, #337B39 0%, #4C9A52 55%, #5FAC64 100%)',
-    heroVivoFallback: '#4C9A52',
-    heroCortadaGradientCss: 'linear-gradient(150deg, #3C4A3D 0%, #2E3A2F 100%)',
-    heroCortadaFallback: '#354236',
+    // ③ Hero — [D]: material y tintas THEME-INVARIANTES; sólo la sombra
+    // exterior es propia del tema claro.
+    heroEmpezarGradientCss: HERO_FOREST_CSS,
+    heroEmpezarFallback: HERO_FOREST_FALLBACK,
+    heroVivoGradientCss: HERO_FOREST_CSS,
+    heroVivoFallback: HERO_FOREST_FALLBACK,
+    heroCortadaGradientCss: HERO_CORTADA_CSS,
+    heroCortadaFallback: HERO_CORTADA_FALLBACK,
     heroShadow:
       '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)',
     heroCortadaShadow: '10px 10px 24px rgba(90,100,85,0.4), inset 0 1px 0 rgba(255,255,255,0.1)',
     heroRiesgoEdge: 'inset 4px 0 0 #E8A664',
     heroLabelInk: 'rgba(240,248,230,0.85)',
+    // Ámbar de 2e: se CONSERVA el acento del handoff en vez de inventar un
+    // hex nuevo fuera del design system. Sobre el peor stop del forest
+    // (#297811) da 3.74:1 — no llega al 4.5 de AA para 10.5px, pero es el
+    // triple del 1.87:1 que daba sobre el verde claro que reemplaza.
     heroLabelRiesgoInk: '#F5CE9A',
     heroLabelCortadaInk: '#D6A98C',
     heroTitleInk: '#F7F4E4',
     heroTitleCortadaInk: '#EDEEE6',
-    heroSubInk: 'rgba(240,248,230,0.82)',
+    heroSubInk: 'rgba(240,248,230,0.75)',
     heroSubCortadaInk: 'rgba(237,238,230,0.72)',
-    heroDivider: 'rgba(240,248,230,0.2)',
+    heroDivider: 'rgba(240,248,230,0.22)',
     heroDividerCortada: 'rgba(237,238,230,0.16)',
-    heroChipBackground: 'rgba(13,34,18,0.24)',
-    heroChipInk: '#C9F3C6',
+    heroChipBackground: 'rgba(255,255,255,0.16)',
+    heroChipInk: '#F2F7E6',
     heroChipDot: '#C9F3C6',
     heroChipRiesgoBackground: 'rgba(70,45,20,0.4)',
     heroChipRiesgoInk: '#F5CE9A',
     heroChipRiesgoDot: '#F2C48A',
     heroChipCortadaBackground: 'rgba(0,0,0,0.28)',
     heroChipCortadaInk: '#E9A98A',
-    heroPillBackground: 'rgba(13,34,18,0.24)',
-    heroPillShadow: 'inset 2px 2px 6px rgba(6,20,10,0.4)',
+    // El pill es el POZO del sistema sobre hero (Home/Gastos/Fijos), no un
+    // velo plano: el forest es más oscuro que el verde que reemplaza y un
+    // `rgba(13,34,18,0.24)` sin relieve se perdía contra él.
+    heroPillBackground: 'rgba(13,34,18,0.30)',
+    heroPillShadow:
+      'inset 6px 6px 14px rgba(6,20,10,0.5), inset -5px -5px 12px rgba(130,190,130,0.18), inset 0 1px 0 rgba(255,255,255,0.09)',
     heroPillInk: 'rgba(240,248,230,0.92)',
     heroBrotShadowColor: 'rgba(20,45,25,0.35)',
     heroBrotShadowRadius: 14,
@@ -595,8 +660,6 @@ export const JARDIN_SPEC: Record<ResolvedThemeMode, JardinSpec> = {
     historyDotFull: '#63B168',
     historyDotPartial: '#A9CE8E',
     historyDotMissed: '#D6C29E',
-    sheetTitleInk: '#24382A',
-    sheetMonthInk: '#54644F',
     sheetRangeInk: '#54644F',
     sheetChipOkBackground: '#DFEAD6',
     sheetChipOkInk: '#1F5429',
@@ -719,45 +782,53 @@ export const JARDIN_SPEC: Record<ResolvedThemeMode, JardinSpec> = {
     chipInk: '#EFF6E2',
     legendInk: '#8FA089',
 
-    // ③ Hero
-    // El oscuro no dibuja 2a: se deriva bajando el forest oscuro del
-    // handoff un punto (mismo delta relativo que en claro entre 2a y 2b).
-    heroEmpezarGradientCss: 'linear-gradient(150deg, #2A5739 0%, #22482D 55%, #1C3D25 100%)',
-    heroEmpezarFallback: '#22482D',
-    heroVivoGradientCss: 'linear-gradient(150deg, #234931 0%, #1B3A26 55%, #16301F 100%)',
-    heroVivoFallback: '#1B3A26',
-    // Idéntico a claro: ya es un gris verdoso oscuro — ver [E].
-    heroCortadaGradientCss: 'linear-gradient(150deg, #3C4A3D 0%, #2E3A2F 100%)',
-    heroCortadaFallback: '#354236',
+    // ③ Hero — [D]: el material del hero NO cambia con el tema, así que
+    // todas las tintas de acá son BYTE-IDÉNTICAS a las de `light`. Lo
+    // único propio del oscuro son las dos sombras exteriores, que caen
+    // sobre el canvas oscuro. El forest oscuro del handoff (#234931…) y
+    // las tintas grises de canvas (#9FB89C / #93A78F) quedan retiradas:
+    // sobre el forest claro no se leían.
+    heroEmpezarGradientCss: HERO_FOREST_CSS,
+    heroEmpezarFallback: HERO_FOREST_FALLBACK,
+    heroVivoGradientCss: HERO_FOREST_CSS,
+    heroVivoFallback: HERO_FOREST_FALLBACK,
+    heroCortadaGradientCss: HERO_CORTADA_CSS,
+    heroCortadaFallback: HERO_CORTADA_FALLBACK,
+    // Par canónico oscuro de Home/Gastos/Fijos (home-spec :407): el hero
+    // del jardín traía offsets/alfas propios (12/26/0.6 · -10/22/0.12 ·
+    // inset 0.12) que lo hacían pesar distinto en la misma pila de cards.
     heroShadow:
-      '12px 12px 26px rgba(0,0,0,0.6), -10px -10px 22px rgba(101,152,113,0.12), inset 0 1px 0 rgba(164,227,166,0.12)',
+      '14px 14px 30px rgba(0,0,0,0.5), -6px -6px 16px rgba(101,152,113,0.14), inset 0 1px 0 rgba(164,227,166,0.18)',
     heroCortadaShadow: '10px 10px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06)',
     heroRiesgoEdge: 'inset 4px 0 0 #E8A664',
-    heroLabelInk: '#9FB89C',
+    heroLabelInk: 'rgba(240,248,230,0.85)',
     heroLabelRiesgoInk: '#F5CE9A',
     heroLabelCortadaInk: '#D6A98C',
-    heroTitleInk: '#EFF6E2',
+    heroTitleInk: '#F7F4E4',
     heroTitleCortadaInk: '#EDEEE6',
-    heroSubInk: '#93A78F',
+    heroSubInk: 'rgba(240,248,230,0.75)',
     heroSubCortadaInk: 'rgba(237,238,230,0.72)',
-    heroDivider: 'rgba(164,227,166,0.18)',
+    heroDivider: 'rgba(240,248,230,0.22)',
     heroDividerCortada: 'rgba(237,238,230,0.16)',
-    heroChipBackground: 'rgba(12,26,16,0.55)',
-    heroChipInk: '#A4E3A6',
-    heroChipDot: '#A4E3A6',
-    heroChipRiesgoBackground: 'rgba(70,45,20,0.5)',
+    heroChipBackground: 'rgba(255,255,255,0.16)',
+    heroChipInk: '#F2F7E6',
+    heroChipDot: '#C9F3C6',
+    heroChipRiesgoBackground: 'rgba(70,45,20,0.4)',
     heroChipRiesgoInk: '#F5CE9A',
     heroChipRiesgoDot: '#F2C48A',
-    heroChipCortadaBackground: 'rgba(0,0,0,0.35)',
+    heroChipCortadaBackground: 'rgba(0,0,0,0.28)',
     heroChipCortadaInk: '#E9A98A',
-    heroPillBackground: 'rgba(12,26,16,0.55)',
-    heroPillShadow: 'inset 2px 2px 6px rgba(0,0,0,0.5)',
-    heroPillInk: '#DCE8D5',
-    // En oscuro el handoff cambia la sombra por un glow verde (HTML:564).
-    heroBrotShadowColor: 'rgba(150,230,160,0.28)',
-    heroBrotShadowRadius: 20,
-    heroBrotShadowOffset: { width: 0, height: 0 },
-    heroHaloCss: 'radial-gradient(circle, rgba(164,227,166,0.3), rgba(164,227,166,0) 70%)',
+    heroPillBackground: 'rgba(13,34,18,0.30)',
+    heroPillShadow:
+      'inset 6px 6px 14px rgba(6,20,10,0.5), inset -5px -5px 12px rgba(130,190,130,0.18), inset 0 1px 0 rgba(255,255,255,0.09)',
+    heroPillInk: 'rgba(240,248,230,0.92)',
+    // El glow verde del handoff (HTML:564) existía para despegar al Brot de
+    // un hero casi negro. Sobre el forest la silueta ya contrasta, y la
+    // sombra proyectada es la que usa el resto del sistema.
+    heroBrotShadowColor: 'rgba(20,45,25,0.35)',
+    heroBrotShadowRadius: 14,
+    heroBrotShadowOffset: { width: 0, height: 8 },
+    heroHaloCss: 'radial-gradient(circle, rgba(201,243,198,0.5), rgba(201,243,198,0) 70%)',
 
     // ④ CTAs
     ctaGreenGradientCss: 'radial-gradient(circle at 32% 28%, #9FDC9F, #5FA968 85%)',
@@ -799,8 +870,6 @@ export const JARDIN_SPEC: Record<ResolvedThemeMode, JardinSpec> = {
     historyDotPartial: '#5F8A66',
     historyDotMissed: '#4A3A26',
     // Derivados: el sheet 7f sólo existe en claro (ver [E]).
-    sheetTitleInk: '#F1EEDD',
-    sheetMonthInk: '#93A78F',
     sheetRangeInk: '#93A78F',
     sheetChipOkBackground: 'rgba(164,227,166,0.16)',
     sheetChipOkInk: '#A4E3A6',
@@ -917,8 +986,9 @@ export const JARDIN_GEOMETRY = {
     card: 28,
     cardSm: 24,
     nota: 20,
-    /** Hoja del historial: [topLeft, topRight, bottomLeft, bottomRight]. */
-    sheet: [30, 30, 34, 34],
+    // El radio de la hoja del historial ([30,30,34,34] del handoff) ya no
+    // vive acá: la carcasa es `ModalCard skin="neo"` y su radio es
+    // `neoRadii.sheet` (34), el del sistema.
     chip: 14,
     /**
      * `medalAccess`/`medalRow` son DIÁMETROS del disco (el markup los
@@ -953,8 +1023,8 @@ export const JARDIN_GEOMETRY = {
   /** Chevron del acceso a Logros / disco de check de la fila desbloqueada. */
   chevronDisc: 30,
   checkDisc: 26,
-  /** Grabber del sheet de historial. */
-  grabber: { width: 44, height: 5 },
+  // El grabber del sheet (44×5) tampoco vive acá: lo pone `ModalCard`, con
+  // la misma medida.
   /** Cierre de semana. */
   cierre: {
     /** Brot protagonista: 122 en perfecta, 116 en las otras tres. */

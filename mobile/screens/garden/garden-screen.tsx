@@ -694,7 +694,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
 
   return (
     <>
-      <Screen backgroundColor={neo.bg} bodyStyle={styles.body}>
+      <Screen backgroundColor={neo.bg} contentContainerStyle={styles.content}>
         <JardinHeader
           mode={mode}
           title={t('garden:screen.title')}
@@ -787,16 +787,18 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
         )}
       </Screen>
 
-      {showHistorial && historialWeeks.length > 0 ? (
-        <HistorialSheet
-          mode={mode}
-          weeks={historialWeeks}
-          monthLabel={monthShort(now)}
-          title={t('garden:historial.title')}
-          closeLabel={t('common:actions.close')}
-          onClose={() => setShowHistorial(false)}
-        />
-      ) : null}
+      {/* Montada SIEMPRE y conducida por `visible`: `ModalCard` necesita seguir
+          en el árbol un frame más para que la salida se vea (desmontarla en
+          `false` la cerraba de golpe). */}
+      <HistorialSheet
+        mode={mode}
+        visible={showHistorial && historialWeeks.length > 0}
+        weeks={historialWeeks}
+        monthLabel={monthShort(now)}
+        title={t('garden:historial.title')}
+        closeLabel={t('common:actions.close')}
+        onClose={() => setShowHistorial(false)}
+      />
 
       {showWeekClose && data ? (
         <WeekCloseCierre garden={data} userId={userId} onClose={handleCloseWeekClose} />
@@ -815,10 +817,17 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  // El aire de arriba va en `contentContainerStyle`, NO en `bodyStyle`: el
+  // `Screen` lo absorbe con `Math.max(callerTop, insets.top)` (screen.tsx:281)
+  // y así el header arranca donde arrancan los de las otras cinco pantallas.
+  // En `bodyStyle` se SUMABA al inset — los 2pt de más que dejaban al header
+  // desalineado contra el resto de la app. 10 es el canónico de Fijos, Control
+  // y Ajustes.
+  //
   // Sin `gap`: cada card del kit trae su propio `marginTop: 16` (el mismo del
-  // handoff). Un gap acá los duplicaría.
-  body: {
-    paddingTop: 2,
+  // handoff, y desde 2026-08-11 también el del hero). Un gap acá los duplicaría.
+  content: {
+    paddingTop: 10,
   },
   /** Aire final: la última card cierra con su sombra `raisedLg` completa. */
   tail: {

@@ -12,8 +12,6 @@ import {
 } from 'react-native'
 import Animated, {
   Easing,
-  ReduceMotion,
-  SlideInDown,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -32,6 +30,8 @@ import {
   type JardinSpec,
 } from '@/components/redesign/jardin/jardin-spec'
 import { GrowthRing } from '@/components/redesign/jardin/parts/growth-ring'
+import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import type { MedalVM } from '@/features/achievements/achievement-progress'
 import {
@@ -346,7 +346,9 @@ export interface JardinHeaderProps {
 }
 
 /**
- * Header de la vista: botón de volver 44px + título 30/900 + sub 12.5/700.
+ * Header de la vista: botón de volver 44px + título 30/900/lh 36 + sub
+ * 12.5/800 a 6pt del título — las MÉTRICAS canónicas del sistema (ver
+ * `styles.header`), no las del handoff, que venían ~24pt más apretadas.
  *
  * El botón hace el press neumórfico REAL del handoff (⑥1): raised → inset. No
  * se anima la sombra (RN no interpola strings de `boxShadow`), se cambia la
@@ -1308,23 +1310,48 @@ export function NotaEducativa({
 
 export interface HistorialSheetProps {
   mode: JardinMode
+  /**
+   * La hoja se monta SIEMPRE y se conduce con este flag. Desmontarla en
+   * `false` se come la animación de salida: `ModalCard` sostiene su propio
+   * `mounted` un frame extra justamente para que el cierre se VEA.
+   */
+  visible: boolean
   weeks: HistorialWeekVM[]
   monthLabel: string
   onClose: () => void
   title?: string
-  /** a11y del scrim (cerrar). Prop porque el live la traduce (T12). */
+  /** Label del CTA de cierre. Prop porque el live la traduce (T12). */
   closeLabel?: string
 }
 
 /**
- * Sheet "Semanas anteriores" (HTML:300–329 · 7f). El handoff sólo lo dibuja en
- * claro; los tokens oscuros están derivados en `jardin-spec` [E].
+ * Sheet "Semanas anteriores" (HTML:300–329 · 7f).
  *
- * Entra con spring 350ms y los dots escalonan 40ms (②8). El scrim es el del
- * sistema, no un negro alpha (el vocabulario neumórfico usa color sólido).
+ * CARCASA = `ModalCard skin="neo"`, la misma que montan los ~44 sheets del
+ * resto de la app (2026-08-11, pedido del owner: "que coincida con los
+ * sheets del resto"). Antes era un overlay absoluto propio, hermano del
+ * `Screen`, y por eso le faltaba TODO lo que esa carcasa ya resuelve:
+ * `<Modal>` nativo, back de Android, `publishModalOpen/Close`, animación
+ * de SALIDA, arrastre para cerrar, fade del scrim, safe-area real
+ * (`paddingBottom: 28` fijo se metía debajo del home indicator), `maxHeight`
+ * + scroll y `accessibilityViewIsModal`. Además fijaba tokens propios
+ * —radio 30, padding 18, scrim 0.72, título 15/900— contra los 34 / 22 /
+ * 0.84 / 27/900 del sistema.
+ *
+ * El CONTENIDO no cambia: las filas de rango + 7 dots + chip son las
+ * mismas, con su stagger de 40ms (②8), que es propio del jardín y
+ * sobrevive intacto dentro del cuerpo. El mes deja la fila del título y
+ * pasa a ser el `subtitle` de la hoja.
+ *
+ * OJO: `ModalCard` resuelve su tema con `useAppTheme()`, así que `mode`
+ * ya NO pinta la carcasa — sigue haciendo falta para las tintas de dots y
+ * chips. En el live los dos coinciden (el `mode` sale del mismo tema); en
+ * el preview del rediseño, que fuerza el modo con un toggle propio, la
+ * hoja se dibuja con el tema real de la app.
  */
 export function HistorialSheet({
   mode,
+  visible,
   weeks,
   monthLabel,
   onClose,
@@ -1332,77 +1359,58 @@ export function HistorialSheet({
   closeLabel = 'Cerrar',
 }: HistorialSheetProps) {
   const s = JARDIN_SPEC[mode]
-  const neo = neoTokens(mode)
-  const reduceMotion = useReducedMotion()
 
   return (
-    <View style={styles.sheetOverlay}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={closeLabel}
-        onPress={onClose}
-        style={[styles.sheetScrim, { backgroundColor: neo.scrim }]}
-      />
-      <Animated.View
-        entering={
-          reduceMotion
-            ? undefined
-            : SlideInDown.springify().damping(22).stiffness(200).reduceMotion(ReduceMotion.System)
-        }
-        style={[styles.sheet, { backgroundColor: neo.sheet, boxShadow: neo.shadows.sheet }]}
-      >
-        <View style={[styles.sheetGrabber, { backgroundColor: neo.sheetHandle }]} />
-        <View style={styles.sheetHead}>
-          <Text maxFontSizeMultiplier={1.2} style={[styles.sheetTitle, { color: s.sheetTitleInk }]}>
-            {title}
+    <ModalCard
+      skin="neo"
+      visible={visible}
+      title={title}
+      subtitle={monthLabel}
+      onClose={onClose}
+      footer={<NeoButton block variant="ghost" label={closeLabel} onPress={onClose} />}
+    >
+      {weeks.map((week, i) => (
+        <RiseView
+          key={week.range}
+          delay={i * SHEET_DOT_STAGGER_MS}
+          translateY={6}
+          style={styles.sheetRow}
+        >
+          <Text
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.2}
+            style={[styles.sheetRange, { color: s.sheetRangeInk }]}
+          >
+            {week.range}
           </Text>
-          <Text maxFontSizeMultiplier={1.2} style={[styles.sheetMonth, { color: s.sheetMonthInk }]}>
-            {monthLabel}
-          </Text>
-        </View>
-        {weeks.map((week, i) => (
-          <RiseView
-            key={week.range}
-            delay={i * SHEET_DOT_STAGGER_MS}
-            translateY={6}
-            style={styles.sheetRow}
+          <View style={styles.sheetDots}>
+            {week.dots.map((dot, j) => (
+              <View key={j} style={[styles.sheetDot, { backgroundColor: historyDotColor(s, dot) }]} />
+            ))}
+          </View>
+          <View
+            style={[
+              styles.sheetChip,
+              {
+                backgroundColor:
+                  week.chip.tone === 'ok' ? s.sheetChipOkBackground : s.sheetChipNeutralBackground,
+                boxShadow: s.sheetChipShadow,
+              },
+            ]}
           >
             <Text
-              numberOfLines={1}
               maxFontSizeMultiplier={1.2}
-              style={[styles.sheetRange, { color: s.sheetRangeInk }]}
-            >
-              {week.range}
-            </Text>
-            <View style={styles.sheetDots}>
-              {week.dots.map((dot, j) => (
-                <View key={j} style={[styles.sheetDot, { backgroundColor: historyDotColor(s, dot) }]} />
-              ))}
-            </View>
-            <View
               style={[
-                styles.sheetChip,
-                {
-                  backgroundColor:
-                    week.chip.tone === 'ok' ? s.sheetChipOkBackground : s.sheetChipNeutralBackground,
-                  boxShadow: s.sheetChipShadow,
-                },
+                styles.sheetChipText,
+                { color: week.chip.tone === 'ok' ? s.sheetChipOkInk : s.sheetChipNeutralInk },
               ]}
             >
-              <Text
-                maxFontSizeMultiplier={1.2}
-                style={[
-                  styles.sheetChipText,
-                  { color: week.chip.tone === 'ok' ? s.sheetChipOkInk : s.sheetChipNeutralInk },
-                ]}
-              >
-                {week.chip.text}
-              </Text>
-            </View>
-          </RiseView>
-        ))}
-      </Animated.View>
-    </View>
+              {week.chip.text}
+            </Text>
+          </View>
+        </RiseView>
+      ))}
+    </ModalCard>
   )
 }
 
@@ -1870,7 +1878,7 @@ export function JardinFinalScreen({ mode, initialSeed }: JardinFinalScreenProps)
             <JardinSkeleton mode={mode} />
           ) : (
             <>
-              <RiseView translateY={CARD_RISE} style={styles.heroSpacing}>
+              <RiseView translateY={CARD_RISE}>
                 <JardinHero mode={mode} vm={heroVm} />
               </RiseView>
               <RiseView delay={CARD_STAGGER_MS} translateY={CARD_RISE}>
@@ -1894,14 +1902,13 @@ export function JardinFinalScreen({ mode, initialSeed }: JardinFinalScreenProps)
         </View>
       </ScrollView>
 
-      {state.showSheet ? (
-        <HistorialSheet
-          mode={mode}
-          weeks={HISTORIAL_DEMO}
-          monthLabel="mayo"
-          onClose={onToggleSheet}
-        />
-      ) : null}
+      <HistorialSheet
+        mode={mode}
+        visible={state.showSheet}
+        weeks={HISTORIAL_DEMO}
+        monthLabel="mayo"
+        onClose={onToggleSheet}
+      />
     </View>
   )
 }
@@ -1918,24 +1925,48 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 10 },
 
   // ─── Header (HTML:29–41) ───
-  header: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  //
+  // Métricas CANÓNICAS de header de pantalla (2026-08-11), no las del
+  // handoff: las 5 pantallas del sistema (HomeHeader / GastosHeader /
+  // FijosHeader / ControlHeader / ScreenHeader de Ajustes) alinean la fila
+  // a `flex-start` y respiran ~24pt más que lo que traía este kit. Se
+  // conserva la ESTRUCTURA propia (back circular de 44 a la izquierda del
+  // bloque de textos, que es lo que pide el handoff) y se copian sus
+  // NÚMEROS.
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   backButton: {
     width: JARDIN_GEOMETRY.backSize,
     height: JARDIN_GEOMETRY.backSize,
     borderRadius: JARDIN_GEOMETRY.backSize / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    // Centrado ÓPTICO contra la primera línea del título, que es donde el
+    // `headerTitleRow` de Ajustes pone su back de 40: (36 − 44) / 2 = −4.
+    // Mismo recurso que el `marginTop` ±2 de los cuatro kits de tab.
+    marginTop: -4,
   },
   headerTexts: { flex: 1 },
-  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 31.5 },
-  headerSub: { fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 2 },
+  // lineHeight 36 = 1.20 × 30, el ratio de Home y Control. Un lineHeight
+  // == fontSize (el 31.5 del handoff) CLIPPEA el ascender de Nunito 900 en
+  // RN — el gotcha ya documentado en gastos/fijos/control-header.
+  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 36 },
+  headerSub: { fontSize: 12.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 6 },
 
   // ─── Hero 2a–2f (HTML:42–59) ───
-  heroSpacing: { marginTop: 16 },
   hero: {
+    // El aire header→hero viaja DENTRO de la card, como en todas las demás
+    // del kit (`card`, `semanaCard`, `logrosCard`, `nota`, `skeletonHero`).
+    // Antes vivía en un `heroSpacing` que el caller tenía que acordarse de
+    // aplicar, y el cableado live no lo hacía: el hero quedaba pegado al
+    // header. 16 es el canónico (Gastos `heroSpacing` / Control).
+    marginTop: 16,
     borderRadius: JARDIN_GEOMETRY.radii.hero,
-    paddingVertical: 19,
-    paddingHorizontal: 18,
+    // Padding canónico de una hero card de radio 32 (Home y Gastos, byte a
+    // byte). El 19/18 del handoff dejaba el contenido más apretado que el
+    // del resto de las vistas.
+    paddingTop: 20,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
   },
   heroParticles: {
     position: 'absolute',
@@ -2158,31 +2189,23 @@ const styles = StyleSheet.create({
   notaCloseGlyph: { fontSize: 17, fontWeight: '800', fontFamily: nunitoFamily('800'), lineHeight: 19 },
 
   // ─── Sheet de historial (HTML:300–329) ───
-  sheetOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
-  sheetScrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.72 },
-  sheet: {
-    borderTopLeftRadius: JARDIN_GEOMETRY.radii.sheet[0],
-    borderTopRightRadius: JARDIN_GEOMETRY.radii.sheet[1],
-    paddingTop: 12,
-    paddingHorizontal: 18,
-    paddingBottom: 28,
+  //
+  // Sólo el CUERPO: carcasa, grabber, título, mes, scrim y padding lateral
+  // los pone `ModalCard skin="neo"`. Sin `marginTop` en la fila — el
+  // `gap: 14` del `neoContent` de la hoja ya las separa; sumarlos las
+  // dejaría al doble de aire que en cualquier otro sheet del sistema.
+  sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // `width` con `flexShrink: 1`: en pantallas de 320pt la fila (rango +
+  // 7 dots de 12 + chip) no entra en los 22pt de padding del sistema, y
+  // el rango —que ya va a una línea— es lo único que puede ceder.
+  sheetRange: {
+    flexShrink: 1,
+    minWidth: 0,
+    width: 88,
+    fontSize: 10.5,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
   },
-  sheetGrabber: {
-    alignSelf: 'center',
-    width: JARDIN_GEOMETRY.grabber.width,
-    height: JARDIN_GEOMETRY.grabber.height,
-    borderRadius: 3,
-  },
-  sheetHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  sheetTitle: { fontSize: 15, fontWeight: '900', fontFamily: nunitoFamily('900') },
-  sheetMonth: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
-  sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 13 },
-  sheetRange: { flexShrink: 0, width: 88, fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800') },
   sheetDots: { flex: 1, flexDirection: 'row', gap: 6 },
   sheetDot: {
     width: JARDIN_GEOMETRY.sheetDot,

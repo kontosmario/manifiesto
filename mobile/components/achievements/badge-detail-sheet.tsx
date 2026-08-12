@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
+import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { Medal } from '@/components/redesign/jardin/parts/medal'
 import { medalForCode } from '@/features/achievements/achievement-progress'
@@ -42,7 +43,25 @@ const MEDALLION = 96
 
 /**
  * Detalle de una medalla — icono grande, título, descripción y estado
- * (fecha de desbloqueo o "cómo se desbloquea"). Contenido centrado (iOS feel).
+ * (fecha de desbloqueo o "cómo se desbloquea").
+ *
+ * COMPOSICIÓN CANÓNICA DE SHEET (quick win ④ del owner, 2026-08-11). La
+ * mecánica ya era la del sistema —`ModalCard skin="neo"` sin `inline`, o sea
+ * `<Modal>` nativo con grabber, arrastre, scrim 0.84, spring de entrada,
+ * salida animada y safe-area—, pero la COMPOSICIÓN no: era la única superficie
+ * neo de la app que anulaba la barra de título (`title=""`/`subtitle=""`,
+ * guard de `modal-card.tsx` L357) y volvía a dibujar el nombre y la
+ * descripción DENTRO del cuerpo con una tipografía propia (20/'800' centrado
+ * vs. los 27/'900'/-0.4 del sistema), y era el único sheet terminal sin CTA de
+ * cierre. Ahora:
+ *  · `title` = nombre del logro y `subtitle` = su descripción → suben al
+ *    `neoHeaderBlock` y heredan la tipografía del sistema. Con eso el aire del
+ *    borde de la hoja al medallón deja de ser 12+22 y pasa a ser el mismo
+ *    12+14+título+4+22 que en Ajustes.
+ *  · `footer` con el `NeoButton` primario "Listo" — el mismo cierre que ofrece
+ *    `HourPickerSheet`, el análogo exacto (contenido que se lee y se cierra).
+ * El cuerpo conserva el medallón (mix Brot/ícono), la píldora de tier o el
+ * antetítulo de bloqueado y la nota al pie con la fecha.
  *
  * D3 (rediseño del jardín, plan `2026-08-11-jardin-rediseno-integracion.md`):
  * el medallón sale del MISMO ruteo que la pantalla de Logros —`medalForCode`—,
@@ -64,6 +83,9 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
   const b = badge ?? cachedRef.current
 
   if (!b) {
+    // Antes de la primera selección no hay medalla que leer, así que el
+    // header viaja vacío: `title`/`subtitle` NO pueden derivarse de `b` en
+    // esta rama. La hoja está cerrada, no se ve.
     return <ModalCard skin="neo" visible={false} title="" subtitle="" onClose={onClose} />
   }
 
@@ -74,7 +96,25 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
   const medal = medalForCode(b.code, earned)
 
   return (
-    <ModalCard skin="neo" visible={visible} title="" subtitle="" onClose={onClose}>
+    <ModalCard
+      skin="neo"
+      visible={visible}
+      // El `cachedRef` de arriba sostiene AHORA también el título y el
+      // subtítulo: sin él, el frame en que `badge` vuelve a null durante la
+      // animación de salida vaciaría el header y la hoja se desarmaría
+      // mientras baja.
+      title={achievementTitle(b.code, b.title)}
+      subtitle={achievementBody(b.code, b.body)}
+      onClose={onClose}
+      footer={
+        <NeoButton
+          block
+          label={t('common:actions.done')}
+          onPress={onClose}
+          variant="primary"
+        />
+      }
+    >
       <View style={styles.center}>
         {medal.kind === 'brot' ? (
           // El medallón de Brot es autosuficiente (disco radial verde con su
@@ -145,13 +185,8 @@ export function BadgeDetailSheet({ badge, onClose }: BadgeDetailSheetProps) {
           </Text>
         )}
 
-        <Text style={[styles.title, { color: neo.text }]}>
-          {achievementTitle(b.code, b.title)}
-        </Text>
-        <Text style={[styles.body, { color: neo.textMuted }]}>
-          {achievementBody(b.code, b.body)}
-        </Text>
-
+        {/* El nombre y la descripción NO se repiten acá: viven en el
+            `neoHeaderBlock` de la hoja (ver el docblock). */}
         {earned ? (
           <Text style={[styles.footnote, { color: neo.textMuted }]}>
             {t('achievements:badgeDetail.unlockedOn', { date: formatEarnedDate(b.earned_at) })}
@@ -231,21 +266,8 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('800'),
     letterSpacing: 1.4,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    fontFamily: nunitoFamily('800'),
-    letterSpacing: -0.3,
-    textAlign: 'center',
-  },
-  body: {
-    fontSize: 14,
-    fontWeight: '400',
-    fontFamily: nunitoFamily('400'),
-    lineHeight: 20,
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
+  // SIN `title` ni `body`: los pone el header del `ModalCard` con la
+  // tipografía del sistema (27/'900'/-0.4 y 14/'700'/19).
   footnote: {
     fontSize: 12,
     fontWeight: '600',
