@@ -23,11 +23,6 @@ export function achievementBody(code: string, fallback?: string): string {
   return i18n.t(`achievements:catalog.${code}.body`, { defaultValue: fallback ?? '' })
 }
 
-/** Los tiers gold/legendary merecen un glow extra al estar desbloqueados. */
-export function tierIsPremium(tier: AchievementTier): boolean {
-  return tier === 'gold' || tier === 'legendary'
-}
-
 export function formatEarnedDate(iso: string | null): string {
   if (!iso) return ''
   try {

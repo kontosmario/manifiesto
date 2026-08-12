@@ -63,27 +63,71 @@ El jardín deriva su estado de la unión de ambas: `expenses ∪ streak_marked_d
 en tz local (`isoDay` = `toLocaleDateString('en-CA', { timeZone })`). NO hay botón
 de "plantar" manual (sería redundante).
 
+## Crecimiento del brote — modelo en HORAS (rediseño 2026-08)
+
+`mobile/features/garden/crecimiento-model.ts` (tests en `tests/unit/crecimiento-model.test.ts`).
+El brote crece con el reloj, y **registrar adelanta horas**:
+
+```
+H(d) = 24 × ageDays(d) + horaLocal + adelanto(d)
+etapas: seed  H < 48   ·   germ  48 ≤ H < 168   ·   fern  H ≥ 168
+```
+
+Los umbrales caen sobre múltiplos exactos de 24, así que **con `adelanto = 0` el
+modelo devuelve la MISMA etapa que la curva vieja por edad en días** (seed 0–1,
+germ 2–6, fern ≥7) a cualquier hora: el rediseño es estrictamente aditivo y ningún
+brote puede verse más chico que antes. Ídem el tamaño: `fernSizeForHours(24·a) ===
+fernSizeForAge(a)`, pero ahora el helecho engorda de forma continua durante el día
+en vez de saltar a medianoche.
+
+**El adelanto** (`deriveAdelanto`):
+
+| Concepto | Horas | Cómo |
+|---|---|---|
+| Cada gasto registrado | `6 h` | tope **24 h** = 4 registros |
+| Día en calma (sin gastos, marcado) | `48 h` | el ÚNICO que supera el techo |
+
+Un día marcado sin gastos **germina en el acto** y arraiga dos días antes que
+cualquier día de gastos — es el peso semántico que pidió el owner. Si la marca se
+hizo con `force` sobre un día que SÍ tuvo gastos discrecionales, el día vale 24 h
+(día completo) pero no es "en calma".
+
+**El aro** de la pantalla muestra `adelanto / 24`. **El cupo diario NO entra en el
+porcentaje**: entra como TONO del aro (verde dentro del cupo · ámbar pasado ·
+celeste sin datos de ingreso). Dos razones: un bonus por cupo haría BAJAR el aro al
+registrar el gasto que te pasa (castigando el acto que premia), y el cupo de un día
+pasado no existe en ninguna fuente (`deriveGaugeState` solo computa hoy).
+
+**El aro nunca toca la racha**: no entra en `familyActivityDays`, ni en
+`deriveWeekStrip`, ni en `deriveWeekClose`, ni en el score 0–7. La racha sigue
+siendo binaria (≥1 registro o marca = día plantado) y la floración sigue exigiendo
+7/7 días PLANTADOS, no 7 aros llenos.
+
 ## Derivación (pura, testeable)
 
 `mobile/features/garden/garden-model.ts` (tests en `tests/unit/garden-model.test.ts`):
 
-- **`deriveGardenCells`** → grilla DINÁMICA por semanas calendario L→D
-  (`weeksToShow`: crece desde la semana del primer registro hasta un tope de 5;
-  cuenta nueva = 1 semana, no 5 vacías). El estado del brote depende de la
-  **antigüedad** del día **y del cierre de la semana**:
-  - `pre` (antes del primer registro) · `pending` (hoy sin registrar) ·
-    `missed` (día pasado sin registrar, **no rompe**).
-  - por EDAD (decisión owner 2026-06-25, antes 14d): `seed` (≤1 día) ·
-    `germ` (2–6) · `fern` (≥7 = 1 semana, helecho de marca, 24→32px hasta ~3½ sem).
-  - por SEMANA: una semana **perfecta** (los 7 días registrados) hace florecer
-    todos sus brotes → `bloom` (flor coral, glyph en `sprout.tsx`), sin importar
-    la edad. *La edad lleva hasta arraigado; florecer requiere una semana completa.*
-    La grilla (`garden-grid.tsx`) ahora rinde filas por-semana (`flex:1`,
-    encabezados L→D) en vez de `flexWrap`+cellSize.
-- **`deriveWeekClose`** → score 0–7 (días ORGÁNICOS registrados de la semana L→D) +
-  madurez + copy. Confeti solo en 7/7. Un día recuperado por escudo se marca aparte
-  (`recovered: true`, brote coral en la celebración) pero NO suma al score: 6 orgánicos
-  + 1 recuperado = "gran semana" 6/7, nunca "perfecta".
+- **`familyActivityWithCounts`** → en UNA sola pasada sobre el historial del hogar:
+  el `Set` de actividad + los counts por día (`todos` = espejo del filtro de la racha,
+  fijos incluidos; `discrecionales` = sin `commitment_id`, la definición de "sin gastos"
+  del server). `familyActivityDays` quedó como wrapper. Misma pasada = el aro y la racha
+  no pueden divergir.
+- **`deriveDayRings`** (en `crecimiento-model.ts`) → los 7 aros de la semana vigente:
+  `pre` (antes del alta, nunca "perdido") · `future` · `today` (con el pct del adelanto)
+  · `planted`/`calma` (días pasados, **llenos**: el backend ya contó ese día entero) ·
+  `recovered` · `missed`. Cada aro publica `stage` y `brotSize` (continuo 15→20px).
+- **`deriveGardenCells`** → la grilla de 35 celdas. **Ya no se renderiza en la pantalla**
+  (el handoff la reemplazó por la fila de 7 aros + el historial de semanas), pero sigue
+  viva y testeada; su segundo pase es la referencia de la floración por semana perfecta.
+- **`deriveHistoryWeeks`** → hasta 4 semanas previas como dots (`full`/`calma`/`missed`/
+  `recovered`/`pre`), con el mismo orden logged-first.
+- **`deriveWeekClose`** → score 0–7 (días ORGÁNICOS de la semana L→D) + `variant` +
+  copy. Un día recuperado por escudo se marca aparte (`recovered: true`) pero NO suma al
+  score. `days[].calma` marca los días sin gastos con la misma regla que los aros.
+  Las **4 variantes** (rediseño 2026-08): `perfecta` 7 · `buena` 6–5 · `floja` 4–2 ·
+  `cortada` ≤1 — con una guarda: score ≤1 **con la racha viva** degrada a `floja`, porque
+  si tu única actividad fue el domingo la racha cruza viva al lunes y decir "Tu racha se
+  cortó" sería mentir.
 - **`deriveWeekStrip`** → semana calendario L→D para el widget de Home
   (logged/recovered/pending/missed/future). El recuperado va coral, distinto del missed.
 
@@ -122,10 +166,15 @@ DENTRO de tu período sí llena el brote de ese día. Días previos a tu inicio 
 ## Las 4 vistas
 
 1. **Pantalla "Mi jardín"** (`mobile/screens/garden/garden-screen.tsx`, ruta
-   `/(app)/garden`, accesible desde el header de **Gastos** vía `GardenLeafIcon`):
-   hero "Racha activa" (gradiente `heroGradient` + luciérnagas crema/menta + helecho
-   watermark + stats integradas) · banner de cierre de semana · grilla 7×5 · footnote.
-   Entrada fade-only (no pelea con el slide de navegación).
+   `/(app)/garden`, accesible desde el header de **Gastos**) — **rediseñada 2026-08**:
+   compone el kit de `mobile/components/redesign/jardin/` (spec literal del handoff
+   `design/jardin-2026-08/`). De arriba a abajo: header · **hero de 6 estados**
+   (empezar / a tiempo / plantado / floreciendo / en riesgo ≥20h / cortada, vía
+   `deriveHeroState`) · **card de crecimiento** (aro grande de 130px con el brote
+   adentro + fila de 7 aros de 40px + acción "Marcar día sin gastos" + fila de historial
+   tocable) · card "Semana pasada" · card de acceso a Logros · nota educativa.
+   La grilla del mes y el hero de stats viejo se retiraron. Un `useMinuteTick` (60s +
+   AppState) hace que el estado "en riesgo" prenda en vivo y que el día rote a medianoche.
 2. **Widget de Home** (`mobile/components/home/streak-week-widget.tsx`): tira semanal
    L-M-M-J-V-S-D + número de racha; tocarlo abre Mi jardín. Montado en `home-dashboard`.
 3. **Floración** (`mobile/components/garden/floracion-view.tsx`): celebración de hito
@@ -134,26 +183,44 @@ DENTRO de tu período sí llena el brote de ese día. Días previos a tu inicio 
    `{item, onDismiss}`; realtime + preview dev intactos). Intensidad por tier vía
    `floracionToneForTier` (`garden-tier.ts`). La galería de logros se re-skineó
    (emoji en bubble crema).
-4. **Cierre de semana** (`mobile/components/garden/week-close-celebration.tsx`):
-   recap de la semana que CERRÓ (L-D anterior). Takeover verde con los 7 brotes que
-   crecen escalonados (growIn) según el score; 7/7 = helechos con flor coral + confeti.
-   Se auto-dispara el lunes (primera apertura de la semana nueva) vía
-   `WeekCloseBridge` (una vez por semana, flag en AsyncStorage por usuario, todas las
-   semanas), y también tocando el banner de Mi jardín (`weekCloseAvailable` lo oculta
-   hasta tener una semana cerrada dentro del tracking).
+4. **Cierre de semana** (`mobile/components/garden/week-close-cierre.tsx`, que arma el
+   VM y monta la `CierreSemanaView` del kit): recap de la semana que CERRÓ (L-D anterior),
+   en **4 variantes**. Perfecta: fondo verde full-bleed + partículas + mini-Brots `cheer`
+   + confeti + el logro desbloqueado de esa semana. Buena: próximo logro con barra. Floja
+   y cortada: coach de Brot. Suma la línea "N días en calma" cuando los hubo, y los stats
+   salen de la racha REAL. Se auto-dispara el lunes vía `WeekCloseBridge` y también desde
+   la card "Semana pasada". **`use-week-close-seen.ts` separa dos flags**: `…_shown_` (lo
+   reclama el bridge, mantiene el 1×/semana) y `…_seen_` (se escribe al CERRAR) — sin esa
+   separación el dot naranja de "cierre sin ver" nunca podría prenderse.
+
+5. **Pantalla de Logros** (`/settings/achievements`, `achievements-gallery-screen.tsx`):
+   rediseñada con el kit (`logros-screen.tsx`). Tres secciones — DESBLOQUEADOS, EN
+   PROGRESO y SECRETOS — sobre el catálogo REAL de 18. Sin cambios de schema:
+   `achievement-progress.ts` deriva el progreso solo donde hay fuente confiable
+   (`streak_*` desde `currentStreak`, `no_spend_cycle_*` desde
+   `home_snapshot.no_spend_days_this_cycle`) y define secreto = `legendary && !earned`
+   (hoy exactamente 2). Las medallas son un **mix**: Brot para los 4 hitos que son la
+   metáfora del jardín (`first_expense`→seed, `goal_completed`→cheer, `streak_90`→radiant,
+   `no_spend_lifetime_50`→zen, y solo cuando están desbloqueados) e ícono existente para
+   los otros 14.
 
 ## Componentes reusados
 
-`CardParticles` (luciérnagas) · `FernMark`/`FernLogo` (helecho de marca;
-`FILLS.cream.leaves` = `#A9D57F` = color brote) · `CountUpText` (racha) ·
-`AuroraBloom` (glow) · `ConfettiBurst` · el patrón de la card de planes
-(`plan-tiles` YearlyTile) para el hero.
+`BrotParticles` con el preset `hero` (el mismo patrón que las otras 4 tabs; el jardín
+era la última superficie hero con `CardParticles`) · `BrotMascot` · `FernMark`/`FernLogo`
+· `CountUpText` · `AuroraBloom` · `ConfettiBurst` · `NoSpendConfirmSheet` (el retry con
+`force` al marcar un día que ya tiene gastos) · `confetti.celebrate()`.
+
+`day-brot.tsx` existe porque la intro PRE-AUTH (`intro-slides.tsx`) importa `DayBrot` y
+`poseForDay`: se extrajeron ahí al retirar `week-close-celebration.tsx`.
 
 ## Tokens
 
-`gardenSoil` / `gardenSoilFern` / `gardenSkipped` (light + dark) en `palette.ts`. Las
-cards no-hero usan `surfaceMuted` en dark (igual que la card del calendario de Gastos),
-**no** `creamCard`. La celebración va siempre sobre `#163A1E` (paleta fija).
+`mobile/components/redesign/jardin/jardin-spec.ts` — `JARDIN_SPEC` (light/dark) +
+`JARDIN_GEOMETRY` + `ringGeometry()`, transcripción literal del handoff con los desvíos
+documentados por letra. El fondo es el GLOBAL de la app (`neoTokens(mode).bg`), no el
+`#EEEDE9` que proponía el handoff. El día en calma tiene tokens propios (`calmaRing` /
+`calmaWell`) para no confundirse con el pozo de HOY (`#E4F3DC`/`#24402C`).
 
 ## Estado / decisiones (resueltas 2026-06-23)
 

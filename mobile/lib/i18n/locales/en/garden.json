@@ -1,8 +1,7 @@
 {
   "screen": {
     "title": "My garden",
-    "subtitle": "A sprout for every day your home logs.",
-    "footnote": "The garden grows on its own: any family member's expense plants the day's sprout. Nobody spent? Mark the no-spend day on the calendar and it counts too."
+    "subtitle": "A sprout for every day your home logs."
   },
   "hero2": {
     "empezar": {
@@ -102,30 +101,9 @@
     "text": "Every expense you log speeds up your sprout's growth. Complete the 7 days and your garden blooms. No spending? Mark the day and your sprout grows twice as much.",
     "dismiss": "Dismiss the note"
   },
-  "card": {
-    "title": "Your garden",
-    "firstWeek": "your first week",
-    "weeksShown": "last {{count}} weeks"
-  },
-  "hero": {
-    "label": "ACTIVE STREAK",
-    "unit": "sprouts\nin a row",
-    "streakA11y_one": "{{count}} sprout in a row",
-    "streakA11y_other": "{{count}} sprouts in a row",
-    "statGarden": "GARDEN",
-    "statRecord": "RECORD",
-    "statSeeds": "SEEDS"
-  },
-  "weekCloseBanner": {
-    "a11y": "Week recap: {{label}}, {{score}} of 7 days",
-    "sub": "Last week · {{score}}/7 days",
-    "chip": "See recap ›"
-  },
   "weekCloseCelebration": {
-    "closeLabel": "Close week recap",
     "eyebrow": "WEEK RECAP",
-    "count": "{{score}} of 7 days",
-    "continue": "Keep growing"
+    "count": "{{score}} of 7 days"
   },
   "weekClose": {
     "perfecta": {

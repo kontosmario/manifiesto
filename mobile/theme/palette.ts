@@ -120,10 +120,6 @@ export interface ThemeColors {
   shineOverlay: string
   ringBg: string
   pageBg: string
-  // garden / streak tokens — "Mi jardín"
-  gardenSoil: string
-  gardenSoilFern: string
-  gardenSkipped: string
 }
 
 export interface AppTheme {
@@ -227,9 +223,6 @@ const lightColors: ThemeColors = {
   shineOverlay:       'rgba(255,255,255,0.1)',
   ringBg:             '#FAF7F0',  // V1 — paper foundation (matches eventual V1 canvas)
   pageBg:             '#F4FDF2',  // V1 — primary-50 (faint mint paper)
-  gardenSoil:         '#E3F1D4',  // tile de brote (semilla/germinación) — verde legible sobre creamCard
-  gardenSoilFern:     '#D2E9BF',  // tile de planta arraigada (verde más vivo)
-  gardenSkipped:      '#ECE7DB',  // tile de día salteado (neutro cálido, sin culpa)
 }
 
 const darkColors: ThemeColors = {
@@ -273,9 +266,6 @@ const darkColors: ThemeColors = {
   shineOverlay:       'rgba(255,255,255,0.06)',
   ringBg:             '#12211A',  // V1 — surface-950 (matches eventual V1 canvas)
   pageBg:             '#12211A',  // V1 — surface-950 (matches canvas)
-  gardenSoil:         'rgba(166,239,143,0.13)',  // tile de brote sobre dark forest
-  gardenSoilFern:     'rgba(166,239,143,0.22)',  // tile de planta arraigada
-  gardenSkipped:      'rgba(255,255,255,0.06)',  // tile de día salteado (faint)
 }
 
 /**

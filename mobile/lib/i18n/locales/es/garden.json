@@ -1,8 +1,7 @@
 {
   "screen": {
     "title": "Mi jardín",
-    "subtitle": "Un brote por cada día que registra tu hogar.",
-    "footnote": "El jardín crece solo: cada gasto que registra cualquier miembro del hogar planta el brote del día. ¿Nadie gastó? Marca el día sin gastos en el calendario y también suma."
+    "subtitle": "Un brote por cada día que registra tu hogar."
   },
   "hero2": {
     "empezar": {
@@ -102,30 +101,9 @@
     "text": "Cada gasto que registras adelanta el crecimiento de tu brote. Completa los 7 días y tu jardín florece. ¿Sin gastos? Marca el día y tu brote crece el doble.",
     "dismiss": "Descartar la nota"
   },
-  "card": {
-    "title": "Tu jardín",
-    "firstWeek": "tu primera semana",
-    "weeksShown": "últimas {{count}} semanas"
-  },
-  "hero": {
-    "label": "RACHA ACTIVA",
-    "unit": "brotes\nseguidos",
-    "streakA11y_one": "{{count}} brote seguido",
-    "streakA11y_other": "{{count}} brotes seguidos",
-    "statGarden": "JARDÍN",
-    "statRecord": "RÉCORD",
-    "statSeeds": "SEMILLAS"
-  },
-  "weekCloseBanner": {
-    "a11y": "Cierre de semana: {{label}}, {{score}} de 7 días",
-    "sub": "Semana pasada · {{score}}/7 días",
-    "chip": "Ver cierre ›"
-  },
   "weekCloseCelebration": {
-    "closeLabel": "Cerrar cierre de semana",
     "eyebrow": "CIERRE DE SEMANA",
-    "count": "{{score}} de 7 días",
-    "continue": "Seguir cultivando"
+    "count": "{{score}} de 7 días"
   },
   "weekClose": {
     "perfecta": {

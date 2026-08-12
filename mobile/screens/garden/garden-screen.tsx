@@ -70,7 +70,7 @@
 //    sheet— también viaja por prop, y el tono del cupo (color puro) baja como
 //    texto en el a11y del aro grande.
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import Animated, { FadeIn, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { useTranslation } from 'react-i18next'
@@ -128,6 +128,7 @@ import { triggerHaptic } from '@/lib/haptics'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { toast } from '@/lib/toast-bus'
 import { formatDayMonthShort, monthShort, weekdayLong } from '@/utils/date-format'
+import { getErrorMessage } from '@/utils/error-message'
 import { useThemeMode } from '@/theme/theme-provider'
 import { neoTokens } from '@/theme/neo-tokens'
 
@@ -230,9 +231,24 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   )
   // ④2 — el dot de "logros nuevos sin ver". El conteo llega `null` mientras el
   // catálogo carga, y con `null` el hook no afirma nada (ni prende ni apaga).
+  //
+  // ⚠️ `isLoading` NO es decorativo: `useAchievements` publica el resumen en
+  // cuanto llega el CATÁLOGO, con `earnedCount: 0`, aunque la query de `earned`
+  // siga viajando (`use-achievements.ts`: el `if (!catalog)` es el único gate).
+  // Sin este gate, `useAchievementsSeen` ancla —o "sanea hacia abajo"— contra
+  // ese 0 transitorio y PISA en AsyncStorage el conteo real que el usuario ya
+  // había visto; cuando los earned llegan, la resta da todos los logros de la
+  // cuenta y el dot se prende anunciando como nuevos hitos de hace meses. Es
+  // justo el estreno que el docblock del hook dice que hay que evitar.
+  // `error` entra por lo mismo: con la query de earned caída (offline) el
+  // resumen también dice 0 y `isLoading` ya es false.
+  const settledEarnedCount =
+    achievements.isLoading || achievements.error
+      ? null
+      : (achievements.data?.earnedCount ?? null)
   const { unseenCount: logrosUnseen, markSeen: markLogrosSeen } = useAchievementsSeen(
     userId,
-    achievements.data?.earnedCount ?? null,
+    settledEarnedCount,
   )
 
   // Días en calma del CICLO — la misma fuente cycle-scoped que usa la galería
@@ -262,6 +278,13 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
 
   // ── Día sin gastos (D4) ────────────────────────────────────────────
   const markNoExpenseMutation = useMarkNoExpenseDay(familyId, userId)
+  // `useMutation` de RQ v5 devuelve un OBJETO NUEVO en cada render. Con él en
+  // las deps, `doMark` → `handleMarkNoSpend` → `crecimientoVm` se recreaban
+  // siempre y el `useMemo` del VM no memoizaba nada: cada render rearmaba los 7
+  // aros + el foco y volvía a montar `CrecimientoCard` (7 Brots de Skia). Leída
+  // por ref queda estable — mismo patrón que el "FIX B" de `neo-gastos-screen`.
+  const markNoExpenseMutationRef = useRef(markNoExpenseMutation)
+  markNoExpenseMutationRef.current = markNoExpenseMutation
   const expensesQuery = useExpenses(familyId)
   const categoriesQuery = useCategories(familyId)
 
@@ -285,7 +308,7 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
 
   const doMark = useCallback(
     (options?: { force?: boolean }) => {
-      markNoExpenseMutation.mutate(options?.force ? { force: true } : undefined, {
+      markNoExpenseMutationRef.current.mutate(options?.force ? { force: true } : undefined, {
         onSuccess: () => {
           void triggerHaptic('success')
           confetti.celebrate({ durationMs: 2000, origin: 'top' })
@@ -293,8 +316,15 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
           setConfirmSheetVisible(false)
         },
         onError: (error: unknown) => {
-          const message =
-            error instanceof Error ? error.message : t('gastos:noSpend.unknownError')
+          // `getErrorMessage` y NO `error instanceof Error`: PostgREST devuelve
+          // el rechazo del RPC como OBJETO PLANO (`{ message, details, hint,
+          // code }` — ver el `then` de postgrest-js, que sólo construye un
+          // `PostgrestError` con `throwOnError`), así que `instanceof Error` da
+          // false SIEMPRE y el texto del server no se leía nunca: las dos ramas
+          // de abajo eran inalcanzables y el camino de confirmación + `force`
+          // —la razón de ser del `NoSpendConfirmSheet` de esta pantalla— estaba
+          // muerto. El fallback vacío deja que el `else` ponga el copy genérico.
+          const message = getErrorMessage(error, '')
           // El guard del server excluye pagos de fijos, así que este rechazo
           // significa que hay gastos DISCRECIONALES que el cliente no vio
           // (otro miembro, o un corte de día distinto al del hogar). No es un
@@ -313,7 +343,8 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
         },
       })
     },
-    [markNoExpenseMutation, t],
+    // La mutación viaja por ref (arriba): identidad ESTABLE.
+    [t],
   )
 
   const handleBack = useCallback(() => {

@@ -163,11 +163,18 @@ export function AchievementsGalleryScreen() {
   // ④2 — ver la galería apaga el dot del jardín, venga el usuario de la
   // `LogrosAccessCard` o de Ajustes. Se escribe con el conteo YA cargado: con
   // `data` en `undefined` no hay nada que anclar y el efecto no corre.
+  //
+  // `isLoading`/`error` en la guarda por la misma razón que en el jardín:
+  // `useAchievements` publica el resumen apenas llega el CATÁLOGO, con
+  // `earnedCount: 0`, aunque la query de `earned` siga viajando o haya fallado.
+  // Marcar "visto" con ese 0 baja la marca de AsyncStorage por debajo de lo que
+  // el usuario ya vio, y la próxima visita al jardín anuncia como nuevos todos
+  // los logros de la cuenta.
   const earnedCount = data?.earnedCount
   useEffect(() => {
-    if (!userId || earnedCount === undefined) return
+    if (!userId || isLoading || error || earnedCount === undefined) return
     void markAchievementsSeen(userId, earnedCount)
-  }, [userId, earnedCount])
+  }, [userId, earnedCount, isLoading, error])
 
   const handleRetry = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ['achievements'] })

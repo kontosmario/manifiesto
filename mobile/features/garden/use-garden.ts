@@ -66,7 +66,8 @@ export interface GardenData {
   adelantoHoy: number
   /** `adelantoHoy / 24`, topeado en 1 — el llenado del aro grande. */
   pctHoy: number
-  /** Hoy marcado como día sin gastos (fuente: `hasMarkedNoExpenseToday`). */
+  /** Hoy marcado como día sin gastos. Fuente: `markedDaysIso` contra el
+   *  `todayIso` de este hook (ver el porqué en el cuerpo del memo). */
   marcadoHoy: boolean
   /** Timestamp de la marca de hoy, o `null` si no hay marca (o si el cache lo
    *  sembró `gastos_snapshot`, que no trae la hora). */
@@ -156,12 +157,19 @@ export function useGarden(
 
     // Lunes de la semana actual (getDay: 0=Dom..6=Sáb → Monday0).
     const dow = (today.getDay() + 6) % 7
+    // El desplazamiento de días se ancla al MEDIODÍA local (mismo criterio que
+    // el sheet de historial de la pantalla): restar múltiplos exactos de 24 h
+    // desde la hora real corre la fecha un día entero durante la madrugada del
+    // cambio de horario de verano (el día local dura 23 h), y ahí la fila de 7
+    // aros, la tira de Home y el id del cierre apuntaban al día equivocado.
+    const noon = new Date(today)
+    noon.setHours(12, 0, 0, 0)
     const weekDayIso = (i: number) =>
-      isoDay(new Date(today.getTime() - (dow - i) * 86_400_000), tz)
+      isoDay(new Date(noon.getTime() - (dow - i) * 86_400_000), tz)
     // Semana que YA cerró (la anterior): el "cierre de semana" recapitula la
     // semana COMPLETA, no la en curso.
     const prevWeekDayIso = (i: number) =>
-      isoDay(new Date(today.getTime() - (dow - i + 7) * 86_400_000), tz)
+      isoDay(new Date(noon.getTime() - (dow - i + 7) * 86_400_000), tz)
 
     // Ancla = primer brote DESDE que nació el HOGAR (families.created_at).
     // Back-datear un gasto anterior no extiende el jardín (evita "salteados"
@@ -182,7 +190,15 @@ export function useGarden(
     // ── Crecimiento del día (§3.2/§3.3) ────────────────────────────────
     const registrosHoy = counts.todos.get(todayIso) ?? 0
     const discrecionalesHoy = counts.discrecionales.get(todayIso) ?? 0
-    const marcadoHoy = streak.data.hasMarkedNoExpenseToday
+    // El día marcado se lee de `markedDaysIso` contra el `todayIso` de ESTE
+    // memo, no del `hasMarkedNoExpenseToday` de `useStreak`: ese flag se
+    // computa con un `new Date()` dentro de un memo que NO depende del reloj
+    // (`use-streak.ts`), así que al cruzar la medianoche con la app abierta
+    // (matriz ②7) sigue apuntando al día de AYER — y el hero diría "brote
+    // plantado" con el aro del día nuevo en 0%. Misma fuente que
+    // `deriveDayRings` ⇒ el aro, el chip, la píldora y la acción secundaria no
+    // pueden contradecirse.
+    const marcadoHoy = streak.data.markedDaysIso.includes(todayIso)
     const adelantoHoy = deriveAdelanto({
       registros: registrosHoy,
       marcadoSinGastos: marcadoHoy,
@@ -244,7 +260,16 @@ export function useGarden(
         todayIso,
         horaLocal,
         tone,
-        startIso: firstActivityIso,
+        // §3.6: el ancla del "sin culpa" es el PRIMER BROTE. Cuando todavía no
+        // hay ninguno (cuenta recién creada, el caso ④5/②9) `firstActivityIso`
+        // es `null` y sin ancla los días de esta semana anteriores a la alta
+        // saldrían 'missed' —brotes marchitos por días en los que el usuario ni
+        // tenía la app—, justo lo que §3.5b prohíbe. Ahí cae al alta de la
+        // cuenta, el mismo ancla que ya usa la tira de Home (`deriveWeekStrip`),
+        // así que las dos superficies cuentan la misma semana igual. Con
+        // actividad manda `firstActivityIso`, que es el más indulgente de los
+        // dos y es el que fija §3.6.
+        startIso: firstActivityIso ?? (activity.size === 0 ? accountCreatedIso : null),
         weekDayIso,
       }),
       historyWeeks,

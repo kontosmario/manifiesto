@@ -14,10 +14,12 @@
 //    `SemanaPasadaCard` de Mi jardín. El VM es el mismo en los dos; duplicarlo
 //    era garantizar que se desincronizaran.
 //
-//  · `useAchievements` se monta ACÁ, o sea sólo cuando el cierre se muestra:
-//    el bridge no puede pagar dos queries en el arranque de la app para una
-//    pantalla que aparece una vez por semana. Es la misma query key que usan
-//    el jardín y la galería, así que cuando ya está caliente no hay fetch.
+//  · `useAchievements` y `useHomeSnapshot` se montan ACÁ, o sea sólo cuando el
+//    cierre se muestra: el bridge no puede pagar queries en el arranque de la
+//    app para una pantalla que aparece una vez por semana. Las dos son las
+//    MISMAS query keys que ya usan Home, el jardín y la galería, así que con
+//    el cache tibio no hay fetch — y son las que hacen que las tres
+//    superficies propongan el mismo "próximo logro".
 //
 //  · Takeover absoluto zIndex 999, como la celebración vieja
 //    (`week-close-celebration.tsx:253`): el bridge vive FUERA del `Stack`, así
@@ -53,6 +55,7 @@ import {
 import { medalForCode, splitLogros } from '@/features/achievements/achievement-progress'
 import { achievementBody, achievementTitle } from '@/features/achievements/achievement-tiers'
 import { useAchievements } from '@/features/achievements/use-achievements'
+import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import type { GardenData } from '@/features/garden/use-garden'
 import { isoDay, resolveDeviceTimezone, type WeekCloseDay } from '@/features/garden/garden-model'
 import { triggerHaptic } from '@/lib/haptics'
@@ -118,6 +121,13 @@ export function WeekCloseCierre({ garden, userId, onClose }: WeekCloseCierreProp
 
   const items = achievements.data?.items
   const currentStreak = snapshot.currentStreak
+  // Misma fuente cycle-scoped que el jardín y la galería
+  // (`home_snapshot.no_spend_days_this_cycle`, T11): sin ella el nudge de este
+  // cierre sólo podía salir de la familia `streak_*` y las tres superficies
+  // proponían "próximos logros" distintos para el mismo usuario. Es la query
+  // que Home ya sembró —misma key, cache tibio— y el campo es OPCIONAL por
+  // back-compat: `?? null`, NUNCA `?? 0` (con 0 se dibujaría "0 de 15").
+  const cycleNoSpendCount = useHomeSnapshot(userId).data?.no_spend_days_this_cycle?.length ?? null
 
   /** El logro que cayó DENTRO de la semana cerrada (el más reciente si hubo
    *  varios). `earned_at` es un timestamptz: se compara por día LOCAL, el
@@ -154,9 +164,7 @@ export function WeekCloseCierre({ garden, userId, onClose }: WeekCloseCierreProp
     if (!items) return undefined
     const split = splitLogros(items, {
       currentStreak,
-      // Cycle-scoped: la fuente canónica es `home_snapshot.no_spend_days_this_cycle`
-      // (T11). `null` —nunca 0— evita barras "0 de 15" falsas.
-      cycleNoSpendCount: null,
+      cycleNoSpendCount,
     })
     if (!split.nudgeCode) return undefined
     const row = split.inProgress.find((r) => r.code === split.nudgeCode)
@@ -166,7 +174,7 @@ export function WeekCloseCierre({ garden, userId, onClose }: WeekCloseCierreProp
       current: row.progress.current,
       target: row.progress.target,
     }
-  }, [items, currentStreak])
+  }, [items, currentStreak, cycleNoSpendCount])
 
   const vm = useMemo<CierreVM>(() => {
     const wc = snapshot.weekClose
@@ -189,7 +197,11 @@ export function WeekCloseCierre({ garden, userId, onClose }: WeekCloseCierreProp
 
     const openLogros = () => {
       onClose()
-      router.push('/settings/achievements' as never)
+      // Ruta TIPADA (la misma que usa `garden-screen`): sin el prefijo del
+      // grupo, expo-router no la resuelve en su tipo `Href` y el llamador
+      // termina tapándolo con un `as never` — un cast que se comería un
+      // rename de la ruta sin que tsc dijera nada.
+      router.push('/(app)/settings/achievements')
     }
 
     return {
