@@ -8,11 +8,17 @@
 
 **Tech Stack:** React Native 0.81 (New Arch) + Expo · Reanimated v4 · react-native-svg · Skia (BrotMascot/BrotParticles) · React Query + Supabase · vitest (env node) · i18n ES/EN.
 
-**Estado de las decisiones:** las 6 que estaban abiertas fueron resueltas por el owner (2026-08-11) y están cerradas acá (§2). **No queda ninguna decisión de producto pendiente.**
+## ✅ Estado: EJECUTADO (2026-08-11)
+
+Las 6 decisiones abiertas las resolvió el owner y están cerradas en §2. **El plan se ejecutó completo (T0–T13) en 13 commits** sobre `feat/ui-redesign`, por orden directa del owner ("completa el plan, quiero que esté todo integrado") — lo que incluyó **saltear el gate antes del cableado**, con el mismo precedente que Control.
+
+Verificación al cierre: `tsc` limpio · **1786 tests verdes** (baseline 1708 + 78 nuevos) · `eslint` 0 errores · guards de i18n, spacing y forbidden-copy OK · `expo export --platform ios` bundlea (11 MB). El guard `motion-tokens` falla, pero **ya fallaba antes** del rediseño y ninguno de sus archivos es del jardín nuevo.
+
+**Pendiente lo que no se puede hacer sin device (T14):** QA visual de la matriz de 35 estados y la aprobación del owner en Settings → Desarrollo → "Jardín · aros de crecimiento". El chip sigue en `'pendiente'` a propósito: falta la mirada, no el trabajo. T15 (logros nuevos con migración) queda opcional, sin ejecutar.
 
 ## Global Constraints
 
-- **Gate de aprobación** (memoria `feedback_redesign_approval_gate`): réplica literal del `Jardín Rediseño.dc.html` en Settings→Desarrollo, claro y oscuro; **ninguna pantalla live se toca hasta el flip `'jardin': 'aprobada'`**. Los desvíos `[OWNER-1]`…`[OWNER-6]` de §2 se aplican ya en la réplica (son órdenes del owner).
+- **Gate de aprobación** (memoria `feedback_redesign_approval_gate`): réplica literal del `Jardín Rediseño.dc.html` en Settings→Desarrollo, claro y oscuro. La regla original era **no tocar ninguna pantalla live hasta el flip `'jardin': 'aprobada'`**; el owner la levantó explícitamente al pedir la integración completa (ver Estado). Los desvíos `[OWNER-1]`…`[OWNER-6]` de §2 se aplican ya en la réplica.
 - **Commits**: identidad git del usuario, sin atribución de IA. Mensajes en español (`feat(jardin): …`).
 - **Copy**: español latino neutro, tuteo, sin voseo — en todo lo nuevo y corrigiendo los 8 residuales (§2·D1). Suite completa en cualquier cambio de copy.
 - **Contraste**: toda tinta nueva sobre superficie clara se verifica AA (precedente `[B] todayInk = #A84A2F`). El celeste `#5FB8C9` sirve como stroke de aro; como tinta de texto sobre claro NO llega a AA → el texto del chip usa `neoInk(mode).accent`.

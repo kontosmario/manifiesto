@@ -77,9 +77,15 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // los desvíos que el owner ordenó sobre el handoff ([OWNER-1]…[OWNER-6]:
   // tuteo neutro, fondo global de la app, mix Brot/íconos en las medallas,
   // día en calma con identidad propia, BrotParticles y el aro como
-  // CRECIMIENTO en vez de "riego"). La réplica ya está en el preview con
-  // los seeds de la matriz; NINGUNA pantalla live se toca hasta el flip a
-  // 'aprobada'. PENDIENTE.
+  // CRECIMIENTO en vez de "riego"). La réplica está en el preview con los
+  // seeds de la matriz.
+  //
+  // ⚠️ EXCEPCIÓN AL GATE (2026-08-11, orden directa del owner: "completa el
+  // plan, quiero que esté todo integrado"): el cableado a las pantallas LIVE
+  // ya se ejecutó sin esperar el flip — mismo precedente que CONTROL. El chip
+  // sigue en 'pendiente' porque lo que falta es la APROBACIÓN VISUAL en
+  // device, no el trabajo: el preview es donde el owner compara contra el
+  // handoff y pide ajustes. Flipear a 'aprobada' recién cuando lo mire.
   'jardin': 'pendiente',
   // EDGE-TO-EDGE + scroll edge effect (2026-08-04): no es una vista del
   // rediseño sino un banco de tuning. Queda en 'pendiente' porque el
