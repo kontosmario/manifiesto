@@ -193,6 +193,12 @@ export interface LogrosAccessVM {
   medals: MedalVM[]
   countText: string
   onPress: () => void
+  /**
+   * ④2 — hay logros desbloqueados que el usuario todavía no fue a ver. Mismo
+   * dot naranja que el cierre sin ver (③5): es la misma idea ("hay algo nuevo
+   * detrás de esta card") y repetir el vocabulario la hace legible sin leerla.
+   */
+  unseenDot?: boolean
 }
 
 /** Una fila del sheet de historial (HTML:300–329). */
@@ -335,6 +341,8 @@ export interface JardinHeaderProps {
   title?: string
   sub?: string
   onBack?: () => void
+  /** a11y del botón de volver. Prop porque el live la traduce (T12). */
+  backLabel?: string
 }
 
 /**
@@ -349,6 +357,7 @@ export function JardinHeader({
   title = 'Mi jardín',
   sub = 'Completa los 7 días y tu jardín florece.',
   onBack,
+  backLabel = 'Volver',
 }: JardinHeaderProps) {
   const s = JARDIN_SPEC[mode]
   const neo = neoTokens(mode)
@@ -359,7 +368,7 @@ export function JardinHeader({
     <View style={styles.header}>
       <AnimatedPressable
         accessibilityRole="button"
-        accessibilityLabel="Volver"
+        accessibilityLabel={backLabel}
         onPress={onBack}
         onPressIn={() => {
           setPressed(true)
@@ -775,12 +784,36 @@ function historyDotColor(s: JardinSpec, dot: HistoryDot): string {
   return byDot[dot]
 }
 
+/** Los tres textos de la leyenda (README:52 · [OWNER-6]). Props porque el live
+ *  los traduce (T12); el kit conserva el copy del handoff como default. */
+export interface CrecimientoLegendCopy {
+  completo: string
+  hoy: string
+  calma: string
+}
+
+const CRECIMIENTO_LEGEND_DEFAULT: CrecimientoLegendCopy = {
+  completo: 'día completo',
+  hoy: 'crecimiento de hoy',
+  calma: 'día en calma',
+}
+
 export interface CrecimientoCardProps {
   mode: JardinMode
   vm: CrecimientoVM
   animated?: boolean
   title?: string
   tag?: string
+  legend?: CrecimientoLegendCopy
+  historyLabel?: string
+  /**
+   * a11y del aro grande. El TONO del cupo (§3.3) es color puro: verde dentro,
+   * ámbar pasado, celeste sin datos. Sin un texto equivalente, ese estado no
+   * existe para quien no distingue los dos verdes (WCAG 1.4.1). El live arma
+   * "chip + tono"; sin la prop el bloque queda como estaba (no accesible como
+   * una sola unidad, que es el comportamiento del preview).
+   */
+  focusA11yLabel?: string
 }
 
 /**
@@ -794,6 +827,9 @@ export function CrecimientoCard({
   animated = true,
   title = 'Tu jardín',
   tag = 'semana vigente',
+  legend = CRECIMIENTO_LEGEND_DEFAULT,
+  historyLabel = 'Semanas anteriores',
+  focusA11yLabel,
 }: CrecimientoCardProps) {
   const s = JARDIN_SPEC[mode]
   const reduceMotion = useReducedMotion()
@@ -816,7 +852,11 @@ export function CrecimientoCard({
         </Text>
       </View>
 
-      <View style={styles.focusBlock}>
+      <View
+        style={styles.focusBlock}
+        accessible={focusA11yLabel !== undefined}
+        accessibilityLabel={focusA11yLabel}
+      >
         <GrowthRing
           size={g.size}
           stroke={g.stroke}
@@ -866,9 +906,9 @@ export function CrecimientoCard({
 
       {/* Leyenda (README:52), reescrita por [OWNER-6]: el aro es crecimiento. */}
       <View style={styles.legendRow}>
-        <LegendItem s={s} color={s.accentDot} text="día completo" />
-        <LegendItem s={s} color={s.ringWater} text="crecimiento de hoy" />
-        <LegendItem s={s} color={s.calmaRing} text="día en calma" />
+        <LegendItem s={s} color={s.accentDot} text={legend.completo} />
+        <LegendItem s={s} color={s.ringWater} text={legend.hoy} />
+        <LegendItem s={s} color={s.calmaRing} text={legend.calma} />
       </View>
 
       {vm.secondary ? (
@@ -928,7 +968,7 @@ export function CrecimientoCard({
         // Sin botón ni chevron: TODA la fila abre el sheet (README:56).
         <AnimatedPressable
           accessibilityRole="button"
-          accessibilityLabel="Semanas anteriores"
+          accessibilityLabel={historyLabel}
           onPress={vm.history.onOpen}
           onPressIn={historyPress.onPressIn}
           onPressOut={historyPress.onPressOut}
@@ -938,7 +978,7 @@ export function CrecimientoCard({
             maxFontSizeMultiplier={1.2}
             style={[styles.historyLabel, { color: s.historyLabelInk }]}
           >
-            Semanas anteriores
+            {historyLabel}
           </Text>
           <View style={styles.historyDots}>
             {vm.history.rows.map((row, i) => (
@@ -996,10 +1036,17 @@ export interface SemanaPasadaCardProps {
   mode: JardinMode
   vm: SemanaPasadaVM
   animated?: boolean
+  /** Texto del CTA (y su a11y). Prop porque el live lo traduce (T12). */
+  ctaText?: string
 }
 
 /** Card "Semana pasada" (HTML:507–514 / README:32). */
-export function SemanaPasadaCard({ mode, vm, animated = true }: SemanaPasadaCardProps) {
+export function SemanaPasadaCard({
+  mode,
+  vm,
+  animated = true,
+  ctaText = 'Ver cierre ›',
+}: SemanaPasadaCardProps) {
   const s = JARDIN_SPEC[mode]
   const reduceMotion = useReducedMotion()
   const motion = animated && !reduceMotion
@@ -1033,7 +1080,7 @@ export function SemanaPasadaCard({ mode, vm, animated = true }: SemanaPasadaCard
         {vm.unseenDot ? <UnseenDot color={s.ringAmber} animated={motion} /> : null}
         <AnimatedPressable
           accessibilityRole="button"
-          accessibilityLabel="Ver cierre"
+          accessibilityLabel={ctaText}
           onPress={vm.onOpenCierre}
           onPressIn={press.onPressIn}
           onPressOut={press.onPressOut}
@@ -1047,7 +1094,7 @@ export function SemanaPasadaCard({ mode, vm, animated = true }: SemanaPasadaCard
             ]}
           >
             <Text maxFontSizeMultiplier={1.2} style={[styles.semanaCtaText, { color: s.ctaGreenInk }]}>
-              Ver cierre ›
+              {ctaText}
             </Text>
           </View>
         </AnimatedPressable>
@@ -1127,17 +1174,32 @@ export interface LogrosAccessCardProps {
   mode: JardinMode
   vm: LogrosAccessVM
   title?: string
+  /** Cola del a11y label cuando hay logros sin ver (④2). El dot es color puro:
+   *  sin este texto el estado no llega a un lector de pantalla. */
+  unseenLabel?: string
+  animated?: boolean
 }
 
 /** Card de acceso a Logros (HTML:515–526 / README:33). */
-export function LogrosAccessCard({ mode, vm, title = 'Logros' }: LogrosAccessCardProps) {
+export function LogrosAccessCard({
+  mode,
+  vm,
+  title = 'Logros',
+  unseenLabel = 'Tienes logros nuevos sin ver',
+  animated = true,
+}: LogrosAccessCardProps) {
   const s = JARDIN_SPEC[mode]
+  const reduceMotion = useReducedMotion()
   const press = usePressScale({ pressedScale: 0.98 })
 
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}. ${vm.countText}`}
+      accessibilityLabel={
+        vm.unseenDot
+          ? `${title}. ${vm.countText}. ${unseenLabel}`
+          : `${title}. ${vm.countText}`
+      }
       onPress={vm.onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -1161,17 +1223,22 @@ export function LogrosAccessCard({ mode, vm, title = 'Logros' }: LogrosAccessCar
             {vm.countText}
           </Text>
         </View>
-        <View
-          style={[
-            styles.chevronDisc,
-            {
-              backgroundColor: s.chevronBackground ?? 'transparent',
-              boxShadow: s.chevronShadow,
-            },
-            SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: s.hairline },
-          ]}
-        >
-          <ChevronRightGlyph color={s.chevronInk} />
+        <View style={styles.logrosTrailing}>
+          {vm.unseenDot ? (
+            <UnseenDot color={s.ringAmber} animated={animated && !reduceMotion} />
+          ) : null}
+          <View
+            style={[
+              styles.chevronDisc,
+              {
+                backgroundColor: s.chevronBackground ?? 'transparent',
+                boxShadow: s.chevronShadow,
+              },
+              SUPPORTS_INSET_SHADOW ? null : { borderWidth: 1, borderColor: s.hairline },
+            ]}
+          >
+            <ChevronRightGlyph color={s.chevronInk} />
+          </View>
         </View>
       </View>
     </AnimatedPressable>
@@ -1184,6 +1251,8 @@ export interface NotaEducativaProps {
   mode: JardinMode
   text?: string
   onDismiss?: () => void
+  /** a11y del "×". Prop porque el live la traduce (T12). */
+  dismissLabel?: string
 }
 
 /**
@@ -1198,6 +1267,7 @@ export function NotaEducativa({
   mode,
   text = 'Cada gasto que registras adelanta el crecimiento de tu brote. Completa los 7 días y tu jardín florece. ¿Sin gastos? Marca el día y tu brote crece el doble.',
   onDismiss,
+  dismissLabel = 'Descartar la nota',
 }: NotaEducativaProps) {
   const s = JARDIN_SPEC[mode]
   const neo = neoTokens(mode)
@@ -1215,7 +1285,7 @@ export function NotaEducativa({
       {onDismiss ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Descartar la nota"
+          accessibilityLabel={dismissLabel}
           onPress={onDismiss}
           hitSlop={10}
           style={[
@@ -1242,6 +1312,8 @@ export interface HistorialSheetProps {
   monthLabel: string
   onClose: () => void
   title?: string
+  /** a11y del scrim (cerrar). Prop porque el live la traduce (T12). */
+  closeLabel?: string
 }
 
 /**
@@ -1257,6 +1329,7 @@ export function HistorialSheet({
   monthLabel,
   onClose,
   title = 'Semanas anteriores',
+  closeLabel = 'Cerrar',
 }: HistorialSheetProps) {
   const s = JARDIN_SPEC[mode]
   const neo = neoTokens(mode)
@@ -1266,7 +1339,7 @@ export function HistorialSheet({
     <View style={styles.sheetOverlay}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Cerrar"
+        accessibilityLabel={closeLabel}
         onPress={onClose}
         style={[styles.sheetScrim, { backgroundColor: neo.scrim }]}
       />
@@ -1446,6 +1519,8 @@ export interface JardinDemoState {
   semanaPasadaVariant: WeekCloseVariant | null
   /** ③5 — el cierre está disponible y todavía no se abrió. */
   semanaPasadaUnseen: boolean
+  /** ④2 — hay logros desbloqueados que el usuario todavía no fue a ver. */
+  logrosUnseen: boolean
   showSheet: boolean
   noteDismissed: boolean
   /** ①8. */
@@ -1464,6 +1539,7 @@ export const JARDIN_INITIAL_STATE: JardinDemoState = {
   primeraSemana: false,
   semanaPasadaVariant: 'perfecta',
   semanaPasadaUnseen: false,
+  logrosUnseen: false,
   showSheet: false,
   noteDismissed: false,
   loading: false,
@@ -1780,6 +1856,7 @@ export function JardinFinalScreen({ mode, initialSeed }: JardinFinalScreenProps)
     // El "7 de 13 · próximo: 10 semanas florecidas" del handoff no existe: el
     // catálogo real es de 18 y ese logro se descartó (§4 del plan).
     countText: '7 de 18 · próximo: racha de 30 días',
+    unseenDot: state.logrosUnseen,
     onPress: () => {},
   }
 
@@ -2039,6 +2116,8 @@ const styles = StyleSheet.create({
   accessMedalNumber: { fontSize: 14, fontWeight: '900', fontFamily: nunitoFamily('900') },
   accessMedalLocked: { fontSize: 15, fontWeight: '900', fontFamily: nunitoFamily('900') },
   logrosTexts: { flex: 1, minWidth: 0 },
+  /** Dot de "sin ver" + chevron: el mismo slot de la card de semana pasada. */
+  logrosTrailing: { flexShrink: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
   logrosTitle: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   logrosSub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700') },
   chevronDisc: {

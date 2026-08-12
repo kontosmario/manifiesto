@@ -148,6 +148,8 @@ export interface LogroRowVM {
   unseen?: boolean
   /** Copy tapado de la fila secreta. Ausente = el primero de `SECRET_BODIES`. */
   secretBody?: string
+  /** Título tapado de la fila secreta. Ausente = `SECRET_TITLE`. */
+  secretTitle?: string
 }
 
 // ─── Piezas compartidas ──────────────────────────────────────────────
@@ -290,12 +292,28 @@ export function LogrosHeader({
 
 // ─── Card resumen ────────────────────────────────────────────────────
 
+/**
+ * Copy FIJO de la card resumen. Props con default al literal del handoff: el
+ * kit se mira en el preview del gate sin i18n y el cableado live los pasa
+ * traducidos (T12). `countText` llega ARMADO porque lleva los dos números y el
+ * orden depende del idioma; los dos textos "strong" van en negrita dentro de la
+ * misma línea, así que viajan partidos.
+ */
+export interface LogrosResumenCopy {
+  countText: string
+  completeLead: string
+  completeStrong: string
+  emptyText: string
+  nudgeLead: string
+}
+
 export interface LogrosResumenProps {
   mode: ResolvedThemeMode
   vm: LogrosResumenVM
+  copy?: Partial<LogrosResumenCopy>
 }
 
-export function LogrosResumen({ mode, vm }: LogrosResumenProps) {
+export function LogrosResumen({ mode, vm, copy }: LogrosResumenProps) {
   const s = JARDIN_SPEC[mode]
   const total = Math.max(vm.total, 1)
   const pct = Math.min(Math.max(vm.earnedCount / total, 0), 1)
@@ -340,7 +358,7 @@ export function LogrosResumen({ mode, vm }: LogrosResumenProps) {
     >
       <View style={styles.resumenTop}>
         <Text style={[styles.resumenCount, { color: s.cardTitleInk }]}>
-          {vm.earnedCount} de {vm.total} desbloqueados
+          {copy?.countText ?? `${vm.earnedCount} de ${vm.total} desbloqueados`}
         </Text>
         <Text style={[styles.resumenPct, { color: s.accentInk }]}>
           {Math.round(pct * 100)}%
@@ -351,18 +369,18 @@ export function LogrosResumen({ mode, vm }: LogrosResumenProps) {
       </View>
       {complete ? (
         <Text style={[styles.resumenNudge, { color: s.cardSubInk }]}>
-          Los tienes todos.{' '}
+          {copy?.completeLead ?? 'Los tienes todos.'}{' '}
           <Text style={[styles.resumenNudgeStrong, { color: s.cardTitleInk }]}>
-            Colección completa.
+            {copy?.completeStrong ?? 'Colección completa.'}
           </Text>
         </Text>
       ) : vm.earnedCount === 0 ? (
         <Text style={[styles.resumenNudge, { color: s.cardSubInk }]}>
-          Se desbloquean solos a medida que usas Manifiesto.
+          {copy?.emptyText ?? 'Se desbloquean solos a medida que usas Manifiesto.'}
         </Text>
       ) : vm.nudge ? (
         <Text style={[styles.resumenNudge, { color: s.cardSubInk }]}>
-          Te falta poco para{' '}
+          {copy?.nudgeLead ?? 'Te falta poco para'}{' '}
           <Text style={[styles.resumenNudgeStrong, { color: s.cardTitleInk }]}>
             {vm.nudge.title}
           </Text>
@@ -500,7 +518,7 @@ export function LogroRow({ mode, vm, style }: LogroRowProps) {
           numberOfLines={1}
         >
           {/* La fila secreta jamás muestra el título real — ver el docblock. */}
-          {secret ? SECRET_TITLE : vm.title}
+          {secret ? (vm.secretTitle ?? SECRET_TITLE) : vm.title}
         </Text>
         {vm.progress && !secret ? (
           <View style={styles.rowBarLine}>

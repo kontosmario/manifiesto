@@ -14,6 +14,24 @@
       "subStart": "Buen comienzo. Sigue sumando."
     }
   },
+  "screen": {
+    "subtitle": "Tu jardín, medalla a medalla.",
+    "sectionUnlocked": "DESBLOQUEADOS",
+    "sectionInProgress": "EN PROGRESO",
+    "sectionSecret": "SECRETOS",
+    "secretTitle": "Logro secreto",
+    "secretBody1": "Sigue cultivando para descubrirlo.",
+    "secretBody2": "Un misterio del jardín te espera.",
+    "resumenCount": "{{earned}} de {{total}} desbloqueados",
+    "resumenCompleteLead": "Los tienes todos.",
+    "resumenCompleteStrong": "Colección completa.",
+    "resumenEmpty": "Se desbloquean solos a medida que usas Manifiesto.",
+    "resumenNudgeLead": "Te falta poco para",
+    "nudgeTailCalm_one": "— falta 1 día en calma.",
+    "nudgeTailCalm_other": "— faltan {{count}} días en calma.",
+    "nudgeTailDays_one": "— 1 día.",
+    "nudgeTailDays_other": "— {{count}} días."
+  },
   "tierShort": {
     "bronze": "BRONCE",
     "silver": "PLATA",

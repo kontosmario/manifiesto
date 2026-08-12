@@ -81,6 +81,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import Animated from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   FilledAchievementIcon,
   hasFilledAchievementIcon,
@@ -481,9 +482,11 @@ function CierreMedal({
 function UnlockedCard({
   unlocked,
   s,
+  kicker,
 }: {
   unlocked: NonNullable<CierreVM['unlocked']>
   s: JardinSpec
+  kicker: string
 }) {
   const g = JARDIN_GEOMETRY.cierre
   return (
@@ -497,9 +500,7 @@ function UnlockedCard({
     >
       <CierreMedal vm={unlocked.medal} s={s} size={g.medal} brotSize={g.medalBrot} />
       <View style={styles.unlockedTexts}>
-        <Text style={[styles.cardKicker, { color: s.cierreUnlockedKickerInk }]}>
-          ¡LOGRO DESBLOQUEADO!
-        </Text>
+        <Text style={[styles.cardKicker, { color: s.cierreUnlockedKickerInk }]}>{kicker}</Text>
         <Text style={[styles.unlockedTitle, { color: s.cierreStatValueInk }]}>{unlocked.title}</Text>
         <Text style={[styles.unlockedBody, { color: s.cardSubInk }]}>{unlocked.body}</Text>
       </View>
@@ -511,10 +512,12 @@ function NextGoalCard({
   nextGoal,
   s,
   raised,
+  kicker,
 }: {
   nextGoal: NonNullable<CierreVM['nextGoal']>
   s: JardinSpec
   raised: { gradientCss: string; fallback: string; shadow: string }
+  kicker: string
 }) {
   const pct = nextGoal.target > 0 ? Math.min(1, Math.max(0, nextGoal.current / nextGoal.target)) : 0
   return (
@@ -527,7 +530,7 @@ function NextGoalCard({
       ]}
     >
       <View style={styles.nextHeaderRow}>
-        <Text style={[styles.cardKicker, { color: s.cierreNextKickerInk }]}>PRÓXIMO LOGRO</Text>
+        <Text style={[styles.cardKicker, { color: s.cierreNextKickerInk }]}>{kicker}</Text>
         <Text style={[styles.nextCount, { color: s.cierreNextValueInk }]}>
           {nextGoal.current}/{nextGoal.target}
         </Text>
@@ -615,15 +618,51 @@ function CierreCta({
 
 // ─── Vista ───────────────────────────────────────────────────────────
 
+/**
+ * El copy FIJO de la vista (el variable ya viaja en el `CierreVM`). Son props
+ * con default al literal del handoff: el kit se mira en el preview del gate sin
+ * i18n, y el cableado live los pasa traducidos (T12).
+ */
+export interface CierreCopy {
+  kicker: string
+  unlockedKicker: string
+  nextKicker: string
+  /** Línea "N días en calma", ya PLURALIZADA por el llamador (el kit no
+   *  conjuga). `undefined` ⇒ el kit arma la suya con el literal del handoff. */
+  calmDaysText?: string
+}
+
+const CIERRE_COPY_DEFAULT = {
+  kicker: 'CIERRE DE SEMANA',
+  unlockedKicker: '¡LOGRO DESBLOQUEADO!',
+  nextKicker: 'PRÓXIMO LOGRO',
+} as const
+
 export interface CierreSemanaViewProps {
   mode: ResolvedThemeMode
   vm: CierreVM
+  copy?: Partial<CierreCopy>
+  /**
+   * Chrome DIBUJADO del mockup (status bar "9:41" + home indicator). `true` en
+   * el preview del gate, que es donde la réplica tiene que verse como el
+   * teléfono del handoff ([P2]); el cableado live lo apaga y en su lugar se
+   * respetan los insets reales del dispositivo — el SO ya dibuja los suyos y
+   * dos status bars encimadas serían una mentira en pantalla.
+   */
+  chrome?: boolean
 }
 
-export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
+export function CierreSemanaView({
+  mode,
+  vm,
+  copy: copyProp,
+  chrome: drawChrome = true,
+}: CierreSemanaViewProps) {
+  const copy = { ...CIERRE_COPY_DEFAULT, ...copyProp }
   const s = JARDIN_SPEC[mode]
   const neo = neoTokens(mode)
   const reduceMotion = useReducedMotion()
+  const insets = useSafeAreaInsets()
   const g = JARDIN_GEOMETRY.cierre
 
   /** La perfecta es la única que pinta su propia superficie: verde en los dos
@@ -667,7 +706,14 @@ export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
         </View>
       ) : null}
 
-      <HomeStatusBar mode={onGreen ? 'dark' : mode} />
+      {drawChrome ? (
+        <HomeStatusBar mode={onGreen ? 'dark' : mode} />
+      ) : (
+        // Live: el aire de arriba lo manda el notch real. El mismo
+        // `paddingTop: 18` del chrome dibujado sirve de piso en pantallas sin
+        // inset (Android viejo), para que el kicker no arranque pegado.
+        <View style={{ height: Math.max(insets.top, 18) }} />
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -683,7 +729,7 @@ export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
               { color: onGreen ? s.cierreKickerOnGreenInk : s.cierreKickerInk },
             ]}
           >
-            CIERRE DE SEMANA
+            {copy.kicker}
           </Text>
         </RiseView>
 
@@ -748,7 +794,8 @@ export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
                   { color: onGreen ? s.cierreChipOnGreenAccentInk : s.accentInk },
                 ]}
               >
-                {calmDays === 1 ? '1 día en calma' : `${calmDays} días en calma`}
+                {copy.calmDaysText ??
+                  (calmDays === 1 ? '1 día en calma' : `${calmDays} días en calma`)}
               </Text>
             </View>
           ) : null}
@@ -815,9 +862,14 @@ export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
             style={onGreen ? styles.extraSpacingPerfecta : styles.extraSpacing}
           >
             {vm.unlocked ? (
-              <UnlockedCard unlocked={vm.unlocked} s={s} />
+              <UnlockedCard unlocked={vm.unlocked} s={s} kicker={copy.unlockedKicker} />
             ) : vm.nextGoal ? (
-              <NextGoalCard nextGoal={vm.nextGoal} s={s} raised={raised} />
+              <NextGoalCard
+                nextGoal={vm.nextGoal}
+                s={s}
+                raised={raised}
+                kicker={copy.nextKicker}
+              />
             ) : vm.coach ? (
               <CoachCard text={vm.coach} s={s} raised={raised} />
             ) : null}
@@ -851,12 +903,18 @@ export function CierreSemanaView({ mode, vm }: CierreSemanaViewProps) {
         </Pressable>
       </RiseView>
 
-      <View
-        style={[
-          styles.homeIndicator,
-          { backgroundColor: chrome.homeIndicator, opacity: chrome.homeIndicatorOpacity },
-        ]}
-      />
+      {drawChrome ? (
+        <View
+          style={[
+            styles.homeIndicator,
+            { backgroundColor: chrome.homeIndicator, opacity: chrome.homeIndicatorOpacity },
+          ]}
+        />
+      ) : (
+        // Live: el indicador lo dibuja el SO; acá sólo su aire (el mismo
+        // 4 + 5 + 10 del chrome dibujado cuando el device no reporta inset).
+        <View style={{ height: Math.max(insets.bottom, 19) }} />
+      )}
     </View>
   )
 }

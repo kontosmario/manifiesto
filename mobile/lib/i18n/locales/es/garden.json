@@ -4,26 +4,114 @@
     "subtitle": "Un brote por cada día que registra tu hogar.",
     "footnote": "El jardín crece solo: cada gasto que registra cualquier miembro del hogar planta el brote del día. ¿Nadie gastó? Marca el día sin gastos en el calendario y también suma."
   },
+  "hero2": {
+    "empezar": {
+      "label": "EMPIEZA HOY",
+      "title": "Planta tu primer brote",
+      "sub": "Registra un gasto o marca un día sin gastos.",
+      "chip": "Sin racha aún",
+      "cta": "Plantar mi primer brote"
+    },
+    "aTiempo": {
+      "label": "HOY · {{day}}",
+      "title": "Planta para sumar",
+      "sub_one": "Vas {{count}} día seguido. Suma el de hoy.",
+      "sub_other": "Vas {{count}} días seguidos. Suma el de hoy.",
+      "chip": "A tiempo",
+      "cta": "Registrar un gasto"
+    },
+    "plantado": {
+      "label": "HOY · LISTO",
+      "title": "¡Brote plantado!",
+      "sub": "Sumaste el día. Racha {{streak}} ↑",
+      "chip": "Plantaste hoy",
+      "pill": "Listo por hoy · vuelve mañana para seguir"
+    },
+    "floreciendo": {
+      "label": "TU JARDÍN",
+      "title": "Floreciendo",
+      "sub": "Racha {{streak}} · récord {{record}}",
+      "chip": "Al día",
+      "pill": "Tu jardín está en flor"
+    },
+    "enRiesgo": {
+      "label": "ESTA NOCHE · {{time}}",
+      "title": "Tu racha está en riesgo",
+      "sub": "Racha {{streak}} sin plantar hoy. Te queda poco.",
+      "chip": "En riesgo",
+      "cta": "Plantar antes de medianoche"
+    },
+    "cortada": {
+      "label": "RACHA CORTADA",
+      "title": "Se cortó tu racha",
+      "sub": "Tu récord de {{record}} sigue guardado. Empieza otra hoy.",
+      "chip": "✕ Perdida",
+      "cta": "Empezar de nuevo"
+    }
+  },
+  "crecimiento": {
+    "title": "Tu jardín",
+    "tag": "semana vigente",
+    "chipEmpty": "Tu brote espera el primer gasto de hoy",
+    "chipPartial": "{{done}} de {{target}} gastos registrados hoy",
+    "chipCompleto": "Día completo · tu brote creció un día entero",
+    "chipCalma": "Día en calma · tu brote creció el doble",
+    "chipCalmaAt": "Día en calma desde las {{time}} · creció el doble",
+    "footerPill": "Completa los 7 días y tu jardín florece",
+    "footerCta": "Registrar un gasto",
+    "secondary": "Marcar día sin gastos",
+    "legendCompleto": "día completo",
+    "legendHoy": "crecimiento de hoy",
+    "legendCalma": "día en calma",
+    "toneGreen": "Dentro de tu cupo de hoy",
+    "toneAmber": "Por encima de tu cupo de hoy"
+  },
+  "historial": {
+    "title": "Semanas anteriores",
+    "flowered": "Florecida",
+    "score": "{{score}} de 7"
+  },
+  "semanaPasada": {
+    "perfecta": {
+      "title": "Semana pasada: perfecta",
+      "sub": "Tu jardín floreció · 7 de 7 días"
+    },
+    "buena": {
+      "title": "Semana pasada: casi perfecta",
+      "sub": "Te faltó poco · {{score}} de 7 días"
+    },
+    "floja": {
+      "title": "Semana pasada: floja",
+      "sub": "Tu jardín aguantó · {{score}} de 7 días"
+    },
+    "cortada": {
+      "title": "Semana pasada: se cortó",
+      "sub": "Tu récord sigue guardado · {{score}} de 7 días"
+    },
+    "cta": "Ver cierre ›"
+  },
+  "logrosAccess": {
+    "title": "Logros",
+    "count": "{{earned}} de {{total}}",
+    "countNext": "{{earned}} de {{total}} · próximo: {{next}}",
+    "countComplete": "{{earned}} de {{total}} · colección completa",
+    "unseen_one": "Tienes 1 logro nuevo sin ver",
+    "unseen_other": "Tienes {{count}} logros nuevos sin ver"
+  },
+  "nota": {
+    "text": "Cada gasto que registras adelanta el crecimiento de tu brote. Completa los 7 días y tu jardín florece. ¿Sin gastos? Marca el día y tu brote crece el doble.",
+    "dismiss": "Descartar la nota"
+  },
   "card": {
     "title": "Tu jardín",
-    "legendToggleLabel": "Qué significan los brotes",
-    "legendToggle": "¿qué significan?",
     "firstWeek": "tu primera semana",
     "weeksShown": "últimas {{count}} semanas"
-  },
-  "legend": {
-    "seed": "semilla",
-    "growing": "creciendo",
-    "rooted": "arraigado",
-    "bloom": "floración",
-    "skipped": "salteado"
   },
   "hero": {
     "label": "RACHA ACTIVA",
     "unit": "brotes\nseguidos",
     "streakA11y_one": "{{count}} brote seguido",
     "streakA11y_other": "{{count}} brotes seguidos",
-    "sub": "Una semilla por cada día que registra tu hogar. Los huecos son días sin registros, tranquilo: el jardín sigue.",
     "statGarden": "JARDÍN",
     "statRecord": "RÉCORD",
     "statSeeds": "SEMILLAS"
@@ -40,31 +128,45 @@
     "continue": "Seguir cultivando"
   },
   "weekClose": {
-    "perfect": {
+    "perfecta": {
       "label": "Semana perfecta",
       "title": "Tu jardín floreció.",
       "sub": "Registraste los 7 días. Cada brote llegó a su máximo."
     },
-    "great": {
-      "label": "Gran semana",
-      "title": "Casi pleno.",
+    "buena": {
+      "label": "Buena semana",
+      "title": "Casi perfecta.",
       "sub": "La mayoría de tus brotes maduraron. Te faltó poco para el jardín completo."
     },
-    "going": {
-      "label": "Semana en marcha",
-      "title": "Vas tomando ritmo.",
-      "sub": "Tus brotes están creciendo. Una semana más así y maduran del todo."
+    "floja": {
+      "label": "Semana floja",
+      "title": "Tu jardín aguantó.",
+      "sub": "Algunos brotes salieron adelante. Una semana más así y maduran del todo."
     },
-    "calm": {
-      "label": "Semana tranquila",
-      "title": "Unos pocos brotes.",
-      "sub": "Asomaron algunas semillas. Sin culpa — la próxima arrancas con todo."
-    },
-    "pause": {
-      "label": "Una pausa",
-      "title": "Esta semana, descanso.",
-      "sub": "No registraste días, y está bien. Tu jardín te espera intacto."
+    "cortada": {
+      "label": "Semana perdida",
+      "title": "Tu racha se cortó.",
+      "sub": "Tu récord y tu jardín siguen guardados. Vuelve a plantar cuando quieras."
     }
+  },
+  "cierre": {
+    "chip": "{{label}} · {{score}} de 7 días",
+    "kicker": "CIERRE DE SEMANA",
+    "unlockedKicker": "¡LOGRO DESBLOQUEADO!",
+    "nextKicker": "PRÓXIMO LOGRO",
+    "calmDays_one": "1 día en calma",
+    "calmDays_other": "{{count}} días en calma",
+    "statBrotes": "BROTES",
+    "statJardin": "JARDÍN",
+    "statRecord": "RÉCORD",
+    "statRacha": "RACHA",
+    "coachFloja": "Vuelve mañana: el brote de hoy todavía puede florecer. Un día a la vez.",
+    "coachCortada": "Tu récord ({{record}}) y tu jardín ({{garden}}) siguen guardados. Planta hoy y arranca de nuevo.",
+    "ctaSeguir": "Seguir cultivando",
+    "ctaSemana": "Seguir esta semana",
+    "ctaPlantar": "Plantar hoy",
+    "linkLogros": "Ver logros ›",
+    "linkLogrosTodos": "Ver todos mis logros ›"
   },
   "leafIcon": {
     "a11y_one": "Tu jardín: racha de {{count}} día",

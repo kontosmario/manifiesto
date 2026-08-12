@@ -14,6 +14,24 @@
       "subStart": "Great start. Keep them coming."
     }
   },
+  "screen": {
+    "subtitle": "Your garden, medal by medal.",
+    "sectionUnlocked": "UNLOCKED",
+    "sectionInProgress": "IN PROGRESS",
+    "sectionSecret": "SECRETS",
+    "secretTitle": "Secret achievement",
+    "secretBody1": "Keep growing to find out.",
+    "secretBody2": "A garden mystery is waiting for you.",
+    "resumenCount": "{{earned}} of {{total}} unlocked",
+    "resumenCompleteLead": "You have them all.",
+    "resumenCompleteStrong": "Collection complete.",
+    "resumenEmpty": "They unlock on their own as you use Manifiesto.",
+    "resumenNudgeLead": "You're close to",
+    "nudgeTailCalm_one": "— 1 calm day to go.",
+    "nudgeTailCalm_other": "— {{count}} calm days to go.",
+    "nudgeTailDays_one": "— 1 day.",
+    "nudgeTailDays_other": "— {{count}} days."
+  },
   "tierShort": {
     "bronze": "BRONZE",
     "silver": "SILVER",

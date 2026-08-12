@@ -4,26 +4,114 @@
     "subtitle": "A sprout for every day your home logs.",
     "footnote": "The garden grows on its own: any family member's expense plants the day's sprout. Nobody spent? Mark the no-spend day on the calendar and it counts too."
   },
+  "hero2": {
+    "empezar": {
+      "label": "START TODAY",
+      "title": "Plant your first sprout",
+      "sub": "Log an expense or mark a no-spend day.",
+      "chip": "No streak yet",
+      "cta": "Plant my first sprout"
+    },
+    "aTiempo": {
+      "label": "TODAY · {{day}}",
+      "title": "Plant to keep it going",
+      "sub_one": "You're on {{count}} day. Add today's.",
+      "sub_other": "You're on {{count}} days. Add today's.",
+      "chip": "On time",
+      "cta": "Log an expense"
+    },
+    "plantado": {
+      "label": "TODAY · DONE",
+      "title": "Sprout planted!",
+      "sub": "You added the day. Streak {{streak}} ↑",
+      "chip": "You planted today",
+      "pill": "Done for today · come back tomorrow"
+    },
+    "floreciendo": {
+      "label": "YOUR GARDEN",
+      "title": "In bloom",
+      "sub": "Streak {{streak}} · record {{record}}",
+      "chip": "Up to date",
+      "pill": "Your garden is in bloom"
+    },
+    "enRiesgo": {
+      "label": "TONIGHT · {{time}}",
+      "title": "Your streak is at risk",
+      "sub": "Streak {{streak}} and nothing planted today. Time is short.",
+      "chip": "At risk",
+      "cta": "Plant before midnight"
+    },
+    "cortada": {
+      "label": "STREAK BROKEN",
+      "title": "Your streak broke",
+      "sub": "Your record of {{record}} is safe. Start a new one today.",
+      "chip": "✕ Lost",
+      "cta": "Start over"
+    }
+  },
+  "crecimiento": {
+    "title": "Your garden",
+    "tag": "this week",
+    "chipEmpty": "Your sprout is waiting for today's first expense",
+    "chipPartial": "{{done}} of {{target}} expenses logged today",
+    "chipCompleto": "Full day · your sprout grew a whole day",
+    "chipCalma": "Calm day · your sprout grew twice as much",
+    "chipCalmaAt": "Calm day since {{time}} · it grew twice as much",
+    "footerPill": "Complete the 7 days and your garden blooms",
+    "footerCta": "Log an expense",
+    "secondary": "Mark a no-spend day",
+    "legendCompleto": "full day",
+    "legendHoy": "today's growth",
+    "legendCalma": "calm day",
+    "toneGreen": "Within today's budget",
+    "toneAmber": "Over today's budget"
+  },
+  "historial": {
+    "title": "Previous weeks",
+    "flowered": "In bloom",
+    "score": "{{score}} of 7"
+  },
+  "semanaPasada": {
+    "perfecta": {
+      "title": "Last week: perfect",
+      "sub": "Your garden bloomed · 7 of 7 days"
+    },
+    "buena": {
+      "title": "Last week: almost perfect",
+      "sub": "So close · {{score}} of 7 days"
+    },
+    "floja": {
+      "title": "Last week: slow",
+      "sub": "Your garden held on · {{score}} of 7 days"
+    },
+    "cortada": {
+      "title": "Last week: it broke",
+      "sub": "Your record is still safe · {{score}} of 7 days"
+    },
+    "cta": "See recap ›"
+  },
+  "logrosAccess": {
+    "title": "Achievements",
+    "count": "{{earned}} of {{total}}",
+    "countNext": "{{earned}} of {{total}} · next: {{next}}",
+    "countComplete": "{{earned}} of {{total}} · collection complete",
+    "unseen_one": "You have 1 new achievement to see",
+    "unseen_other": "You have {{count}} new achievements to see"
+  },
+  "nota": {
+    "text": "Every expense you log speeds up your sprout's growth. Complete the 7 days and your garden blooms. No spending? Mark the day and your sprout grows twice as much.",
+    "dismiss": "Dismiss the note"
+  },
   "card": {
     "title": "Your garden",
-    "legendToggleLabel": "What the sprouts mean",
-    "legendToggle": "what do they mean?",
     "firstWeek": "your first week",
     "weeksShown": "last {{count}} weeks"
-  },
-  "legend": {
-    "seed": "seed",
-    "growing": "growing",
-    "rooted": "rooted",
-    "bloom": "bloom",
-    "skipped": "skipped"
   },
   "hero": {
     "label": "ACTIVE STREAK",
     "unit": "sprouts\nin a row",
     "streakA11y_one": "{{count}} sprout in a row",
     "streakA11y_other": "{{count}} sprouts in a row",
-    "sub": "A seed for every day your home logs. The gaps are days without logs — no worries, the garden goes on.",
     "statGarden": "GARDEN",
     "statRecord": "RECORD",
     "statSeeds": "SEEDS"
@@ -40,31 +128,45 @@
     "continue": "Keep growing"
   },
   "weekClose": {
-    "perfect": {
+    "perfecta": {
       "label": "Perfect week",
       "title": "Your garden bloomed.",
       "sub": "You logged all 7 days. Every sprout reached its peak."
     },
-    "great": {
+    "buena": {
       "label": "Great week",
-      "title": "Almost full.",
+      "title": "Almost perfect.",
       "sub": "Most of your sprouts matured. You were a little short of a full garden."
     },
-    "going": {
-      "label": "Week underway",
-      "title": "You're finding your rhythm.",
-      "sub": "Your sprouts are growing. One more week like this and they'll fully mature."
+    "floja": {
+      "label": "Slow week",
+      "title": "Your garden held on.",
+      "sub": "A few sprouts made it through. One more week like this and they'll fully mature."
     },
-    "calm": {
-      "label": "Quiet week",
-      "title": "A few sprouts.",
-      "sub": "A few seeds peeked out. No guilt — next time you'll start strong."
-    },
-    "pause": {
-      "label": "A pause",
-      "title": "This week, rest.",
-      "sub": "You didn't log any days, and that's okay. Your garden is waiting, untouched."
+    "cortada": {
+      "label": "Lost week",
+      "title": "Your streak broke.",
+      "sub": "Your record and your garden are still safe. Plant again whenever you want."
     }
+  },
+  "cierre": {
+    "chip": "{{label}} · {{score}} of 7 days",
+    "kicker": "WEEK RECAP",
+    "unlockedKicker": "ACHIEVEMENT UNLOCKED!",
+    "nextKicker": "NEXT ACHIEVEMENT",
+    "calmDays_one": "1 calm day",
+    "calmDays_other": "{{count}} calm days",
+    "statBrotes": "SPROUTS",
+    "statJardin": "GARDEN",
+    "statRecord": "RECORD",
+    "statRacha": "STREAK",
+    "coachFloja": "Come back tomorrow: today's sprout can still bloom. One day at a time.",
+    "coachCortada": "Your record ({{record}}) and your garden ({{garden}}) are still safe. Plant today and start again.",
+    "ctaSeguir": "Keep growing",
+    "ctaSemana": "Keep this week going",
+    "ctaPlantar": "Plant today",
+    "linkLogros": "See achievements ›",
+    "linkLogrosTodos": "See all my achievements ›"
   },
   "leafIcon": {
     "a11y_one": "Your garden: {{count}}-day streak",

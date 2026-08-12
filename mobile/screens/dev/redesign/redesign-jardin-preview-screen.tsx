@@ -207,6 +207,14 @@ export const JARDIN_SEEDS: JardinSeed[] = [
 
   // ─── Logros (HTML:1079–1215) ───
   { key: 'logros-18', label: 'logros 18', screen: 'logros', logros: 'logros-18' },
+  // ④2 visto desde el JARDÍN: la card de acceso con el dot naranja (la misma
+  // pieza del cierre sin ver). Es la puerta de entrada al estado de abajo.
+  {
+    key: 'logros-sin-ver-jardin',
+    label: 'acceso sin ver',
+    screen: 'jardin',
+    state: { logrosUnseen: true },
+  },
   // ④2: logro nuevo sin ver (dot naranja + pop).
   {
     key: 'logros-nuevo-sin-ver',

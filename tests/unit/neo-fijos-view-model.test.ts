@@ -1152,7 +1152,7 @@ describe('buildHeroContent', () => {
     // quedar verificada solo por el título.
     expect(e6.emptyCtaLabel).toBe('+ Agregar tu primer fijo')
     expect(e6prime.emptyCtaLabel).toBe('+ Agregar otro fijo')
-    expect(e6.emptySub).toContain('Sumá alquiler')
+    expect(e6.emptySub).toContain('Suma alquiler')
     expect(e6prime.emptySub).toContain('ciclos posteriores')
   })
 
@@ -1175,7 +1175,7 @@ describe('buildHeroContent', () => {
       cycleStart: new Date(2026, 6, 19),
       cycleLastDay: new Date(2026, 7, 18),
     })
-    expect(c.outOfCycleSub).toBe('Confirmá tu cobro para cerrar julio y abrir el próximo ciclo.')
+    expect(c.outOfCycleSub).toBe('Confirma tu cobro para cerrar julio y abrir el próximo ciclo.')
     expect(c.outOfCycleSub).not.toContain('agosto')
   })
 
@@ -1186,7 +1186,7 @@ describe('buildHeroContent', () => {
       cycleStart: new Date(2026, 6, 1),
       cycleLastDay: new Date(2026, 6, 31),
     })
-    expect(c.outOfCycleSub).toBe('Confirmá tu cobro para cerrar junio y abrir el próximo ciclo.')
+    expect(c.outOfCycleSub).toBe('Confirma tu cobro para cerrar junio y abrir el próximo ciclo.')
   })
 
   it('E8: outOfCycleSummaryAmount formatea el monto vencido', () => {
