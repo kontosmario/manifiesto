@@ -98,6 +98,7 @@ const STREAK_DEFAULTS: StreakData = Object.freeze({
   isBroken: false,
   streakBrokenAt: null,
   markedDaysIso: Object.freeze([]) as unknown as string[],
+  markedDayTimes: new Map<string, string>(),
 })
 
 /**

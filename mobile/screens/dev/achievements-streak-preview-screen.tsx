@@ -448,6 +448,7 @@ function makeStreak(opts: {
     isBroken: Boolean(opts.isBroken),
     streakBrokenAt: opts.isBroken ? new Date().toISOString() : null,
     markedDaysIso: [],
+    markedDayTimes: new Map(),
   }
 }
 

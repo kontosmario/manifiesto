@@ -53,6 +53,14 @@ export interface StreakData {
    *  Limited to the last 35 by the underlying query — covers the
    *  garden grid's 5-week window. */
   markedDaysIso: string[]
+  /**
+   * `marked_date` → primer `marked_at` (ISO timestamp) de ese día. Alimenta
+   * el chip "marcado hoy a las {{time}}" del jardín. Puede venir VACÍO para
+   * un día que sí está en `markedDaysIso`: cuando el cache lo sembró
+   * `gastos_snapshot` (que sólo devuelve fechas) todavía no hay hora. El
+   * consumidor tiene que tolerar la ausencia, nunca asumir la hora.
+   */
+  markedDayTimes: Map<string, string>
 }
 
 export interface StreakDerived {
@@ -115,24 +123,74 @@ import { homeSnapshotQueryKey } from '@/features/home/home-snapshot-query-keys'
 
 interface MarkedDayRow {
   marked_date: string
+  marked_at: string | null
 }
 
-async function fetchMarkedDays(familyId: string): Promise<string[]> {
+/**
+ * Entrada del cache de días marcados.
+ *
+ * La forma es una UNIÓN a propósito, y es retro-compatible por necesidad:
+ * `gastos_snapshot` siembra ESTA MISMA key (`use-gastos-snapshot.ts`) con el
+ * `string[]` que devuelve la RPC, así que el hook tiene que saber leer las dos.
+ * Normalizar en `normalizeMarkedDays` mantiene `markedDaysIso` idéntico a
+ * siempre; lo único que se pierde con la siembra vieja es la HORA de la marca
+ * (el chip "marcado hoy a las 21:00" cae a su variante sin hora), nunca el día.
+ */
+export type MarkedDayEntry = string | MarkedDayRow
+
+export interface MarkedDaysNormalized {
+  iso: string[]
+  /** Primer `marked_at` de cada fecha (el más temprano del hogar). */
+  times: Map<string, string>
+}
+
+/** Fechas únicas + la hora de la primera marca de cada una. */
+export function normalizeMarkedDays(
+  entries: readonly MarkedDayEntry[] | undefined,
+): MarkedDaysNormalized {
+  const iso: string[] = []
+  const seen = new Set<string>()
+  const times = new Map<string, string>()
+  for (const entry of entries ?? []) {
+    const date = typeof entry === 'string' ? entry : entry.marked_date
+    if (!date) continue
+    const at = typeof entry === 'string' ? null : entry.marked_at
+    // `set` sólo la primera vez: las filas vienen ordenadas por marked_at
+    // ascendente dentro del día, así que la primera es la más temprana.
+    if (at && !times.has(date)) times.set(date, at)
+    if (seen.has(date)) continue
+    seen.add(date)
+    iso.push(date)
+  }
+  return { iso, times }
+}
+
+async function fetchMarkedDays(familyId: string): Promise<MarkedDayEntry[]> {
   // Marcas de TODOS los miembros (el día sin gasto es del hogar). El
   // objetivo son 35 DÍAS distintos (la grilla del jardín cubre 5
   // semanas), pero PostgREST no expone DISTINCT: como dos miembros
   // pueden marcar el MISMO día, se piden filas de sobra (35 × 3) y se
   // deduplica acá. Con menos margen, un hogar que marca en pareja
   // perdía brotes viejos de la grilla tras el primer refetch.
+  //
+  // `marked_at` viaja para el chip "marcado hoy a las {{time}}" del jardín
+  // rediseñado; el orden secundario ASCENDENTE hace que la primera fila de
+  // cada día sea la marca más TEMPRANA (si marcaron los dos, la del que
+  // cerró el día), que es la que el chip anuncia.
   const { data, error } = await supabase
     .from('streak_marked_days')
-    .select('marked_date')
+    .select('marked_date, marked_at')
     .eq('family_id', familyId)
     .order('marked_date', { ascending: false })
+    .order('marked_at', { ascending: true })
     .limit(105)
   if (error) throw error
-  const days = ((data as MarkedDayRow[] | null) ?? []).map((r) => r.marked_date)
-  return [...new Set(days)].slice(0, 35)
+  const rows = (data as MarkedDayRow[] | null) ?? []
+  const byDate = new Map<string, MarkedDayRow>()
+  for (const row of rows) {
+    if (!byDate.has(row.marked_date)) byDate.set(row.marked_date, row)
+  }
+  return [...byDate.values()].slice(0, 35)
 }
 
 async function fetchStreakRow(familyId: string): Promise<FamilyStreakRow | null> {
@@ -177,7 +235,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
     staleTime: 5 * 60_000,
     queryFn: () => fetchStreakRow(familyId!),
   })
-  const markedDaysQuery = useQuery<string[]>({
+  const markedDaysQuery = useQuery<MarkedDayEntry[]>({
     queryKey: markedDaysQueryKey(familyId),
     enabled: Boolean(familyId && userId),
     staleTime: 5 * 60_000,
@@ -188,7 +246,8 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
     if (!familyId || !userId) return null
     const row = streakRowQuery.data
     const expenses = expensesQuery.data ?? []
-    const markedDays = new Set(markedDaysQuery.data ?? [])
+    const marked = normalizeMarkedDays(markedDaysQuery.data)
+    const markedDays = new Set(marked.iso)
     const today = new Date()
     const tz = resolveDeviceTimezone()
     const todayIso = isoDay(today, tz)
@@ -233,6 +292,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
         isBroken: false,
         streakBrokenAt: null,
         markedDaysIso: [],
+        markedDayTimes: new Map(),
       }
     }
 
@@ -266,7 +326,8 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
       weekActivity: week,
       isBroken,
       streakBrokenAt: row.streak_broken_at,
-      markedDaysIso: markedDaysQuery.data ?? [],
+      markedDaysIso: marked.iso,
+      markedDayTimes: marked.times,
     }
   }, [familyId, userId, streakRowQuery.data, expensesQuery.data, markedDaysQuery.data])
 

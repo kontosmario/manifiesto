@@ -4,6 +4,10 @@
 // brote tenue. Refleja la lógica del prototipo de diseño (renderVals()).
 
 import i18n from '@/lib/i18n'
+// Type-only: `crecimiento-model` importa `isoDay` de ACÁ, así que un import de
+// valor cerraría el ciclo. `import type` se borra en compilación (tsc y Babel),
+// así que el grafo de módulos en runtime sigue siendo unidireccional.
+import type { CountsPorDia } from './crecimiento-model'
 
 export type BroteStage =
   | 'pre'
@@ -23,14 +27,64 @@ export interface GardenCell {
   isToday: boolean
 }
 
+/**
+ * Las 4 variantes del cierre de semana del rediseño 2026-08 (§5 del plan).
+ * Espejo del tipo del kit (`redesign/jardin/cierre-screen` y `jardin-screen`,
+ * que son unions de strings idénticas): vive ACÁ, igual que `HistoryDot`, para
+ * que el modelo puro y el hook no importen un módulo de componentes (que
+ * arrastra Skia) sólo por un tipo. Al ser una union estructural, lo que el
+ * modelo devuelve entra tal cual en `SemanaPasadaVM.variant` y en
+ * `CierreVM.variant` — si alguna de las tres listas se desalinea, tsc lo caza
+ * en el cableado (`garden-screen`).
+ */
+export type WeekCloseVariant = 'perfecta' | 'buena' | 'floja' | 'cortada'
+
+export interface WeekCloseDay {
+  letter: string
+  registered: boolean
+  recovered: boolean
+  /**
+   * Día EN CALMA: marcado sin gastos y sin un solo gasto discrecional (misma
+   * regla que `deriveDayRings` y que el historial). `registered` no alcanza
+   * para saberlo — `familyActivityDays` funde marcas y gastos en un solo set,
+   * así que sin esto un día marcado es indistinguible de uno con compras.
+   */
+  calma: boolean
+}
+
 export interface WeekClose {
   score: number
+  /** El tramo del cierre (4 variantes). Ver `weekCloseCopy`. */
+  variant: WeekCloseVariant
+  /**
+   * Madurez del jardín de esa semana en la escala VIEJA (5 tramos por score).
+   * Se conserva —igual que `bloom`— porque lo consumen la celebración legacy y
+   * el preview de la intro pre-auth (`INTRO_WEEK_CLOSE`); la vista nueva del
+   * cierre se guía por `variant`.
+   */
   stage: 'none' | 'seed' | 'germ' | 'fern'
   bloom: boolean
   label: string
   title: string
   sub: string
-  days: Array<{ letter: string; registered: boolean; recovered: boolean }>
+  days: WeekCloseDay[]
+}
+
+/** Opciones de `deriveWeekClose` (todas opcionales: sin ellas el resultado es
+ *  el de siempre, con `calma: false` en los 7 días). */
+export interface WeekCloseOptions {
+  /**
+   * Racha VIVA al momento de mirar el cierre (`!isBroken && currentStreak > 0`).
+   * Es la guarda del tramo `cortada`: un score ≤1 NO implica racha cortada — si
+   * la única actividad de la semana fue el domingo, la racha cruza viva al
+   * lunes y decir "Tu racha se cortó" sería mentir.
+   */
+  streakAlive?: boolean
+  /** Días marcados "sin gastos" del hogar (`useStreak.markedDaysIso`). */
+  markedDaysIso?: readonly string[] | ReadonlySet<string>
+  /** Gastos DISCRECIONALES por día (`familyActivityWithCounts`): un día marcado
+   *  con `force` sobre compras es un día completo, nunca un día en calma. */
+  discrecionalesPorDia?: ReadonlyMap<string, number>
 }
 
 export const GARDEN_COLS = 7
@@ -71,12 +125,48 @@ export function familyActivityDays(
   markedDaysIso: readonly string[],
   tz: string,
 ): Set<string> {
+  return familyActivityWithCounts(expenses, markedDaysIso, tz).activity
+}
+
+/**
+ * El set de actividad del hogar Y los conteos por día, en UNA sola pasada.
+ *
+ * El aro de crecimiento (§3 del rediseño 2026-08) necesita cuántos gastos tuvo
+ * cada día; la racha necesita si tuvo alguno. Derivarlos por separado sobre el
+ * mismo cache abría la puerta a que divergieran (dos filtros que hay que
+ * mantener iguales a mano): acá el filtro es LITERALMENTE el mismo recorrido.
+ *
+ *  · `activity`             → días plantados: gasto de cualquier miembro con
+ *                             `created_by` no-null ∪ días marcados sin-gasto.
+ *  · `counts.todos`         → espejo exacto de ese filtro, contando (pagos de
+ *                             fijos incluidos).
+ *  · `counts.discrecionales`→ además excluye `commitment_id`: es la definición
+ *                             de "día sin gastos" del server
+ *                             (`mark_no_expense_day`), la que decide si un día
+ *                             marcado es de verdad un día EN CALMA.
+ *
+ * Los días marcados entran a `activity` pero NO a los counts: no son gastos.
+ */
+export function familyActivityWithCounts(
+  expenses: ReadonlyArray<{
+    created_at: string
+    created_by: string | null
+    commitment_id?: string | null
+  }>,
+  markedDaysIso: readonly string[],
+  tz: string,
+): { activity: Set<string>; counts: CountsPorDia } {
   const activity = new Set<string>(markedDaysIso)
+  const todos = new Map<string, number>()
+  const discrecionales = new Map<string, number>()
   for (const e of expenses) {
     if (!e.created_by) continue
-    activity.add(isoDay(new Date(e.created_at), tz))
+    const iso = isoDay(new Date(e.created_at), tz)
+    activity.add(iso)
+    todos.set(iso, (todos.get(iso) ?? 0) + 1)
+    if (!e.commitment_id) discrecionales.set(iso, (discrecionales.get(iso) ?? 0) + 1)
   }
-  return activity
+  return { activity, counts: { todos, discrecionales } }
 }
 
 // El helecho arraiga a los 7 días (1 semana) y sigue engrosando un poco con la
@@ -202,75 +292,152 @@ export function deriveGardenCells(
   return cells
 }
 
-// Score 0–7 de la semana L→D → madurez + copy. Tabla del handoff.
-export function weekCloseCopy(score: number): {
+/**
+ * Score 0–7 de la semana L→D → variante del cierre (§5, rediseño 2026-08):
+ *
+ *   7        → `perfecta`   (la única que florece)
+ *   6, 5     → `buena`
+ *   4, 3, 2  → `floja`
+ *   1, 0     → `cortada`, salvo que la racha siga VIVA → `floja`
+ *
+ * La guarda de la racha viva no es un detalle de copy: el score cuenta los días
+ * de la semana CERRADA, y una semana cuya única actividad fue el domingo deja
+ * la racha cruzando viva al lunes. Anunciar "Tu racha se cortó" ahí sería
+ * mentir sobre el dato que la pantalla misma muestra al lado.
+ */
+export function weekCloseVariant(score: number, opts?: WeekCloseOptions): WeekCloseVariant {
+  if (score >= 7) return 'perfecta'
+  if (score >= 5) return 'buena'
+  if (score >= 2) return 'floja'
+  return opts?.streakAlive ? 'floja' : 'cortada'
+}
+
+/**
+ * Variante + copy + la madurez legacy (`stage`/`bloom`, conservada para la
+ * celebración vieja y el preview de la intro; sus cortes NO cambiaron).
+ */
+export function weekCloseCopy(
+  score: number,
+  opts?: WeekCloseOptions,
+): {
+  variant: WeekCloseVariant
   stage: WeekClose['stage']
   bloom: boolean
   label: string
   title: string
   sub: string
 } {
-  if (score >= 7)
-    return {
-      stage: 'fern',
-      bloom: true,
-      label: i18n.t('garden:weekClose.perfect.label'),
-      title: i18n.t('garden:weekClose.perfect.title'),
-      sub: i18n.t('garden:weekClose.perfect.sub'),
-    }
-  if (score >= 5)
-    return {
-      stage: 'fern',
-      bloom: false,
-      label: i18n.t('garden:weekClose.great.label'),
-      title: i18n.t('garden:weekClose.great.title'),
-      sub: i18n.t('garden:weekClose.great.sub'),
-    }
-  if (score >= 3)
-    return {
-      stage: 'germ',
-      bloom: false,
-      label: i18n.t('garden:weekClose.going.label'),
-      title: i18n.t('garden:weekClose.going.title'),
-      sub: i18n.t('garden:weekClose.going.sub'),
-    }
-  if (score >= 1)
-    return {
-      stage: 'seed',
-      bloom: false,
-      label: i18n.t('garden:weekClose.calm.label'),
-      title: i18n.t('garden:weekClose.calm.title'),
-      sub: i18n.t('garden:weekClose.calm.sub'),
-    }
+  const variant = weekCloseVariant(score, opts)
+  // Escala vieja de madurez, intacta: fern ≥5 · germ ≥3 · seed ≥1 · none 0.
+  const stage: WeekClose['stage'] =
+    score >= 5 ? 'fern' : score >= 3 ? 'germ' : score >= 1 ? 'seed' : 'none'
   return {
-    stage: 'none',
-    bloom: false,
-    label: i18n.t('garden:weekClose.pause.label'),
-    title: i18n.t('garden:weekClose.pause.title'),
-    sub: i18n.t('garden:weekClose.pause.sub'),
+    variant,
+    stage,
+    bloom: score >= 7,
+    label: i18n.t(`garden:weekClose.${variant}.label`),
+    title: i18n.t(`garden:weekClose.${variant}.title`),
+    sub: i18n.t(`garden:weekClose.${variant}.sub`),
   }
 }
 
-/** `weekDayIso(i)` devuelve el ISO del día i de la semana (0=Lunes..6=Domingo). */
+/**
+ * `weekDayIso(i)` devuelve el ISO del día i de la semana (0=Lunes..6=Domingo).
+ * `opts` trae la guarda de racha viva y las dos fuentes que hacen falta para
+ * marcar los días EN CALMA (ver `WeekCloseOptions`).
+ */
 export function deriveWeekClose(
   activityIso: ReadonlySet<string>,
   recoveredIso: ReadonlySet<string>,
   weekDayIso: (dayIndexMonday0: number) => string,
+  opts?: WeekCloseOptions,
 ): WeekClose {
   const letters = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
-  const days = letters.map((letter, i) => {
+  const marked = new Set<string>(opts?.markedDaysIso ?? [])
+  const discrecionales = opts?.discrecionalesPorDia
+  const days: WeekCloseDay[] = letters.map((letter, i) => {
     const iso = weekDayIso(i)
     const registered = activityIso.has(iso)
-    // Día recuperado por un escudo: NO es actividad orgánica, pero tampoco un
-    // salteado — se muestra distinto (coral) en la celebración.
-    return { letter, registered, recovered: !registered && recoveredIso.has(iso) }
+    return {
+      letter,
+      registered,
+      // Día recuperado por un escudo: NO es actividad orgánica, pero tampoco un
+      // salteado — se muestra distinto (coral) en la celebración.
+      recovered: !registered && recoveredIso.has(iso),
+      // MISMA regla que `deriveDayRings` y `historyDotFor`: marcado y sin un
+      // solo gasto discrecional. Un marcado con `force` sobre un día con
+      // compras es un día completo, no un día en calma.
+      calma: marked.has(iso) && (discrecionales?.get(iso) ?? 0) === 0,
+    }
   })
   // El score cuenta SOLO días orgánicos: 6 orgánicos + 1 recuperado es "gran
   // semana" (6/7), nunca "perfecta" — el escudo salva la racha, no fabrica una
   // floración (la floración sigue exigiendo 7/7 orgánico en deriveGardenCells).
   const score = days.filter((d) => d.registered).length
-  const copy = weekCloseCopy(score)
+  const copy = weekCloseCopy(score, opts)
   return { score, ...copy, days }
+}
+
+// ── Historial de semanas anteriores (rediseño 2026-08) ─────────────────
+
+/**
+ * Dot de una semana pasada en el resumen de la card y en el sheet de
+ * historial. Espejo del `HistoryDot` del kit (`redesign/jardin/jardin-screen`);
+ * vive acá para que el hook no tenga que importar un módulo de componentes
+ * (que arrastra Skia) sólo por un tipo.
+ */
+export type HistoryDot = 'full' | 'calma' | 'missed' | 'recovered' | 'pre'
+
+/** El resumen muestra 2 filas y el sheet hasta 4 semanas (README:56). */
+export const HISTORY_MAX_WEEKS = 4
+
+interface HistoryDotInput {
+  activityIso: ReadonlySet<string>
+  markedDaysIso: ReadonlySet<string>
+  discrecionalesPorDia: ReadonlyMap<string, number>
+  recoveredIso: ReadonlySet<string>
+  startIso: string | null
+}
+
+/**
+ * Un día del historial. El orden es el MISMO de `deriveDayRings` y de
+ * `deriveGardenCells` (logged-first): primero "sin culpa" (previo al primer
+ * brote), después la calma, después lo plantado, después el escudo, y recién
+ * ahí lo perdido. Sin el orden, un día recuperado por escudo que después
+ * recibió un gasto back-dateado se pintaría coral en vez de verde.
+ */
+function historyDotFor(iso: string, a: HistoryDotInput): HistoryDot {
+  // Sin ningún brote todavía no hay jardín que juzgar: todo es previo.
+  if (a.startIso === null || iso < a.startIso) return 'pre'
+  const marcado = a.markedDaysIso.has(iso)
+  if (marcado && (a.discrecionalesPorDia.get(iso) ?? 0) === 0) return 'calma'
+  if (a.activityIso.has(iso)) return 'full'
+  if (a.recoveredIso.has(iso)) return 'recovered'
+  return 'missed'
+}
+
+/**
+ * Hasta `HISTORY_MAX_WEEKS` semanas calendario ANTERIORES a la vigente, L→D.
+ * `rows[0]` es la semana pasada (más reciente primero, como el sheet del
+ * handoff). Con `weeksShown <= 1` no hay historial: devuelve `[]` y el
+ * llamador manda `null` al VM (matriz ②9, "primera semana").
+ */
+export function deriveHistoryWeeks(
+  a: HistoryDotInput & { todayIso: string; weeksShown: number },
+): HistoryDot[][] {
+  const weeks = Math.min(HISTORY_MAX_WEEKS, Math.max(0, a.weeksShown - 1))
+  if (weeks <= 0) return []
+  const currentMonday = utcDays(a.todayIso) - dowMonday0(a.todayIso)
+  const rows: HistoryDot[][] = []
+  for (let w = 1; w <= weeks; w++) {
+    const monday = currentMonday - w * GARDEN_COLS
+    const row: HistoryDot[] = []
+    for (let d = 0; d < GARDEN_COLS; d++) {
+      row.push(historyDotFor(isoFromUtcDays(monday + d), a))
+    }
+    rows.push(row)
+  }
+  return rows
 }
 
 // ── Tira semanal (widget de Home) ──────────────────────────────────────
