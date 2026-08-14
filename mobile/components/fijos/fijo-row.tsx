@@ -495,9 +495,14 @@ function FijoRowReal({
               ) : null}
               {/*
                 Deuda acumulada: cuántas cuotas se juntaron sin pagar
-                (Task 3, `missedCuotas`). Mismo estilo de texto que el chip
-                del mes de al lado — es informativo, no un chip propio
-                nuevo.
+                (Task 3, `missedCuotas`). Misma tipografía que el chip del
+                mes de al lado — es informativo, no un chip propio nuevo.
+                El COLOR es `accent.solid` (el mismo `computeAccent(status,
+                …)` que ya usa el resto de la fila para overdue), no el
+                verde fijo de `cuotaShort` — ese chip está pintado SIEMPRE
+                en el tono "paid" a propósito (informa el período, no la
+                urgencia), pero acá el mensaje ES la urgencia ("Debes 3
+                cuotas"): pintarlo en verde diría lo contrario del texto.
               */}
               {missedLabel ? (
                 <Text
@@ -505,7 +510,7 @@ function FijoRowReal({
                     styles.monthChipText,
                     { color: accent.solid },
                     skin.kind === 'neo'
-                      ? { ...neoChipTextStyle(skin), color: skin.accent('paid').ink }
+                      ? { ...neoChipTextStyle(skin), color: accent.solid }
                       : null,
                   ]}
                   numberOfLines={1}
@@ -700,8 +705,16 @@ const styles = StyleSheet.create({
   },
   // Bottom strip de la card — fila dedicada para los chips de status
   // (mes + badge). Vive debajo del top row, con full width del card.
+  // `flexWrap: 'wrap'` porque los chips (mes + deuda + status + trend) no
+  // encogen (`flexShrink: 0` en los que son View) — sin wrap, con textos
+  // largos (ej. "Debes 12 cuotas") el contenido desborda el ancho de la
+  // card y el SwipeRow que la envuelve (overflow:'hidden') RECORTA los
+  // últimos chips en vez de dejarlos sangrar. El `gap: 6` que ya tenía el
+  // strip aplica como rowGap entre líneas envueltas (Yoga gap uniforme),
+  // así que no hace falta un token nuevo.
   metaBottomStrip: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 6,
     marginTop: 10,
