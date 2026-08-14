@@ -124,8 +124,15 @@ describe('summarizeFijos — status classification', () => {
     expect(s.paidItems[0]!.computedStatus).toBe('paid')
   })
 
-  it('payment del cycle → paid (override de cualquier next_due_on)', () => {
-    const item = makeFixed({ id: 'fx-pago', next_due_on: '2026-06-03' })
+  it('payment del cycle → paid (next_due_on no vencido)', () => {
+    // v5: next_due_on ya NO puede estar en el pasado para que gane 'paid'
+    // (overdue tiene prioridad — ver describe de v5 más abajo). Antes este
+    // fixture usaba next_due_on='2026-06-03' (< TODAY) para probar que el
+    // pago "pisaba cualquier next_due_on"; ese caso ahora es 'overdue' por
+    // diseño. Movemos next_due_on dentro del ciclo activo, sin vencer, para
+    // seguir probando lo que este test realmente verifica: que un payment
+    // en el ciclo resuelve `paidPaymentId`.
+    const item = makeFixed({ id: 'fx-pago', next_due_on: '2026-06-20' })
     const s = summarizeFijos({
       items: [item],
       paymentsThisCycle: [
@@ -148,7 +155,9 @@ describe('summarizeFijos — status classification', () => {
   it('payment optimista → paid pero paidPaymentId null (no revertible aún)', () => {
     // Durante la ventana optimista el payment.id es `optimistic-<iso>-<fx>`,
     // que NO debe ofrecerse como revertible (22P02 contra la RPC uuid).
-    const item = makeFixed({ id: 'fx-opt', next_due_on: '2026-06-03' })
+    // next_due_on dentro del ciclo, no vencido — ver comentario v5 en el
+    // test anterior (overdue gana sobre paid si next_due_on ya pasó).
+    const item = makeFixed({ id: 'fx-opt', next_due_on: '2026-06-20' })
     const s = summarizeFijos({
       items: [item],
       paymentsThisCycle: [
@@ -425,5 +434,85 @@ describe('groupFijosByCategory', () => {
 
   it('input vacío → array vacío', () => {
     expect(groupFijosByCategory({ items: [], categories: [] })).toEqual([])
+  })
+})
+
+describe('computeItemStatus v5 — overdue gana sobre paid (vía summarizeFijos)', () => {
+  it('con pago en el ciclo pero next_due_on aún en el pasado → overdue', () => {
+    // Debía may-15 y jun-1; pagó may (RPC avanzó next_due_on a jun-1,
+    // que sigue < TODAY jun-8). Antes: 'paid' (deuda invisible).
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-06-01', last_paid_at: '2026-06-07T10:00:00Z' })],
+      paymentsThisCycle: [
+        {
+          id: 'pay-1',
+          fixedExpenseId: 'fx-1',
+          periodMonth: '2026-05-01',
+          paidAt: '2026-06-07T10:00:00Z',
+          paidBy: 'user-1',
+          createdAt: '2026-06-07T10:00:00Z',
+          expenseId: 'exp-1',
+        },
+      ],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.overdueItems).toHaveLength(1)
+    expect(summary.paidItems).toHaveLength(0)
+  })
+
+  it('pagado al día (next_due_on avanzado fuera del ciclo) sigue siendo paid', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-07-15', last_paid_at: '2026-06-07T10:00:00Z' })],
+      paymentsThisCycle: [
+        {
+          id: 'pay-1',
+          fixedExpenseId: 'fx-1',
+          periodMonth: '2026-06-01',
+          paidAt: '2026-06-07T10:00:00Z',
+          paidBy: 'user-1',
+          createdAt: '2026-06-07T10:00:00Z',
+          expenseId: 'exp-1',
+        },
+      ],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.paidItems).toHaveLength(1)
+    expect(summary.overdueItems).toHaveLength(0)
+  })
+
+  it('semanal pagado semana 1 con siguiente vencimiento ya pasado → overdue', () => {
+    // Pagó jun-1 (weekly, next_due_on avanzó a jun-8… ya venció de nuevo
+    // el jun-5 — simulamos next_due_on jun-5 < TODAY jun-8).
+    const summary = summarizeFijos({
+      items: [
+        makeFixed({
+          frequency: 'weekly',
+          next_due_on: '2026-06-05',
+          last_paid_at: '2026-06-01T10:00:00Z',
+        }),
+      ],
+      paymentsThisCycle: [
+        {
+          id: 'pay-1',
+          fixedExpenseId: 'fx-1',
+          periodMonth: '2026-06-01',
+          paidAt: '2026-06-01T10:00:00Z',
+          paidBy: 'user-1',
+          createdAt: '2026-06-01T10:00:00Z',
+          expenseId: 'exp-1',
+        },
+      ],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.overdueItems).toHaveLength(1)
   })
 })

@@ -139,11 +139,13 @@ const HIKE_MIN_DELTA_PCT = 5
 
 /**
  * Translates next_due_on + payment record + today + ciclo activo into a status:
- *   paid     → payment record para este ciclo (gana sobre todo lo demás)
- *              O cycle covered by prior payment (next_due_on >= cycleEnd
- *              AND last_paid_at != null) — caso "ya pagué este fijo,
- *              próxima cuota cae después del ciclo".
- *   overdue  → next_due_on < HOY, sin pago → ya venció y no se pagó.
+ *   overdue  → next_due_on < HOY (gana sobre todo lo demás, incluso un
+ *              payment en el ciclo — ver v5 en la Historia).
+ *   paid     → payment record para este ciclo, con next_due_on ya en
+ *              el presente/futuro O cycle covered by prior payment
+ *              (next_due_on >= cycleEnd AND last_paid_at != null) —
+ *              caso "ya pagué este fijo, próxima cuota cae después
+ *              del ciclo".
  *   future   → next_due_on >= cycleEnd Y last_paid_at == null →
  *              fijo creado recién, sin pagos, próxima cuota lejana.
  *   pending  → next_due_on cae entre HOY y cycleEnd → cuota toca, no
@@ -166,11 +168,17 @@ const HIKE_MIN_DELTA_PCT = 5
  *   termina 20 junio → quedaba como 'future' cuando el user lo
  *   percibía como 'paid').
  *
- *   v4 (HOY): agrega la regla "cycle covered by prior payment". Si
- *   next_due_on >= cycleEnd Y last_paid_at != null → 'paid' (el
- *   ciclo está cubierto por un pago previo, no hay cuota que toque
- *   en este ciclo). Solo cae a 'future' si NUNCA se pagó (fijo
- *   nuevo).
+ *   v4 (2026-08-13): agrega la regla "cycle covered by prior
+ *   payment". Si next_due_on >= cycleEnd Y last_paid_at != null →
+ *   'paid' (el ciclo está cubierto por un pago previo, no hay cuota
+ *   que toque en este ciclo). Solo cae a 'future' si NUNCA se pagó
+ *   (fijo nuevo).
+ *
+ *   v5 (HOY): overdue gana sobre paid. Si `next_due_on` está en el
+ *   pasado hay una cuota impaga AHORA, aunque exista un pago este
+ *   ciclo (catch-up parcial: pagó la cuota más vieja y quedan más).
+ *   Antes `paidThisPeriod` ganaba y la deuda restante quedaba
+ *   invisible e impagable hasta el próximo ciclo.
  */
 function computeItemStatus(input: {
   item: FixedExpense
@@ -179,29 +187,32 @@ function computeItemStatus(input: {
   cycleEnd: Date
 }): FijoItemStatus {
   const { item, paidThisPeriod, today, cycleEnd } = input
-  if (paidThisPeriod) return 'paid'
-  if (!item.next_due_on) return 'pending'
   // Comparamos en UTC midnight — el `next_due_on` viene como
   // 'YYYY-MM-DD' del DB sin TZ; `today` se normaliza a midnight local
   // pero usamos getUTC* para comparar como fechas calendario puras.
-  const due = new Date(item.next_due_on)
-  const dueUtc = Date.UTC(
-    due.getUTCFullYear(),
-    due.getUTCMonth(),
-    due.getUTCDate(),
-  )
+  // Hoisteados arriba de todo: los usan tanto el check de overdue (v5,
+  // primero) como el resto de la función — una sola definición, sin
+  // recomputar ni divergir.
   const todayUtc = Date.UTC(
     today.getUTCFullYear(),
     today.getUTCMonth(),
     today.getUTCDate(),
   )
+  const due = item.next_due_on ? new Date(item.next_due_on) : null
+  const dueUtc = due ? Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate()) : null
+  // v5: OVERDUE GANA SOBRE PAID. Si `next_due_on` está en el pasado hay
+  // una cuota impaga AHORA, aunque exista un pago este ciclo (catch-up
+  // parcial: pagó la cuota más vieja y quedan más). Antes `paidThisPeriod`
+  // ganaba y la deuda restante quedaba invisible e impagable hasta el
+  // próximo ciclo.
+  if (dueUtc != null && dueUtc < todayUtc) return 'overdue'
+  if (paidThisPeriod) return 'paid'
+  if (dueUtc == null) return 'pending'
   const endUtc = Date.UTC(
     cycleEnd.getUTCFullYear(),
     cycleEnd.getUTCMonth(),
     cycleEnd.getUTCDate(),
   )
-  // 1) Ya pasó la fecha de vencimiento y no se pagó → overdue.
-  if (dueUtc < todayUtc) return 'overdue'
   // 2) Vencimiento cae en un ciclo posterior.
   //    Si hay last_paid_at (fijo ya pagado al menos una vez) → 'paid':
   //    el ciclo activo está cubierto por el pago previo, la próxima
