@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Pressable, StyleSheet, TextInput, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, TextInput, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { StyleSheet, View } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
@@ -53,7 +54,7 @@ export function DestroyFamilyConfirmSheet({
     : t('settings:destroyFamily.phraseFamily')
   const [step, setStep] = useState<1 | 2>(1)
   const [phrase, setPhrase] = useState('')
-  const inputRef = useRef<TextInput | null>(null)
+  const inputRef = useRef<RNTextInput | null>(null)
 
   // Reset to step 1 every time the sheet opens (don't preserve the
   // previous typing state — destructive flows should always start

@@ -1,4 +1,5 @@
-import { Keyboard, Platform, TextInput } from 'react-native'
+import { Keyboard, Platform } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AuthMode } from '@/features/auth/auth-flow'
 import {
@@ -17,9 +18,9 @@ export function useAuthKeyboardController({
   const [keyboardShiftTarget, setKeyboardShiftTarget] = useState(0)
   const [focusedField, setFocusedField] = useState<FocusedAuthField | null>(null)
 
-  const nameInputRef = useRef<TextInput | null>(null)
-  const emailInputRef = useRef<TextInput | null>(null)
-  const passwordInputRef = useRef<TextInput | null>(null)
+  const nameInputRef = useRef<RNTextInput | null>(null)
+  const emailInputRef = useRef<RNTextInput | null>(null)
+  const passwordInputRef = useRef<RNTextInput | null>(null)
   const focusedFieldBaseBottomRef = useRef(0)
   // `keyboardShift` Animated.Value removed (2026-04-30): exposed by
   // the hook but never plumbed into a JSX transform. The actual

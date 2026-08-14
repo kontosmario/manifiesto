@@ -2,10 +2,9 @@ import { useState } from 'react'
 import {
   StyleSheet,
   Switch,
-  TextInput,
   View,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { Screen } from '@/components/ui/screen'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'

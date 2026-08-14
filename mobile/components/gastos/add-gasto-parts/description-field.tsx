@@ -12,7 +12,8 @@
 // del rail— para animar la opacidad de un anillo de 2px, y otra vez al
 // desenfocar.
 import { useEffect, useState } from 'react'
-import { StyleSheet, TextInput } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,

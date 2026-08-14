@@ -12,8 +12,8 @@
 // screen no aplica el monto) y sin la mitad explicativa el paso se leía como
 // "no pasa nada" sin decir por qué.
 import { memo } from 'react'
-import { StyleSheet, TextInput, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'

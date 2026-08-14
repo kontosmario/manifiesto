@@ -1,7 +1,8 @@
 // Réplica del design doc (4a/4ao); copy vía t() (cableado i18n 2026-07-18).
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, TextInput, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot'
@@ -181,8 +182,8 @@ export function Auth4aCrearCuenta({
 
   // Cadena de foco nombre→email→contraseña→submit (la de la pantalla
   // vieja, refs internos) + submit compartido CTA/tecla "go".
-  const emailRef = useRef<TextInput>(null)
-  const passwordRef = useRef<TextInput>(null)
+  const emailRef = useRef<RNTextInput>(null)
+  const passwordRef = useRef<RNTextInput>(null)
   const handleCreate = () => {
     if (submitting) return
     onCreate?.({ name: nombre.trim(), email: email.trim(), password: password.trim() })

@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { StyleSheet, View, type TextInputProps } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -42,7 +43,7 @@ interface NeoTextFieldProps extends TextInputProps {
  * continuidad la aporta el label, que sí cruza de color con
  * `interpolateColor`.
  */
-export const NeoTextField = forwardRef<TextInput, NeoTextFieldProps>(function NeoTextField(
+export const NeoTextField = forwardRef<RNTextInput, NeoTextFieldProps>(function NeoTextField(
   { label, helper, trailing, style, warning = false, error, ...inputProps },
   ref,
 ) {

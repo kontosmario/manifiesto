@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import { Pressable, StyleSheet, TextInput, View, type ImageSourcePropType } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { Pressable, StyleSheet, View, type ImageSourcePropType } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'

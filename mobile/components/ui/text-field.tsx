@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { StyleSheet, View, type TextInputProps } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   useSharedValue,
@@ -40,7 +41,7 @@ interface TextFieldProps extends TextInputProps {
  *     (theme-mapped: brand.deep light, brand.bright dark).
  *   · borderWidth animates 1 → 2 to feel like the input "lifts".
  */
-export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextField(
   { label, helper, trailing, style, warning = false, ...inputProps },
   ref,
 ) {

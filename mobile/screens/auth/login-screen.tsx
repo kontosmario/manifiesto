@@ -6,9 +6,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
@@ -869,7 +869,7 @@ export function LoginScreen() {
 interface PasswordFormProps {
   mode: 'use-password' | 'change-account'
   storedEmail: string
-  emailRef: React.RefObject<TextInput | null>
+  emailRef: React.RefObject<RNTextInput | null>
   errorMessage: string | null
   infoMessage: string | null
   isBusy: boolean
@@ -879,7 +879,7 @@ interface PasswordFormProps {
   onChangePassword: (value: string) => void
   onSubmit: () => void
   password: string
-  passwordRef: React.RefObject<TextInput | null>
+  passwordRef: React.RefObject<RNTextInput | null>
   colors: ThemeColors
 }
 

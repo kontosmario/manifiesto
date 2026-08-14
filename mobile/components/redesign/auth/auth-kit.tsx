@@ -15,7 +15,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
   type KeyboardTypeOptions,
   type NativeScrollEvent,
@@ -23,7 +22,8 @@ import {
   type RefreshControlProps,
   type TextInputProps,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import type { TextInput as RNTextInput } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
@@ -393,7 +393,7 @@ export function AuthTextField({
   onSubmitEditing?: () => void
   autoFocus?: boolean
   /** Ref al TextInput real (cadena next→focus de las pantallas). */
-  inputRef?: Ref<TextInput>
+  inputRef?: Ref<RNTextInput>
 }) {
   const s = AUTH_SPEC[mode]
   const [focused, setFocused] = useState(false)
@@ -498,7 +498,7 @@ export function AuthPasswordField({
   onSubmitEditing?: () => void
   autoFocus?: boolean
   /** Ref al TextInput real (cadena next→focus de las pantallas). */
-  inputRef?: Ref<TextInput>
+  inputRef?: Ref<RNTextInput>
 }) {
   const s = AUTH_SPEC[mode]
   const { t } = useTranslation()

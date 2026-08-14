@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import Animated, {
   FadeInDown,
   useAnimatedStyle,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, TextInput } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { TextInput } from '@/components/ui/app-text'
 import { nunitoFamily } from '@/theme/typography'
 import {
   OnbActiveRing,

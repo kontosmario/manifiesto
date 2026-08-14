@@ -3,11 +3,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
   type ViewStyle,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { Text, TextInput } from '@/components/ui/app-text'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,

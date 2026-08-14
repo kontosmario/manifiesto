@@ -6,9 +6,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
@@ -145,9 +145,9 @@ export function SignupScreen() {
     emailRef.current?.focus?.()
   }, [])
 
-  const nameRef = useRef<TextInput | null>(null)
-  const emailRef = useRef<TextInput | null>(null)
-  const passwordRef = useRef<TextInput | null>(null)
+  const nameRef = useRef<RNTextInput | null>(null)
+  const emailRef = useRef<RNTextInput | null>(null)
+  const passwordRef = useRef<RNTextInput | null>(null)
 
   const canSubmit = useMemo(
     () =>

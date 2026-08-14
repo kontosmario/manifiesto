@@ -11,7 +11,8 @@
 // modelo (`useAddIncomeForm`) no lo conoce y los tests no lo tienen que
 // simular.
 import { useEffect, useState } from 'react'
-import { StyleSheet, TextInput } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { TextInput } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   interpolateColor,

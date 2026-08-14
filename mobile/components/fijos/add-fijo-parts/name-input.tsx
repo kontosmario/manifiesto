@@ -3,7 +3,8 @@
 // y SOLO color al toggle de warning (zero layout shift). Extraído de
 // `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
-import { StyleSheet, TextInput } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
