@@ -404,9 +404,9 @@ export interface BuildTickerItemsResult {
 
 /**
  * §3.8.1. El tag de un `overdue` es SIEMPRE el literal `'VENCIDO'` — nunca
- * derivado de `daysUntilDue`, que para un item vencido envuelve el ciclo
- * (`fijos-aggregates.model.ts:223-226`, puede dar un número grande tipo 27).
- * `dueSoon` se ordena asc por `daysUntilDue` antes de tagear HOY/EN Nd.
+ * derivado de `daysUntilDue`, que para un item vencido queda clampeado a 0
+ * (`fijos-aggregates.model.ts` — diferencia real de fechas, ya no wrap del
+ * ciclo). `dueSoon` se ordena asc por `daysUntilDue` antes de tagear HOY/EN Nd.
  */
 export function buildTickerItems(input: BuildTickerItemsInput): BuildTickerItemsResult {
   const { overdue, dueSoon, cap } = input

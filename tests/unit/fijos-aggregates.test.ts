@@ -559,6 +559,42 @@ describe('computeMissedCuotas', () => {
   })
 })
 
+describe('daysUntilDue real (diferencia de fechas)', () => {
+  it('pendiente a 7 días devuelve 7 aunque cruce de mes', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-06-15', day_of_month: 15 })],
+      paymentsThisCycle: [],
+      today: TODAY, // 2026-06-08
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.pendingItems[0]?.daysUntilDue).toBe(7)
+  })
+  it('vencido devuelve 0, no el wrap del ciclo', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-06-05', day_of_month: 5 })],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.overdueItems[0]?.daysUntilDue).toBe(0) // antes: 27 (wrap)
+  })
+  it('quincenal con vencimiento a 10 días devuelve 10 (antes usaba el ancla mensual)', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ frequency: 'biweekly', next_due_on: '2026-06-18', day_of_month: 4 })],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.pendingItems[0]?.daysUntilDue).toBe(10) // ancla día 4 daba 26
+  })
+})
+
 describe('summarizeFijos — missedCuotas y overdueAmount', () => {
   it('overdueAmount multiplica por las cuotas vencidas', () => {
     const summary = summarizeFijos({

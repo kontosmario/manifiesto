@@ -28,7 +28,9 @@ export interface FijoItem extends FixedExpense {
   dayOfMonth: number
   /** Derived from payment records + today's date. */
   computedStatus: FijoItemStatus
-  /** Whole days until this item is next due, clamped to [0, cycleDays]. */
+  /** Días calendario reales hasta `next_due_on` (diferencia de fechas,
+   *  no aritmética de day_of_month). Clamp a 0 — un vencido "toca
+   *  ahora", no envuelve al próximo ciclo. */
   daysUntilDue: number
   /** Cuotas vencidas acumuladas (0 salvo overdue; ≥1 ahí). Cada pago
    *  salda la más vieja y decrementa. Ver computeMissedCuotas. */
@@ -259,13 +261,19 @@ export function computeMissedCuotas(input: {
 }
 
 /**
- * Days until this item is next due, respecting the pay-cycle wrap.
- * If the anchor day is past, counts forward to the same day next
- * cycle (HOY → 0, tomorrow → 1, etc.).
+ * Días calendario reales entre HOY y `next_due_on` (UTC midnight,
+ * mismo criterio que computeItemStatus). Clamp a 0: un vencido "toca
+ * ahora" — el tag 'VENCIDO' del ticker se decide por status, no por
+ * este número. Reemplaza la aritmética por day_of_month + wrap, que
+ * mentía en frecuencias no mensuales y nunca superaba 31.
  */
-function daysUntilDue(dayOfMonth: number, todayDay: number, cycleDays: number): number {
-  if (dayOfMonth >= todayDay) return dayOfMonth - todayDay
-  return cycleDays - todayDay + dayOfMonth
+function daysUntilDueFromDate(nextDueOn: string | null, today: Date): number {
+  if (!nextDueOn) return 0
+  const due = new Date(nextDueOn)
+  const dueUtc = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate())
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+  if (Number.isNaN(dueUtc)) return 0
+  return Math.max(0, Math.round((dueUtc - todayUtc) / 86_400_000))
 }
 
 /**
@@ -438,7 +446,7 @@ export function summarizeFijos(input: {
       return {
         ...i,
         dayOfMonth,
-        daysUntilDue: daysUntilDue(dayOfMonth, todayDay, monthlyDays),
+        daysUntilDue: daysUntilDueFromDate(i.next_due_on, today),
         computedStatus: status,
         missedCuotas: status === 'overdue' ? Math.max(1, missed.count) : 0,
         isZombie: false,
