@@ -55,38 +55,45 @@ export function serializeFixedExpenseDateInput(value: string): string | null {
   return `${year}-${month}-${day}`
 }
 
+/**
+ * Espejo EXACTO de `advance_fixed_expense_due_date` (SQL, migración
+ * 20260423141534). weekly/biweekly suman días e ignoran el ancla;
+ * el resto salta meses y re-ancla a `dayOfMonth` clampado a los días
+ * reales del mes destino (31 → feb 28/29 → vuelve a 31 en marzo).
+ * Sin `dayOfMonth` se conserva el día base, también clampado (igual
+ * que el interval math de Postgres).
+ */
 export function advanceFixedExpenseDueDate(
-  currentDueOn: string | null | undefined,
+  currentDueOn: string,
   frequency: FixedExpenseFrequency,
+  dayOfMonth?: number | null,
 ): string {
-  const baseDate = parseFixedExpenseDate(currentDueOn) ?? normalizeToStartOfDay(new Date())
-  const nextDate = new Date(baseDate)
+  const m = currentDueOn.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return currentDueOn
+  const [, y, mo, d] = m
+  let year = Number(y)
+  let month = Number(mo) // 1..12
+  const baseDay = Number(d)
 
-  switch (frequency) {
-    case 'weekly':
-      nextDate.setDate(nextDate.getDate() + 7)
-      break
-    case 'biweekly':
-      nextDate.setDate(nextDate.getDate() + 14)
-      break
-    case 'quarterly':
-      nextDate.setMonth(nextDate.getMonth() + 3)
-      break
-    case 'semiannual':
-      nextDate.setMonth(nextDate.getMonth() + 6)
-      break
-    case 'annual':
-      nextDate.setFullYear(nextDate.getFullYear() + 1)
-      break
-    default:
-      nextDate.setMonth(nextDate.getMonth() + 1)
-      break
+  if (frequency === 'weekly' || frequency === 'biweekly') {
+    const days = frequency === 'weekly' ? 7 : 14
+    const next = new Date(Date.UTC(year, month - 1, baseDay + days))
+    return next.toISOString().slice(0, 10)
   }
 
-  const year = nextDate.getFullYear()
-  const month = `${nextDate.getMonth() + 1}`.padStart(2, '0')
-  const day = `${nextDate.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const monthsToAdd =
+    frequency === 'quarterly' ? 3 : frequency === 'semiannual' ? 6 : frequency === 'annual' ? 12 : 1
+  const zeroBased = month - 1 + monthsToAdd
+  year += Math.floor(zeroBased / 12)
+  month = (zeroBased % 12) + 1
+
+  const daysInTarget = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const anchor = dayOfMonth ?? baseDay
+  const safeDay = Math.min(Math.max(anchor, 1), daysInTarget)
+  const yyyy = String(year)
+  const mm = String(month).padStart(2, '0')
+  const dd = String(safeDay).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
 }
 
 export function getFixedExpenseScheduledAmount(item: FixedExpense): number {
