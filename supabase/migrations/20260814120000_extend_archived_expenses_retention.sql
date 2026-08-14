@@ -1,8 +1,7 @@
 -- supabase/migrations/20260814120000_extend_archived_expenses_retention.sql
 --
--- WHAT: (1) La retención de gastos variables archivados pasa de 14 días a
---   13 meses. (2) Índice completo (family_id, created_at desc) para queries
---   de rango sobre ventanas históricas.
+-- WHAT: La retención de gastos variables archivados pasa de 14 días a
+--   13 meses. No agrega índice — ver nota de abajo.
 --
 -- WHY: la vista Gastos ahora permite entrar a una edición cerrada y ver sus
 --   movimientos (spec 2026-08-14-gastos-ediciones-movimientos-design.md).
@@ -15,10 +14,17 @@
 -- Notas:
 --   · La retención de pagos de fijos (last-3 por fijo, 20260620210000) NO
 --     cambia — el feed histórico excluye commitment_id igual que el vivo.
---   · El índice es COMPLETO (sin predicado): las RPCs de gastos no filtran
---     por archived_at, así que los parciales existentes no les aplican a
---     ventanas históricas. El hot-path del ciclo vivo conserva su parcial
---     (expenses_family_active_idx).
+--   · Sin índice nuevo: el feed histórico filtra family_id + commitment_id
+--     is null + rango de created_at, y ESE patrón ya lo cubre el índice
+--     existente `expenses_family_commitment_created_idx (family_id,
+--     commitment_id, created_at desc)` (20260419193000) — btree hace seek
+--     por (family_id, commitment_id IS NULL) y range-scan por created_at.
+--     No crear un índice redundante: en esta tabla (la de mayor escritura
+--     de la app) cada índice de más es write amplification permanente, y
+--     `create index` sin CONCURRENTLY toma ACCESS EXCLUSIVE mientras corre
+--     (Supabase aplica migraciones dentro de una transacción implícita,
+--     que no admite CONCURRENTLY — precedente documentado en
+--     20260512000000_indexes_for_5k_mau.sql:6-12).
 
 -- ─── 1. Retención: 14 días → 13 meses ───────────────────────────────
 create or replace function public.cron_purge_archived_expenses()
@@ -56,12 +62,7 @@ $$;
 revoke all on function public.cron_purge_archived_expenses() from public;
 grant execute on function public.cron_purge_archived_expenses() to service_role;
 
--- ─── 2. Índice para ventanas históricas ─────────────────────────────
-create index if not exists expenses_family_created_idx
-  on public.expenses (family_id, created_at desc);
-
 -- ═══ DOWN ══════════════════════════════════════════════════════════
 -- begin;
---   drop index if exists expenses_family_created_idx;
 --   -- restaurar cutoff 14 días: ver 20260620210000_fixed_payment_expenses_retention.sql
 -- commit;
