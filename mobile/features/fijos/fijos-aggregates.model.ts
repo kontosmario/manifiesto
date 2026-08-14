@@ -33,7 +33,12 @@ export interface FijoItem extends FixedExpense {
    *  ahora", no envuelve al próximo ciclo. */
   daysUntilDue: number
   /** Cuotas vencidas acumuladas (0 salvo overdue; ≥1 ahí). Cada pago
-   *  salda la más vieja y decrementa. Ver computeMissedCuotas. */
+   *  salda la más vieja y decrementa. Es el conteo crudo de
+   *  `computeMissedCuotas` ajustado por `capMissedCuotas` a lo que el
+   *  backend realmente permite cobrar: nunca > 1 en pausados ni en
+   *  weekly/biweekly (identidad de cuota mensual del ledger), y nunca
+   *  más de lo que queda del plan (installments/remaining_balance/
+   *  ends_on). Ver ambas funciones en este archivo. */
   missedCuotas: number
   /** True if the item sits idle — flagged as zombie subscription, etc. */
   isZombie: boolean
@@ -238,26 +243,78 @@ function computeItemStatus(input: {
  * meses YYYY-MM-01 de cada cuota vencida (vieja → nueva) — la misma
  * identidad que usa `record_fixed_expense_payment` (period_month =
  * mes del vencimiento). Cap defensivo de 24 iteraciones.
+ *
+ * `endsOn` (FIX 3c, opcional) corta la cadena en seco cuando el
+ * vencimiento de una cuota supera el fin del plan del compromiso —
+ * como la iteración avanza cronológicamente, basta con cortar ahí:
+ * ninguna cuota posterior puede caer antes de `endsOn`. Omitido/null
+ * preserva el comportamiento anterior (sin techo).
  */
 export function computeMissedCuotas(input: {
   nextDueOn: string | null
   frequency: FixedExpenseFrequency
   dayOfMonth: number | null
   today: Date
+  endsOn?: string | null
 }): { count: number; periods: string[] } {
-  const { nextDueOn, frequency, dayOfMonth, today } = input
+  const { nextDueOn, frequency, dayOfMonth, today, endsOn = null } = input
   if (!nextDueOn) return { count: 0, periods: [] }
   const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+  const endsOnDate = endsOn ? new Date(endsOn) : null
+  const endsOnUtc = endsOnDate
+    ? Date.UTC(endsOnDate.getUTCFullYear(), endsOnDate.getUTCMonth(), endsOnDate.getUTCDate())
+    : null
   const periods: string[] = []
   let cursor = nextDueOn
   for (let i = 0; i < 24; i++) {
     const d = new Date(cursor)
     const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
     if (Number.isNaN(dueUtc) || dueUtc >= todayUtc) break
+    if (endsOnUtc != null && dueUtc > endsOnUtc) break
     periods.push(`${cursor.slice(0, 7)}-01`)
     cursor = advanceFixedExpenseDueDate(cursor, frequency, dayOfMonth)
   }
   return { count: periods.length, periods }
+}
+
+/**
+ * Ajusta el conteo crudo de `computeMissedCuotas` a lo que el backend
+ * REALMENTE permite cobrar. Tres gates independientes, cada uno solo
+ * puede achicar el conteo (nunca agrandarlo), con piso 1 — un fijo
+ * `overdue` siempre debe al menos su cuota actual:
+ *
+ *   1) FIX 4 — compromiso pausado: `record_fixed_expense_payment`
+ *      exige `status = 'active'`. Un pausado vencido no es pagable en
+ *      absoluto ahora mismo, así que "debe N cuotas" es una promesa
+ *      que ningún botón puede cumplir → cuenta como 1.
+ *   2) FIX 1 — identidad de cuota del ledger: `fixed_expense_payments`
+ *      tiene `unique(fixed_expense_id, period_month)` y la RPC estampa
+ *      `period_month = date_trunc('month', next_due_on)`. weekly y
+ *      biweekly pueden vencer 2+ veces en el MISMO mes calendario, pero
+ *      el backend no deja coexistir dos pagos de ese mes — el segundo
+ *      intento revienta con `payment-already-recorded`. monthly/
+ *      quarterly/semiannual/annual no tienen el problema: sus cuotas
+ *      consecutivas siempre caen en meses distintos.
+ *   3) FIX 3 — techo del plan: un installment no puede deber más que
+ *      `installments_total - installments_paid` (lo que queda por
+ *      pagar); un debt no puede deber más de lo que cubre
+ *      `remaining_balance` (la RPC paga `least(amount, remaining_balance)`
+ *      por pago, así que ninguna cuota más allá de ese punto es cobrable).
+ */
+function capMissedCuotas(item: FixedExpense, rawCount: number): number {
+  if (item.status !== 'active') return 1
+  if (item.frequency === 'weekly' || item.frequency === 'biweekly') return 1
+
+  let count = rawCount
+  if (item.kind === 'installment' && item.installments_total != null) {
+    const remaining = Math.max(0, item.installments_total - item.installments_paid)
+    count = Math.min(count, remaining)
+  }
+  if (item.kind === 'debt' && item.remaining_balance != null) {
+    const amount = Number(item.amount ?? 0)
+    if (amount > 0) count = Math.min(count, Math.floor(item.remaining_balance / amount))
+  }
+  return Math.max(1, count)
 }
 
 /**
@@ -399,6 +456,7 @@ export function summarizeFijos(input: {
               frequency: i.frequency,
               dayOfMonth: i.day_of_month ?? null,
               today,
+              endsOn: i.ends_on,
             })
           : { count: 0, periods: [] }
       const payment = paymentByFixedExpense.get(i.id) ?? null
@@ -448,7 +506,7 @@ export function summarizeFijos(input: {
         dayOfMonth,
         daysUntilDue: daysUntilDueFromDate(i.next_due_on, today),
         computedStatus: status,
-        missedCuotas: status === 'overdue' ? Math.max(1, missed.count) : 0,
+        missedCuotas: status === 'overdue' ? capMissedCuotas(i, missed.count) : 0,
         isZombie: false,
         daysSinceLastPaid,
         priceHistory,
@@ -470,12 +528,6 @@ export function summarizeFijos(input: {
       }
     })
 
-  // `total` ahora excluye los `future` — el ring del hero y la "% del
-  // sueldo" deben reflejar solo el costo del ciclo activo (pagado +
-  // pendiente + mora arrastrada). Antes incluía todos los activos —
-  // sobrestimaba en familias con muchos trimestrales/anuales.
-  const cycleActive = enriched.filter((i) => i.computedStatus !== 'future')
-  const total = cycleActive.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const paidItems = enriched.filter((i) => i.computedStatus === 'paid')
   const pendingItems = enriched.filter((i) => i.computedStatus === 'pending')
   const overdueItems = enriched.filter((i) => i.computedStatus === 'overdue')
@@ -486,6 +538,14 @@ export function summarizeFijos(input: {
     (s, i) => s + Number(i.amount ?? 0) * Math.max(1, i.missedCuotas),
     0,
   )
+  // FIX 2: `total` es la suma de sus 3 partes, contando el vencido con sus
+  // cuotas — no el fijo una sola vez. Antes `total` recorría `cycleActive`
+  // (cada fijo UNA vez) mientras `overdueAmount` ya multiplicaba por
+  // `missedCuotas`: con deuda multi-cuota el vencido superaba al total
+  // ("POR PAGAR $15.000 … de $5.000 en total") y `overduePct` pasaba de
+  // 100. `future` sigue excluido (ninguna de las 3 partes lo incluye) —
+  // el ring del hero y la "% del sueldo" reflejan solo el ciclo activo.
+  const total = paidAmount + pendingAmount + overdueAmount
   const paidPct = total > 0 ? Math.round((paidAmount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.round((pendingAmount / total) * 100) : 0
   const overduePct = total > 0 ? Math.round((overdueAmount / total) * 100) : 0

@@ -557,6 +557,30 @@ describe('computeMissedCuotas', () => {
       computeMissedCuotas({ nextDueOn: null, frequency: 'monthly', dayOfMonth: 5, today }),
     ).toEqual({ count: 0, periods: [] })
   })
+  it('endsOn corta cuotas posteriores al fin del plan (FIX 3c)', () => {
+    // Sin endsOn: abr+may+jun = 3 (ver test 'acumula multi-mes' arriba).
+    // Con endsOn=10-may: jun-5 > 10-may → se corta ahí, quedan abr+may.
+    expect(
+      computeMissedCuotas({
+        nextDueOn: '2026-04-05',
+        frequency: 'monthly',
+        dayOfMonth: 5,
+        today,
+        endsOn: '2026-05-10',
+      }),
+    ).toEqual({ count: 2, periods: ['2026-04-01', '2026-05-01'] })
+  })
+  it('endsOn null/omitido no cambia el comportamiento existente', () => {
+    expect(
+      computeMissedCuotas({
+        nextDueOn: '2026-04-05',
+        frequency: 'monthly',
+        dayOfMonth: 5,
+        today,
+        endsOn: null,
+      }),
+    ).toEqual({ count: 3, periods: ['2026-04-01', '2026-05-01', '2026-06-01'] })
+  })
 })
 
 describe('daysUntilDue real (diferencia de fechas)', () => {
@@ -618,5 +642,225 @@ describe('summarizeFijos — missedCuotas y overdueAmount', () => {
       monthlyDays: MONTHLY_DAYS,
     })
     expect(summary.pendingItems[0]?.missedCuotas).toBe(0)
+  })
+})
+
+describe('summarizeFijos — FIX1: multi-cuota solo en frecuencias con identidad mensual', () => {
+  // `fixed_expense_payments` tiene `unique(fixed_expense_id, period_month)` y
+  // la RPC estampa `period_month = date_trunc('month', next_due_on)` — dos
+  // cuotas de un weekly/biweekly caídas en el MISMO mes no pueden coexistir
+  // en el ledger. missedCuotas debe quedar en 1 para esas frecuencias, aunque
+  // la cadena cronológica cruda tenga más.
+  it('weekly con 2+ cuotas vencidas en el mismo lapso → missedCuotas capado a 1', () => {
+    const item = makeFixed({
+      frequency: 'weekly',
+      next_due_on: '2026-05-01',
+      day_of_month: 1,
+      amount: 1000,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(1)
+    expect(s.overdueAmount).toBe(1000)
+  })
+
+  it('biweekly con 2 cuotas vencidas → missedCuotas capado a 1', () => {
+    const item = makeFixed({
+      frequency: 'biweekly',
+      next_due_on: '2026-05-20',
+      day_of_month: 20,
+      amount: 2000,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(1)
+    expect(s.overdueAmount).toBe(2000)
+  })
+
+  it('monthly con 3 cuotas vencidas → NO se capa (identidad de cuota única por mes)', () => {
+    const item = makeFixed({
+      frequency: 'monthly',
+      next_due_on: '2026-04-05',
+      day_of_month: 5,
+      amount: 5000,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(3)
+    expect(s.overdueAmount).toBe(15000)
+  })
+})
+
+describe('summarizeFijos — FIX2: total coherente con paid+pending+overdue', () => {
+  it('total = paidAmount + pendingAmount + overdueAmount, incluso con multi-cuota', () => {
+    const item = makeFixed({ amount: 5000, next_due_on: '2026-04-05', day_of_month: 5 })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueAmount).toBe(15000)
+    // Antes: total contaba el fijo UNA vez (5000) mientras overdueAmount ya
+    // sumaba sus 3 cuotas (15000) — "POR PAGAR $15.000 … de $5.000 en total".
+    expect(s.total).toBe(15000)
+    expect(s.overduePct).toBe(100)
+  })
+
+  it('paidPct + pendingPct + overduePct nunca supera 100 con deuda multi-cuota en la mezcla', () => {
+    const items = [
+      makeFixed({ id: 'paid', amount: 2000, next_due_on: '2026-06-20' }),
+      makeFixed({ id: 'pend', amount: 1000, next_due_on: '2026-06-25' }),
+      makeFixed({ id: 'over', amount: 1500, next_due_on: '2026-04-05', day_of_month: 5 }),
+    ]
+    const s = summarizeFijos({
+      items,
+      paymentsThisCycle: [
+        {
+          id: 'pay-1',
+          fixedExpenseId: 'paid',
+          periodMonth: '2026-06-01',
+          paidAt: '2026-06-04T10:00:00Z',
+          paidBy: 'user-1',
+          createdAt: '2026-06-04T10:00:00Z',
+          expenseId: 'exp-1',
+        },
+      ],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(3)
+    expect(s.total).toBe(2000 + 1000 + 1500 * 3) // 7500
+    expect(s.paidPct + s.pendingPct + s.overduePct).toBeLessThanOrEqual(100)
+  })
+})
+
+describe('summarizeFijos — FIX3: la deuda no excede lo que queda del plan', () => {
+  it('installment con 2 cuotas restantes y 4 meses de atraso → missedCuotas capado a 2', () => {
+    const item = makeFixed({
+      kind: 'installment',
+      installments_total: 6,
+      installments_paid: 4, // quedan 2
+      amount: 3000,
+      next_due_on: '2026-03-05',
+      day_of_month: 5,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(2)
+    expect(s.overdueAmount).toBe(6000)
+  })
+
+  it('installment sin cuotas restantes pero vencido → missedCuotas nunca baja de 1', () => {
+    const item = makeFixed({
+      kind: 'installment',
+      installments_total: 4,
+      installments_paid: 4, // 0 restantes
+      amount: 1000,
+      next_due_on: '2026-03-05',
+      day_of_month: 5,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.missedCuotas).toBe(1)
+    expect(s.overdueAmount).toBe(1000)
+  })
+
+  it('debt con remaining_balance chico → el monto vencido no supera remaining_balance', () => {
+    const item = makeFixed({
+      kind: 'debt',
+      amount: 1000,
+      remaining_balance: 2500,
+      next_due_on: '2026-03-05',
+      day_of_month: 5,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    // raw = 4 cuotas (mar,abr,may,jun); floor(2500/1000) = 2.
+    expect(s.overdueItems[0]?.missedCuotas).toBe(2)
+    expect(s.overdueAmount).toBe(2000)
+    expect(s.overdueAmount).toBeLessThanOrEqual(2500)
+  })
+
+  it('ends_on anterior a alguna cuota → no cuenta cuotas posteriores al fin del plan', () => {
+    const item = makeFixed({
+      amount: 1000,
+      next_due_on: '2026-03-05',
+      day_of_month: 5,
+      ends_on: '2026-04-10',
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    // raw sin ends_on = 4 (mar,abr,may,jun); con ends_on=10-abr solo mar y abr.
+    expect(s.overdueItems[0]?.missedCuotas).toBe(2)
+    expect(s.overdueAmount).toBe(2000)
+  })
+})
+
+describe('summarizeFijos — FIX4: pausado vencido cuenta como 1', () => {
+  it('paused con varias cuotas de atraso → missedCuotas capado a 1, sigue overdue y pagable', () => {
+    const item = makeFixed({
+      status: 'paused',
+      next_due_on: '2026-04-05',
+      day_of_month: 5,
+      amount: 5000,
+    })
+    const s = summarizeFijos({
+      items: [item],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(s.overdueItems[0]?.computedStatus).toBe('overdue')
+    expect(s.overdueItems[0]?.missedCuotas).toBe(1)
+    expect(s.overdueAmount).toBe(5000)
   })
 })
