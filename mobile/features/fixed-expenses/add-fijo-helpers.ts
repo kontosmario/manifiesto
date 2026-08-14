@@ -75,3 +75,24 @@ export function buildNextDueOn(day: number): string {
   const due = new Date(Date.UTC(year, month, safeDay))
   return due.toISOString().slice(0, 10)
 }
+
+/**
+ * `next_due_on` para el path de EDICIÓN. A diferencia del alta
+ * (`buildNextDueOn`, que apunta al mes actual), editar re-ancla el día
+ * DENTRO del período vigente del cursor: mismo año/mes de
+ * `existingNextDueOn`, día nuevo clampado a ese mes. Regla de oro:
+ * editar no crea ni perdona deuda — si el cursor estaba en el pasado
+ * (cuotas vencidas), sigue en el pasado; si ya está en el mes que
+ * viene (cuota pagada), no vuelve a este mes. Antes el editor usaba
+ * buildNextDueOn también al editar y un fijo pagado reaparecía como
+ * pendiente fantasma (CRITICAL del review de Fijos 2026-08-03).
+ */
+export function rebaseNextDueOn(existingNextDueOn: string, newDay: number): string {
+  const m = existingNextDueOn.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return buildNextDueOn(newDay)
+  const year = Number(m[1])
+  const month = Number(m[2]) // 1..12
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  const safeDay = Math.min(Math.max(newDay, 1), daysInMonth)
+  return `${m[1]}-${m[2]}-${String(safeDay).padStart(2, '0')}`
+}

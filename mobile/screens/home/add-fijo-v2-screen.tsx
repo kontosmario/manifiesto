@@ -44,7 +44,7 @@ import {
   useUpdateFixedExpense,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
-import { buildNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
+import { buildNextDueOn, rebaseNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 // Del hook de la app, NUNCA de 'react-native-reanimated': el de la
@@ -223,7 +223,13 @@ export function AddFijoV2Screen({
     if (!form.canSubmit || !selectedCategory || form.day == null || form.freqChoice === null)
       return
     void triggerHaptic('success')
-    const nextDueOn = buildNextDueOn(form.day)
+    // Edición: re-anclar dentro del período vigente del cursor (no
+    // rebobinar al mes actual — eso resucitaba como pendiente un fijo
+    // ya pagado). Alta: ocurrencia de este mes, como siempre.
+    const nextDueOn =
+      isEditing && editingFijo?.next_due_on
+        ? rebaseNextDueOn(editingFijo.next_due_on, form.day)
+        : buildNextDueOn(form.day)
     const basePayload = {
       amount: form.amount,
       categoryId: selectedCategory.id,
