@@ -161,6 +161,34 @@ export default defineConfig([
       // Lo bajamos a warning para no bloquear CI.
       'react-hooks/preserve-manual-memoization': 'warn',
       'manifiesto/require-font-family-with-weight': 'error',
+      // El tamaño del texto lo gobierna la preferencia de la app, nunca el
+      // fontScale del OS: todo el texto tiene que pasar por el wrapper de
+      // `@/components/ui/app-text`, que apaga `allowFontScaling` y aplica
+      // la escala in-app.
+      // Ver docs/superpowers/specs/2026-08-14-font-scale-app-design.md.
+      // Los `import type` siguen permitidos: el tipo de instancia
+      // (`useRef<TextInput>`) es el del componente nativo, que es el que el
+      // wrapper forwardea.
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: ['Text', 'TextInput'],
+              allowTypeImports: true,
+              message:
+                'Usá Text/TextInput de @/components/ui/app-text: escalan con la preferencia de la app y apagan el fontScale del OS. Excepción única: createAnimatedComponent necesita el nativo crudo (eslint-disable con justificación + escala manual vía useFontScaleFactor).',
+            },
+          ],
+        },
+      ],
     },
+  },
+  {
+    // El wrapper es el único lugar que puede importar los primitivos crudos:
+    // es justamente el que los envuelve.
+    files: ['mobile/components/ui/app-text.tsx'],
+    rules: { '@typescript-eslint/no-restricted-imports': 'off' },
   },
 ])
