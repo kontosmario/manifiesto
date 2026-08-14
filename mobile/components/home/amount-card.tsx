@@ -6,7 +6,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   useSharedValue,
@@ -235,12 +235,12 @@ export function AmountCard({
               <Text style={[typography.eyebrow, { color: theme.colors.textMuted }]}>
                 {resolvedLabel}
               </Text>
-              <Animated.Text
+              <AnimatedText
                 pointerEvents="none"
                 style={[typography.caption, hintStyle, { color: theme.colors.textSoft }]}
               >
                 {t('home:amountCard.tapToEdit')}
-              </Animated.Text>
+              </AnimatedText>
             </View>
           )}
           {/* El wrapper de fila existe SOLO en neo. En classic el `<Text>`
@@ -274,7 +274,7 @@ export function AmountCard({
               {displayText}
             </Text>
             {neo ? (
-              <Animated.Text
+              <AnimatedText
                 pointerEvents="none"
                 style={[
                   hintStyle,
@@ -288,7 +288,7 @@ export function AmountCard({
                 ]}
               >
                 {t('home:amountCard.tapToEdit')}
-              </Animated.Text>
+              </AnimatedText>
             ) : null}
           </MaybeRow>
           {neo ? (

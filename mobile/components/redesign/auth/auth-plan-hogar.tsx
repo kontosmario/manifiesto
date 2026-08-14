@@ -11,7 +11,7 @@ import {
   View,
   type RefreshControlProps,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -614,9 +614,9 @@ function PlanPrice({
   }
   if (sawSkeleton.current) {
     return (
-      <Animated.Text entering={FadeIn.duration(240)} style={[styles.price, { color }]}>
+      <AnimatedText entering={FadeIn.duration(240)} style={[styles.price, { color }]}>
         {text}
-      </Animated.Text>
+      </AnimatedText>
     )
   }
   return <Text style={[styles.price, { color }]}>{text}</Text>

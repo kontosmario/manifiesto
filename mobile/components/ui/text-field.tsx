@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
 import { StyleSheet, View, type TextInputProps } from 'react-native'
 import type { TextInput as RNTextInput } from 'react-native'
-import { Text, TextInput } from '@/components/ui/app-text'
+import { AnimatedText, Text, TextInput } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   useSharedValue,
@@ -131,9 +131,9 @@ export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextFi
   return (
     <View style={styles.container}>
       {label ? (
-        <Animated.Text style={[typography.eyebrow, labelAnimatedStyle]}>
+        <AnimatedText style={[typography.eyebrow, labelAnimatedStyle]}>
           {label}
-        </Animated.Text>
+        </AnimatedText>
       ) : null}
       <Animated.View
         style={[
@@ -144,10 +144,13 @@ export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextFi
       >
         <TextInput
           ref={ref}
-          // Fija el tamaño de fuente del input para layout predecible (con el
-          // "Texto más grande" de iOS el TextInput escalaba y descuadraba la
-          // caja). Labels y helper sí escalan.
-          allowFontScaling={false}
+          // El contenido del campo ESCALA con la preferencia de la app, igual
+          // que su label y su helper: si el input queda pineado, a "Muy grande"
+          // el texto secundario termina más grande que lo que el usuario está
+          // tipeando y la jerarquía se invierte. Antes estaba fijo porque el
+          // "Texto más grande" de iOS llegaba a 3.57× y descuadraba la caja;
+          // ese escalado ya no llega (el wrapper apaga el del OS) y el propio
+          // topea en 1.2×: 14 → 16.8pt, con sobra dentro de los 52 de alto.
           // Sin botón de limpiar cuando hay trailing (ojo de contraseña), para
           // que la "x" nativa de iOS no se solape con el ícono absoluto.
           clearButtonMode={trailing ? 'never' : 'while-editing'}
@@ -201,8 +204,10 @@ export const TextField = forwardRef<RNTextInput, TextFieldProps>(function TextFi
             style={[styles.placeholderOverlay, { right: trailing ? 44 : 14 }]}
             pointerEvents="none"
           >
+            {/* Escala CON el input (misma métrica, mismo factor): pineado sólo
+                él, a "Muy grande" la pista quedaba más chica que el texto que
+                reemplaza y saltaba de tamaño al empezar a tipear. */}
             <Text
-              allowFontScaling={false}
               numberOfLines={1}
               style={[styles.placeholderText, { color: theme.colors.textSoft }]}
             >

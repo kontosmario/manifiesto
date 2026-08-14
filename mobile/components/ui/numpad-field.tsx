@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
-import Animated, {
+import { AnimatedText, Text } from '@/components/ui/app-text'
+import {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
@@ -123,9 +123,9 @@ export function NumpadField({
   return (
     <View style={styles.container}>
       {label ? (
-        <Animated.Text style={[styles.label, labelAnimatedStyle]}>
+        <AnimatedText style={[styles.label, labelAnimatedStyle]}>
           {label}
-        </Animated.Text>
+        </AnimatedText>
       ) : null}
       <Pressable
         accessibilityRole="button"

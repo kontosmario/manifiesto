@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native'
 import type { TextInput as RNTextInput } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   Extrapolation,
@@ -770,9 +770,9 @@ function SubmitCta({
       }}
     >
       <Animated.View style={[styles.submitCta, containerStyle]}>
-        <Animated.Text style={[styles.submitLabel, labelStyle]}>
+        <AnimatedText style={[styles.submitLabel, labelStyle]}>
           {isSubmitting ? t('auth:signup.creating') : t('auth:signup.create')}
-        </Animated.Text>
+        </AnimatedText>
         <View style={styles.submitTrailing}>
           <Animated.View style={[StyleSheet.absoluteFillObject, styles.submitTrailingCenter, arrowStyle]}>
             <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -847,7 +847,7 @@ function StrengthMeter({
           <StrengthBar key={i} index={i} sv={sv} baseColor={baseColor} />
         ))}
       </View>
-      <Animated.Text style={[styles.strengthLabel, labelStyle]}>{label}</Animated.Text>
+      <AnimatedText style={[styles.strengthLabel, labelStyle]}>{label}</AnimatedText>
     </Animated.View>
   )
 }

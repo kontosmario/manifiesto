@@ -3,7 +3,7 @@
 // width change. Extraído de `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
 import { Image, Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   interpolateColor,
@@ -268,7 +268,7 @@ export function FreqTile({
             {icon}
           </Text>
         )}
-        <Animated.Text
+        <AnimatedText
           style={[
             styles.freqTileLabel,
             // Sólo en classic: en neo lo pisa `labelInkStyle` (que cruza de la
@@ -291,7 +291,7 @@ export function FreqTile({
           allowFontScaling={false}
         >
           {label}
-        </Animated.Text>
+        </AnimatedText>
       </Animated.View>
     </AnimatedPressable>
   )

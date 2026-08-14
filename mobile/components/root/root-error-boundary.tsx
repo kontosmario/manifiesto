@@ -1,5 +1,9 @@
 import { Component, type ReactNode } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
+// Esta pantalla se monta POR ENCIMA del FontScaleProvider (es la red de la
+// raíz): `useFontScaleFactor` devuelve su default 1 y el texto queda a escala
+// fija, a propósito — un crash no puede depender de una preferencia que capaz
+// ni se hidrató.
 import { Text } from '@/components/ui/app-text'
 import i18n from '@/lib/i18n'
 import { nunitoFamily } from '@/theme/typography'

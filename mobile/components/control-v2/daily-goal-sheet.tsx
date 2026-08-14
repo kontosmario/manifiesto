@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   FadeIn,
@@ -229,7 +229,7 @@ export function DailyGoalSheet({
           backgroundColor={isGoalActive ? neo.selectedTint : undefined}
           style={styles.hero}
         >
-          <Animated.Text
+          <AnimatedText
             key={`hero-eyebrow-${selectedPct}`}
             entering={FadeIn.duration(180)}
             style={[
@@ -240,8 +240,8 @@ export function DailyGoalSheet({
             {isGoalActive
               ? t('control:dailyGoal.heroEyebrowMeta', { pct: selectedPct })
               : t('control:dailyGoal.heroEyebrowReal')}
-          </Animated.Text>
-          <Animated.Text
+          </AnimatedText>
+          <AnimatedText
             key={`hero-amount-${goalAmount}`}
             entering={FadeIn.duration(220)}
             style={[
@@ -253,7 +253,7 @@ export function DailyGoalSheet({
             minimumFontScale={0.7}
           >
             {currencyFormatter.format(goalAmount)}
-          </Animated.Text>
+          </AnimatedText>
           <View style={styles.heroFootRow}>
             {isGoalActive ? (
               <>
@@ -382,7 +382,7 @@ export function DailyGoalSheet({
           </View>
           <View style={styles.impactBody}>
             {isGoalActive ? (
-              <Animated.Text
+              <AnimatedText
                 key={`impact-active-${projectedCycleSaving}`}
                 entering={FadeIn.duration(220)}
                 exiting={FadeOut.duration(140)}
@@ -400,16 +400,16 @@ export function DailyGoalSheet({
                   count: remainingCycleDays,
                   daily: currencyFormatter.format(dailySaving),
                 })}
-              </Animated.Text>
+              </AnimatedText>
             ) : (
-              <Animated.Text
+              <AnimatedText
                 key="impact-empty"
                 entering={FadeIn.duration(220)}
                 exiting={FadeOut.duration(140)}
                 style={[styles.impactCopy, { color: neo.textMuted }]}
               >
                 {t('control:dailyGoal.impactEmpty')}
-              </Animated.Text>
+              </AnimatedText>
             )}
           </View>
         </Animated.View>

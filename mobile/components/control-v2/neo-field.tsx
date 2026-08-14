@@ -106,9 +106,10 @@ export function NeoField({
         ]}
       >
         <TextInput
-          // Mismo contrato que `TextField`: el input no escala con el "Texto
-          // más grande" de iOS (la caja tiene alto fijo), labels y helper sí.
-          allowFontScaling={false}
+          // Mismo contrato que `TextField`: el contenido del campo escala con
+          // la preferencia de la app (nunca con el "Texto más grande" del OS,
+          // que el wrapper apaga), igual que su label y su helper. Con el tope
+          // propio de 1.2× son 16 → 19.2pt, con sobra dentro de los 52 de alto.
           clearButtonMode="while-editing"
           placeholder={isMultiline ? placeholder : undefined}
           // `textTertiary` es la tinta de pista del sistema (el mismo `faint`
@@ -145,8 +146,10 @@ export function NeoField({
         />
         {showCustomPlaceholder ? (
           <View style={styles.placeholderOverlay} pointerEvents="none">
+            {/* Escala CON el input (misma métrica, mismo factor): pineado sólo
+                él, a "Muy grande" la pista quedaba más chica que el texto que
+                reemplaza y saltaba de tamaño al empezar a tipear. */}
             <Text
-              allowFontScaling={false}
               numberOfLines={1}
               style={[styles.placeholderText, { color: neo.textTertiary }]}
             >

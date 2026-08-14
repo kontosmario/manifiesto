@@ -55,4 +55,18 @@ describe('scaledTextOverrides', () => {
   it('redondea a 1 decimal (sin ruido flotante)', () => {
     expect(scaledTextOverrides({ fontSize: 13 }, 1.1)).toEqual({ fontSize: 14.3 })
   })
+
+  // Supuesto que sostiene a `AnimatedText` (app-text): el style de un texto
+  // animado es un array donde conviven estilos estáticos y el objeto que
+  // devuelve `useAnimatedStyle` —un `{ initial, viewDescriptors }` plano, sin
+  // métricas de fuente—. Aplanarlo para leer el `fontSize` tiene que ser
+  // inocuo: ni aporta claves ni tapa las del estilo estático.
+  it('ignora el objeto de useAnimatedStyle: escala el fontSize estático igual', () => {
+    const animatedStyle = {
+      initial: { value: { color: 'red' }, updater: () => ({ color: 'red' }) },
+      viewDescriptors: {},
+    }
+    const style = [{ fontSize: 20, lineHeight: 24 }, animatedStyle]
+    expect(scaledTextOverrides(style, 1.2)).toEqual({ fontSize: 24, lineHeight: 28.8 })
+  })
 })

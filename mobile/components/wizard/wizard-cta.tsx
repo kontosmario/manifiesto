@@ -12,6 +12,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { AnimatedText } from '@/components/ui/app-text'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { motionDurations } from '@/lib/motion'
@@ -150,7 +151,7 @@ export function WizardCta({
           pointerEvents="none"
           style={[StyleSheet.absoluteFill, surfaceMaterial, surfaceStyle]}
         />
-        <Animated.Text
+        <AnimatedText
           style={[
             styles.primaryCtaText,
             neo
@@ -164,7 +165,7 @@ export function WizardCta({
           ]}
         >
           {label}
-        </Animated.Text>
+        </AnimatedText>
       </AnimatedPressable>
     </Animated.View>
   )

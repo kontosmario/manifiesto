@@ -7,7 +7,7 @@
 // al otro con transición y no de un frame al siguiente.
 import { useEffect } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -171,10 +171,12 @@ function DayChip({
           activeStyle,
         ]}
       />
-      <Animated.Text
-        // Escala con el tamaño de texto del sistema —qué día se está eligiendo
-        // es justo lo que hay que poder leer—, acotado para que las tres
-        // opciones sigan entrando en una fila.
+      <AnimatedText
+        // Escala con el tamaño de texto de la APP —qué día se está eligiendo es
+        // justo lo que hay que poder leer—. El tope propio de la preferencia
+        // (1.2×) es el mismo que este `maxFontSizeMultiplier` reservaba para el
+        // escalado del OS, ya apagado: las tres opciones siguen entrando en una
+        // fila.
         maxFontSizeMultiplier={1.2}
         style={[
           styles.labelNeo,
@@ -184,7 +186,7 @@ function DayChip({
         numberOfLines={1}
       >
         {label}
-      </Animated.Text>
+      </AnimatedText>
     </AnimatedPressable>
   )
 }

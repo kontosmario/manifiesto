@@ -3,7 +3,7 @@
 // "ya pagué la cuota más reciente" toggle (sólo en create + no
 // installment). Extraído de `add-fijo-v2-screen.tsx`.
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import Animated, {
@@ -315,7 +315,7 @@ export function Step2Summary(props: Step2SummaryProps) {
                 // El chip es la cifra que el usuario acaba de decidir: entra
                 // después de la card, no con ella. Sin el retraso aparecía
                 // pintado desde el primer frame y se perdía el "esto sumaste".
-                <Animated.Text
+                <AnimatedText
                   entering={FadeIn.duration(motionDurations.standard).delay(
                     motionDurations.standard,
                   )}
@@ -337,7 +337,7 @@ export function Step2Summary(props: Step2SummaryProps) {
                   {t('fijos:wizard.step2.deltaAdded', {
                     amount: formatMoney(nuevoTotal - prevTotal),
                   })}
-                </Animated.Text>
+                </AnimatedText>
               ) : null}
             </View>
 

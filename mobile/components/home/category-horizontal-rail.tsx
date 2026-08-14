@@ -6,7 +6,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   Easing,
@@ -214,7 +214,7 @@ export function TileRail({
     // Mismo tratamiento que los chips de día del alta de ingreso.
     <View style={styles.root} accessibilityRole="radiogroup" accessibilityLabel={labelText}>
       <View style={styles.eyebrowRow}>
-        <Animated.Text
+        <AnimatedText
           style={[
             // `typography.eyebrow` primero, y NO se elimina en neo: de ahí sale
             // el `textTransform` que pone el label en mayúsculas, igual que los
@@ -229,7 +229,7 @@ export function TileRail({
           ]}
         >
           {labelText}
-        </Animated.Text>
+        </AnimatedText>
         {/* Píldora "sugerida por el nombre" del handoff. Solo cuando el caller
             la pasa Y estamos en `neo`; la pantalla vieja nunca la tuvo. */}
         {hint && neoRail ? (

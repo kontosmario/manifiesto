@@ -3,7 +3,7 @@
 // de `add-fijo-v2-screen.tsx`. La screen pasa todo el form state desde
 // `useAddFijoForm`.
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import Animated, {
@@ -404,7 +404,7 @@ function CuotaPill({
           selStyle,
         ]}
       />
-      <Animated.Text
+      <AnimatedText
         allowFontScaling={false}
         style={[
           styles.cuotaPillTextNeo,
@@ -413,7 +413,7 @@ function CuotaPill({
         ]}
       >
         {n}
-      </Animated.Text>
+      </AnimatedText>
     </AnimatedPressable>
   )
 }

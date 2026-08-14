@@ -22,7 +22,7 @@
 // mismo.
 import type { ReactNode } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot/brot-mascot'
@@ -193,7 +193,7 @@ export function Step2Summary({
               // El chip es la cifra que el usuario acaba de decidir: entra
               // DESPUÉS de la card. Sin el retraso aparecía pintado desde el
               // primer frame y se perdía el "esto sumaste".
-              <Animated.Text
+              <AnimatedText
                 entering={STEP_DELAYED_ENTER}
                 style={[
                   styles.deltaChip,
@@ -215,7 +215,7 @@ export function Step2Summary({
                 maxFontSizeMultiplier={1.2}
               >
                 +{formatMoney(impact.appliedAmount)}
-              </Animated.Text>
+              </AnimatedText>
             ) : null}
           </View>
 

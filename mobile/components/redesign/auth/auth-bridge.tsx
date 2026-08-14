@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
@@ -362,16 +362,16 @@ export function AuthBridge({
           {name === null ? (
             <View style={styles.greetSpacer} />
           ) : (
-            <Animated.Text style={[styles.greet, greetStyle, { color: s.text }]}>
+            <AnimatedText style={[styles.greet, greetStyle, { color: s.text }]}>
               {translate('auth:login.greetingTitle', { name })}
-            </Animated.Text>
+            </AnimatedText>
           )}
 
-          <Animated.Text
+          <AnimatedText
             style={[styles.sub, subStyle, { color: failed ? t.failText : s.helper }]}
           >
             {subText}
-          </Animated.Text>
+          </AnimatedText>
 
           {fail ? (
             <Animated.View style={[styles.actions, actionsStyle]}>

@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
   FadeIn,
   useAnimatedStyle,
@@ -249,12 +249,12 @@ function PlanPrice({
   }
   if (sawSkeleton.current) {
     return (
-      <Animated.Text
+      <AnimatedText
         entering={FadeIn.duration(240)}
         style={[styles.price, { color }]}
       >
         {text}
-      </Animated.Text>
+      </AnimatedText>
     )
   }
   return <Text style={[styles.price, { color }]}>{text}</Text>

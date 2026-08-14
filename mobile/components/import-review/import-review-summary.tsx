@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { Easing, FadeIn, FadeInDown } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -62,14 +62,14 @@ export function ImportReviewSummary({
 
   return (
     <View style={styles.root}>
-      <Animated.Text
+      <AnimatedText
         entering={FadeIn.duration(motionDurations.standard).easing(EASE_IOS)}
         style={[isEmpty ? styles.heading : styles.lead, { color: neo.text }]}
       >
         {isEmpty
           ? t('gastos:import.summary.nothingToLoad')
           : t('gastos:import.summary.willLoad', { summary: subtitle })}
-      </Animated.Text>
+      </AnimatedText>
 
       <View style={styles.list}>
         {submittable.map((row, idx) => (
@@ -93,14 +93,14 @@ export function ImportReviewSummary({
       </View>
 
       {skippedCount > 0 ? (
-        <Animated.Text
+        <AnimatedText
           entering={FadeIn.duration(motionDurations.quick)
             .delay(40 + Math.min(submittable.length, 5) * 60 + 80)
             .easing(EASE_IOS)}
           style={[styles.skippedLine, { color: softInk }]}
         >
           {t('gastos:import.summary.skippedLine', { count: skippedCount })}
-        </Animated.Text>
+        </AnimatedText>
       ) : null}
     </View>
   )

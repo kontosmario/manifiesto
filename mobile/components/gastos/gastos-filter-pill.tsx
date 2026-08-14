@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { Pressable, StyleSheet } from 'react-native'
-import { Text } from '@/components/ui/app-text'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
@@ -227,14 +227,14 @@ function GastosFilterPillImpl({
           ]}
         >
           {iconNode ?? (emoji ? <Text style={{ fontSize: small ? 12 : 14 }}>{emoji}</Text> : null)}
-          <Animated.Text style={[styles.label, { fontSize: small ? 11 : 12 }, labelStyle]}>
+          <AnimatedText style={[styles.label, { fontSize: small ? 11 : 12 }, labelStyle]}>
             {label}
-          </Animated.Text>
+          </AnimatedText>
           {count != null ? (
             <Animated.View style={[styles.count, countBgStyle]}>
-              <Animated.Text style={[styles.countText, countFgStyle]}>
+              <AnimatedText style={[styles.countText, countFgStyle]}>
                 {count}
-              </Animated.Text>
+              </AnimatedText>
             </Animated.View>
           ) : null}
         </Animated.View>

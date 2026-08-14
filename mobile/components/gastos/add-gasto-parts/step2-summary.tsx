@@ -13,7 +13,7 @@
 // "no pasa nada" sin decir por qué.
 import { memo } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Text, TextInput } from '@/components/ui/app-text'
+import { AnimatedText, Text, TextInput } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
@@ -449,12 +449,15 @@ const Step2Overview = memo(function Step2Overview({
                   nunca (`flexShrink: 0`): el que cede es el eyebrow, que puede
                   truncarse sin perder información. */}
               {isReady && neo && impact.deltaPct != null && impact.deltaPct > 0 ? (
-                <Animated.Text
+                <AnimatedText
                   entering={STEP_DELAYED_ENTER}
                   numberOfLines={1}
-                  // Escala con el sistema pero con tope, igual que el chip del
-                  // alta de ingreso: con `allowFontScaling={false}` el chip era
-                  // el único texto de la card que ignoraba Texto Grande.
+                  // Escala con la preferencia de la APP, igual que el chip del
+                  // alta de ingreso: pineado era el único texto de la card que
+                  // ignoraba el tamaño elegido. El tope propio de la
+                  // preferencia (1.2×) es el mismo que este
+                  // `maxFontSizeMultiplier` reservaba para el escalado del OS,
+                  // ya apagado.
                   maxFontSizeMultiplier={1.2}
                   style={[
                     styles.deltaChip,
@@ -478,7 +481,7 @@ const Step2Overview = memo(function Step2Overview({
                   ]}
                 >
                   {t('gastos:addExpense.wizard.step2.delta', { pp: impact.deltaPct })}
-                </Animated.Text>
+                </AnimatedText>
               ) : null}
             </View>
 

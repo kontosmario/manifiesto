@@ -179,8 +179,10 @@ function NeoSearchField({
       >
         {value.length === 0 ? (
           <View pointerEvents="none" style={styles.placeholderOverlay}>
+            {/* Escala CON el input (misma métrica, mismo factor): pineado sólo
+                él, a "Muy grande" la pista quedaba más chica que el texto que
+                reemplaza y saltaba de tamaño al empezar a tipear. */}
             <Text
-              allowFontScaling={false}
               numberOfLines={1}
               style={[styles.placeholderText, { color: neo.textMuted }]}
             >
@@ -190,7 +192,10 @@ function NeoSearchField({
         ) : null}
         <TextInput
           accessibilityLabel={label}
-          allowFontScaling={false}
+          // El contenido del campo escala con la preferencia de la app, igual
+          // que su label y su helper (pineado sólo el input, a "Muy grande" el
+          // helper de 13pt terminaba más grande que la búsqueda de 14). Con el
+          // tope propio de 1.2× son 14 → 16.8pt dentro de los 52 de alto.
           autoCapitalize="none"
           autoCorrect={false}
           clearButtonMode="while-editing"
