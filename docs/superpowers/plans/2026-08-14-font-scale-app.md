@@ -16,7 +16,10 @@
 - Factores: `sm: 0.9 · md: 1 · lg: 1.1 · xl: 1.2`. Default `md`. Labels: Chica / Normal / Grande / Muy grande.
 - Key de persistencia: `manifiesto:font-scale-preference` (persistent-kv, local al device, sin sync a backend).
 - **Node por nvm:** el Bash tool no carga nvm. Prefijar TODO comando node/npm/npx/tsc/vitest con `source ~/.nvm/nvm.sh && `.
-- **WIP del branch:** `feat/ui-redesign` tiene cambios sin commitear. ANTES de la Task 4 (codemod) el working tree debe estar limpio (`git status --porcelain` vacío salvo untracked ajenos): el owner commitea o stashea su WIP. Ningún commit de este plan puede mezclar WIP ajeno — siempre `git add` con paths explícitos, jamás `git add -A`.
+- **WIP del branch (RESUELTO 2026-08-14 — no hace falta limpiar el árbol):** `feat/ui-redesign` tiene ~98 archivos sin commitear (Wrapped + ciclo extendido). Medido: TODOS los archivos de edición quirúrgica de este plan (`app-providers.tsx`, `app.config.ts`, `eslint.config.js`, `settings-screen.tsx`, ambos `settings.json`) están limpios, y solo **10** archivos del WIP colisionan con el codemod:
+  `mobile/components/billing/free-period-nudge.tsx`, `mobile/components/home/home-dashboard.tsx`, `mobile/components/redesign/control/control-primitives.tsx`, `mobile/components/redesign/control/parts/control-header.tsx`, `mobile/components/redesign/fijos/fijos-screen.tsx`, `mobile/components/redesign/home/home-screen.tsx`, `mobile/components/redesign/jardin/cierre-screen.tsx`, `mobile/screens/dev/cycle-wrapped-preview-screen.tsx`, `mobile/screens/dev/redesign/redesign-home-preview-screen.tsx`, `mobile/screens/settings/editions-screen.tsx`.
+  **Protocolo:** el codemod corre sobre TODO el árbol (así lint/typecheck/bundle quedan consistentes) pero se commitean SOLO los archivos que no colisionan. Esos 10 quedan modificados en el working tree y su swap de import viaja dentro del commit de WIP del owner. Se listan explícitamente en el commit body.
+- **REGLA DURA DE COMMITS:** jamás `git add -A`, `git add -u` ni `git add .` — hay WIP ajeno en el árbol. SIEMPRE paths explícitos.
 - **Sin atribución de Claude/Anthropic** en commits, comentarios o docs (regla global del usuario).
 - Commits en español, estilo del repo: `tipo(área): descripción`.
 - `guard:motion-tokens` de `npm run validate` ya fallaba en este branch ANTES de este trabajo (motion-tokens ajenos). Medir SIEMPRE contra ese baseline: correr validate antes de empezar una task si hay duda de qué rompiste vos.
@@ -452,10 +455,13 @@ git commit -m "feat(ui): wrapper Text/TextInput con escala propia y allowFontSca
 - Consumes: `Text` de `@/components/ui/app-text` (Task 3).
 - Produces: cero imports de valor de `Text` desde `'react-native'` fuera de `app-text.tsx` (los `import type` y `TextStyle`/`TextProps` quedan como están).
 
-- [ ] **Step 0: Precondición — working tree limpio**
+- [ ] **Step 0: Snapshot del WIP ajeno (para no commitearlo)**
 
-Run: `git status --porcelain`
-Expected: vacío (o solo untracked ajenos al plan). Si hay WIP del owner sin commitear: **PARAR** y pedirle que lo commitee o stashee. El codemod no se corre sobre archivos con cambios ajenos sin commitear.
+```bash
+git status --porcelain | grep -E '^( M|MM)' | awk '{print $2}' | sort > /tmp/wip-before.txt
+wc -l < /tmp/wip-before.txt
+```
+Guardar esa lista: son los archivos del owner que este plan NO puede commitear. Ver «WIP del branch» en Global Constraints — el codemod corre sobre todo el árbol igual.
 
 - [ ] **Step 1: Write the codemod script** (en el scratchpad de la sesión)
 
@@ -538,13 +544,17 @@ Para cada archivo listado: restaurar `Text` al import de react-native (además d
 Run: `source ~/.nvm/nvm.sh && npx expo export --platform ios --output-dir /tmp/font-scale-bundle-check 2>&1 | tail -5`
 Expected: bundle OK (validate no es bundle — regla del repo). Borrar `/tmp/font-scale-bundle-check` después.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit — solo los archivos que NO son del WIP ajeno**
 
 ```bash
-git add -u mobile app
+git status --porcelain | grep -E '^( M|MM)' | awk '{print $2}' | sort > /tmp/wip-after.txt
+comm -13 /tmp/wip-before.txt /tmp/wip-after.txt > /tmp/codemod-only.txt
+wc -l < /tmp/codemod-only.txt   # esperado: ~246
+xargs git add < /tmp/codemod-only.txt
 git commit -m "refactor(ui): barrida de Text al wrapper de app-text — la escala del texto pasa a ser de la app"
 ```
-(`git add -u` es válido acá SOLO porque el Step 0 garantizó working tree limpio: todo lo modificado es del codemod.)
+
+Verificar que NADA del WIP quedó staged: `git diff --cached --name-only | sort | comm -12 - /tmp/wip-before.txt` debe salir vacío ANTES del commit. Los 10 archivos colisionados quedan modificados en el árbol a propósito (Global Constraints).
 
 ---
 
@@ -593,12 +603,13 @@ Expected: solo los sitios `createAnimatedComponent` anotados con eslint-disable 
 Run: `source ~/.nvm/nvm.sh && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Commit — paths explícitos de los archivos tocados**
 
 ```bash
-git add -u mobile app
+git add <cada archivo que tocaste, listado a mano>
 git commit -m "refactor(ui): TextInput al wrapper de app-text — campos pineados conservan su curación"
 ```
+Si alguno de los archivos tocados está en `/tmp/wip-before.txt`, NO lo agregues: queda en el árbol y viaja con el commit del owner (anotarlo en el body del commit).
 
 ---
 
@@ -636,12 +647,13 @@ Dejar en el mensaje de commit (body) la lista `archivo → escala | pineado` de 
 Run: `source ~/.nvm/nvm.sh && npm run typecheck && npx vitest run`
 Expected: PASS (contra el baseline conocido del branch).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Commit — paths explícitos de los archivos tocados**
 
 ```bash
-git add -u mobile app
+git add <cada archivo que tocaste, listado a mano>
 git commit -m "feat(ui): escala propia en texto animado — contadores legibles escalan, decorativos quedan pineados"
 ```
+Si alguno está en `/tmp/wip-before.txt` (p. ej. `count-up-text.tsx`, `home-screen.tsx`), NO lo agregues: queda en el árbol y viaja con el commit del owner. Anotarlo en el body.
 
 ---
 
