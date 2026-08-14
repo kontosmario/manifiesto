@@ -23,6 +23,7 @@ import {
   type FixedExpense,
   type FixedExpenseStatus,
 } from './fixed-expense-types'
+import { advanceFixedExpenseDueDate } from './commitment-date-utils'
 
 export type {
   UpdateFixedExpenseInput,
@@ -414,6 +415,16 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
                     f.kind === 'installment'
                       ? f.installments_paid + 1
                       : f.installments_paid,
+                  // v5: avanzamos el cursor localmente (espejo clampado del
+                  // SQL). Sin esto, con "overdue gana sobre paid", pagar un
+                  // vencido lo dejaría en Vencidos hasta el refetch; y en un
+                  // catch-up parcial el contador de cuotas no bajaría en el
+                  // mismo frame. El refetch de onSettled reconcilia.
+                  next_due_on: advanceFixedExpenseDueDate(
+                    f.next_due_on,
+                    f.frequency,
+                    f.day_of_month ?? null,
+                  ),
                 }
               : f,
           ),
