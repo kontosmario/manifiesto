@@ -15,7 +15,9 @@ NUESTRA config, nunca del OS. No existe opción «Sistema» en este selector.
 
 ## Decisiones de producto
 
-- **4 niveles:** Chica · Normal · Grande · Muy grande.
+- **4 niveles:** Chica · Normal · Grande · Máxima. (`xl` se llamaba «Muy
+  grande»; quedó en una sola palabra por el ancho del segmento — medición en
+  §7.)
 - **Factores:** 0.9 · 1.0 · 1.1 · 1.2. Default: Normal (1.0) = el diseño
   actual tal cual. 1.2 es el tope deliberado: los comentarios del código
   marcan roturas de chips/badges/calendario cerca de 130%+.
@@ -192,4 +194,4 @@ las 4 etiquetas entran en una línea a los cuatro factores (peor holgura
   OS. No escribir lógica nueva que asuma 1 en las dos plataformas: los
   fósiles existentes se limpian o anotan en la barrida.
 - Accesibilidad: ignorar Dynamic Type es una regresión para usuarios que
-  dependen del escalado del OS; se mitiga con el nivel «Muy grande» in-app.
+  dependen del escalado del OS; se mitiga con el nivel «Máxima» in-app.

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Principio rector:** todo el texto depende de NUESTRA config, nunca del OS. Sin opción «Sistema» en el selector.
-- Factores: `sm: 0.9 · md: 1 · lg: 1.1 · xl: 1.2`. Default `md`. Labels: Chica / Normal / Grande / Muy grande.
+- Factores: `sm: 0.9 · md: 1 · lg: 1.1 · xl: 1.2`. Default `md`. Labels: Chica / Normal / Grande / Máxima (`xl` es una sola palabra por ancho del segmento; medición en la nota de la Task 9).
 - Key de persistencia: `manifiesto.font-scale-preference` (persistent-kv, local al device, sin sync a backend). **Con punto, no con dos puntos:** expo-secure-store valida las claves contra `/^[\w.-]+$/` y tira `Invalid key provided to SecureStore` con cualquier otra; `persistent-kv` se traga esa excepción y la preferencia jamás persistiría. (Las keys de theme/language/motion-preference sí usan `:` y arrastran ese bug: deuda pre-existente, fuera del alcance de este plan.)
 - **Node por nvm:** el Bash tool no carga nvm. Prefijar TODO comando node/npm/npx/tsc/vitest con `source ~/.nvm/nvm.sh && `.
 - **WIP del branch (no hace falta limpiar el árbol) — medición 2026-08-14 con la lógica EXACTA del codemod:** `feat/ui-redesign` tiene ~122 entradas sin commitear (modificados + untracked: Wrapped + ciclo extendido + fijos). Alcance real del codemod: **295** archivos importan `Text` y **25** importan `TextInput` de react-native (el conteo previo de 256/16 subestimaba: venía de un grep de una línea que se perdía los imports multilínea). De esos, **18** colisionan con el WIP en `Text` y **2** en `TextInput`.
@@ -849,10 +849,11 @@ git commit -m "feat(android): config plugin que fija fontScale=1 — el texto re
 
 ### Task 9: Settings UI + copy es/en
 
-> **Corrección aplicada (implementación):** las etiquetas del nivel `xl` de los
-> snippets de abajo (`"Muy grande"` / `"Extra large"`) NO entran, y el control
-> se recorta a sí mismo. Medido sobre `Nunito_700Bold.ttf` con la cadena de
-> anchos real (Screen 20 + `appearanceInner` 14 + pista neo 4 + gap 4 + inset
+> **Corrección aplicada (implementación) — ya reflejada en los snippets de
+> abajo:** el nivel `xl` se llamaba `"Muy grande"` / `"Extra large"` y con esas
+> etiquetas NO entra: el control se recorta a sí mismo. Medido sobre
+> `Nunito_700Bold.ttf` con la cadena de anchos real (Screen 20 +
+> `appearanceInner` 14 + pista neo 4 + gap 4 + inset
 > del item 12): en un teléfono de 360dp el control mide 292pt → 68pt por
 > segmento → **44pt de texto**, y este control tiene 4 segmentos donde los
 > vecinos (tema, idioma, animaciones) tienen 3 (~97pt por segmento). `"Muy
@@ -893,7 +894,7 @@ git commit -m "feat(android): config plugin que fija fontScale=1 — el texto re
   "sm": "Chica",
   "md": "Normal",
   "lg": "Grande",
-  "xl": "Muy grande"
+  "xl": "Máxima"
 }
 ```
 
@@ -906,7 +907,7 @@ git commit -m "feat(android): config plugin que fija fontScale=1 — el texto re
   "sm": "Small",
   "md": "Default",
   "lg": "Large",
-  "xl": "Extra large"
+  "xl": "Largest"
 }
 ```
 
@@ -980,7 +981,7 @@ git commit -m "feat(settings): selector de tamaño del texto — 4 niveles con c
 # Escala de texto propia de la app
 
 El tamaño del texto responde SOLO a la preferencia in-app (Settings →
-Tamaño del texto: Chica 0.9 · Normal 1.0 · Grande 1.1 · Muy grande 1.2),
+Tamaño del texto: Chica 0.9 · Normal 1.0 · Grande 1.1 · Máxima 1.2),
 nunca al fontScale del OS. Spec: docs/superpowers/specs/2026-08-14-font-scale-app-design.md.
 
 ## Piezas
@@ -1034,7 +1035,7 @@ git commit -m "docs(sistemas): escala de texto propia de la app — piezas y reg
 En device físico (dev client, nunca Expo Go):
 1. Settings → cambiar entre los 4 niveles → toda la pantalla cambia en vivo.
 2. Con el font size del TELÉFONO al máximo (iOS Dynamic Type / Android): la app NO cambia en ninguna pantalla (incluido texto de libs).
-3. A «Muy grande» (1.2): Home (hero + contador fluido), Gastos (badges, calendario, filas), tab bar, wizard de alta, Jardín/Logros, Settings — sin recortes ni desbordes.
-4. Matar y reabrir la app con «Muy grande»: la preferencia persiste (settle async con salto de fuente en el primer frame, mismo trade-off aceptado que tema/idioma).
+3. A «Máxima» (1.2): Home (hero + contador fluido), Gastos (badges, calendario, filas), tab bar, wizard de alta, Jardín/Logros, Settings — sin recortes ni desbordes.
+4. Matar y reabrir la app con «Máxima»: la preferencia persiste (settle async con salto de fuente en el primer frame, mismo trade-off aceptado que tema/idioma).
 5. Android viejo (gama baja de QA): pasada rápida de los mismos puntos.
 ```
