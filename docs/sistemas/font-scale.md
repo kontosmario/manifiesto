@@ -197,15 +197,31 @@ sitio está en el body del commit `daa09991`.
 
 ## 5. Texto animado
 
-Los 21 sitios de `Animated.Text` pasan por `AnimatedText` del wrapper. La
-**única excepción** del árbol es `mobile/components/home/animated/count-up-text.tsx`:
-hace `Animated.createAnimatedComponent(TextInput)` y necesita el componente
-nativo crudo (el wrapper es un function component y perdería la ref que
+Regla: **todo `Animated.Text` va por `AnimatedText` del wrapper**, los 21 sitios
+de la app. La **única excepción legítima** es la rama fluida de
+`mobile/components/home/animated/count-up-text.tsx`: hace
+`Animated.createAnimatedComponent(TextInput)` y necesita el componente nativo
+crudo (el wrapper es un function component y perdería la ref que
 `animatedProps` requiere). Conserva el import de react-native con su
 `eslint-disable-next-line` justificado y **escala a mano** con
 `useFontScaleFactor()`, resolviendo el factor en JS **fuera del worklet** — los
-worklets no pueden llamar funciones JS no-worklet. Su rama de conteo JS ya usa
-`AnimatedText`.
+worklets no pueden llamar funciones JS no-worklet. Su rama de conteo JS usa
+`AnimatedText` como el resto.
+
+> **ESLint no caza esto.** La guardia de §6 restringe imports de
+> `'react-native'`; `Animated.Text` viene de `react-native-reanimated` y ningún
+> lint lo toca. Un `<Animated.Text>` crudo conserva el default
+> `allowFontScaling={true}`, así que en iOS ese texto sigue escalando con
+> Dynamic Type (hasta 3.571× según la tabla de `RCTUtils.mm`) e ignora la
+> preferencia in-app — exactamente la rotura que este sistema existe para
+> impedir. El único gate es el grep de §6.
+
+**Estado transitorio (mismo motivo que §6):** en un checkout limpio de este
+branch quedan **tres** sitios con `Animated.Text` crudo — `count-up-text.tsx`
+(rama de conteo JS), `redesign/gastos/gastos-screen.tsx` y
+`wrapped/scenes/closing-scene.tsx`. Los tres caen encima del trabajo ajeno en
+curso (Wrapped, ciclo extendido, fijos) y su migración viaja dentro de ese
+commit, igual que la cola de imports.
 
 ## 6. La guardia de ESLint (y su bloque transitorio)
 
@@ -226,9 +242,16 @@ branch esos archivos todavía importan los primitivos crudos, y con la regla en
 arreglar desde ahí.
 
 **Cómo se cierra:** cuando ese trabajo aterrice, borrar el bloque entero y
-verificar que `npm run lint` quede sin warnings de `no-restricted-imports`. Es
-una **lista cerrada, no una allowlist**: no agregar archivos nuevos. Si aparece
-un archivo con el import crudo, se migra al wrapper.
+verificar **las dos** cosas:
+
+1. `npm run lint` sin warnings de `no-restricted-imports`.
+2. `grep -rn 'Animated\.Text' mobile app | grep -v app-text.tsx` **sin
+   resultados** — el lint no ve el texto animado (§5), así que sin este grep se
+   puede declarar cerrado el sistema con labels animados todavía colgados del
+   Dynamic Type del OS.
+
+Es una **lista cerrada, no una allowlist**: no agregar archivos nuevos. Si
+aparece un archivo con el import crudo, se migra al wrapper.
 
 ## 7. Ajustes
 
@@ -277,7 +300,10 @@ recortarse.
    fuente del teléfono al máximo. La app no cambia. En Android incluye el texto
    de terceros (bottom sheets, headers de navegación, toasts) y
    `PixelRatio.getFontScale()` debe dar 1; en iOS el texto propio queda fijo y
-   el de terceros escala — eso es lo esperado (§3).
+   el de terceros escala — eso es lo esperado (§3). **Mirar los textos
+   animados** en esta pasada (contador fluido del hero, label animado de
+   Gastos, escenas de Wrapped): si alguno crece en iOS, quedó un
+   `Animated.Text` crudo (§5) — el lint no lo caza.
 3. A «Máxima» (1.2): Home (hero + contador fluido), Gastos (badges, calendario,
    filas), tab bar, wizards de alta, Jardín/Logros, Ajustes — sin recortes ni
    desbordes. Campos de formulario: label, input y placeholder coherentes.

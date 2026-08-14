@@ -35,9 +35,15 @@ Módulo nuevo `mobile/lib/font-scale.ts`:
 - Tipo `FontScalePreference = 'sm' | 'md' | 'lg' | 'xl'` + mapa de factores
   `{ sm: 0.9, md: 1, lg: 1.1, xl: 1.2 }`.
 - Type guard `isFontScalePreference` (patrón de `isLanguagePreference`).
-- `scaleTextStyle(style, factor)`: función pura que aplana el style y
-  multiplica `fontSize`, `lineHeight` y `letterSpacing`. Testeable en vitest
-  (env node, sin renderer — restricción conocida del proyecto).
+- `scaledTextOverrides(style, factor)`: función pura que aplana el style y
+  escala `fontSize`, `lineHeight` y `letterSpacing`. **Corregido durante la
+  implementación —** el diseño original la llamaba `scaleTextStyle` y le
+  atribuía devolver el style escalado entero; lo implementado devuelve
+  **solo los tres overrides**, para componer como `[style, overrides]` sin
+  tocar el resto del style, y devuelve `null` en dos casos: factor 1 (fast
+  path, ni aplana) y style sin `fontSize` declarado (regla 4 de §3).
+  Testeable en vitest (env node, sin renderer — restricción conocida del
+  proyecto).
 
 ### 2. Provider
 
@@ -54,11 +60,12 @@ Módulo nuevo `mobile/lib/font-scale.ts`:
 - Montado en el root junto a Theme/Language providers → aplica también a
   auth, onboarding y paywall.
 
-### 3. Wrapper de Text / TextInput
+### 3. Wrapper de Text / TextInput / texto animado
 
-`mobile/components/ui/app-text.tsx` exporta `Text` (y el equivalente para
-`TextInput`) con la **misma API** que react-native, para que la barrida sea
-solo swap de import. Reglas:
+`mobile/components/ui/app-text.tsx` exporta `Text`, `TextInput` y —agregado
+durante la implementación, ver §5— `AnimatedText`, los tres con la **misma
+API** que su primitivo, para que la barrida sea solo swap de import. Reglas
+(idénticas en los tres):
 
 1. Siempre manda `allowFontScaling={false}` al componente nativo → el OS
    queda fuera de juego.
@@ -66,7 +73,8 @@ solo swap de import. Reglas:
    tampoco escala con la app. Respeta la curación existente (~30 lugares:
    emojis, badges, chips, layouts fijos) que se pineó justamente porque
    escalar los rompe.
-3. Si no → aplica `scaleTextStyle` con el factor del contexto.
+3. Si no → compone `[style, scaledTextOverrides(style, factor)]` con el
+   factor del contexto.
 4. **Solo escala styles que declaran `fontSize`.** Un Text anidado sin
    fontSize hereda del padre ya escalado; inyectarle el default 14 de RN
    rompería la herencia.
@@ -85,13 +93,28 @@ inocuas (el escalado nativo está apagado); no se tocan en la barrida.
   react-native (precedente: la regla del `useReducedMotion`). Allowlist: el
   propio wrapper y los casos animated documentados.
 
-### 5. Texto animado (fuera del wrapper)
+### 5. Texto animado (DENTRO del wrapper)
 
-`Animated.Text` de Reanimated y `CountUpText` (TextInput animado) no pasan
-por el wrapper: multiplican su `fontSize` a mano con `useFontScaleFactor()`,
-con la misma semántica de pineado (los que hoy están `allowFontScaling=false`
-quedan fijos). El sweep de estos casos se hace en la implementación; QA por
-pantalla decide excepciones.
+**Corregido durante la implementación.** El diseño original dejaba el texto
+animado fuera del wrapper, multiplicando su `fontSize` a mano con
+`useFontScaleFactor()`. No se hizo así: `Animated.Text` de Reanimated pasa
+por `AnimatedText`, un tercer componente de `app-text.tsx` con el mismo
+contrato de §3 (incluido `allowFontScaling={false}` siempre y el pineado por
+`allowFontScaling={false}` explícito). `entering`, `exiting` y los estilos de
+`useAnimatedStyle` viajan por `...rest` sin que la capa los toque, y los
+overrides se componen últimos: ningún sitio del repo anima métricas de
+fuente. **Todos los `Animated.Text` de la app usan `AnimatedText`** — escribir
+`Animated.Text` crudo deja el texto colgado del Dynamic Type del OS, que es
+justo lo que este sistema existe para evitar, y **ESLint no lo caza** (la
+guardia de §4 solo restringe imports de `'react-native'`).
+
+Única excepción: la rama fluida de `CountUpText`
+(`mobile/components/home/animated/count-up-text.tsx`), que hace
+`Animated.createAnimatedComponent(TextInput)` y necesita el primitivo nativo
+crudo para conservar la ref que `animatedProps` requiere. Ahí sí va
+`eslint-disable` justificado + escala a mano con `useFontScaleFactor()`, con
+el factor resuelto en JS fuera del worklet. Su rama de conteo JS usa
+`AnimatedText` como el resto.
 
 ### 6. Kill nativo de respaldo (texto de terceros)
 
@@ -162,9 +185,10 @@ las 4 etiquetas entran en una línea a los cuatro factores (peor holgura
 
 ## Testing y QA
 
-- **Unit (vitest, env node):** `scaleTextStyle` (identidad referencial a
-  factor 1; no toca styles sin fontSize; escala los tres campos; redondeos),
-  type guard, mapa de factores.
+- **Unit (vitest, env node):** `scaledTextOverrides` (`null` a factor 1 —
+  fast path, ni aplana; `null` con styles sin fontSize; escala los tres
+  campos; aplanado de arrays anidados; redondeos), type guard, mapa de
+  factores.
 - **Gates del repo:** `npm run validate` + suite completa +
   `npx expo export --platform ios` (validate no es bundle).
 - **QA en device** a 120% sobre los puntos sensibles ya conocidos: hero del
