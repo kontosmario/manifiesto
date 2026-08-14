@@ -734,13 +734,43 @@ git commit -m "chore(lint): prohibir Text/TextInput crudos de react-native — t
 
 ### Task 8: Config plugin Android — `fontScale = 1`
 
+> **Corrección aplicada (revisión adversaria):** el snippet de abajo quedó
+> obsoleto en dos puntos y el plugin del repo NO es ese.
+> 1. **El override va en MainApplication, no solo en MainActivity.** RN Android
+>    no dimensiona el texto con los Resources del contexto de la View: todo
+>    `<Text>` sale por `PixelUtil.toPixelFromSP()` sobre el singleton
+>    `DisplayMetricsHolder`, que se siembra siempre desde el contexto de
+>    APLICACIÓN (`ReactInstance` lo inicializa con el `BridgelessReactContext`,
+>    que es `ReactContext(context.applicationContext)`; el path legacy pasa
+>    `getContext().getApplicationContext()` explícito). Con el override solo en
+>    la Activity, el texto de libs de terceros —lo único que el plugin existe
+>    para cubrir— seguía escalando con el fontScale del OS, y
+>    `PixelRatio.getFontScale()` seguía devolviendo el valor del OS
+>    (`DeviceInfoModule` lee la configuration del react context = Application).
+>    El override de la Activity se mantiene, pero solo cubre los widgets
+>    nativos inflados con su contexto (diálogos, pickers).
+> 2. **La `Configuration` del override va vacía salvo `fontScale`.**
+>    `createConfigurationContext` la aplica como delta con
+>    `Configuration.updateFrom()`, que copia TODO campo seteado; pasar una copia
+>    de la configuration del momento del attach congelaba `uiMode`, `locale`,
+>    `orientation` y `densityDpi` para siempre (esos cambios están en
+>    `android:configChanges`, no recrean la Activity y el framework re-basea
+>    contra el snapshot guardado). Efecto observable: con Ajustes → Tema en
+>    «Sistema», prender el modo oscuro con la app en foreground no hacía nada
+>    hasta matar el proceso — `AppearanceModule` resuelve el esquema leyendo
+>    `configuration.uiMode` de la Activity.
+>
+> El plugin además borra cualquier override previo antes de reinyectar (un
+> `android/` ya generado con la variante vieja se quedaba con el bug, porque el
+> marcador de idempotencia la daba por buena).
+
 **Files:**
 - Create: `plugins/with-fixed-font-scale.cjs`
 - Modify: `app.config.ts` (registrar el plugin en el array `plugins`)
 
 **Interfaces:**
 - Consumes: nada del código de la app.
-- Produces: MainActivity con `attachBaseContext` que fija `configuration.fontScale = 1f` en cada prebuild (android/ es gitignored — prebuild continuo, igual que `with-android-backup-rules`).
+- Produces: MainApplication y MainActivity con `attachBaseContext` que fija `configuration.fontScale = 1f` en cada prebuild (android/ es gitignored — prebuild continuo, igual que `with-android-backup-rules`).
 
 - [ ] **Step 1: Write the plugin**
 
@@ -805,8 +835,8 @@ En el array `plugins` (línea ~67), junto a los otros plugins locales:
 
 - [ ] **Step 3: Verify via prebuild**
 
-Run: `source ~/.nvm/nvm.sh && npx expo prebuild --platform android --no-install 2>&1 | tail -3 && grep -n "fontScale" android/app/src/main/java/com/manifiesto/mobile/MainActivity.kt`
-Expected: prebuild OK y el grep muestra `config.fontScale = 1f` dentro de `attachBaseContext`.
+Run: `source ~/.nvm/nvm.sh && npx expo prebuild --platform android --no-install 2>&1 | tail -3 && grep -n "fontScale" android/app/src/main/java/com/manifiesto/mobile/MainActivity.kt android/app/src/main/java/com/manifiesto/mobile/MainApplication.kt`
+Expected: prebuild OK y el grep muestra `fontScaleOverride.fontScale = 1f` dentro de `attachBaseContext` en los DOS archivos, una sola vez en cada uno.
 
 - [ ] **Step 4: Commit**
 

@@ -96,8 +96,27 @@ pantalla decide excepciones.
 Cubre lo que rendericen libs fuera del wrapper:
 
 - **Android:** config plugin local (patrón `plugins/android-backup-rules`)
-  que fija `configuration.fontScale = 1` en MainActivity. Estático — nunca
-  hay que recrear la Activity.
+  que fija `configuration.fontScale = 1` wrappeando el base context. Va en
+  **MainApplication y MainActivity**, no solo en la Activity (corregido
+  durante la implementación): RN no mide el texto contra los Resources de la
+  View, todo `<Text>` sale por `PixelUtil.toPixelFromSP()` sobre el singleton
+  `DisplayMetricsHolder`, que se siembra **siempre desde el contexto de
+  aplicación** (en bridgeless, `ReactInstance` lo inicializa con el
+  `BridgelessReactContext`, que es `ReactContext(context.applicationContext)`).
+  Con el override solo en la Activity el texto de terceros seguía escalando
+  con el OS. El override de la Application es además el que hace que
+  `PixelRatio.getFontScale()` y `Dimensions.get('window').fontScale`
+  devuelvan 1 (`DeviceInfoModule` lee la configuration del react context =
+  Application); el de la Activity queda para los widgets nativos que se
+  inflan con su contexto (diálogos, pickers).
+  La `Configuration` del override va **vacía salvo `fontScale`**:
+  `createConfigurationContext` la aplica como delta con
+  `Configuration.updateFrom()`, que copia todo campo seteado, así que una
+  copia completa de la configuration congelaría `uiMode`, `locale`,
+  `orientation` y `densityDpi` en el valor del momento del attach — y el
+  manifest declara esos cambios en `android:configChanges`, o sea que no
+  recrean la Activity ni vuelven a correr `attachBaseContext`. Estático —
+  nunca hay que recrear la Activity.
 - **iOS: NO HAY kill de respaldo** (corregido durante la implementación). El
   diseño original llamaba a
   `AccessibilityManager.setAccessibilityContentSizeMultipliers` con todas las
@@ -136,14 +155,28 @@ de Settings es el preview.
 - **QA en device** a 120% sobre los puntos sensibles ya conocidos: hero del
   Home (contador fluido), badges/calendario de Gastos, tab bar, wizards de
   alta, Jardín/Logros.
+- **QA del eje del OS (distinto del anterior, no lo cubre mover la
+  preferencia in-app):** poner «Tamaño de fuente» del sistema al máximo y
+  verificar que nada se agranda. En Android incluye el texto de terceros
+  (bottom sheets, headers de navegación, toasts) y `PixelRatio.getFontScale()`
+  debe dar 1; en iOS el texto propio queda fijo pero el de terceros escala —
+  eso es lo esperado hasta que exista el kill de iOS.
+- **QA del modo oscuro con la app en foreground** (regresión del override de
+  Android): cambiar el tema del sistema con Ajustes → Tema en «Sistema» y
+  confirmar que la app cambia al toque, sin matar el proceso.
 
 ## Riesgos asumidos
 
-- Texto de libs de terceros no escala con la app: queda fijo a 100% (el kill
-  nativo lo desacopla del OS). Aceptable — todo lo visible es custom.
+- Texto de libs de terceros no escala con la app. En **Android** queda fijo a
+  100% (el kill nativo lo desacopla del OS); en **iOS** sigue escalando con
+  Dynamic Type, porque ahí no hay kill (ver §6). Aceptable — todo lo visible
+  es custom.
 - Arranque con escala guardada ≠ Normal: settle async con salto de fuente en
   el primer frame, igual que hoy tema e idioma.
 - Gates existentes tipo `PixelRatio.getFontScale() === 1` quedan siempre-true
-  (fósiles inocuos); se limpian o anotan en la barrida.
+  **solo en Android** (el override de MainApplication también fija lo que
+  reporta `DeviceInfoModule`); en iOS ese gate sigue devolviendo el valor del
+  OS. No escribir lógica nueva que asuma 1 en las dos plataformas: los
+  fósiles existentes se limpian o anotan en la barrida.
 - Accesibilidad: ignorar Dynamic Type es una regresión para usuarios que
   dependen del escalado del OS; se mitiga con el nivel «Muy grande» in-app.

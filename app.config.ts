@@ -202,10 +202,13 @@ const config: ExpoConfig = {
     './plugins/with-apple-pay-intent.cjs',
     // Tamaño del texto (2026-08-14): el fontScale del OS rompía la UI, así
     // que el tamaño lo gobierna la preferencia in-app (Ajustes → Tamaño del
-    // texto). Este plugin fija configuration.fontScale = 1 en MainActivity
-    // como kill nativo de respaldo para el texto de libs de terceros que no
-    // pasa por el wrapper de app-text. En iOS no hay contraparte (ver el
-    // spec 2026-08-14-font-scale-app-design.md, sección 6).
+    // texto). Este plugin fija configuration.fontScale = 1 en MainApplication
+    // y MainActivity como kill nativo de respaldo para el texto de libs de
+    // terceros que no pasa por el wrapper de app-text. El de la Application
+    // es el que cubre el texto de RN (DisplayMetricsHolder se siembra desde
+    // el contexto de aplicación); el de la Activity, los widgets nativos.
+    // En iOS no hay contraparte (ver el spec
+    // 2026-08-14-font-scale-app-design.md, sección 6).
     './plugins/with-fixed-font-scale.cjs',
   ],
   experiments: {
