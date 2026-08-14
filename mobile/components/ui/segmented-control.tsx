@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native'
+import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   cancelAnimation,
   useSharedValue,

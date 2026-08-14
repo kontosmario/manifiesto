@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'

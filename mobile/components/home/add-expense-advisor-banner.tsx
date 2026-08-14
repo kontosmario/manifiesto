@@ -15,7 +15,8 @@
 // component returns null when nothing relevant applies.
 
 import { useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'

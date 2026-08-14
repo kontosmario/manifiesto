@@ -4,7 +4,8 @@
 // "volver" — el flujo que lo monta pasa el título ya traducido y el handler.
 // Es lo que lo hace reusable por agregar-gasto y agregar-ingreso, que tienen
 // otros títulos y otra cantidad de pasos.
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'

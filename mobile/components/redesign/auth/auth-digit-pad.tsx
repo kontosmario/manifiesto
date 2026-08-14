@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { useTranslation } from 'react-i18next'

@@ -4,9 +4,9 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   Extrapolation,

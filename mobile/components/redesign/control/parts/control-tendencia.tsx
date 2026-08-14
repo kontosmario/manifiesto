@@ -1,6 +1,7 @@
 // @i18n-ignore-file — kit de rediseño; fixtures literales del markup, el copy real llega por props (i18n vive en el view-model).
 import { memo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Path } from 'react-native-svg'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import { CONTROL_RADII, CONTROL_SPEC, type ControlMode, type ControlSpec } from '@/components/redesign/control/control-spec'

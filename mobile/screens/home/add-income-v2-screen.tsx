@@ -16,11 +16,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Keyboard,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
   type ScrollView,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'

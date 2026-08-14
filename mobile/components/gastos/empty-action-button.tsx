@@ -2,7 +2,8 @@
 // de `gastos-v2-screen.tsx` porque `usePressScale` necesita component
 // body (rules of hooks). Spring scale 0.97 (Emil-grade), texto en
 // `primaryStrong` para AA limpio en ambos modos.
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useAppTheme } from '@/theme/theme-provider'

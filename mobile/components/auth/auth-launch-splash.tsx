@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
+import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,

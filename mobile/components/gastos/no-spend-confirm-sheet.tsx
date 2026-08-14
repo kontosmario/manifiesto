@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { categorySwatch } from '@/components/gastos/category-pastel'

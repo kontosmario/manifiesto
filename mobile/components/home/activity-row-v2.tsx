@@ -1,5 +1,6 @@
 import { memo, useMemo, type ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { SlideInView } from '@/components/home/animated/slide-in-view'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { formatMoneyWithSign } from '@/utils/money'

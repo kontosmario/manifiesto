@@ -1,5 +1,6 @@
 // 4c · Activa Face ID — copy vía t() (auth:biometricSetup.*); ver keys por línea.
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { nunitoFamily } from '@/theme/typography'

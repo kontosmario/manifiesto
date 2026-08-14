@@ -4,13 +4,13 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollView,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   runOnJS,
   useAnimatedStyle,

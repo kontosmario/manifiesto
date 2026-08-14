@@ -1,4 +1,5 @@
-import { Image, StyleSheet, Text, type StyleProp, type TextStyle } from 'react-native'
+import { Image, StyleSheet, type StyleProp, type TextStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
 import { isGoalStickerKey } from '@/features/savings-goals/goal-icon'
 

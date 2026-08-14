@@ -1,5 +1,6 @@
 // @i18n-ignore-file — tooling dev-only gateado por __DEV__; copy = fixtures del handoff.
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import {
   CONTROL_SPEC,
   ControlAlcancia,

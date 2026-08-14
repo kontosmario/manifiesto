@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text, View, type TextInput } from 'react-native'
+import { StyleSheet, View, type TextInput } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import Svg, { Path, Rect } from 'react-native-svg'

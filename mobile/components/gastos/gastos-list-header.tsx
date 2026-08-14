@@ -5,7 +5,8 @@
 // como props — no hooks adentro (excepto theme), así la memoization de
 // la screen sigue siendo predecible.
 import { useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'

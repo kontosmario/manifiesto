@@ -1,6 +1,7 @@
 // @i18n-ignore-file — réplica dev-only del design doc; copy literal del flujo actual (joiner).
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import type { AvatarSlug } from '@/assets/avatars'
 import { BrotMascot } from '@/components/brot'

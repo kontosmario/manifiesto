@@ -21,7 +21,8 @@
 // (la screen no aplica el monto): el aviso y los números tienen que decir lo
 // mismo.
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot/brot-mascot'

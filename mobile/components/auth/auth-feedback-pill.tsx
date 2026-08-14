@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons'
-import { StyleSheet, Text } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeInDown, FadeOut, ReduceMotion } from 'react-native-reanimated'
 import { authPalette } from '@/theme/auth-theme'
 import { radii } from '@/theme/palette'

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useFijosSkin } from '@/components/fijos/fijos-skin'
 import { useThemeTokens } from '@/theme/theme-provider'

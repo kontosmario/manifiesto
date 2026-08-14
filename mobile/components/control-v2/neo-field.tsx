@@ -19,11 +19,11 @@
 import { useState } from 'react'
 import {
   StyleSheet,
-  Text,
   TextInput,
   View,
   type TextInputProps,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { neoInk } from '@/theme/neo-ink'
 import { neoRadii, neoTokens } from '@/theme/neo-tokens'

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
 import { RiseView } from '@/components/home/animated/rise-view'

@@ -20,7 +20,8 @@
 // llegar a ~30 celdas; ahí las celdas ya montan 30 Views con sombra, así que el
 // Rect estático no mueve la aguja.
 import { memo, useCallback, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Rect } from 'react-native-svg'
 import { GASTOS_SPEC, type GastosMode, type GastosSpec } from '@/components/redesign/gastos/gastos-spec'
 import { nunitoFamily } from '@/theme/typography'

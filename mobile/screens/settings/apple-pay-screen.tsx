@@ -50,7 +50,8 @@
 // cero `theme.colors`).
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 

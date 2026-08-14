@@ -1,6 +1,7 @@
 // @i18n-ignore-file — tooling dev-only gated por __DEV__.
 import type { PropsWithChildren } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useThemeTokens } from '@/theme/theme-provider'
 import type { PreviewApprovalStatus } from '@/screens/dev/redesign/redesign-approval-status'
 import { nunitoFamily } from '@/theme/typography'

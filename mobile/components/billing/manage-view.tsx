@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Linking, StyleSheet, Text, View } from 'react-native'
+import { Linking, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { BrandLockup } from '@/components/billing/brand-lockup'

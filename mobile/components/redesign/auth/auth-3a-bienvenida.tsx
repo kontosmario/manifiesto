@@ -1,6 +1,7 @@
 // Réplica del design doc (3a); copy vía t() (cableado i18n 2026-07-18).
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { BrotParticles } from '@/components/brot'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { nunitoFamily } from '@/theme/typography'

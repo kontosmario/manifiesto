@@ -1,6 +1,7 @@
 // Diseño en el lenguaje del rediseño; copy vía t() (cableado i18n 2026-07-18).
 import { useCallback, useEffect, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   FadeInDown,
   useAnimatedStyle,

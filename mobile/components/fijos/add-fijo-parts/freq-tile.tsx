@@ -2,7 +2,8 @@
 // `NameInput` / `AmountCard`: focus → grow + tint; warning glide sin
 // width change. Extraído de `add-fijo-v2-screen.tsx`.
 import { useEffect } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   interpolateColor,

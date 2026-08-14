@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useAppTheme } from '@/theme/theme-provider'
 import { getStateTokens } from '@/theme/state-tokens'

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { Screen } from '@/components/ui/screen'
 import { BrotParticles } from '@/components/brot'
 import { cssGradient, neoParticlePresets } from '@/theme/neo-tokens'

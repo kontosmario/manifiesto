@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { AUTH_SPEC } from '@/components/redesign/auth/auth-spec'
 import { triggerHaptic } from '@/lib/haptics'

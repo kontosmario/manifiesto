@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Circle, Path, G } from 'react-native-svg'
 import { getGreeting, getGreetingName } from '@/features/home/home-dashboard-model'
 import { FloatView } from '@/components/home/animated/float-view'

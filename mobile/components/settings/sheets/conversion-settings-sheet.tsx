@@ -1,4 +1,5 @@
-import { StyleSheet, Switch, Text, View } from 'react-native'
+import { StyleSheet, Switch, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { ModalCard } from '@/components/ui/modal-card'
 import { SUPPORTED_CURRENCIES } from '@/features/finance/family-finance.model'

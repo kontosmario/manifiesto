@@ -3,7 +3,8 @@
 // (rules of hooks). Press feedback Emil-grade: spring scale 0.97 (mismo
 // patrón que Home Sprint 1) — antes era un fade muerto opacity 0.85
 // sin sensación de tap.
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'

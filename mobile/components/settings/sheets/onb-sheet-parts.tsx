@@ -1,5 +1,6 @@
 import { useEffect, useState, type PropsWithChildren, type ReactNode } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'

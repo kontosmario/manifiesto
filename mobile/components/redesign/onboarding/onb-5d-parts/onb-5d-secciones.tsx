@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'

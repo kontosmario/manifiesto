@@ -50,7 +50,8 @@
 //   free pass.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Linking, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppButton } from '@/components/ui/button'

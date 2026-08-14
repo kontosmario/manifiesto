@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'

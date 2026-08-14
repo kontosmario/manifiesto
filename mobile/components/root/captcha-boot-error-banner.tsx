@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Platform, StyleSheet, Text, View } from 'react-native'
+import { Platform, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { getCaptchaBootError } from '@/lib/captcha-config'

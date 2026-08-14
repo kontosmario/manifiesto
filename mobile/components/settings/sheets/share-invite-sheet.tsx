@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { Pressable, Share, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import * as Clipboard from 'expo-clipboard'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'

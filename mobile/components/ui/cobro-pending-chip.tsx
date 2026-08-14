@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,

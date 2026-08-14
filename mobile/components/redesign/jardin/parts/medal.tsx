@@ -39,7 +39,8 @@
 //    markup del handoff en las filas): en una lista de 18 el movimiento lo
 //    carga el jardín, no la colección. El cierre puede pedir `animated`.
 
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Path, Rect } from 'react-native-svg'
 import {
   AchievementIcon,

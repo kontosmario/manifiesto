@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { MemberAvatars } from '@/components/billing/member-avatars'

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import * as ImagePicker from 'expo-image-picker'
 import { Screen } from '@/components/ui/screen'
 import { useAppTheme } from '@/theme/theme-provider'

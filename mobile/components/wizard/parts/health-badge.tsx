@@ -3,7 +3,8 @@
 // copy entra por props (`labels`) en vez de resolverse con el namespace de
 // fijos adentro — el kit no puede traducir por un flujo que no conoce. Los
 // umbrales y los dos árboles (neo / classic) quedan literales.
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'

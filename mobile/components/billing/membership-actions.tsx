@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Linking, StyleSheet, Text, View } from 'react-native'
+import { Linking, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { NeoButton } from '@/components/ui/neo-button'
 import { BillingLink } from '@/components/billing/billing-neo-kit'
 import { neoTokens } from '@/theme/neo-tokens'

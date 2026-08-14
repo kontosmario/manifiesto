@@ -2,7 +2,8 @@
 // `add-fijo-parts/field.tsx` sin cambios: uniforma los labels de cualquier
 // wizard del rediseño (fijos, gasto, ingreso).
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'

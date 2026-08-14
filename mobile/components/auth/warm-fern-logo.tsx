@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { FernLogo } from '@/components/auth/fern-logo'
 import { authTokens } from '@/theme/palette'
 import { nunitoFamily } from '@/theme/typography'

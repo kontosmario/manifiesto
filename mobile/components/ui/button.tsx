@@ -1,4 +1,5 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type PressableProps } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, View, type PressableProps } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'

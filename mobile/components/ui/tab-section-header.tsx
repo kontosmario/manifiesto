@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react'
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'

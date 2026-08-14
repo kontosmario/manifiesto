@@ -3,11 +3,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   FadeInDown,
   useAnimatedStyle,

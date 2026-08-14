@@ -2,7 +2,8 @@
 // frecuencia (con tile picker + cuotas card cuando aplica). Extraído
 // de `add-fijo-v2-screen.tsx`. La screen pasa todo el form state desde
 // `useAddFijoForm`.
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import Animated, {

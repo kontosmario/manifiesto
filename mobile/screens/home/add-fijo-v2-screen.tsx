@@ -15,9 +15,9 @@ import {
   Pressable,
   type ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   LinearTransition,

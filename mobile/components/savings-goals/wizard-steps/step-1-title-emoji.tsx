@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { NeoTextField } from '@/components/ui/neo-text-field'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'

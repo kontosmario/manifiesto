@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'
 

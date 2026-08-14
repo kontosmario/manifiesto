@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'

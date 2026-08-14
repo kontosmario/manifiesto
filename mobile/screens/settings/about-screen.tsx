@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native'
+import { Linking, Platform, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Constants from 'expo-constants'
 import * as Application from 'expo-application'

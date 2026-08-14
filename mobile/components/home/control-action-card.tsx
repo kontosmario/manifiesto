@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { buildTonePalette, type ControlAction } from '@/features/insights/control-model'
 import { radii } from '@/theme/palette'
 import { useAppTheme } from '@/theme/theme-provider'

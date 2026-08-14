@@ -16,9 +16,9 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn } from 'react-native-reanimated'

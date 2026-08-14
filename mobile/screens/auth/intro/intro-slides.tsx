@@ -2,12 +2,12 @@ import { useEffect, useRef, type FC, type ReactNode } from 'react'
 import {
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Extrapolation,

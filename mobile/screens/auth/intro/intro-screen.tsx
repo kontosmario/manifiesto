@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react'
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
   type NativeScrollEvent,
@@ -10,6 +9,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Extrapolation,
   interpolate,

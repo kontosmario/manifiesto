@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import type { AvatarSlug } from '@/assets/avatars'
 import { PaydayPillV2 } from '@/components/home/payday-pill-v2'

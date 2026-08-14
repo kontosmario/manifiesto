@@ -17,7 +17,8 @@
 // sees the warning BEFORE signing back in.
 
 import { useCallback, useMemo } from 'react'
-import { Alert, Platform, StyleSheet, Text, View } from 'react-native'
+import { Alert, Platform, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { NeoButton } from '@/components/ui/neo-button'

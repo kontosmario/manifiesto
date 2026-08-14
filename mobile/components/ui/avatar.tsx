@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { nunitoFamily } from '@/theme/typography'
 

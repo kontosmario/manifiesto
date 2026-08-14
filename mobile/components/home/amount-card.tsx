@@ -2,11 +2,11 @@ import { useEffect, type ReactNode } from 'react'
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   useSharedValue,

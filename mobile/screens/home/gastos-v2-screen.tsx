@@ -4,11 +4,11 @@ import {
   RefreshControl,
   SectionList,
   StyleSheet,
-  Text,
   View,
   type ScrollView,
   type SectionListData,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useLocalSearchParams } from 'expo-router'

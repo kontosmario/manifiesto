@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Pressable, RefreshControl, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'

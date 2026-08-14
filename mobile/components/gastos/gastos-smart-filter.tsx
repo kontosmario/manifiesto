@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { GastosFilterPill } from '@/components/gastos/gastos-filter-pill'

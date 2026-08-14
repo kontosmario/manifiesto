@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useState, type ReactNode } from 'react'
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native'
+import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,

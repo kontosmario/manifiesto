@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { Screen } from '@/components/ui/screen'
 import { BROT_POSES, BrotMascot, type BrotPose } from '@/components/brot'
 import {

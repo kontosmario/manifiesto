@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeIn, FadeOutRight, LinearTransition, ReduceMotion } from 'react-native-reanimated'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'

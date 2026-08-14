@@ -8,7 +8,8 @@
 // Extraído de `add-fijo-v2-screen.tsx` para mantener el screen como
 // orquestador.
 import { useCallback, useEffect, useState } from 'react'
-import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native'
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import Animated, {

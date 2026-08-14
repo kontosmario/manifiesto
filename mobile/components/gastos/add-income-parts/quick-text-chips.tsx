@@ -4,7 +4,8 @@
 // ambos son atajos para llenar un campo, así que comparten superficie. No se
 // reusa aquel componente porque su contrato es numérico (`+$5k` lo formatea
 // adentro); acá el label es texto libre.
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { Pressable, ScrollView, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useWizardSkin, WIZARD_SHADOW_BLEED } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'

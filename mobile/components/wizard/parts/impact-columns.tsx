@@ -6,7 +6,8 @@
 //
 // Sólo dibuja en la piel `neo`: en `classic` devuelve null, igual que en
 // fijos, donde ese caso lo cubren `ImpactRow` + `ImpactBar`.
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Path } from 'react-native-svg'
 import { useWizardSkin, type WizardNeoSkin } from '@/components/wizard/wizard-skin'
 import { nunitoFamily } from '@/theme/typography'

@@ -24,7 +24,8 @@
 //    o de peso había que aplicarlo seis veces, y bastaba olvidarse de una para
 //    que un estado se viera de otra familia.
 import type { ComponentProps } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { formatMissingFields } from '@/lib/form-missing-fields'
 import { useAppTheme } from '@/theme/theme-provider'

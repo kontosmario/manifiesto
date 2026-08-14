@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated'
 import {
   AVATAR_LABELS,

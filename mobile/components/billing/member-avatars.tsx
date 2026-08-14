@@ -1,5 +1,6 @@
 import { memo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { neoInk } from '@/theme/neo-ink'
 import { neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'

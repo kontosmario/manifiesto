@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ComponentProps } from 'react'
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'

@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import type { ControlMood } from '@/features/insights/control-model'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'

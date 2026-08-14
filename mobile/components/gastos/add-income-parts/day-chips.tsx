@@ -6,7 +6,8 @@
 // anima es su opacidad — es la única forma de que el chip cruce de un estado
 // al otro con transición y no de un frame al siguiente.
 import { useEffect } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   interpolateColor,
   useAnimatedStyle,

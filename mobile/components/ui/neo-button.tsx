@@ -3,12 +3,12 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type GestureResponderEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic, type AppHapticTone } from '@/lib/haptics'
 import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'

@@ -15,7 +15,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type KeyboardTypeOptions,
@@ -24,6 +23,7 @@ import {
   type RefreshControlProps,
   type TextInputProps,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {

@@ -8,10 +8,10 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   type RefreshControlProps,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   FadeIn,
   useAnimatedStyle,

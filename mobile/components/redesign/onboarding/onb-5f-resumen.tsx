@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Image, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { getAvatarComponent, type AvatarSlug } from '@/assets/avatars'
 import { BrotMascot, BrotParticles } from '@/components/brot'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'

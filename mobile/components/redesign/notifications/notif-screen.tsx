@@ -1,7 +1,8 @@
 // @i18n-ignore-file — la réplica/preview usa copy literal del mockup; el
 // cableado live pasa strings i18n por props (ver NotifEmptyBody / la neo screen).
 import { Fragment, type ReactNode } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Svg, { Path } from 'react-native-svg'
 import { Avatar } from '@/components/ui/avatar'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'

@@ -10,7 +10,8 @@
 // pantalla viva cuando no hay provider de piel, y no las va a reusar ningún
 // flujo nuevo (el rediseño las reemplaza por las columnas + el medidor).
 import { useEffect } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,

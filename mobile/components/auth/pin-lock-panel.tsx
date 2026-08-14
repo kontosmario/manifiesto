@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { StatusBar } from 'expo-status-bar'
 import { useTranslation } from 'react-i18next'
 import { FernLogo } from '@/components/auth/fern-logo'

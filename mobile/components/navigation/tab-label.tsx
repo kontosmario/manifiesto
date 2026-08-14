@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native'
+import { StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useAppTheme } from '@/theme/theme-provider'
 import { nunitoFamily } from '@/theme/typography'
 

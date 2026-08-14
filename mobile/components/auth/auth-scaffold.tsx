@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { StatusBar } from 'expo-status-bar'
 import { useTranslation } from 'react-i18next'
 import Svg, { Path } from 'react-native-svg'

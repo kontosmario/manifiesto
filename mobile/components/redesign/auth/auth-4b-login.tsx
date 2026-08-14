@@ -1,7 +1,8 @@
 // Réplica del design doc (4b/4bo); copy vía t() (cableado i18n 2026-07-18).
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, TextInput, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot'
 import { triggerHaptic } from '@/lib/haptics'

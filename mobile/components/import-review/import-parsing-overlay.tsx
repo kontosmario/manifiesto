@@ -1,4 +1,5 @@
-import { ActivityIndicator, StyleSheet, Text } from 'react-native'
+import { ActivityIndicator, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { Easing, FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated'
 import { NeoSurface } from '@/components/ui/neo-surface'

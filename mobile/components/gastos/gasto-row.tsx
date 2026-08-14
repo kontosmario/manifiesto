@@ -1,5 +1,6 @@
 import { memo, useMemo } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { WhoPaidAvatar } from '@/components/home/who-paid-avatar'
 import { darkenForLightBg, lightenForDarkBg } from '@/utils/category-color'

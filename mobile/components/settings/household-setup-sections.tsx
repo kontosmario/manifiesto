@@ -1,5 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { NeoSurface } from '@/components/ui/neo-surface'

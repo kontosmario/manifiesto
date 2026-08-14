@@ -1,6 +1,7 @@
 // @i18n-ignore-file — tooling dev-only gated por __DEV__.
 import { useState, type PropsWithChildren } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { Screen } from '@/components/ui/screen'
 import { NeoTabBarLive } from '@/components/navigation/neo-tab-bar-live'
 import {

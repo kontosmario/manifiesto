@@ -1,5 +1,6 @@
 import { useMemo, type ComponentProps } from 'react'
-import { Pressable, StyleSheet, Switch, Text, View, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, Switch, View, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { NeoSurface } from '@/components/ui/neo-surface'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'

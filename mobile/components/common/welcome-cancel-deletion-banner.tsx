@@ -21,7 +21,8 @@
 //   cancelled, the banner stops showing on next mount.
 
 import { useEffect, useMemo, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'

@@ -8,7 +8,8 @@
 // para que la screen no tenga ~50 LOC de JSX inline + cache de estilos
 // específicos del header.
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useAppTheme } from '@/theme/theme-provider'
 import { sectionMetaCopy, type MovimientosSection } from '@/features/gastos/gastos-helpers'
 import { formatMoney } from '@/utils/money'

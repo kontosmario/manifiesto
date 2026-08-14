@@ -9,7 +9,8 @@
 // chevron en pastilla hundida y etiqueta que trunca — y baja `DÍA SELECCIONADO`
 // a una segunda línea, que además le deja el ancho al badge de estado.
 import { memo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
 import { GASTOS_SPEC, type GastosMode } from '@/components/redesign/gastos/gastos-spec'

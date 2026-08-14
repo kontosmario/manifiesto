@@ -2,7 +2,8 @@
 // libre row + health badge) + calendar drop + reminder toggle +
 // "ya pagué la cuota más reciente" toggle (sólo en create + no
 // installment). Extraído de `add-fijo-v2-screen.tsx`.
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import Animated, {

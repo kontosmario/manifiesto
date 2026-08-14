@@ -1,5 +1,6 @@
 // Panel "Revisa tu correo" post-signup — copy vía t() (auth:signup.confirmation.*).
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot'

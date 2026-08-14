@@ -4,11 +4,11 @@ import {
   PixelRatio,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { LinearGradient } from 'expo-linear-gradient'
 import {
   SafeAreaFrameContext,

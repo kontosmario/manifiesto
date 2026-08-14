@@ -2,7 +2,8 @@
 // El label uppercase "CONTRASEÑA" usa auth:redesign.passwordLabel (mayúsculas
 // por diseño; la key auth:login.passwordLabel del flujo viejo va en title case).
 import { useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 import type { AvatarSlug } from '@/assets/avatars'

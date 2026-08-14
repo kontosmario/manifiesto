@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native'
+import { Pressable, ScrollView, StyleSheet } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useFijosSkin, FIJOS_SHADOW_BLEED } from '@/components/fijos/fijos-skin'
 import { useAppTheme } from '@/theme/theme-provider'

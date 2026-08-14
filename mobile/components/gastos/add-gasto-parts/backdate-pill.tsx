@@ -5,7 +5,8 @@
 // resumen —es justo donde confirma— así que la píldora acompaña los dos pasos.
 // Sólo se monta cuando la fecha destino NO es hoy: en el caso normal no hay
 // nada que aclarar.
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
 import { useAppTheme } from '@/theme/theme-provider'

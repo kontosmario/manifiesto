@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons'
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { getSignalPalette, type SignalTone } from '@/components/home/control-visual-utils'
 import { withAlpha } from '@/theme/color-utils'
 import { radii } from '@/theme/palette'
