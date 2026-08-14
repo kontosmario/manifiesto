@@ -403,10 +403,13 @@ export interface BuildTickerItemsResult {
 }
 
 /**
- * §3.8.1. El tag de un `overdue` es SIEMPRE el literal `'VENCIDO'` — nunca
- * derivado de `daysUntilDue`, que para un item vencido queda clampeado a 0
+ * §3.8.1. El tag de un `overdue` es el literal `'VENCIDO'` — nunca derivado
+ * de `daysUntilDue`, que para un item vencido queda clampeado a 0
  * (`fijos-aggregates.model.ts` — diferencia real de fechas, ya no wrap del
- * ciclo). `dueSoon` se ordena asc por `daysUntilDue` antes de tagear HOY/EN Nd.
+ * ciclo). Cuando `missedCuotas > 1` (más de una cuota acumulada sin pagar)
+ * el tag suma el contador (`'VENCIDO · 3'`); con 0 o 1 cuota se mantiene el
+ * literal solo. `dueSoon` se ordena asc por `daysUntilDue` antes de tagear
+ * HOY/EN Nd.
  */
 export function buildTickerItems(input: BuildTickerItemsInput): BuildTickerItemsResult {
   const { overdue, dueSoon, cap } = input
@@ -415,7 +418,12 @@ export function buildTickerItems(input: BuildTickerItemsInput): BuildTickerItems
     id: item.id,
     name: item.name,
     amount: formatMoney(item.amount),
-    tagLabel: i18n.t('fijos:neo.overdueTag'),
+    // Con más de una cuota adeudada el tag suma el contador (`VENCIDO · 3`);
+    // con una sola se mantiene el literal de siempre.
+    tagLabel:
+      item.missedCuotas > 1
+        ? i18n.t('fijos:neo.overdueTagMulti', { count: item.missedCuotas })
+        : i18n.t('fijos:neo.overdueTag'),
     tone: 'overdue' as FijosTickerTone,
   }))
 

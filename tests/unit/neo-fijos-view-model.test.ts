@@ -820,6 +820,18 @@ describe('buildTickerItems', () => {
     expect(items[0]).toMatchObject({ tagLabel: 'VENCIDO', tone: 'overdue' })
   })
 
+  it('overdue con missedCuotas > 1 muestra el contador en el tag', () => {
+    const item = makeFijoItem({ id: 'f1', name: 'Netflix', computedStatus: 'overdue', missedCuotas: 3, daysUntilDue: 0 })
+    const result = buildTickerItems({ overdue: [item], dueSoon: [], cap: 5 })
+    expect(result.items[0]?.tagLabel).toContain('3')
+  })
+
+  it('overdue con missedCuotas === 1 mantiene el literal VENCIDO sin contador', () => {
+    const item = makeFijoItem({ id: 'f1', name: 'Netflix', computedStatus: 'overdue', missedCuotas: 1, daysUntilDue: 0 })
+    const result = buildTickerItems({ overdue: [item], dueSoon: [], cap: 5 })
+    expect(result.items[0]).toMatchObject({ tagLabel: 'VENCIDO', tone: 'overdue' })
+  })
+
   it('cap:8 con 12 entradas → items.length===8, dropped===4', () => {
     const overdue = Array.from({ length: 4 }, (_, i) => makeFijoItem({ id: `o${i}`, computedStatus: 'overdue' }))
     const dueSoon = Array.from({ length: 8 }, (_, i) => makeFijoItem({ id: `d${i}`, daysUntilDue: i }))

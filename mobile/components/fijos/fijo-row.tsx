@@ -178,6 +178,15 @@ function FijoRowReal({
   // hace que "qué cuota" sea el ancla visual de la sub-line.
   const cuotaShort = fijo.cuotaMonth ? capitalize(monthOfLabel(fijo.cuotaMonth)) : null
 
+  // Chip de deuda acumulada: solo con más de una cuota adeudada (con una
+  // sola el chip de status ya dice "Vencida"/"En mora" y no hace falta
+  // duplicar la info). El mes de la cuota más vieja ya lo comunica
+  // `cuotaShort` al lado; este chip suma CUÁNTAS.
+  const missedLabel =
+    status === 'overdue' && (fijo.missedCuotas ?? 0) > 1
+      ? t('fijos:row.missedCuotas', { count: fijo.missedCuotas })
+      : null
+
   const detail = computeDetail(status, daysToNextDue)
 
   // catChipText hue-preserved (mismo helper que GastoRow). Antes el
@@ -483,6 +492,26 @@ function FijoRowReal({
                     {cuotaShort}
                   </Text>
                 </View>
+              ) : null}
+              {/*
+                Deuda acumulada: cuántas cuotas se juntaron sin pagar
+                (Task 3, `missedCuotas`). Mismo estilo de texto que el chip
+                del mes de al lado — es informativo, no un chip propio
+                nuevo.
+              */}
+              {missedLabel ? (
+                <Text
+                  style={[
+                    styles.monthChipText,
+                    { color: accent.solid },
+                    skin.kind === 'neo'
+                      ? { ...neoChipTextStyle(skin), color: skin.accent('paid').ink }
+                      : null,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {missedLabel}
+                </Text>
               ) : null}
               <View
                 style={[
