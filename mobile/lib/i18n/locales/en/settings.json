@@ -4,6 +4,14 @@
     "system": "System",
     "footer": "Current language: {{lang}}."
   },
+  "fontSize": {
+    "groupTitle": "Text size",
+    "footer": "Text size is controlled by the app, not by your phone's setting.",
+    "sm": "Small",
+    "md": "Default",
+    "lg": "Large",
+    "xl": "Largest"
+  },
   "settingsScreen": {
     "disabledHint": "Only the owner can edit"
   },

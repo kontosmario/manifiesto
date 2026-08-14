@@ -4,6 +4,14 @@
     "system": "Sistema",
     "footer": "Idioma actual: {{lang}}."
   },
+  "fontSize": {
+    "groupTitle": "Tamaño del texto",
+    "footer": "El tamaño del texto lo controla la app, no el ajuste del teléfono.",
+    "sm": "Chica",
+    "md": "Normal",
+    "lg": "Grande",
+    "xl": "Máxima"
+  },
   "settingsScreen": {
     "disabledHint": "Solo el dueño puede editar"
   },

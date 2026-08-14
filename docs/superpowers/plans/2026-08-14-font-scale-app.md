@@ -849,6 +849,31 @@ git commit -m "feat(android): config plugin que fija fontScale=1 — el texto re
 
 ### Task 9: Settings UI + copy es/en
 
+> **Corrección aplicada (implementación):** las etiquetas del nivel `xl` de los
+> snippets de abajo (`"Muy grande"` / `"Extra large"`) NO entran, y el control
+> se recorta a sí mismo. Medido sobre `Nunito_700Bold.ttf` con la cadena de
+> anchos real (Screen 20 + `appearanceInner` 14 + pista neo 4 + gap 4 + inset
+> del item 12): en un teléfono de 360dp el control mide 292pt → 68pt por
+> segmento → **44pt de texto**, y este control tiene 4 segmentos donde los
+> vecinos (tema, idioma, animaciones) tienen 3 (~97pt por segmento). `"Muy
+> grande"` mide 71.7pt a 13pt: se parte en dos líneas **ya en el default**, y
+> a `xl` (la etiqueta también escala: 15.6pt) mide 86.0pt.
+> Dos cambios, ambos necesarios:
+> 1. **`xl` pasa a una sola palabra:** `"Máxima"` (es) / `"Largest"` (en) —
+>    mismo criterio que Android («Máximo/Largest») y coherente con el resto de
+>    la escala, que ya son adjetivos de una palabra.
+> 2. **Inset denso en `SegmentedControl` a partir de 4 opciones**
+>    (`paddingHorizontal` del item 12 → 4, `styles.itemDense`): con el inset de
+>    12 no entra ni `"Normal"` (54.0pt a ×1.2 contra 44pt). No se ve —la
+>    píldora ocupa el item entero y el texto va centrado—, solo le devuelve
+>    ancho a la etiqueta. Toca también el control de 4 opciones del bloque dev
+>    («Filtro demo»), que hoy ya envolvía.
+>
+> Con eso, de **360dp para arriba** las 4 etiquetas entran en una línea a los
+> cuatro factores; peor holgura 3.2pt (es, ×1.2, 360dp). A 320dp (SE 1ª gen)
+> la etiqueta más larga envuelve a dos líneas desde ×1.1: entra igual en los
+> 44pt de `MIN_TOUCH_TARGET` (2 × 15.6 × 1.364 = 42.6) y no se recorta.
+
 **Files:**
 - Modify: `mobile/screens/settings/settings-screen.tsx` (hook + grupo nuevo tras el bloque 9b de Idioma, línea ~1415)
 - Modify: `mobile/lib/i18n/locales/es/settings.json`, `mobile/lib/i18n/locales/en/settings.json`

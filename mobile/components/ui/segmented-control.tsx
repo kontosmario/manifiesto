@@ -49,6 +49,16 @@ export function SegmentedControl<T extends string>({
   const { theme } = useAppTheme()
   const neo = neoTokens(theme.mode)
   const isNeo = skin === 'neo'
+  // INSET DENSO A PARTIR DE 4 SEGMENTOS. Con 4 items el ancho de cada uno
+  // cae ~25% contra los controles de 3 (tema, idioma, animaciones) y el
+  // inset de 12 se come la etiqueta: en un teléfono de 360dp el control
+  // mide 292pt → 68pt por item → 44pt de texto, y con la escala de fuente
+  // propia de la app en «Máxima» (×1.2) la etiqueta se dibuja a 15.6pt,
+  // donde "Máxima" mide 56.8pt en Nunito 700 (medido sobre el .ttf). Sin
+  // esto la etiqueta se parte en dos líneas ya en el default.
+  // El inset no se ve: la píldora ocupa el item entero y el texto va
+  // centrado — solo define cuánto ancho puede usar la etiqueta.
+  const isDense = options.length >= 4
   const reduceMotion = useReducedMotion()
   // Items share `flex: 1`, so every segment renders at the same width.
   // We measure that width once and keep it static — animating only
@@ -159,6 +169,7 @@ export function SegmentedControl<T extends string>({
             style={({ pressed }) => [
               styles.item,
               isNeo && styles.itemNeo,
+              isDense && styles.itemDense,
               { opacity: pressed ? 0.85 : 1 },
             ]}
           >
@@ -222,6 +233,9 @@ const styles = StyleSheet.create({
   },
   itemNeo: {
     borderRadius: neoRadii.chip,
+  },
+  itemDense: {
+    paddingHorizontal: 4,
   },
   label: {
     ...typography.buttonCompact, // fontSize:13, fontWeight:'700'

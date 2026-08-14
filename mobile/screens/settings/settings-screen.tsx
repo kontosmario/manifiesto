@@ -110,6 +110,7 @@ import { supabase } from '@/lib/supabase'
 import { useAppTheme } from '@/theme/theme-provider'
 import { useTranslation } from 'react-i18next'
 import { useLanguage } from '@/features/preferences/language-provider'
+import { useFontScale } from '@/features/preferences/font-scale-provider'
 import { nunitoFamily, typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
@@ -139,6 +140,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     setPreference: setLangPreference,
     language,
   } = useLanguage()
+  const {
+    preference: fontScalePreference,
+    setPreference: setFontScalePreference,
+  } = useFontScale()
   const { data: session } = useAuthSession()
   const profileQuery = useMyProfile(userId)
   const displayName = profileQuery.data?.display_name ?? ''
@@ -1410,6 +1415,33 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     ]}
                     skin="neo"
                     value={langPreference}
+                  />
+                </View>
+              </SettingsGroup>
+            </RiseView>
+
+            {/* 9c. TAMAÑO DEL TEXTO — escala propia de la app, desacoplada del
+                fontScale del OS (el escalado nativo rompía la UI). Sin opción
+                «Sistema» a propósito: el texto responde SOLO a esta
+                preferencia. El cambio es en vivo y esta misma pantalla es el
+                preview (la etiqueta del control también escala).
+                Ver docs/superpowers/specs/2026-08-14-font-scale-app-design.md. */}
+            <RiseView delay={420}>
+              <SettingsGroup
+                footer={t('settings:fontSize.footer')}
+                title={t('settings:fontSize.groupTitle')}
+              >
+                <View style={styles.appearanceInner}>
+                  <SegmentedControl
+                    onChange={setFontScalePreference}
+                    options={[
+                      { label: t('settings:fontSize.sm'), value: 'sm' },
+                      { label: t('settings:fontSize.md'), value: 'md' },
+                      { label: t('settings:fontSize.lg'), value: 'lg' },
+                      { label: t('settings:fontSize.xl'), value: 'xl' },
+                    ]}
+                    skin="neo"
+                    value={fontScalePreference}
                   />
                 </View>
               </SettingsGroup>

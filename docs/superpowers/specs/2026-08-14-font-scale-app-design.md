@@ -140,10 +140,23 @@ ignora defaultProps en function components.
 ### 7. Settings UI
 
 Grupo «Tamaño del texto» con `SettingsGroup` + `SegmentedControl` skin neo,
-4 opciones (Chica / Normal / Grande / Muy grande), footer dinámico. Copy
+4 opciones (Chica / Normal / Grande / **Máxima**), footer. Copy
 es/en en los locales (correr la suite de tests: los cambios de copy la
 requieren). Sin preview dedicado: el cambio es en vivo y la propia pantalla
 de Settings es el preview.
+
+**Corrección aplicada durante la implementación —** el nivel `xl` se llamaba
+«Muy grande» / «Extra large» y no entra: es el primer control de 4 segmentos
+de la pantalla (los de tema/idioma/animaciones tienen 3) y su propia etiqueta
+escala con la preferencia, así que a ×1.2 se dibuja a 15.6pt. Medido sobre
+`Nunito_700Bold.ttf` con la cadena de anchos real, en un teléfono de 360dp
+quedan 44pt de texto por segmento y «Muy grande» mide 71.7pt ya a 13pt — se
+partía en dos líneas en el default. Quedó «Máxima» / «Largest» (una palabra,
+mismo criterio que Android) más un **inset denso en `SegmentedControl` a
+partir de 4 opciones** (`paddingHorizontal` del item 12 → 4; invisible,
+la píldora ocupa el item entero y el texto va centrado). Con eso desde 360dp
+las 4 etiquetas entran en una línea a los cuatro factores (peor holgura
+3.2pt); a 320dp la más larga envuelve a dos líneas desde ×1.1 sin recortarse.
 
 ## Testing y QA
 
