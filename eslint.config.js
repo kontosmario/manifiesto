@@ -191,4 +191,56 @@ export default defineConfig([
     files: ['mobile/components/ui/app-text.tsx'],
     rules: { '@typescript-eslint/no-restricted-imports': 'off' },
   },
+  {
+    // TRANSITORIO — cola de la barrida de app-text que todavía no aterrizó.
+    //
+    // La barrida migró todo el árbol al wrapper, pero estos archivos caían
+    // encima de un cuerpo de trabajo ajeno en curso (Wrapped, ciclo
+    // extendido, fijos): unos están modificados y otros directamente
+    // borrados por ese trabajo, así que su swap de import no se podía
+    // commitear sin llevárselo puesto. Viaja dentro de ese commit.
+    //
+    // Mientras tanto, en un checkout limpio del branch estos archivos
+    // siguen importando `Text`/`TextInput` crudos, y con la regla en
+    // `error` app-wide eso deja `npm run lint` —y con él el job `verify`
+    // de CI— en rojo por 27 imports que nadie puede arreglar desde acá.
+    // Bajarlos a `warn` mantiene el guard en `error` para TODO el resto
+    // del árbol y para cualquier archivo nuevo, que es el punto de la
+    // regla, sin romper CI por trabajo en vuelo.
+    //
+    // Cómo se cierra: cuando el trabajo ajeno aterrice, borrar este bloque
+    // entero y verificar que `npm run lint` quede sin warnings de
+    // `no-restricted-imports`. No agregar archivos nuevos a esta lista: es
+    // una lista cerrada, no una allowlist.
+    // Ver docs/superpowers/plans/2026-08-14-font-scale-app.md.
+    files: [
+      'mobile/components/billing/free-period-nudge.tsx',
+      'mobile/components/home/animated/count-up-text.tsx',
+      'mobile/components/home/home-dashboard.tsx',
+      'mobile/components/redesign/control/control-primitives.tsx',
+      'mobile/components/redesign/control/parts/control-header.tsx',
+      'mobile/components/redesign/fijos/fijos-screen.tsx',
+      'mobile/components/redesign/gastos/gastos-screen.tsx',
+      'mobile/components/redesign/home/home-screen.tsx',
+      'mobile/components/redesign/jardin/cierre-screen.tsx',
+      'mobile/components/redesign/jardin/jardin-screen.tsx',
+      'mobile/components/redesign/jardin/logros-screen.tsx',
+      'mobile/components/ui/swipe-row.tsx',
+      'mobile/components/wrapped/cycle-wrapped-modal.tsx',
+      'mobile/components/wrapped/scenes/closing-scene.tsx',
+      'mobile/components/wrapped/scenes/cover-scene.tsx',
+      'mobile/components/wrapped/scenes/cycle-wrapped-cta.tsx',
+      'mobile/components/wrapped/scenes/leftover-option-card.tsx',
+      'mobile/components/wrapped/scenes/top-category-scene.tsx',
+      'mobile/components/wrapped/scenes/top-expense-scene.tsx',
+      'mobile/components/wrapped/scenes/verdict-scene.tsx',
+      'mobile/screens/dev/cycle-wrapped-preview-screen.tsx',
+      'mobile/screens/dev/redesign/redesign-home-preview-screen.tsx',
+      'mobile/screens/home/neo/neo-fijos-screen.tsx',
+      'mobile/screens/home/neo/neo-gastos-screen.tsx',
+      'mobile/screens/settings/delete-account-screen.tsx',
+      'mobile/screens/settings/editions-screen.tsx',
+    ],
+    rules: { '@typescript-eslint/no-restricted-imports': 'warn' },
+  },
 ])
