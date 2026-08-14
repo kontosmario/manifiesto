@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar'
 import { MotionPreferenceProvider } from '@/features/preferences/motion-preference-provider'
 import { ReducedMotionProvider } from '@/features/preferences/reduced-motion-provider'
 import { LanguageProvider } from '@/features/preferences/language-provider'
+import { FontScaleProvider } from '@/features/preferences/font-scale-provider'
 import { TourProvider } from '@/features/tours'
 import { queryClient, queryPersister, queryPersistOptions } from '@/lib/query-client'
 import { AppThemeProvider, useAppTheme } from '@/theme/theme-provider'
@@ -50,6 +51,10 @@ export function AppProviders({ children }: PropsWithChildren) {
                 el tema. Mantiene i18next sincronizado. Montado alto para que
                 cualquier consumidor pueda usar `useTranslation`/`t`. */}
             <LanguageProvider>
+            {/* FontScaleProvider: escala de texto propia de la app (4 niveles,
+                persistida). También neutraliza Dynamic Type en iOS al montar:
+                el tamaño del texto responde SOLO a la config de la app. */}
+            <FontScaleProvider>
             {/* MotionPreferenceProvider exposes the user's animations
                 preference ('auto' | 'always' | 'never') and persists
                 it across launches. `useReducedMotion()` reads from it
@@ -83,6 +88,7 @@ export function AppProviders({ children }: PropsWithChildren) {
               </BottomSheetModalProvider>
             </ReducedMotionProvider>
             </MotionPreferenceProvider>
+            </FontScaleProvider>
             </LanguageProvider>
           </AppThemeProvider>
         </PersistQueryClientProvider>
