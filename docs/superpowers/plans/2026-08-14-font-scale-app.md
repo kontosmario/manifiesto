@@ -4,7 +4,7 @@
 
 **Goal:** Selector de tamaño de fuente en Settings (4 niveles) y desacople total del texto de la app respecto del fontScale del OS.
 
-**Architecture:** Lib pura (`mobile/lib/font-scale.ts`) + provider espejo de `language-provider` + wrapper drop-in de `Text`/`TextInput` que fuerza `allowFontScaling={false}` y aplica la escala in-app; codemod de los ~256 imports; kill nativo de respaldo (Android config plugin `fontScale=1`, iOS `setAccessibilityContentSizeMultipliers` a 1.0) para texto de terceros.
+**Architecture:** Lib pura (`mobile/lib/font-scale.ts`) + provider espejo de `language-provider` + wrapper drop-in de `Text`/`TextInput` que fuerza `allowFontScaling={false}` y aplica la escala in-app; codemod de los ~256 imports; kill nativo de respaldo en Android (config plugin `fontScale=1`) para texto de terceros. **En iOS NO hay kill de respaldo** (ver Task 2): con la Nueva Arquitectura prendida el multiplicador sale de `RCTFontSizeMultiplier()` y `setAccessibilityContentSizeMultipliers` no lo toca.
 
 **Tech Stack:** Expo SDK 54 / RN 0.81.5 / React 19 (sin `defaultProps`), vitest (env node, stubs en `tests/stubs/`), ESLint flat config con typescript-eslint, config plugins Expo en `plugins/*.cjs`.
 
@@ -14,7 +14,7 @@
 
 - **Principio rector:** todo el texto depende de NUESTRA config, nunca del OS. Sin opción «Sistema» en el selector.
 - Factores: `sm: 0.9 · md: 1 · lg: 1.1 · xl: 1.2`. Default `md`. Labels: Chica / Normal / Grande / Muy grande.
-- Key de persistencia: `manifiesto:font-scale-preference` (persistent-kv, local al device, sin sync a backend).
+- Key de persistencia: `manifiesto.font-scale-preference` (persistent-kv, local al device, sin sync a backend). **Con punto, no con dos puntos:** expo-secure-store valida las claves contra `/^[\w.-]+$/` y tira `Invalid key provided to SecureStore` con cualquier otra; `persistent-kv` se traga esa excepción y la preferencia jamás persistiría. (Las keys de theme/language/motion-preference sí usan `:` y arrastran ese bug: deuda pre-existente, fuera del alcance de este plan.)
 - **Node por nvm:** el Bash tool no carga nvm. Prefijar TODO comando node/npm/npx/tsc/vitest con `source ~/.nvm/nvm.sh && `.
 - **WIP del branch (RESUELTO 2026-08-14 — no hace falta limpiar el árbol):** `feat/ui-redesign` tiene ~98 archivos sin commitear (Wrapped + ciclo extendido). Medido: TODOS los archivos de edición quirúrgica de este plan (`app-providers.tsx`, `app.config.ts`, `eslint.config.js`, `settings-screen.tsx`, ambos `settings.json`) están limpios, y solo **10** archivos del WIP colisionan con el codemod:
   `mobile/components/billing/free-period-nudge.tsx`, `mobile/components/home/home-dashboard.tsx`, `mobile/components/redesign/control/control-primitives.tsx`, `mobile/components/redesign/control/parts/control-header.tsx`, `mobile/components/redesign/fijos/fijos-screen.tsx`, `mobile/components/redesign/home/home-screen.tsx`, `mobile/components/redesign/jardin/cierre-screen.tsx`, `mobile/screens/dev/cycle-wrapped-preview-screen.tsx`, `mobile/screens/dev/redesign/redesign-home-preview-screen.tsx`, `mobile/screens/settings/editions-screen.tsx`.
@@ -187,7 +187,22 @@ git commit -m "feat(settings): lib pura de la escala de texto propia — 4 nivel
 
 ---
 
-### Task 2: `FontScaleProvider` + kill de Dynamic Type en iOS
+### Task 2: `FontScaleProvider`
+
+> **Corrección aplicada (revisión adversaria):** este task nació como
+> «FontScaleProvider + kill de Dynamic Type en iOS» y el kill se cayó. La app
+> tiene la Nueva Arquitectura prendida (`app.config.ts` → `newArchEnabled:
+> true`) y bajo Fabric el multiplicador de fuente sale de
+> `RCTFontSizeMultiplier()` (React/Base/RCTUtils.mm), una tabla estática sobre
+> `preferredContentSizeCategory` que nunca consulta a RCTAccessibilityManager
+> — en RN 0.81.5 no hay una sola referencia al módulo en `React/Fabric` ni en
+> `ReactCommon`. `setAccessibilityContentSizeMultipliers` solo lograba que
+> `PixelRatio.getFontScale()` y `Dimensions.get('window').fontScale`
+> devolvieran 1 mientras el texto se seguía dibujando a la escala del OS.
+> El bloque `neutralizeIosDynamicType` del snippet de abajo NO va: el archivo
+> lleva en su lugar el comentario que documenta el porqué. La contraparte iOS
+> del plugin de Android (Task 8) sería un override nativo de la categoría de
+> contenido y queda como trabajo aparte, no hecho.
 
 **Files:**
 - Create: `mobile/features/preferences/font-scale-provider.tsx`
@@ -220,7 +235,7 @@ import {
 } from '@/lib/font-scale'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 
-const FONT_SCALE_PREFERENCE_KEY = 'manifiesto:font-scale-preference'
+const FONT_SCALE_PREFERENCE_KEY = 'manifiesto.font-scale-preference'
 
 interface FontScaleContextValue {
   /** Lo que el usuario eligió en Settings. Default 'md' (= diseño actual). */
@@ -730,9 +745,9 @@ git commit -m "chore(lint): prohibir Text/TextInput crudos de react-native — t
  * Expo config plugin: fija configuration.fontScale = 1 en MainActivity.
  *
  * El fontScale del OS rompía la UI; el tamaño del texto lo gobierna la
- * preferencia in-app (font-scale-provider). Contraparte Android del
- * setAccessibilityContentSizeMultipliers(1.0) de iOS. Cubre también el
- * texto de libs de terceros que no pasa por el wrapper de app-text.
+ * preferencia in-app (font-scale-provider). Cubre también el texto de
+ * libs de terceros que no pasa por el wrapper de app-text (en iOS ese
+ * respaldo no existe: ver la corrección de la Task 2).
  * Ver docs/superpowers/specs/2026-08-14-font-scale-app-design.md.
  *
  * android/ es gitignored (prebuild continuo): sin este plugin el
@@ -913,8 +928,11 @@ nunca al fontScale del OS. Spec: docs/superpowers/specs/2026-08-14-font-scale-ap
 - `mobile/lib/font-scale.ts` — tipos, factores, `scaledTextOverrides`
   (pura, con tests en tests/unit/font-scale.test.ts).
 - `mobile/features/preferences/font-scale-provider.tsx` — preferencia
-  persistida (`manifiesto:font-scale-preference`) + kill de Dynamic Type
-  en iOS al montar (`setAccessibilityContentSizeMultipliers` → todo 1.0).
+  persistida (`manifiesto.font-scale-preference`; sin `:`, que
+  expo-secure-store rechaza). Sin kill nativo en iOS: bajo la Nueva
+  Arquitectura el multiplicador sale de `RCTFontSizeMultiplier()` y
+  `setAccessibilityContentSizeMultipliers` no lo toca (detalle en el
+  comentario del archivo).
 - `mobile/components/ui/app-text.tsx` — Text/TextInput drop-in: fuerza
   `allowFontScaling={false}` al nativo y aplica la escala in-app.
   `allowFontScaling={false}` del consumidor = pineado (tampoco escala

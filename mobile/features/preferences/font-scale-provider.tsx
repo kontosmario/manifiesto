@@ -7,7 +7,6 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react'
-import { NativeModules, Platform } from 'react-native'
 import {
   FONT_SCALE_FACTORS,
   isFontScalePreference,
@@ -15,7 +14,11 @@ import {
 } from '@/lib/font-scale'
 import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 
-const FONT_SCALE_PREFERENCE_KEY = 'manifiesto:font-scale-preference'
+// SIN dos puntos a propósito: expo-secure-store solo acepta claves que
+// matcheen /^[\w.-]+$/ y tira `Invalid key provided to SecureStore` con
+// cualquier otra — excepción que `persistent-kv` se traga en silencio, así
+// que la preferencia nunca llegaría a persistir entre lanzamientos.
+const FONT_SCALE_PREFERENCE_KEY = 'manifiesto.font-scale-preference'
 
 interface FontScaleContextValue {
   /** Lo que el usuario eligió en Settings. Default 'md' (= diseño actual). */
@@ -27,36 +30,28 @@ interface FontScaleContextValue {
 
 const FontScaleContext = createContext<FontScaleContextValue | null>(null)
 
-/**
- * iOS: pisa el multiplicador de Dynamic Type mapeando TODAS las
- * categorías del OS a 1.0. Cubre el texto que rendericen libs de
- * terceros fuera del wrapper de app-text (el texto propio ya viaja con
- * allowFontScaling=false). `RCTAccessibilityManager` es un módulo
- * legacy accesible vía interop bridgeless en RN 0.81; si el interop no
- * lo expone, el guard evita el crash y el wrapper sigue cubriendo el
- * 100% del texto propio.
+/*
+ * Por qué acá NO hay kill de Dynamic Type en iOS
+ * ----------------------------------------------
+ * `AccessibilityManager.setAccessibilityContentSizeMultipliers({...: 1})`
+ * NO desactiva el escalado del texto en esta app: tenemos la Nueva
+ * Arquitectura prendida (app.config.ts → `newArchEnabled: true`) y bajo
+ * Fabric el multiplicador sale de `RCTFontSizeMultiplier()`
+ * (React/Base/RCTUtils.mm), una tabla estática sobre
+ * `preferredContentSizeCategory` que jamás consulta a
+ * RCTAccessibilityManager — en RN 0.81.5 no queda una sola referencia al
+ * módulo en React/Fabric ni en ReactCommon. Los únicos lectores de esos
+ * multipliers son ViewManagers de la arquitectura vieja y RCTDeviceInfo,
+ * así que la llamada solo lograba que `PixelRatio.getFontScale()` y
+ * `Dimensions.get('window').fontScale` devolvieran 1 mientras el texto se
+ * seguía dibujando a la escala del OS: un valor mentiroso, sin ganancia.
+ *
+ * El desacople real del texto propio lo hace el wrapper
+ * `@/components/ui/app-text` (allowFontScaling={false} + escala in-app).
+ * La contraparte iOS del config plugin de Android (fontScale = 1f) tiene
+ * que ser un override nativo de la categoría de contenido; queda fuera de
+ * este provider. Ver §6 del spec 2026-08-14-font-scale-app-design.md.
  */
-function neutralizeIosDynamicType(): void {
-  if (Platform.OS !== 'ios') return
-  try {
-    NativeModules.AccessibilityManager?.setAccessibilityContentSizeMultipliers?.({
-      extraSmall: 1,
-      small: 1,
-      medium: 1,
-      large: 1,
-      extraLarge: 1,
-      extraExtraLarge: 1,
-      extraExtraExtraLarge: 1,
-      accessibilityMedium: 1,
-      accessibilityLarge: 1,
-      accessibilityExtraLarge: 1,
-      accessibilityExtraExtraLarge: 1,
-      accessibilityExtraExtraExtraLarge: 1,
-    })
-  } catch {
-    // Sin módulo (interop apagado): el wrapper cubre el texto propio.
-  }
-}
 
 /**
  * Escala de texto propia de la app — espejo de `language-provider`.
@@ -65,10 +60,6 @@ function neutralizeIosDynamicType(): void {
  */
 export function FontScaleProvider({ children }: PropsWithChildren) {
   const [preference, setPreferenceState] = useState<FontScalePreference>('md')
-
-  useEffect(() => {
-    neutralizeIosDynamicType()
-  }, [])
 
   // Hidratar la preferencia guardada (async, settle tras el primer render —
   // mismo trade-off aceptado que tema e idioma).

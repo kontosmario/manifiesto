@@ -52,8 +52,8 @@ export function AppProviders({ children }: PropsWithChildren) {
                 cualquier consumidor pueda usar `useTranslation`/`t`. */}
             <LanguageProvider>
             {/* FontScaleProvider: escala de texto propia de la app (4 niveles,
-                persistida). También neutraliza Dynamic Type en iOS al montar:
-                el tamaño del texto responde SOLO a la config de la app. */}
+                persistida). El desacople del fontScale del OS lo hace el
+                wrapper de `@/components/ui/app-text`, que lee este factor. */}
             <FontScaleProvider>
             {/* MotionPreferenceProvider exposes the user's animations
                 preference ('auto' | 'always' | 'never') and persists

@@ -43,8 +43,10 @@ Módulo nuevo `mobile/lib/font-scale.ts`:
 `language-provider`:
 
 - Estado `preference` (default `'md'`), factor resuelto derivado.
-- Persistencia en `persistent-kv` con key `manifiesto:font-scale-preference`,
-  hidratación async al montar.
+- Persistencia en `persistent-kv` con key `manifiesto.font-scale-preference`,
+  hidratación async al montar. La key va con punto y no con dos puntos:
+  expo-secure-store solo acepta `/^[\w.-]+$/` y `persistent-kv` se traga en
+  silencio el error de las claves inválidas.
 - Hooks: `useFontScale()` (preferencia + setter) y `useFontScaleFactor()`
   (solo el factor, para componentes especiales).
 - Montado en el root junto a Theme/Language providers → aplica también a
@@ -96,11 +98,22 @@ Cubre lo que rendericen libs fuera del wrapper:
 - **Android:** config plugin local (patrón `plugins/android-backup-rules`)
   que fija `configuration.fontScale = 1` en MainActivity. Estático — nunca
   hay que recrear la Activity.
-- **iOS:** al arrancar, llamada a
+- **iOS: NO HAY kill de respaldo** (corregido durante la implementación). El
+  diseño original llamaba a
   `AccessibilityManager.setAccessibilityContentSizeMultipliers` con todas las
-  categorías en 1.0 (verificado exportado en RN 0.81.5). Guard defensivo
-  (optional chaining + try/catch) por si el interop bridgeless no la expone;
-  si falla, el wrapper igual cubre todo el texto propio.
+  categorías en 1.0. El método existe y se ejecuta, pero es inerte sobre el
+  texto con la Nueva Arquitectura prendida (`newArchEnabled: true`): bajo
+  Fabric el multiplicador sale de `RCTFontSizeMultiplier()`
+  (React/Base/RCTUtils.mm), una tabla estática sobre
+  `preferredContentSizeCategory` que nunca consulta a RCTAccessibilityManager
+  — en RN 0.81.5 no hay una sola referencia al módulo en `React/Fabric` ni en
+  `ReactCommon`. Peor: sí cambia lo que RCTDeviceInfo reporta, así que
+  `PixelRatio.getFontScale()` y `Dimensions.get('window').fontScale` pasan a
+  mentir 1 mientras el texto se dibuja a la escala del OS. Se sacó del
+  provider. La contraparte real del plugin de Android sería un override
+  nativo de la categoría de contenido; queda pendiente y sin implementar.
+  Consecuencia asumida: en iOS el texto de libs de terceros que no pasa por
+  el wrapper sigue escalando con Dynamic Type.
 
 Nota: `Text.defaultProps.allowFontScaling = false` NO es opción — React 19
 ignora defaultProps en function components.
