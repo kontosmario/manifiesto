@@ -83,6 +83,7 @@ function makeFijoItem(over: Partial<FijoItem> = {}): FijoItem {
     pctOfIncome: null,
     paymentsLifetime: 0,
     totalPaidLifetime: 0,
+    missedCuotas: 0,
     ...over,
   }
 }

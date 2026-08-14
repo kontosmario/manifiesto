@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   summarizeFijos,
   groupFijosByCategory,
+  computeMissedCuotas,
   type FijoItem,
 } from '@/features/fijos/fijos-aggregates.model'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
@@ -388,6 +389,7 @@ describe('groupFijosByCategory', () => {
       pctOfIncome: null,
       paymentsLifetime: 0,
       totalPaidLifetime: 0,
+      missedCuotas: 0,
       ...over,
     }
   }
@@ -514,5 +516,71 @@ describe('computeItemStatus v5 — overdue gana sobre paid (vía summarizeFijos)
       monthlyDays: MONTHLY_DAYS,
     })
     expect(summary.overdueItems).toHaveLength(1)
+  })
+})
+
+describe('computeMissedCuotas', () => {
+  const today = new Date('2026-06-08T12:00:00')
+  it('0 cuando next_due_on es hoy o futuro', () => {
+    expect(
+      computeMissedCuotas({ nextDueOn: '2026-06-08', frequency: 'monthly', dayOfMonth: 8, today }),
+    ).toEqual({ count: 0, periods: [] })
+  })
+  it('1 cuota vencida simple', () => {
+    expect(
+      computeMissedCuotas({ nextDueOn: '2026-06-05', frequency: 'monthly', dayOfMonth: 5, today }),
+    ).toEqual({ count: 1, periods: ['2026-06-01'] })
+  })
+  it('acumula multi-mes (abr + may + jun)', () => {
+    expect(
+      computeMissedCuotas({ nextDueOn: '2026-04-05', frequency: 'monthly', dayOfMonth: 5, today }),
+    ).toEqual({ count: 3, periods: ['2026-04-01', '2026-05-01', '2026-06-01'] })
+  })
+  it('quincenal acumula por salto de 14 días', () => {
+    // may-20, jun-3 vencidas; jun-17 futura.
+    expect(
+      computeMissedCuotas({ nextDueOn: '2026-05-20', frequency: 'biweekly', dayOfMonth: 20, today }),
+    ).toEqual({ count: 2, periods: ['2026-05-01', '2026-06-01'] })
+  })
+  it('mes corto no rompe la cadena (ene-31 → feb-28 → mar-31)', () => {
+    expect(
+      computeMissedCuotas({
+        nextDueOn: '2026-01-31',
+        frequency: 'monthly',
+        dayOfMonth: 31,
+        today: new Date('2026-03-15T12:00:00'),
+      }),
+    ).toEqual({ count: 2, periods: ['2026-01-01', '2026-02-01'] })
+  })
+  it('null → 0', () => {
+    expect(
+      computeMissedCuotas({ nextDueOn: null, frequency: 'monthly', dayOfMonth: 5, today }),
+    ).toEqual({ count: 0, periods: [] })
+  })
+})
+
+describe('summarizeFijos — missedCuotas y overdueAmount', () => {
+  it('overdueAmount multiplica por las cuotas vencidas', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-04-05', day_of_month: 5, amount: 5000 })],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.overdueItems[0]?.missedCuotas).toBe(3)
+    expect(summary.overdueAmount).toBe(15000)
+  })
+  it('items no vencidos llevan missedCuotas 0', () => {
+    const summary = summarizeFijos({
+      items: [makeFixed({ next_due_on: '2026-06-15' })],
+      paymentsThisCycle: [],
+      today: TODAY,
+      monthlyStart: MONTHLY_START,
+      monthlyEnd: MONTHLY_END,
+      monthlyDays: MONTHLY_DAYS,
+    })
+    expect(summary.pendingItems[0]?.missedCuotas).toBe(0)
   })
 })

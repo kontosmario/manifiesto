@@ -1,10 +1,11 @@
 import i18n from '@/lib/i18n'
 import type { Expense } from '@/features/expenses/expense-repository.model'
-import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
+import type { FixedExpense, FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
 import {
   isOptimisticPaymentId,
   type FixedExpensePayment,
 } from '@/features/fixed-expenses/fixed-expense-payment.model'
+import { advanceFixedExpenseDueDate } from '@/features/fixed-expenses/commitment-date-utils'
 
 /**
  * Estado de un fijo en el ciclo de pago activo:
@@ -29,6 +30,9 @@ export interface FijoItem extends FixedExpense {
   computedStatus: FijoItemStatus
   /** Whole days until this item is next due, clamped to [0, cycleDays]. */
   daysUntilDue: number
+  /** Cuotas vencidas acumuladas (0 salvo overdue; ≥1 ahí). Cada pago
+   *  salda la más vieja y decrementa. Ver computeMissedCuotas. */
+  missedCuotas: number
   /** True if the item sits idle — flagged as zombie subscription, etc. */
   isZombie: boolean
   /** Days since last_paid_at, or null if never paid. */
@@ -227,6 +231,34 @@ function computeItemStatus(input: {
 }
 
 /**
+ * Cuántas cuotas vencidas acumula un fijo: itera desde `nextDueOn`
+ * con el espejo de advance mientras la fecha sea < hoy. `periods` =
+ * meses YYYY-MM-01 de cada cuota vencida (vieja → nueva) — la misma
+ * identidad que usa `record_fixed_expense_payment` (period_month =
+ * mes del vencimiento). Cap defensivo de 24 iteraciones.
+ */
+export function computeMissedCuotas(input: {
+  nextDueOn: string | null
+  frequency: FixedExpenseFrequency
+  dayOfMonth: number | null
+  today: Date
+}): { count: number; periods: string[] } {
+  const { nextDueOn, frequency, dayOfMonth, today } = input
+  if (!nextDueOn) return { count: 0, periods: [] }
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+  const periods: string[] = []
+  let cursor = nextDueOn
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(cursor)
+    const dueUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+    if (Number.isNaN(dueUtc) || dueUtc >= todayUtc) break
+    periods.push(`${cursor.slice(0, 7)}-01`)
+    cursor = advanceFixedExpenseDueDate(cursor, frequency, dayOfMonth)
+  }
+  return { count: periods.length, periods }
+}
+
+/**
  * Days until this item is next due, respecting the pay-cycle wrap.
  * If the anchor day is past, counts forward to the same day next
  * cycle (HOY → 0, tomorrow → 1, etc.).
@@ -352,6 +384,15 @@ export function summarizeFijos(input: {
         today,
         cycleEnd: monthlyEnd,
       })
+      const missed =
+        status === 'overdue'
+          ? computeMissedCuotas({
+              nextDueOn: i.next_due_on,
+              frequency: i.frequency,
+              dayOfMonth: i.day_of_month ?? null,
+              today,
+            })
+          : { count: 0, periods: [] }
       const payment = paymentByFixedExpense.get(i.id) ?? null
       // cuotaMonth: qué cuota cubre/toca este row.
       //   · paid con payment en cycle → period_month del payment
@@ -399,6 +440,7 @@ export function summarizeFijos(input: {
         dayOfMonth,
         daysUntilDue: daysUntilDue(dayOfMonth, todayDay, monthlyDays),
         computedStatus: status,
+        missedCuotas: status === 'overdue' ? Math.max(1, missed.count) : 0,
         isZombie: false,
         daysSinceLastPaid,
         priceHistory,
@@ -432,7 +474,10 @@ export function summarizeFijos(input: {
   const futureItems = enriched.filter((i) => i.computedStatus === 'future')
   const paidAmount = paidItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const pendingAmount = pendingItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
-  const overdueAmount = overdueItems.reduce((s, i) => s + Number(i.amount ?? 0), 0)
+  const overdueAmount = overdueItems.reduce(
+    (s, i) => s + Number(i.amount ?? 0) * Math.max(1, i.missedCuotas),
+    0,
+  )
   const paidPct = total > 0 ? Math.round((paidAmount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.round((pendingAmount / total) * 100) : 0
   const overduePct = total > 0 ? Math.round((overdueAmount / total) * 100) : 0
