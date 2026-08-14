@@ -200,6 +200,13 @@ const config: ExpoConfig = {
     // en Atajos. Este plugin copia los .swift a ios/<App>/ y los agrega al
     // build phase en cada prebuild. Requiere build nativa (no sale por OTA).
     './plugins/with-apple-pay-intent.cjs',
+    // Tamaño del texto (2026-08-14): el fontScale del OS rompía la UI, así
+    // que el tamaño lo gobierna la preferencia in-app (Ajustes → Tamaño del
+    // texto). Este plugin fija configuration.fontScale = 1 en MainActivity
+    // como kill nativo de respaldo para el texto de libs de terceros que no
+    // pasa por el wrapper de app-text. En iOS no hay contraparte (ver el
+    // spec 2026-08-14-font-scale-app-design.md, sección 6).
+    './plugins/with-fixed-font-scale.cjs',
   ],
   experiments: {
     typedRoutes: true,
