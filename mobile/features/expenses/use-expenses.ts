@@ -51,7 +51,13 @@ export function useExpenses(familyId?: string, categoryId?: string) {
         return []
       }
 
-      return loadExpenses(familyId, { categoryId })
+      // `excludeArchived` OBLIGATORIO: el `home_snapshot` siembra ESTA misma
+      // key ya filtrada (archived_at is null). Sin el filtro acá, el seed y el
+      // refetch devolvían conjuntos distintos y el saldo oscilaba entre dos
+      // números según cuál de los dos hubiera ganado la carrera. Con el ciclo
+      // extendido el archivado abarca también los días de extensión, así que
+      // la divergencia dejaría de ser transitoria.
+      return loadExpenses(familyId, { categoryId, excludeArchived: true })
     },
   })
 }

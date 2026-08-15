@@ -41,6 +41,9 @@ export const GASTOS_RADII = {
   chip: 18,
   navPill: 18,
   day: 13,
+  /** La tarjeta del calendario es 24, no el 28 de `card` ("cal":152/154, las 8
+   *  variantes). Token propio para no mover las demás tarjetas del kit. */
+  calCard: 24,
   tile: 16,
   badge: 11,
   arrow: 20,
@@ -120,12 +123,40 @@ export interface GastosSpec {
   catTextInk: string
 
   // ─── ④ Calendario — card + estados de día (cal §1-2; [OWNER-H] pesos) ───
+  //
+  // La referencia de estos tokens es la GRILLA del calendario (bloque "05 ·
+  // Calendario", celda de 40px), no el tablero "04 · Celda de día · átomo"
+  // (celda de 44px). El handoff dibuja los mismos siete estados en los dos
+  // tamaños y ESCALA las sombras: la grilla usa blur 4 donde el átomo usa 5,
+  // anillo 1.5px donde el átomo usa 2px y trama de 5px donde el átomo usa 6px.
+  // La app renderiza celdas de 40px (`dayCell.height`), así que manda la
+  // grilla. Único token que sale del átomo: `daySelRing` — el estado
+  // "elegido" no aparece en ninguna variante CAL porque el calendario se
+  // oculta al elegir un día.
   calBackground: string
   calGradientCss: string | undefined
   calShadow: string
   calTitleInk: string
   calHintInk: string
+  /**
+   * Hint del header en tono de ALERTA — CAL-2 ("+2 fuera del ciclo") es la
+   * única variante del handoff cuyo hint NO va en el verde de marca
+   * ("cal":152/154). El mismo durazno que el anillo de los días fuera, así
+   * que el aviso del header y las celdas que lo motivan se leen como una
+   * sola señal.
+   */
+  calHintWarnInk: string
+  /** Iniciales L M X J V S D. `#9AA694` en los DOS temas — es el único nodo
+   *  del bloque calendario que el handoff no theme-switchea ("cal":152/154). */
   weekdayInk: string
+  /**
+   * Día pasado SIN gastos. No existe en el handoff (ahí todo día pasado es
+   * bien o exceso): la app lo separa porque un día en cero no es un logro
+   * verde ni un exceso, y se dibuja plano. Tenía prestado `weekdayInk`, que
+   * en oscuro tiene que subir a `#9AA694` para las iniciales — pero la celda
+   * necesita quedarse en el gris apagado del "futuro" del handoff.
+   */
+  dayEmptyInk: string
   // bien (800)
   dayBienBackground: string
   dayBienInk: string
@@ -134,10 +165,25 @@ export interface GastosSpec {
   dayExcesoBackground: string
   dayExcesoInk: string
   dayExcesoShadow: string
-  // hoy (900, elevado/glow, NO inset)
+  // hoy (900, fill sólido invertido)
   dayHoyBackground: string
   dayHoyInk: string
+  /**
+   * VACÍO a propósito en los dos temas: en la grilla del handoff la celda de
+   * hoy NO lleva sombra — se distingue sólo por el fill invertido
+   * ("cal":152/154, firma `background:#24382A; color:#F5F2E1` sin box-shadow).
+   * El tablero D-atom (44px) sí le dibuja `0 6px 12px rgba(0,0,0,0.28)`, pero
+   * la referencia de la app es la GRILLA (celda de 40px), que es lo que
+   * renderiza. `DayCellView` omite la sombra cuando el token es ''.
+   */
   dayHoyShadow: string
+  /**
+   * [OWNER-DOT] Punto bajo el número de HOY. NO está en el handoff: la celda
+   * "hoy" del diseño lleva sólo el número. Se agregó porque el fill invertido
+   * es la única señal de "hoy" y se pierde cuando el día además está en
+   * exceso. Queda a decisión del owner: si manda la paridad literal, se borra
+   * el render de `cell.hoyDot` en `DayCellView`.
+   */
   dayHoyDot: string
   // futuro (700)
   dayFuturoBackground: string | undefined
@@ -145,10 +191,58 @@ export interface GastosSpec {
   dayFuturoShadow: string
   // anillo de selección (reemplaza la sombra de estado)
   daySelRing: string
-  // fuera-de-ciclo (NO theme-switched)
-  dayFueraBackgroundCss: string
+  // fuera-de-ciclo — SÍ theme-switched: en oscuro el handoff cambia la trama
+  // a durazno translúcido sobre el fondo (`rgba(217,115,85,0.3→0.14)`) y sube
+  // el ink a `#F2A87E`. Llevaba los valores del tema claro en los dos.
+  //
+  // La trama del handoff es un `repeating-linear-gradient`, que RN 0.81 NO
+  // sabe parsear: su regex está anclada a `^(linear|radial)-gradient(` y
+  // descarta el resto EN SILENCIO. Por eso la trama nunca se dibujó en
+  // device. Se reconstruye con SVG (`HazardStripes`) a partir de dos colores:
+  // el fondo base y la banda.
+  dayFueraBackground: string
+  /** Color de la banda diagonal de los días FUERA. Sustitutiva: tapa el mood. */
+  dayFueraStripeInk: string
   dayFueraShadow: string
+  /**
+   * [OWNER-GLOW] `FueraGlow` monta encima un halo que respira con este color.
+   * NO está en el handoff — ahí la celda `fuera` lleva sólo trama + anillo,
+   * sin glow ni animación. Es un agregado para que los días que quedaron
+   * afuera pidan atención; tiene gates de reduced-motion y de foco. Si el
+   * owner quiere paridad literal, se borra `<FueraGlow/>` de `DayCellView`.
+   */
   dayFueraInk: string
+  /**
+   * Anillo del día de EXTENDIDO (ciclo extendido: el ciclo se estiró porque
+   * el cobro no se confirmó). Es la versión SUAVE del tratamiento `fuera`
+   * que el propio handoff dibuja en la grilla de CAL-2
+   * ("Gastos Componentes.dc.html":152): mismo durazno `#D97355`, un peso
+   * menos y sin trama.
+   *
+   * Va ADITIVO sobre la sombra de estado, no en reemplazo: un día de
+   * extendido SÍ cuenta para el saldo de este ciclo, así que conserva el
+   * fill de su mood (verde si estuvo dentro del cupo, durazno si se pasó).
+   * La trama de `fuera` es sustitutiva —borra el mood— porque un día
+   * fuera está en limbo y no cuenta para ningún saldo.
+   */
+  dayExtendidoRing: string
+  /**
+   * Trama diagonal de PELIGRO de los días extendidos, tipo cinta de obra.
+   *
+   * Va como CAPA sobre el fill del mood, no en reemplazo: alterna durazno con
+   * TRANSPARENTE (no con un segundo sólido, que es lo que hace `fuera`), así
+   * el verde/durazno del día se sigue leyendo debajo. Un día extendido cuenta
+   * para el saldo de este ciclo — borrarle el mood destruiría información.
+   *
+   * El período de la trama es 10px perpendicular a las bandas (5 pintados + 5
+   * vacíos). `ExtendidoHazard` la desplaza exactamente un período para que el
+   * loop cierre sin salto.
+   *
+   * Es un COLOR, no un gradiente: las bandas se dibujan con SVG porque RN
+   * 0.81 descarta `repeating-linear-gradient` sin avisar (ver
+   * `dayFueraBackground`).
+   */
+  dayExtendidoStripeInk: string
   // adornos estáticos [OWNER-A]
   daySproutInk: string
 
@@ -389,26 +483,32 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
     calBackground: '#E9EBE0',
     calGradientCss: undefined,
     calShadow: RAISE_L,
-    calTitleInk: '#54644F',
+    calTitleInk: '#6C7B67',
     calHintInk: '#2E7C39',
+    calHintWarnInk: '#C25B33',
     weekdayInk: '#9AA694',
+    dayEmptyInk: '#9AA694',
     dayBienBackground: '#DCEBD8',
     dayBienInk: '#3E6B44',
-    dayBienShadow: 'inset 2px 2px 4px rgba(90,110,70,0.15)',
+    dayBienShadow: 'inset 2px 2px 4px rgba(0,0,0,0.12), inset -2px -2px 4px rgba(255,255,255,0.85)',
     dayExcesoBackground: '#F3C9BC',
     dayExcesoInk: '#A84A2F',
-    dayExcesoShadow: 'inset 2px 2px 4px rgba(150,80,50,0.2)',
+    dayExcesoShadow: 'inset 2px 2px 4px rgba(0,0,0,0.14)',
     dayHoyBackground: '#24382A',
     dayHoyInk: '#F5F2E1',
-    dayHoyShadow: '0 6px 14px rgba(36,56,42,0.35)',
+    dayHoyShadow: '',
     dayHoyDot: '#A4E3A6',
     dayFuturoBackground: undefined,
-    dayFuturoInk: '#B3BCA8',
-    dayFuturoShadow: INS_SOFT_L,
-    daySelRing: '0 0 0 3px #2E7C39',
-    dayFueraBackgroundCss: 'repeating-linear-gradient(135deg, #F3C9BC 0 6px, #EFB8A6 6px 12px)',
-    dayFueraShadow: '0 0 0 2px #D97355, 0 4px 10px rgba(217,115,85,0.35)',
-    dayFueraInk: '#8A3A20',
+    dayFuturoInk: '#9AA694',
+    dayFuturoShadow:
+      'inset 3px 3px 7px rgba(151,160,136,0.35), inset -3px -3px 7px rgba(255,255,255,0.9)',
+    daySelRing: '0 0 0 2.5px #2E7C39, inset 2px 2px 5px rgba(0,0,0,0.14)',
+    dayFueraBackground: '#F3C9BC',
+    dayFueraStripeInk: '#EFB8A6',
+    dayFueraShadow: '0 0 0 1.5px #D97355',
+    dayFueraInk: '#A84A2F',
+    dayExtendidoRing: '0 0 0 1.5px #D97355',
+    dayExtendidoStripeInk: 'rgba(217,115,85,0.32)',
     daySproutInk: '#3E6B44',
 
     dayCardBackground: '#E9EBE0',
@@ -596,24 +696,29 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
     calShadow: RAISE_D,
     calTitleInk: '#93A78F',
     calHintInk: '#A4E3A6',
-    weekdayInk: '#7C917A',
+    calHintWarnInk: '#F2A87E',
+    weekdayInk: '#9AA694',
+    dayEmptyInk: '#7C917A',
     dayBienBackground: 'rgba(164,227,166,0.16)',
     dayBienInk: '#B5DDB4',
-    dayBienShadow: 'inset 2px 2px 4px rgba(0,0,0,0.45), inset -2px -2px 4px rgba(164,227,166,0.08)',
+    dayBienShadow: 'inset 2px 2px 4px rgba(0,0,0,0.4), inset -2px -2px 4px rgba(164,227,166,0.1)',
     dayExcesoBackground: 'rgba(217,115,85,0.24)',
     dayExcesoInk: '#F2A87E',
-    dayExcesoShadow: 'inset 2px 2px 4px rgba(0,0,0,0.45), inset -2px -2px 4px rgba(242,168,126,0.08)',
+    dayExcesoShadow: 'inset 2px 2px 4px rgba(0,0,0,0.42)',
     dayHoyBackground: '#F1EEDD',
     dayHoyInk: '#16271C',
-    dayHoyShadow: '0 0 18px rgba(241,238,221,0.25)',
+    dayHoyShadow: '',
     dayHoyDot: '#2E7C39',
     dayFuturoBackground: '#142519',
-    dayFuturoInk: '#5F7361',
-    dayFuturoShadow: 'inset 2px 2px 5px rgba(0,0,0,0.45), inset -2px -2px 5px rgba(101,152,113,0.07)',
-    daySelRing: '0 0 0 3px #A4E3A6',
-    dayFueraBackgroundCss: 'repeating-linear-gradient(135deg, #F3C9BC 0 6px, #EFB8A6 6px 12px)',
-    dayFueraShadow: '0 0 0 2px #D97355, 0 4px 10px rgba(217,115,85,0.35)',
-    dayFueraInk: '#8A3A20',
+    dayFuturoInk: '#7C917A',
+    dayFuturoShadow: 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.08)',
+    daySelRing: '0 0 0 2.5px #A4E3A6, inset 2px 2px 5px rgba(0,0,0,0.14)',
+    dayFueraBackground: 'rgba(217,115,85,0.14)',
+    dayFueraStripeInk: 'rgba(217,115,85,0.3)',
+    dayFueraShadow: '0 0 0 1.5px #D97355',
+    dayFueraInk: '#F2A87E',
+    dayExtendidoRing: '0 0 0 1.5px #D97355',
+    dayExtendidoStripeInk: 'rgba(242,168,126,0.3)',
     daySproutInk: '#B5DDB4',
 
     dayCardBackground: '#1A2D21',

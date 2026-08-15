@@ -1,6 +1,5 @@
 import { RequireAuth } from '@/components/guards'
 import { RiseViewGate } from '@/components/home/animated/rise-view'
-import { LayoutTransitionGateProvider } from '@/hooks/use-layout-transition-gate'
 import { NeoGastosScreen } from '@/screens/home/neo/neo-gastos-screen'
 
 // ⚠️ SWAP TEMPORAL DE MEDICIÓN (2026-07-23) — NO es el swap definitivo.
@@ -24,13 +23,26 @@ export default function ExpensesRoute() {
   // entrances renders this screen settled from the start (matching the
   // instant tab switch). Home keeps its entrance: it's the active tab at
   // boot, a clean fresh mount with no snap.
+  //
+  // Este gate es DURO y la pantalla monta otro adentro con
+  // `skip={reduceMotion}`. Hasta el 2026-08-12 el interno pisaba a este (el
+  // `RiseView` lee el proveedor más cercano), así que en hardware normal esta
+  // línea no hacía nada; ahora `RiseViewGate` compone con el de arriba y las
+  // dos intenciones conviven.
+  //
+  // SIN `LayoutTransitionGateProvider` (se sacó el 2026-08-12): NINGÚN
+  // consumidor de `useGatedLayout` cuelga de la Gastos neo — los de
+  // `components/gastos/*` los monta la pantalla vieja (`gastos-v2-screen`, ya
+  // no ruteada). Montarlo igual costaba un re-render de todo el subárbol 1,5 s
+  // después de cada visita (el fallback que abre el gate) para nadie. Si
+  // alguna vez se agrega un `LinearTransition` gateado acá, hay que volver a
+  // montarlo — sin provider el default es "gate abierto", que reintroduce el
+  // warp del primer attach en silencio.
   return (
     <RequireAuth>
       {({ familyId, userId }) => (
         <RiseViewGate skip>
-          <LayoutTransitionGateProvider label="Gastos">
-            <NeoGastosScreen familyId={familyId} userId={userId} />
-          </LayoutTransitionGateProvider>
+          <NeoGastosScreen familyId={familyId} userId={userId} />
         </RiseViewGate>
       )}
     </RequireAuth>

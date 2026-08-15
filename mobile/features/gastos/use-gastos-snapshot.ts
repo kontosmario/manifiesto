@@ -68,6 +68,14 @@ interface UseGastosSnapshotArgs {
   today: Date
   cupoDiario: number
   daysPerPage?: number
+  /**
+   * Gate del caller para no disparar el RPC con un `cupoDiario` PROVISORIO.
+   * `cupoDiario` es parte de la queryKey, así que arrancar con una base que
+   * todavía va a cambiar cuesta un round-trip entero que nadie lee. Default
+   * `true` (comportamiento de siempre). Ver el gate espejo del warm-prefetch
+   * en `use-warm-tabs-snapshots`.
+   */
+  ready?: boolean
 }
 
 export const gastosSnapshotQueryKey = (
@@ -273,7 +281,7 @@ export function useGastosSnapshot(args: UseGastosSnapshotArgs) {
       args.cupoDiario,
       null,
     ),
-    enabled: Boolean(args.familyId),
+    enabled: Boolean(args.familyId) && (args.ready ?? true),
     // Gastos data cambia más seguido que home (mutations + realtime),
     // pero 60s es suficiente para evitar re-fetches en tab-switches
     // dentro del mismo uso. Mutations específicas y `useGastosRealtime`

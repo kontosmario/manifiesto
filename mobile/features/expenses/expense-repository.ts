@@ -55,8 +55,11 @@ function applyExpenseFilters<Q extends {
  * embed select fails. The embed select adds `profiles!inner(display_name)`
  * to fetch the creator name in the same round-trip (audit §3.3).
  */
+// `archived_at` viaja para que el shape coincida con el del `home_snapshot`
+// (que sí lo devuelve) y la cache no tenga filas de dos formas distintas
+// según hayan entrado por el seed o por un refetch.
 const EXPENSE_COLUMNS =
-  'id, family_id, category_id, commitment_id, description, notes, price, created_by, created_at'
+  'id, family_id, category_id, commitment_id, description, notes, price, created_by, created_at, archived_at'
 
 const EXPENSE_COLUMNS_WITH_PROFILE = `${EXPENSE_COLUMNS}, profiles!expenses_created_by_profile_fkey(display_name)`
 

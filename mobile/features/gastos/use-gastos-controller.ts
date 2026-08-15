@@ -25,7 +25,11 @@ import type {
 import { localizeCategoryNameByName } from '@/features/categories/localize-category-name'
 import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
 import { useCycleIncomeEventsTotal } from '@/features/income/use-income-events'
-import { formatLocalDateKey } from '@/utils/pay-cycle'
+import {
+  formatLocalDateKey,
+  getCycleExtensionDays,
+  isCycleExtended,
+} from '@/utils/pay-cycle'
 import type { Expense } from '@/features/expenses/use-expenses'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useFamilyDashboard, type FamilyDashboard } from '@/hooks/use-family-dashboard'
@@ -80,7 +84,12 @@ export interface UseGastosControllerResult {
   selectedCategoryId: string | null
   setSelectedCategoryId: (id: string | null) => void
   selectedDay: number | null
+  /** Elige un día por su número. Ambiguo si la ventana repite el
+   *  día-de-mes: preferí `selectDayByIso` desde el calendario. */
   setSelectedDay: (day: number | null) => void
+  /** Elige un día por su fecha EXACTA — la forma correcta desde la grilla,
+   *  que conoce el ISO de cada celda. */
+  selectDayByIso: (iso: string | null, day: number | null) => void
   hasAnyFilter: boolean
   // filtered result
   filteredExpenses: Expense[]
@@ -97,9 +106,17 @@ export interface UseGastosControllerResult {
   cycleSummaryChip: string
   // aggregates (server-computed)
   topCategories: CategoryWeightRow[]
+  /** Day-of-month indexed (1..31). ⚠ COLISIONA en ventanas de más de un
+   *  mes (ciclo extendido): usar los índices `*ByIso`. Se conserva para la
+   *  vista vieja `gastos-v2-screen`. */
   dayMoods: Record<number, GastosDayMood>
-  /** Day-of-month indexed (1..31). Filled from the calendar RPC. */
+  /** Day-of-month indexed (1..31). Mismo caveat que `dayMoods`. */
   dailySpend: Record<number, DayOfMonthSpendRow>
+  /** Indexado por `YYYY-MM-DD` local — ÚNICO en toda la ventana, también
+   *  cuando el ciclo está estirado. Es la llave correcta para el calendario. */
+  dayMoodsByIso: Record<string, GastosDayMood>
+  /** Indexado por `YYYY-MM-DD` local. Mismo criterio que `dayMoodsByIso`. */
+  dailySpendByIso: Record<string, DayOfMonthSpendRow>
   averageDaily: number
   recentDailyBars: number[]
   groups: GastosGroup[]
@@ -108,6 +125,16 @@ export interface UseGastosControllerResult {
   cycleStart: Date
   cycleEnd: Date
   cycleDays: number
+  /** Fin NOMINAL del ciclo (el payday configurado), EXCLUSIVO. Difiere de
+   *  `cycleEnd` sólo si la ventana está ESTIRADA (modelo extendido + cobro
+   *  sin confirmar): los días entre ambos son EXTENDIDO. */
+  cycleNominalEnd: Date
+  /** `true` si la ventana está estirada. */
+  cycleIsExtended: boolean
+  /** Días de extendido (0 si no está estirada). */
+  cycleExtensionDays: number
+  /** ISO del día seleccionado — la identidad correcta del día elegido. */
+  selectedDayIso: string | null
   cycleDaysElapsed: number
   cycleLabel: string
   /** Régimen de ingreso del hogar — el empty state del SectionList lo
@@ -123,8 +150,11 @@ export interface UseGastosControllerResult {
    *  refetch: edición del cache precedida de un `cancelQueries` para que ningún
    *  fetch en vuelo pise el recorte). La pantalla lo llama SOLO al salir a otra
    *  tab (no al pushear una ruta encima) para que volver a Gastos desde una
-   *  tab hermana arranque en 1 página. Ver la nota larga en el cuerpo del hook. */
-  resetPagination: () => Promise<void>
+   *  tab hermana arranque en 1 página. Ver la nota larga en el cuerpo del hook.
+   *
+   *  Devuelve `true` si REALMENTE recortó (había más de una página). Con una
+   *  sola página es no-op y el llamador puede conservar el scroll. */
+  resetPagination: () => Promise<boolean>
   // actions
   clearDay: () => void
   clearAll: () => void
@@ -148,6 +178,12 @@ export function useGastosController(
     options.initialCategoryId ?? null,
   )
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  /** ISO exacto del día elegido, cuando el caller lo conoce (la celda del
+   *  calendario sabe su fecha). Desambigua el día-de-mes repetido de una
+   *  ventana extendida. */
+  const [selectedDayIsoOverride, setSelectedDayIsoOverride] = useState<string | null>(
+    null,
+  )
 
   const cycleStart = cycle.start
   const cycleEnd = cycle.end
@@ -243,7 +279,15 @@ export function useGastosController(
   })
 
   // Convert day-of-month → ISO YYYY-MM-DD for the day-detail RPC.
+  //
+  // El día-de-mes NO identifica un día cuando la ventana dura más de un mes
+  // (ciclo extendido): del 5-jul al 13-ago el "7" existe dos veces y este
+  // barrido devolvía SIEMPRE el primero → tocar el 7 de agosto abría el
+  // detalle del 7 de julio. Con `selectedDayIso` explícito (lo setea el
+  // caller desde la celda, que conoce su fecha) el barrido queda de
+  // fallback para los callers viejos que sólo tienen el número.
   const selectedDayIso = useMemo(() => {
+    if (selectedDayIsoOverride != null) return selectedDayIsoOverride
     if (selectedDay == null) return null
     for (let i = 0; i < cycleDays; i++) {
       const d = new Date(
@@ -256,7 +300,7 @@ export function useGastosController(
       }
     }
     return null
-  }, [selectedDay, cycleStart, cycleDays])
+  }, [selectedDayIsoOverride, selectedDay, cycleStart, cycleDays])
 
   const forDayQuery = useGastosExpensesForDay({
     familyId,
@@ -316,14 +360,34 @@ export function useGastosController(
   )
 
   // ── Calendar (server-computed moods + per-day totals) ───────────
+  //
+  // OJO con la llave. `d.day` es día-DE-MES y NO es único: una ventana de
+  // más de un mes —que es exactamente lo que produce el ciclo EXTENDIDO
+  // cuando el cobro no se confirma (p.ej. 5-jul → 13-ago, 39 días)— repite
+  // los días 5..13, y el último leído pisaba al primero: dos celdas con el
+  // mismo color y el detalle abriendo el mes equivocado (QA del owner
+  // 2026-08-13). Por eso la fuente de verdad son los índices por ISO, que
+  // el server ya manda como `iso_date` ("unique key across the cycle").
+  //
+  // Los índices por día-de-mes se conservan para la vista vieja
+  // (`gastos-v2-screen`), que no soporta ventanas extendidas de todos modos.
+  const dayMoodsByIso = useMemo<Record<string, GastosDayMood>>(() => {
+    const out: Record<string, GastosDayMood> = {}
+    for (const d of calendarQuery.data?.days ?? []) out[d.iso_date] = d.mood
+    return out
+  }, [calendarQuery.data])
+
+  const dailySpendByIso = useMemo<Record<string, DayOfMonthSpendRow>>(() => {
+    const out: Record<string, DayOfMonthSpendRow> = {}
+    for (const d of calendarQuery.data?.days ?? []) {
+      out[d.iso_date] = { day: d.day, total: d.total, count: d.count }
+    }
+    return out
+  }, [calendarQuery.data])
+
   const dayMoods = useMemo<Record<number, GastosDayMood>>(() => {
     const out: Record<number, GastosDayMood> = {}
-    for (const d of calendarQuery.data?.days ?? []) {
-      // Si dos días del ciclo comparten día-de-mes (caso 31), el
-      // segundo encontrado pisa al primero. Aceptable: el calendario
-      // grafica una grilla de día-de-mes única en ciclos típicos.
-      out[d.day] = d.mood
-    }
+    for (const d of calendarQuery.data?.days ?? []) out[d.day] = d.mood
     return out
   }, [calendarQuery.data])
 
@@ -401,10 +465,20 @@ export function useGastosController(
   }, [selectedDay, dayDetailExpenses, cycleTopCategories, categoriesById])
 
   // ── Hero outputs (filtered by selectedDay if set) ───────────────
-  const filteredTotal =
-    selectedDay != null ? (dailySpend[selectedDay]?.total ?? 0) : cycleTotal
-  const filteredCount =
-    selectedDay != null ? (dailySpend[selectedDay]?.count ?? 0) : cycleCount
+  //
+  // Por ISO: `dailySpend` está indexado por día-de-mes y en una ventana
+  // extendida ese número se repite, así que GASTADO y MOVIMIENTOS del
+  // day-detail mostraban los del primer día con ese número (un mes atrás).
+  // Sin ISO resuelto se cae al índice por número, que es correcto en el
+  // modelo nominal (ventana de un mes, número único).
+  const daySpendRow =
+    selectedDay == null
+      ? undefined
+      : selectedDayIso != null
+        ? dailySpendByIso[selectedDayIso]
+        : dailySpend[selectedDay]
+  const filteredTotal = selectedDay != null ? (daySpendRow?.total ?? 0) : cycleTotal
+  const filteredCount = selectedDay != null ? (daySpendRow?.count ?? 0) : cycleCount
   const topCategories =
     selectedDay != null ? dayTopCategories : cycleTopCategories
   // Per-day average doesn't make sense — we pass 0 so consumers can
@@ -537,13 +611,22 @@ export function useGastosController(
   const resetPagination = useCallback(async () => {
     const queryKey = gastosEndpointKeys.paginatedFamily(familyId)
     await queryClient.cancelQueries({ queryKey })
+    // El booleano sale de ADENTRO del updater —el único lugar que sabe si de
+    // verdad se recortó— y no de comparar longitudes después: la pantalla lo usa
+    // para decidir si tiene que rebobinar el scroll, y rebobinar de más pierde
+    // la posición del usuario mientras que rebobinar de menos deja el viewport
+    // colgado abajo de un contenido que se achicó (iOS lo clampea en el próximo
+    // layout = salto).
+    let trimmed = false
     queryClient.setQueriesData<InfiniteData<GastosExpensesPage, string | null>>(
       { queryKey },
       (data) => {
         if (!data || data.pages.length <= 1) return data
+        trimmed = true
         return { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) }
       },
     )
+    return trimmed
   }, [queryClient, familyId])
 
   // ── Refetch all (pull-to-refresh) ───────────────────────────────
@@ -558,10 +641,18 @@ export function useGastosController(
     ])
   }, [heroQuery, calendarQuery, categoriesQuery, paginatedQuery, forDayQuery, dashboard, selectedDay])
 
-  const clearDay = useCallback(() => setSelectedDay(null), [])
+  const clearDay = useCallback(() => {
+    setSelectedDay(null)
+    setSelectedDayIsoOverride(null)
+  }, [])
   const clearAll = useCallback(() => {
     setSelectedDay(null)
+    setSelectedDayIsoOverride(null)
     setSelectedCategoryId(null)
+  }, [])
+  const selectDayByIso = useCallback((iso: string | null, day: number | null) => {
+    setSelectedDayIsoOverride(iso)
+    setSelectedDay(day)
   }, [])
 
   return {
@@ -576,6 +667,7 @@ export function useGastosController(
     setSelectedCategoryId,
     selectedDay,
     setSelectedDay,
+    selectDayByIso,
     hasAnyFilter,
     filteredExpenses,
     filteredTotal,
@@ -587,6 +679,8 @@ export function useGastosController(
     topCategories,
     dayMoods,
     dailySpend,
+    dayMoodsByIso,
+    dailySpendByIso,
     averageDaily,
     recentDailyBars,
     groups,
@@ -594,6 +688,10 @@ export function useGastosController(
     cycleStart,
     cycleEnd,
     cycleDays,
+    cycleNominalEnd: cycle.nominalEnd ?? cycle.end,
+    cycleIsExtended: isCycleExtended(cycle),
+    cycleExtensionDays: getCycleExtensionDays(cycle),
+    selectedDayIso,
     cycleDaysElapsed,
     cycleLabel,
     incomeMode,

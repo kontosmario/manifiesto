@@ -4,12 +4,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
 } from 'react-native'
+import { AnimatedText, Text } from '@/components/ui/app-text'
 import Animated, {
+  Easing,
   cancelAnimation,
   runOnJS,
   useAnimatedStyle,
@@ -18,6 +19,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path } from 'react-native-svg'
+import {
+  HAZARD_BAND,
+  HAZARD_H,
+  HAZARD_STEP,
+  HAZARD_W,
+  buildHazardPath,
+} from '@/components/redesign/gastos/hazard-geometry'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import { BrotParticles } from '@/components/brot/brot-particles'
 import { CategoryIcon } from '@/components/category/category-icon'
@@ -41,6 +49,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { decorativeDurations, motionDurations, motionEasings } from '@/lib/motion/tokens'
+import { startPulseLoop } from '@/lib/motion/pulse-loop'
 import { nunitoFamily } from '@/theme/typography'
 
 // Press-feedback (spring `motionSprings.press`, reduced-motion-aware) sobre
@@ -311,6 +320,14 @@ export interface DayCell {
   sub?: string
   sprout?: boolean
   hoyDot?: boolean
+  /** Fecha EXACTA de la celda (`YYYY-MM-DD` local). El `n` es día-de-mes y
+   *  se repite cuando la ventana dura más de un mes (ciclo extendido), así
+   *  que la identidad real de la celda es ésta. */
+  iso?: string
+  /** El día cayó DESPUÉS del fin nominal del ciclo: entró de EXTENDIDO
+   *  porque el cobro no se confirmó. Ortogonal al `kind` — un día de
+   *  extendido sigue siendo ok/bad/empty/now y sigue restando del saldo. */
+  ext?: boolean
 }
 
 export interface HeroCategory {
@@ -382,6 +399,12 @@ interface GastosDerived {
   dayGastado: string
   dayMovs: string
   isOut: boolean
+  /** Strip de Brot del día: reemplaza el copy hardcodeado del caso
+   *  fuera-de-ciclo. `{ pose, text }` lo decide el caller — un día de
+   *  EXTENDIDO (ciclo extendido) usa el mismo chasis con otra pose y otro
+   *  copy, porque su gasto SÍ cuenta para este ciclo. Sin esto, el strip
+   *  sólo existía para `isOut`, que en extendido nunca se cumple. */
+  brotStrip?: { pose: BrotPose; text: string } | null
   showCtas: boolean
   dayVariant: 'live' | 'future' | 'closed'
   dayNote: string | undefined
@@ -630,16 +653,26 @@ function CycleTriggerDot({
   const reduceMotion = useReducedMotion()
   const pulse = useSharedValue(0)
   useEffect(() => {
-    if (!current || reduceMotion || paused) {
+    // Sin glow (ciclo cerrado) o con reduced motion: reposo fijo en el extremo
+    // apagado, igual que antes.
+    if (!current || reduceMotion) {
       cancelAnimation(pulse)
       pulse.value = 0
       return
     }
-    pulse.value = withRepeat(
-      withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
-      -1,
-      true,
-    )
+    // Pausa por foco: sólo cancelar. Escribir el valor contraía el halo de
+    // golpe durante el fundido de salida de la tab, que todavía se ve — ver
+    // `startPulseLoop`.
+    if (paused) {
+      cancelAnimation(pulse)
+      return
+    }
+    startPulseLoop(pulse, {
+      // `decorativeDurations.pulse` era el MEDIO ciclo acá (el withTiming de
+      // ida); el helper toma el ciclo completo.
+      duration: decorativeDurations.pulse * 2,
+      easing: motionEasings.warm,
+    })
     return () => cancelAnimation(pulse)
   }, [current, reduceMotion, paused, pulse])
   const glowStyle = useAnimatedStyle(() => ({ opacity: 0.3 + pulse.value * 0.6, transform: [{ scale: 1 + pulse.value * 0.5 }] }))
@@ -1049,10 +1082,12 @@ function SwapText({
   value,
   style,
   reduceMotion,
+  numberOfLines,
 }: {
   value: string
   style?: StyleProp<TextStyle>
   reduceMotion: boolean
+  numberOfLines?: number
 }) {
   const swap = useSwapFade(value, value, reduceMotion)
   // A11Y · SIN `accessibilityLabel` a propósito: el label se pinneaba al valor
@@ -1061,7 +1096,9 @@ function SwapText({
   // divorciado del renderizado. El <Text> ya expone sus children al lector, que
   // es exactamente lo que se ve en pantalla en todo momento.
   return (
-    <Animated.Text style={[style, swap.style]}>{swap.shown}</Animated.Text>
+    <AnimatedText numberOfLines={numberOfLines} style={[style, swap.style]}>
+      {swap.shown}
+    </AnimatedText>
   )
 }
 
@@ -1355,7 +1392,9 @@ export function GastosHero({
             </View>
             {chip ? (
               <View style={[styles.heroChip, { backgroundColor: s.heroChipBackground, boxShadow: s.heroChipShadow }]}>
-                <Text style={[styles.heroChipText, { color: s.heroChipInk }]}>{chip}</Text>
+                <Text numberOfLines={1} style={[styles.heroChipText, { color: s.heroChipInk }]}>
+                  {chip}
+                </Text>
               </View>
             ) : null}
           </View>
@@ -1454,6 +1493,7 @@ export function GastosHero({
               value={chip}
               style={[styles.heroChipText, { color: s.heroChipInk }]}
               reduceMotion={reduceMotion}
+              numberOfLines={1}
             />
           </View>
         </View>
@@ -1574,16 +1614,20 @@ function FueraGlow({ s, paused }: { s: GastosSpec; paused: boolean }) {
   const reduceMotion = useReducedMotion()
   const outPulse = useSharedValue(0)
   useEffect(() => {
-    if (reduceMotion || paused) {
+    if (reduceMotion) {
       cancelAnimation(outPulse)
       outPulse.value = 0
       return
     }
-    outPulse.value = withRepeat(
-      withTiming(1, { duration: decorativeDurations.pulse, easing: motionEasings.warm }),
-      -1,
-      true,
-    )
+    // Igual que `CycleTriggerDot`: la pausa por foco congela en su lugar.
+    if (paused) {
+      cancelAnimation(outPulse)
+      return
+    }
+    startPulseLoop(outPulse, {
+      duration: decorativeDurations.pulse * 2,
+      easing: motionEasings.warm,
+    })
     return () => cancelAnimation(outPulse)
   }, [reduceMotion, paused, outPulse])
   const outGlowStyle = useAnimatedStyle(() => ({ opacity: 0.15 + outPulse.value * 0.5 }))
@@ -1592,6 +1636,78 @@ function FueraGlow({ s, paused }: { s: GastosSpec; paused: boolean }) {
       pointerEvents="none"
       style={[styles.dayBadGlow, { boxShadow: `0 0 7px 0 ${s.dayFueraInk}` }, outGlowStyle]}
     />
+  )
+}
+
+/**
+ * Trama diagonal de peligro de los días EXTENDIDOS, en movimiento.
+ *
+ * Tres decisiones no obvias:
+ *
+ * 1. **Dos capas.** El gradiente vive en un `View` ESTÁTICO y quien anima es
+ *    su `Animated.View` padre. Poner `experimental_backgroundImage` en el
+ *    nodo que Reanimated anima pinta un rectángulo fantasma FUERA de su caja
+ *    (visible sólo en device, no en el preview web).
+ *
+ * 2. **El recorte va en un wrapper, no en la celda.** `overflow:'hidden'` en
+ *    iOS es `clipsToBounds`, que recorta también la sombra PROPIA del nodo —
+ *    ponerlo en `dayCell` borraría el anillo del día. Por eso el clip vive en
+ *    este wrapper absoluto, que no lleva sombra.
+ *
+ * 3. **El desplazamiento es exactamente un período.** La trama repite cada
+ *    10px sobre el eje del gradiente (5 pintados + 5 vacíos) y el eje está a
+ *    135°, así que un corrimiento en X de 10/cos(45°) ≈ 14.14 devuelve la
+ *    misma imagen: el loop cierra sin salto. Con cualquier otro valor la
+ *    cinta "pega" un tirón en cada vuelta.
+ *
+ * Gates iguales a `FueraGlow`: reduced-motion congela la trama (queda quieta,
+ * no desaparece — sigue siendo la señal de que el día entró de más) y el
+ * `paused` por foco evita que el `withRepeat(-1)` siga corriendo con el
+ * calendario montado en otra tab.
+ */
+/**
+ * Las bandas, quietas. `Svg` de tamaño fijo; el recorte lo pone el llamador.
+ * La geometría (y el porqué del SVG en vez de un gradiente) vive en
+ * `hazard-geometry`, con tests.
+ */
+const HAZARD_PATH = buildHazardPath()
+
+function HazardStripes({ color }: { color: string }) {
+  return (
+    <Svg width={HAZARD_W} height={HAZARD_H}>
+      <Path d={HAZARD_PATH} stroke={color} strokeWidth={HAZARD_BAND} fill="none" />
+    </Svg>
+  )
+}
+
+function ExtendidoHazard({ s, paused }: { s: GastosSpec; paused: boolean }) {
+  const reduceMotion = useReducedMotion()
+  const drift = useSharedValue(0)
+  useEffect(() => {
+    if (reduceMotion || paused) {
+      cancelAnimation(drift)
+      return
+    }
+    drift.value = 0
+    drift.value = withRepeat(
+      withTiming(HAZARD_STEP, {
+        duration: decorativeDurations.shimmer,
+        easing: Easing.linear,
+      }),
+      -1,
+      false,
+    )
+    return () => cancelAnimation(drift)
+  }, [reduceMotion, paused, drift])
+  const driftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: drift.value }],
+  }))
+  return (
+    <View pointerEvents="none" style={styles.hazardClip}>
+      <Animated.View pointerEvents="none" style={[styles.hazardLayer, driftStyle]}>
+        <HazardStripes color={s.dayExtendidoStripeInk} />
+      </Animated.View>
+    </View>
   )
 }
 
@@ -1613,7 +1729,7 @@ const DayCellView = memo(function DayCellView({
 }: {
   s: GastosSpec
   cell: DayCell
-  onPress?: (n: number) => void
+  onPress?: (n: number, iso?: string) => void
   reduceMotion: boolean
   /** Gate por foco del halo de los días FUERA (ver FueraGlow). */
   paused: boolean
@@ -1634,7 +1750,7 @@ const DayCellView = memo(function DayCellView({
     // (showStateShadow) salvo que la celda esté seleccionada (anillo). Queda
     // más plano que 'fut' (que lleva pozo inset) → distinguible.
     bg = undefined
-    ink = s.weekdayInk
+    ink = s.dayEmptyInk
     weight = '700'
     stateShadow = '' // no usado: showStateShadow omite la sombra en 'empty'
   } else if (kind === 'bad') {
@@ -1653,7 +1769,11 @@ const DayCellView = memo(function DayCellView({
     weight = '700'
     stateShadow = s.dayFuturoShadow
   } else if (kind === 'fuera') {
-    bg = undefined
+    // El fondo base es SÓLIDO y las bandas van encima (`HazardStripes`): la
+    // trama del handoff es un `repeating-linear-gradient` y RN 0.81 lo
+    // descarta sin avisar, así que estas celdas se venían dibujando sin
+    // ningún fondo.
+    bg = s.dayFueraBackground
     ink = s.dayFueraInk
     weight = '900'
     stateShadow = s.dayFueraShadow
@@ -1678,11 +1798,31 @@ const DayCellView = memo(function DayCellView({
   // selRing REEMPLAZA la sombra de estado (spread sin blur → sin layout
   // shift; NO borderWidth). Los días FUERA conservan su anillo+glow propio.
   const selected = kind !== 'fuera' && cell.selected
-  const shadow = selected ? s.daySelRing : stateShadow
+  // DÍA EXTENDIDO: anillo durazno ADITIVO sobre la sombra de estado + la cinta
+  // de peligro animada (`ExtendidoHazard`). El día conserva el fill de su mood
+  // porque SÍ cuenta para el saldo de este ciclo — por eso la trama alterna
+  // con TRANSPARENTE. Distinto de `fuera`, cuya trama es sustitutiva y borra
+  // el mood (ese día está en limbo y no cuenta para ningún saldo).
+  // Seleccionado manda `daySelRing`: no se apilan dos anillos en el mismo
+  // offset, y el día extendido sigue legible por la cinta, el sublabel y el
+  // chip del day-detail.
+  const extendido = cell.ext === true && kind !== 'fuera'
+  const baseShadow = selected ? s.daySelRing : stateShadow
+  const shadow =
+    extendido && !selected
+      ? baseShadow
+        ? `${baseShadow}, ${s.dayExtendidoRing}`
+        : s.dayExtendidoRing
+      : baseShadow
   // 'empty' (día pasado sin gastos) y 'none' (molde punteado) NO llevan sombra
   // de estado — quedan planos. Salvo seleccionado, donde el anillo
-  // (daySelRing) sí se muestra.
-  const showStateShadow = (kind !== 'empty' && kind !== 'none') || selected
+  // (daySelRing) sí se muestra; y salvo extendido, que necesita emitir su
+  // anillo aunque el día no tenga gastos.
+  // `dayHoyShadow` es '' a propósito (la grilla del handoff no le pone sombra
+  // a hoy), así que el token vacío también apaga la capa — si no, RN recibe
+  // `boxShadow: ''`.
+  const showStateShadow =
+    ((kind !== 'empty' && kind !== 'none') || selected || extendido) && shadow !== ''
 
   const inner = (
     <View
@@ -1690,9 +1830,17 @@ const DayCellView = memo(function DayCellView({
         styles.dayCell,
         showStateShadow ? { boxShadow: shadow } : null,
         bg ? { backgroundColor: bg } : null,
-        kind === 'fuera' ? { experimental_backgroundImage: s.dayFueraBackgroundCss } : null,
       ]}
     >
+      {/* Trama de los días FUERA-DE-CICLO. Quieta (a diferencia de la de los
+          extendidos): un día fuera no está "pasando", ya quedó afuera. */}
+      {isFuera ? (
+        <View pointerEvents="none" style={styles.hazardClip}>
+          <View style={styles.hazardLayer}>
+            <HazardStripes color={s.dayFueraStripeInk} />
+          </View>
+        </View>
+      ) : null}
       {/* v2 · el contorno del molde va DEBAJO del contenido y no come layout
           (absolute), así que la celda mantiene su alto fijo. Se apaga cuando la
           celda está seleccionada: ahí manda el anillo. */}
@@ -1702,6 +1850,11 @@ const DayCellView = memo(function DayCellView({
       {/* Halo de warning (solo días FUERA-DE-CICLO): subcomponente propio que
           monta el pulse solo para estas celdas (FIX A2). */}
       {isFuera ? <FueraGlow s={s} paused={paused} /> : null}
+      {/* Cinta de peligro de los días EXTENDIDOS. Va DEBAJO del número (antes
+          en el orden de hermanos) y encima del fill, así que el mood se sigue
+          leyendo a través de los tramos vacíos de la trama. Sólo la montan
+          estas celdas: los hooks del loop no los paga la grilla entera. */}
+      {extendido ? <ExtendidoHazard s={s} paused={paused} /> : null}
       {/* maxFontSizeMultiplier · la celda es una caja de alto FIJO (dayCell):
           a fontScale grande el número se recortaba en vez de reflowear. 1.3
           crece lo suficiente para ayudar sin romper la grilla; a fontScale 1
@@ -1713,7 +1866,16 @@ const DayCellView = memo(function DayCellView({
         {cell.label}
       </Text>
       {cell.sub ? (
-        <Text maxFontSizeMultiplier={1.3} style={[styles.daySub, { color: ink }]}>
+        // numberOfLines={1} · la celda es una caja de alto FIJO (40) y el sub
+        // vive dentro. Una palabra que no entra a lo ancho hacía wrap a dos
+        // líneas y se derramaba fuera de la celda, pisando la fila de abajo
+        // ("EXTENDIDO" partido en "PRÓRROG" + "A"). El sub es una MARCA, no
+        // copy: si no entra, se corta.
+        <Text
+          numberOfLines={1}
+          maxFontSizeMultiplier={1.3}
+          style={[styles.daySub, { color: ink }]}
+        >
           {cell.sub}
         </Text>
       ) : null}
@@ -1759,7 +1921,7 @@ const DayCellView = memo(function DayCellView({
       // de calCard 16→8), que es un cambio visual del handoff y necesita el OK
       // del owner. Queda registrado, no "resuelto por comentario".
       hitSlop={{ top: 3, bottom: 3, left: 3, right: 3 }}
-      onPress={() => onPress(n)}
+      onPress={() => onPress(n, cell.iso)}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       style={[styles.dayFlex, press.animatedStyle]}
@@ -1816,7 +1978,9 @@ function composeDayCellA11yLabel(cell: DayCell, a11y: CalendarA11yStrings): stri
 export interface GastosCalendarProps {
   mode: GastosMode
   cells: DayCell[]
-  onSelectDay?: (n: number) => void
+  /** `iso` identifica el día sin ambigüedad: `n` es día-de-mes y se repite
+   *  cuando la ventana dura más de un mes (ciclo extendido). */
+  onSelectDay?: (n: number, iso?: string) => void
   /** Vacío: la grilla se renderiza neutra y el hint invita a cargar en vez
    *  de "toca un día". */
   empty?: boolean
@@ -1825,6 +1989,11 @@ export interface GastosCalendarProps {
    *  grilla es un resumen y no un selector. Ausente → hint por defecto
    *  (idéntico al aprobado). */
   hint?: string
+  /** CAL-2 — el hint pasa al durazno de alerta (`calHintWarnInk`) en vez del
+   *  verde de marca. Es la única variante del handoff que lo hace: el aviso
+   *  del header ("+2 fuera del ciclo") comparte tono con el anillo de las
+   *  celdas que lo motivan. */
+  hintWarn?: boolean
   /** v2 · CAL-3 — en una edición cerrada el título nombra el mes
    *  ("MAYO EN UN VISTAZO"): "TU MES" leería como el ciclo en curso. */
   title?: string
@@ -1848,6 +2017,7 @@ export function GastosCalendar({
   onSelectDay,
   empty = false,
   hint,
+  hintWarn = false,
   title = 'TU MES EN UN VISTAZO',
   footNote,
   animated = true,
@@ -1935,7 +2105,10 @@ export function GastosCalendar({
       >
         <View style={styles.calHeadRow}>
           <Text numberOfLines={1} style={[styles.calTitle, { color: s.calTitleInk }]}>{title}</Text>
-          <Text numberOfLines={1} style={[styles.calHint, { color: s.calHintInk }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.calHint, { color: hintWarn ? s.calHintWarnInk : s.calHintInk }]}
+          >
             {hint ?? (empty ? 'Carga gastos y tu mes se va pintando' : 'toca un día')}
           </Text>
         </View>
@@ -2046,11 +2219,38 @@ function DayArrow({ s, dir, onPress }: { s: GastosSpec; dir: 'prev' | 'next'; on
   )
 }
 
+/**
+ * Tono de un chip del day-detail.
+ *  · `warn` — exceso / fuera de ciclo: durazno sólido (el de siempre).
+ *  · `ext`  — día extendido: sin fill, con el MISMO anillo durazno que la
+ *             celda del calendario, para que se lean como la misma señal.
+ *  · `good` — logro (día marcado sin gastos): verde del estado "bien".
+ */
+export type GastosBadgeTone = 'warn' | 'ext' | 'good'
+
 export interface GastosDayDetailProps {
   mode: GastosMode
   dayNum: string
   sub: string
+  /** Chip único. Atajo de `badges` para el caso de siempre. */
   badge: string | null
+  /**
+   * Chips del día, cuando puede haber más de uno a la vez.
+   *
+   * Las condiciones NO son excluyentes: un día puede ser extendido Y de
+   * exceso, o extendido y estar marcado como día limpio. Con un solo chip
+   * había que elegir por prioridad y el resto se perdía — el owner veía "Día
+   * de exceso" sin enterarse de que además ese día entró de más.
+   *
+   * Se apilan en una fila que ENVUELVE, así que dos chips largos bajan a una
+   * segunda línea en vez de empujar el botón de volver. Si se pasa `badges`,
+   * `badge` se ignora.
+   */
+  badges?: { label: string; tone?: GastosBadgeTone }[]
+  /** Strip de Brot del día. Ver el mismo campo en el VM: un día de
+   *  EXTENDIDO reusa el chasis del strip fuera-de-ciclo con otra pose y
+   *  otro copy. */
+  brotStrip?: { pose: BrotPose; text: string } | null
   gastado: string
   movs: string
   isOut: boolean
@@ -2091,14 +2291,55 @@ export interface GastosDayDetailProps {
   animated?: boolean
 }
 
+/** Un chip del day-detail. Ver `GastosBadgeTone`. */
+function DayDetailChip({
+  s,
+  label,
+  tone,
+}: {
+  s: GastosSpec
+  label: string
+  tone: GastosBadgeTone
+}) {
+  const skin =
+    tone === 'ext'
+      ? // Sin fill + el anillo de la celda extendida: el chip y el día del
+        // calendario son la misma señal. Y así no se confunde con el chip de
+        // exceso, que en durazno sólido se le parecía demasiado.
+        { backgroundColor: undefined, boxShadow: s.dayExtendidoRing, ink: s.dayFueraInk }
+      : tone === 'good'
+        ? { backgroundColor: s.dayBienBackground, boxShadow: undefined, ink: s.dayBienInk }
+        : {
+            backgroundColor: s.detailBadgeBackground,
+            boxShadow: s.detailBadgeShadow,
+            ink: s.detailBadgeInk,
+          }
+  return (
+    <View
+      style={[
+        styles.detailBadge,
+        styles.detailBadgeCap,
+        skin.backgroundColor ? { backgroundColor: skin.backgroundColor } : null,
+        skin.boxShadow ? { boxShadow: skin.boxShadow } : null,
+      ]}
+    >
+      <Text numberOfLines={1} style={[styles.detailBadgeText, { color: skin.ink }]}>
+        {label}
+      </Text>
+    </View>
+  )
+}
+
 export function GastosDayDetail({
   mode,
   dayNum,
   sub,
   badge,
+  badges,
   gastado,
   movs,
   isOut,
+  brotStrip = null,
   showCtas,
   isMarked = false,
   onPrev,
@@ -2127,6 +2368,12 @@ export function GastosDayDetail({
   // pierde (EV3 no la dibuja, pero sacarla dejaría la marca sin vuelta atrás
   // fuera de HOY, que es lo único que cubre el FAB de la racha).
   const gardenIsPrimary = Boolean(onOpenGarden)
+  // `badges` manda; `badge` se conserva como atajo del caso de un solo chip
+  // (lo usa el demo del kit y los llamadores que nunca tienen dos).
+  const chips = useMemo(
+    () => badges ?? (badge ? [{ label: badge, tone: 'warn' as GastosBadgeTone }] : []),
+    [badges, badge],
+  )
 
   return (
     <RiseView translateY={12} style={styles.blockSpacing}>
@@ -2142,9 +2389,11 @@ export function GastosDayDetail({
             derecha con tope de 40% para que un texto largo no lo empuje. */}
         <View style={styles.dayBackRow}>
           <BackToCalendarButton mode={mode} label={backLabel} onPress={onBackToMonth} />
-          {badge ? (
-            <View style={[styles.detailBadge, styles.detailBadgeCap, { backgroundColor: s.detailBadgeBackground, boxShadow: s.detailBadgeShadow }]}>
-              <Text numberOfLines={1} style={[styles.detailBadgeText, { color: s.detailBadgeInk }]}>{badge}</Text>
+          {chips.length > 0 ? (
+            <View style={styles.detailBadgeRow}>
+              {chips.map((c) => (
+                <DayDetailChip key={c.label} s={s} label={c.label} tone={c.tone ?? 'warn'} />
+              ))}
             </View>
           ) : null}
         </View>
@@ -2184,14 +2433,20 @@ export function GastosDayDetail({
           </View>
         </View>
 
-        {isOut ? (
+        {brotStrip ?? isOut ? (
           <RiseView translateY={12}>
             <View style={[styles.outStrip, { backgroundColor: s.outStripBackground, boxShadow: s.outStripShadow }]}>
               <View style={styles.outStripBrot}>
-                <BrotMascot pose="sad" size={42} shadow={false} animated={animated} />
+                <BrotMascot
+                  pose={brotStrip?.pose ?? 'sad'}
+                  size={42}
+                  shadow={false}
+                  animated={animated}
+                />
               </View>
               <Text style={[styles.outStripText, { color: s.outStripInk }]}>
-                Estos gastos quedaron fuera del ciclo — al confirmar el cobro pasan al próximo.
+                {brotStrip?.text ??
+                  'Estos gastos quedaron fuera del ciclo — al confirmar el cobro pasan al próximo.'}
               </Text>
             </View>
           </RiseView>
@@ -2627,15 +2882,33 @@ export function GastosMovRow({
     </View>
   )
   // v2 · M-3 — un gasto cargado después del cierre del ciclo no se explica solo
-  // con el sufijo del subtítulo: la nota dice qué le va a pasar. Va FUERA de la
-  // fila para que el `SwipeRow` del cableado real (overflow:hidden) no la clipe.
+  // con el sufijo del subtítulo: la nota dice qué le va a pasar.
+  //
+  // El cableado real NO puede usar esta rama: monta `GastosMovRow` DENTRO del
+  // `SwipeRow`, que tiene overflow:hidden con radio 22, así que la nota
+  // quedaba clipeada por la esquina redondeada (se comía la primera letra) y
+  // pintada dentro de la tarjeta en vez de debajo. Para eso está
+  // `GastosMovRowNote`, que la pantalla monta como HERMANA de la tarjeta.
   if (!r.note) return row
   return (
     <View>
       {row}
-      <Text style={[styles.movRowNote, { color: s.outNoteInk }]}>{r.note}</Text>
+      <GastosMovRowNote mode={mode} note={r.note} />
     </View>
   )
+}
+
+/**
+ * Nota M-3 de una fila de movimiento, como pieza suelta.
+ *
+ * Va SIEMPRE fuera de cualquier contenedor con overflow:hidden. Su sangría
+ * horizontal iguala la del contenido de la fila (`movRow.paddingHorizontal`)
+ * para que arranque en la misma vertical que el título del gasto, no pegada
+ * al borde de la tarjeta.
+ */
+export function GastosMovRowNote({ mode, note }: { mode: GastosMode; note: string }) {
+  const s = GASTOS_SPEC[mode]
+  return <Text style={[styles.movRowNote, { color: s.outNoteInk }]}>{note}</Text>
 }
 
 /** Botón "Ver días anteriores" (footer de paginación). */
@@ -2894,6 +3167,29 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
             />
           </View>
 
+          {/* El filtro va ARRIBA del calendario (owner 2026-08-12): gobierna
+              hero + calendario + listado, así que se lee antes que todo lo que
+              re-escopa. Oculto en vacío: no hay categorías que filtrar. */}
+          {v.empty ? null : (
+            <GastosFilter
+              mode={mode}
+              chips={v.filterChips}
+              onSelect={(i) => dispatch({ type: 'selectFilter', i })}
+              // v2 · F-1/F-2 — la pill de estado a la derecha del eyebrow.
+              // F-3/F-4 no tienen estado en el reducer del demo (dependen de
+              // datos reales: catálogo sin movimientos / edición anterior), se
+              // revisan en el inventario del handoff.
+              eyebrow={activeFilterChip && !activeFilterChip.isAll ? 'FILTRO ACTIVO' : undefined}
+              status={{
+                label: activeFilterChip
+                  ? activeFilterChip.isAll
+                    ? activeFilterChip.label
+                    : `${activeFilterChip.label} · ${activeFilterChip.count}`
+                  : CATS[0][0],
+              }}
+            />
+          )}
+
           {v.showCal ? (
             <GastosCalendar
               mode={mode}
@@ -2906,6 +3202,7 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               hint={
                 !v.isCurrent ? 'solo lectura' : v.showAlert ? '+2 fuera del ciclo' : undefined
               }
+              hintWarn={v.isCurrent && v.showAlert}
               // v2 · EV2 — el strip que traduce el punteado, solo en el vacío.
               footNote={
                 v.empty
@@ -2926,6 +3223,7 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               gastado={v.dayGastado}
               movs={v.dayMovs}
               isOut={v.isOut}
+              brotStrip={v.brotStrip}
               showCtas={v.showCtas}
               variant={v.dayVariant}
               noteLine={v.dayNote}
@@ -2934,27 +3232,6 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
               onBackToMonth={() => dispatch({ type: 'clearDay' })}
               onRegister={() => {}}
               onMarkEmpty={() => {}}
-            />
-          )}
-
-          {/* Filtro oculto en vacío: no hay categorías que filtrar (más limpio). */}
-          {v.empty ? null : (
-            <GastosFilter
-              mode={mode}
-              chips={v.filterChips}
-              onSelect={(i) => dispatch({ type: 'selectFilter', i })}
-              // v2 · F-1/F-2 — la pill de estado a la derecha del eyebrow.
-              // F-3/F-4 no tienen estado en el reducer del demo (dependen de
-              // datos reales: catálogo sin movimientos / edición anterior), se
-              // revisan en el inventario del handoff.
-              eyebrow={activeFilterChip && !activeFilterChip.isAll ? 'FILTRO ACTIVO' : undefined}
-              status={{
-                label: activeFilterChip
-                  ? activeFilterChip.isAll
-                    ? activeFilterChip.label
-                    : `${activeFilterChip.label} · ${activeFilterChip.count}`
-                  : CATS[0][0],
-              }}
             />
           )}
 
@@ -2982,10 +3259,18 @@ export function GastosFinalScreen({ mode, initialState }: GastosFinalScreenProps
   )
 }
 
+/**
+ * Sangría horizontal del cuerpo de la pantalla. La misma en la réplica
+ * (`styles.content`) y en la vista real (`listContent` de la SectionList en
+ * `neo-gastos-screen`). El carrusel del filtro la ANULA para poder sangrar de
+ * borde a borde — ver `filterScrollWrap`.
+ */
+const BODY_PAD = 20
+
 const styles = StyleSheet.create({
   shell: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 10 },
+  content: { paddingHorizontal: BODY_PAD, paddingTop: 10 },
 
   pressedDim: { opacity: 0.65 },
   pressedDim55: { opacity: 0.55 },
@@ -3057,11 +3342,22 @@ const styles = StyleSheet.create({
   // ③ hero
   hero: { position: 'relative', borderRadius: GASTOS_RADII.hero, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 },
   heroParticles: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: GASTOS_RADII.hero, overflow: 'hidden' },
-  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // `gap` para que el eyebrow y la pill nunca se toquen cuando la pill crece.
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
   heroTagRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heroDot: { width: 8, height: 8, borderRadius: 4 },
   heroTag: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.61 },
-  heroChip: { borderRadius: 14, paddingVertical: 6, paddingHorizontal: 10 },
+  /**
+   * La pill CEDE ancho (owner 2026-08-12). Su texto es data —"N mov · categoría
+   * · rango"— y con un nombre de categoría largo se pasaba de largo: en RN el
+   * `flexShrink` default es 0, así que la fila no la achicaba y la pill se salía
+   * de la card. Con `flexShrink` + `minWidth: 0` se queda con el ancho que sobra
+   * del eyebrow (que es un literal corto del spec y no encoge) y su texto
+   * elide en una línea. Ver el orden de la copy en `gastos:summaryChip.text`:
+   * lo que se pierde primero es el rango del ciclo, que ya está en el selector
+   * del header.
+   */
+  heroChip: { flexShrink: 1, minWidth: 0, borderRadius: 14, paddingVertical: 6, paddingHorizontal: 10 },
   heroChipText: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
   heroWell: { marginTop: 13, borderRadius: GASTOS_RADII.well, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 14 },
   // lineHeight con headroom (~1.16×) sobre el fontSize: en Nunito 900 un
@@ -3108,24 +3404,52 @@ const styles = StyleSheet.create({
   catFill: { width: '100%', height: '100%', borderRadius: 4, transformOrigin: 'left' },
 
   // ④ calendario
-  calCard: { borderRadius: GASTOS_RADII.card, paddingTop: 16, paddingHorizontal: 16, paddingBottom: 14 },
+  // Geometría literal del handoff ("cal":152/154, idéntica en las 8
+  // variantes): `border-radius:24px; padding:14px 14px 12px`.
+  calCard: {
+    borderRadius: GASTOS_RADII.calCard,
+    paddingTop: 14,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+  },
   calHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   // v2 · el título cede antes que el hint: con un mes largo, el que tiene que
   // truncar es "SEPTIEMBRE EN UN VISTAZO", no el "solo lectura" que explica el
   // modo de la grilla.
-  calTitle: { flexShrink: 1, fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.61 },
-  calHint: { flexShrink: 0, fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
+  // 10.5/800 · 0.13em y 10.5/900 — literales del handoff en las 8 variantes.
+  calTitle: { flexShrink: 1, fontSize: 10.5, fontWeight: '800', fontFamily: nunitoFamily('800'), letterSpacing: 1.37 },
+  calHint: { flexShrink: 0, fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   calFootNote: { flexDirection: 'row', alignItems: 'center', gap: 11, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12, marginTop: 12 },
   calFootNoteBrot: { width: 40, alignItems: 'center' },
   calFootNoteText: { flex: 1, fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 16 },
   calFootNoteStrong: { fontWeight: '900', fontFamily: nunitoFamily('900') },
-  calWeekRow: { flexDirection: 'row', marginTop: 12 },
+  // El gap 7 NO es decorativo: sin él las iniciales se reparten el ancho
+  // completo mientras la grilla descuenta los 6 gaps, así que la L y la D
+  // quedaban corridas respecto de su columna. En el handoff los dos son la
+  // misma grilla (`repeat(7,1fr)` con `gap:7px`).
+  calWeekRow: { flexDirection: 'row', gap: 7, marginTop: 12 },
   weekday: { flex: 1, textAlign: 'center', fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800') },
   calGrid: { marginTop: 8 },
   calRow: { flexDirection: 'row', gap: 7 },
   calRowGap: { marginTop: 7 },
   dayFlex: { flex: 1 },
   dayCell: { height: 40, borderRadius: GASTOS_RADII.day, alignItems: 'center', justifyContent: 'center' },
+  // Clip de la cinta de peligro. Va en un wrapper propio y NO en `dayCell`:
+  // en iOS `overflow:'hidden'` recorta también la sombra del propio nodo, así
+  // que ahí adentro se perdería el anillo del día.
+  hazardClip: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: GASTOS_RADII.day,
+    overflow: 'hidden',
+  },
+  // Tamaño FIJO y anclada arriba-izquierda con offsets negativos: cubre la
+  // celda (≤51×40) incluso después de correrse el período completo (~14px),
+  // sin depender del ancho fluido de la columna.
+  hazardLayer: { position: 'absolute', left: -28, top: -24, width: HAZARD_W, height: HAZARD_H },
   // Halo de warning de los días de exceso (FIX 3). absoluteFill dentro de la
   // celda; el color/blur lo pone el boxShadow inline (color de exceso).
   dayBadGlow: {
@@ -3148,9 +3472,22 @@ const styles = StyleSheet.create({
   detailBadgeText: { fontSize: 10.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   // ─── v2 · encabezado con botón de volver (BK) ───
   dayBackRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  /** El badge nunca come más del 40% de la fila: con él suelto, un "Fuera de
-   *  ciclo" comprimía la etiqueta del botón hasta dejarla en "Volver…". */
-  detailBadgeCap: { flexShrink: 0, maxWidth: '40%' },
+  // Fila de chips: ENVUELVE. Con dos condiciones a la vez (extendido + exceso)
+  // los chips bajan a una segunda línea en vez de empujar el botón de volver
+  // fuera de la fila. `flex:1` + `justifyContent:'flex-end'` los mantiene
+  // pegados a la derecha, igual que el chip único de antes.
+  detailBadgeRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  /** Un chip nunca come más del 100% de SU fila (la de chips, que envuelve):
+   *  con dos, cada uno entra entero o baja de línea. El tope real contra el
+   *  botón de volver lo pone `dayBackRow` — sin él un "Fuera de ciclo"
+   *  comprimía la etiqueta del botón hasta dejarla en "Volver…". */
+  detailBadgeCap: { flexShrink: 1, maxWidth: '100%' },
   detailLabelBelowBack: { marginTop: 14 },
   cleanLine: { fontSize: 11.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 10, lineHeight: 16 },
   detailNote: { fontSize: 11, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 13, textAlign: 'center' },
@@ -3191,14 +3528,29 @@ const styles = StyleSheet.create({
   filterClearText: { fontSize: 12, fontWeight: '900', fontFamily: nunitoFamily('900') },
   // filterScrollWrap NO clipea (sin overflow): la sombra elevada del chip
   // activo (~16px hacia abajo) fluye libre. El fade a la derecha es un overlay.
-  filterScrollWrap: { position: 'relative', marginTop: 4 },
-  // paddingBottom generoso para que la sombra del chip activo NO quede cortada
-  // por el borde del ScrollView (el contentContainer crece con el padding).
-  filterScrollContent: { gap: 9, paddingHorizontal: 6, paddingTop: 8, paddingBottom: 18 },
+  //
+  // SANGRÍA NEGATIVA (owner 2026-08-12): el scroller vivía dentro del padding
+  // 20 del cuerpo, así que los chips se cortaban en seco a 20px de cada borde y
+  // el carrusel se leía como recortado por los costados. Con el bleed el
+  // viewport llega a los bordes reales de la pantalla: los chips entran y salen
+  // por el filo, que es como se lee un carrusel.
+  filterScrollWrap: { position: 'relative', marginTop: 4, marginHorizontal: -BODY_PAD },
+  // El padding compensa el bleed: el primer y el último chip quedan alineados
+  // con el resto del cuerpo (BODY_PAD) más los 6 de aire que ya tenían para que
+  // la sombra del chip activo no toque el borde del viewport. paddingBottom
+  // generoso por lo mismo (el contentContainer crece con el padding).
+  filterScrollContent: {
+    gap: 9,
+    paddingHorizontal: BODY_PAD + 6,
+    paddingTop: 8,
+    paddingBottom: 18,
+  },
   // v2 · el fade se recorta al ALTO DE LOS CHIPS (mismo top/bottom que el
   // padding del contenido del scroller): a bordes 0/0 se comía la sombra
   // proyectada del chip activo y el degradé se leía como un corte. `zIndex:2`
-  // es explícito aunque el orden de hermanos ya lo deje arriba.
+  // es explícito aunque el orden de hermanos ya lo deje arriba. Con el bleed
+  // del wrap, `right: 0` ya es el borde REAL de la pantalla — que es donde el
+  // degradé tiene sentido: dice "sigue", no "acá se cortó".
   filterFade: { position: 'absolute', top: 8, right: 0, bottom: 18, width: 30, zIndex: 2 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: GASTOS_RADII.chip, paddingVertical: 9, paddingHorizontal: 13 },
   // Swatch de color de categoría (reemplaza el emoji del chip).
@@ -3230,8 +3582,13 @@ const styles = StyleSheet.create({
   movSub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700') },
   movAmount: { flexShrink: 0, marginLeft: 8, fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   // v2 · M-3 — nota bajo una fila fuera de ciclo.
-  movRowNote: { fontSize: 10.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 15, marginTop: 6, paddingHorizontal: 4 },
-  seeMoreSpacing: { marginTop: 0 },
+  // paddingHorizontal 14 = `movRow.paddingHorizontal`: la nota arranca en la
+  // misma vertical que el título del gasto. Con 4 quedaba desalineada, colgando
+  // a la izquierda del contenido de la fila.
+  movRowNote: { fontSize: 10.5, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 15, marginTop: 6, paddingHorizontal: 14 },
+  // El botón cierra la lista: pegado a la última fila (marginTop 0) se leía
+  // como una fila más. 18 lo separa del bloque sin abrir un hueco.
+  seeMoreSpacing: { marginTop: 18 },
   seeMore: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: GASTOS_RADII.chip, paddingVertical: 12 },
   seeMoreText: { fontSize: 12.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
 

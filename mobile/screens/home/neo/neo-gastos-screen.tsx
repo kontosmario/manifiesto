@@ -71,19 +71,19 @@ import {
   ScrollView,
   SectionList,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type SectionListData,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useTranslation } from 'react-i18next'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useFocusEffect, useIsFocused, useNavigation } from '@react-navigation/native'
+import { useFocusEffect, useIsFocused, useNavigation, useScrollToTop } from '@react-navigation/native'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
-import { Screen } from '@/components/ui/screen'
+import { Screen, TAB_SCREEN_BOTTOM_CLEARANCE } from '@/components/ui/screen'
 import { SCROLL_EDGE_THRESHOLD } from '@/components/ui/screen-edge-effect'
 import { NeoStateBlock } from '@/components/ui/neo-state-block'
 import { SwipeRow, type SwipeAction } from '@/components/ui/swipe-row'
@@ -92,11 +92,13 @@ import {
   GastosCalendar,
   GastosClosedBar,
   GastosDayDetail,
+  type GastosBadgeTone,
   GastosFilter,
   GastosHeader,
   GastosHero,
   GastosMovDayHeader,
   GastosMovRow,
+  GastosMovRowNote,
   GastosMovSectionHead,
   GastosMovements,
   GastosMovementsEmptyWell,
@@ -121,6 +123,12 @@ import { useThemeMode } from '@/theme/theme-provider'
 import { categorySwatch } from '@/components/gastos/category-pastel'
 import { EditGastoSheet } from '@/components/gastos/edit-gasto-sheet'
 import { useGastosController } from '@/features/gastos/use-gastos-controller'
+import {
+  buildDayFocusTargets,
+  dayFocusNavBounds,
+  findDayFocusIndex,
+  type DayFocusTarget,
+} from '@/features/gastos/day-focus-sequence'
 import { GASTOS_DAYS_PER_PAGE } from '@/features/gastos/use-gastos-endpoints'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
@@ -213,14 +221,30 @@ const MINUS = '−'
 // colapse a "cada frame" (RCTScrollViewComponentView).
 // ─── Helpers puros locales ───────────────────────────────────────────
 
+/** `YYYY-MM-DD` LOCAL — nunca `toISOString`, que corre el día ±1 según tz. */
+function isoOf(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
 interface BuildCellsParams {
   cycleStart: Date
   cycleDays: number
   today: Date
   firstWeekdayOffset: number
-  dayMoods: Record<number, GastosDayMood>
+  /** Indexado por ISO — el día-de-mes NO es único en ventanas extendidas. */
+  dayMoodsByIso: Record<string, GastosDayMood>
   noSpendMarkedDates: Set<string>
   selectedDay: number | null
+  /** ISO del día seleccionado (desambigua el día-de-mes repetido). */
+  selectedDayIso: string | null
+  /** Fin NOMINAL del ciclo (exclusivo). Los días ≥ este son EXTENDIDO.
+   *  `null`/igual al fin real ⇒ no hay extensión que marcar. */
+  nominalEnd: Date | null
+  /** Etiqueta de la celda de extendido (i18n, la resuelve el caller). */
+  extCellSub: string
   /** Cuenta nueva / ciclo sin datos: la grilla del mes queda NEUTRA (todos
    *  los días pasados como 'fut' muted, sin brotes), igual que el vacío del
    *  kit. */
@@ -248,9 +272,12 @@ function buildNeoCells({
   cycleDays,
   today,
   firstWeekdayOffset,
-  dayMoods,
+  dayMoodsByIso,
   noSpendMarkedDates,
   selectedDay,
+  selectedDayIso,
+  nominalEnd,
+  extCellSub,
   empty,
   freshCycle,
 }: BuildCellsParams): DayCell[] {
@@ -281,7 +308,10 @@ function buildNeoCells({
       // promete lo que se va a pintar en vez de mostrar 30 pozos apagados.
       kind = freshCycle ? 'none' : 'fut'
     } else {
-      const mood = dayMoods[dayNum]
+      // Por ISO, NO por día-de-mes: en una ventana extendida el mismo
+      // número existe en dos meses y el lookup por número devolvía el mood
+      // del otro mes (QA del owner 2026-08-13).
+      const mood = dayMoodsByIso[isoOf(d)]
       // Decisión owner (F1): amber (ya > cupo) y red → 'bad' (exceso). green
       // (con gasto DENTRO de presupuesto) → 'ok' (pintado). 'empty' del RPC
       // (total del día = 0) o ausente (sin dato) → 'empty': día pasado SIN
@@ -291,18 +321,28 @@ function buildNeoCells({
       else kind = 'empty'
     }
 
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    const iso = `${y}-${m}-${dd}`
+    const iso = isoOf(d)
     const marked = !empty && noSpendMarkedDates.has(iso)
+    // Día de EXTENDIDO: cayó después del fin nominal del ciclo porque el
+    // cobro no se confirmó. `nominalEnd` es exclusivo.
+    const isExt = nominalEnd != null && cellMs >= nominalEnd.getTime()
 
     cells.push({
       key: `d${i}`,
       n: dayNum,
       label: String(dayNum),
       kind,
-      selected: selectedDay === dayNum,
+      iso,
+      ext: isExt,
+      // Mismo mecanismo que las celdas FUERA-DE-CICLO (`outCellSub`): una
+      // etiqueta bajo el número. El `kind` NO se toca — un día de extendido
+      // sigue siendo ok/bad/empty/now y sigue restando del saldo; lo que
+      // cambia es que se sepa que entró de más.
+      sub: isExt ? extCellSub : undefined,
+      // La selección compara por ISO cuando se conoce: con la ventana
+      // estirada, `selectedDay === dayNum` marcaba DOS celdas.
+      selected:
+        selectedDayIso != null ? selectedDayIso === iso : selectedDay === dayNum,
       sprout: marked,
       // La hojita gana sobre el punto de HOY cuando el día está marcado.
       hoyDot: isToday && !marked,
@@ -324,11 +364,9 @@ const EM_DASH = '—'
  *  fuera de uno del ciclo (el índice mapea a `outWindow.days`). */
 const OUT_N_BASE = 1000
 
-/** Un destino navegable del day-detail (FIX 2): un día DENTRO del ciclo
- *  (por día-de-mes, resuelto por el controller) o un día FUERA-DE-CICLO
- *  (por iso, estado local). La nav ‹ › camina una secuencia unificada de
- *  estos, cronológica y contigua. */
-type FocusTarget = { kind: 'cycle'; day: number } | { kind: 'out'; iso: string }
+/** Un destino navegable del day-detail (FIX 2). La secuencia y su clamp viven
+ *  en `features/gastos/day-focus-sequence` (módulo puro, con tests). */
+type FocusTarget = DayFocusTarget
 
 /** Parsea 'YYYY-MM-DD' → Date LOCAL a medianoche (nunca `new Date(iso)`, que
  *  interpreta UTC y corre el día ±1 según tz). Devuelve null si no matchea. */
@@ -411,17 +449,31 @@ function buildClosedCells(edition: MonthlySummaryHistory): DayCell[] {
     cells.push({
       key: `d${i}`,
       n: d.getDate(),
+      iso: localIsoKey(d),
       label: String(d.getDate()),
-      kind: total > 0 ? 'ok' : 'fut',
+      // 'empty', no 'fut': el mes YA cerró, así que un día en cero no es un
+      // día "que todavía no llegó" — la grilla de una edición cerrada se
+      // llenaba de pozos de futuro sobre días que ya pasaron.
+      //
+      // [OWNER-CAL3] El handoff pinta CAL-3 con DOS estados, bien y exceso.
+      // El exceso no es derivable acá: `daily_totals` persiste el total del
+      // día pero NO el cupo vigente de ese ciclo, así que no hay contra qué
+      // compararlo. Se degrada a bien/vacío en vez de inventar un umbral.
+      kind: total > 0 ? 'ok' : 'empty',
     })
   }
   return cells
 }
 
 /**
- * v2 · DS-6 — metadata por día de una edición cerrada, indexada por día del mes
- * (`n` de la celda). Dentro de un ciclo (≤31 días) el día del mes NO se repite,
- * así que `n` alcanza como clave sin arrastrar el ISO hasta `DayCell`.
+ * v2 · DS-6 — metadata por día de una edición cerrada, indexada por ISO.
+ *
+ * Estaba indexada por día-de-mes con el supuesto de que "dentro de un ciclo
+ * (≤31 días) el día del mes NO se repite". Ese supuesto MURIÓ con el modelo
+ * extendido: `close_monthly_cycle` archiva la ventana ESTIRADA tal cual
+ * (`period_end` = la fecha de confirmación, no el payday), así que una
+ * edición cerrada puede durar más de un mes y volver a tener dos días con el
+ * mismo número. Con clave por número, el segundo pisaba al primero.
  *
  * Solo TOTAL: `daily_totals` persiste `[{day,total}]` y no guarda el conteo de
  * movimientos ni el detalle fila-por-fila, así que el detalle de un día cerrado
@@ -430,15 +482,16 @@ function buildClosedCells(edition: MonthlySummaryHistory): DayCell[] {
  */
 function buildClosedDayMeta(
   edition: MonthlySummaryHistory,
-): Map<number, { date: Date; total: number }> {
-  const out = new Map<number, { date: Date; total: number }>()
+): Map<string, { date: Date; total: number }> {
+  const out = new Map<string, { date: Date; total: number }>()
   const start = parseIsoLocalDate(edition.period_start)
   if (!start) return out
   const days = editionDayCount(edition)
   const spendByIso = parseDailyTotalsByIso(edition.daily_totals)
   for (let i = 0; i < days; i++) {
     const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)
-    out.set(d.getDate(), { date: d, total: spendByIso.get(localIsoKey(d)) ?? 0 })
+    const iso = localIsoKey(d)
+    out.set(iso, { date: d, total: spendByIso.get(iso) ?? 0 })
   }
   return out
 }
@@ -535,6 +588,22 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
     ],
   )
 
+  /**
+   * En INGRESO DINÁMICO la base del cupo sale de una query aparte
+   * (`cupoIncomeQuery`), y `cupoDiario` es parte de la queryKey del snapshot:
+   * sin este gate el primer render armaba la key con base 0 y disparaba un
+   * `gastos_snapshot` que nadie iba a leer, y al resolver la query cambiaba el
+   * cupo → key nueva → segundo RPC. El warm-prefetch de Home tiene el gate
+   * exacto desde el review del 2026-07-08 ("sin este gate el warm disparaba DOS
+   * gastos_snapshot por cold start") y la pantalla se lo había perdido.
+   *
+   * En modo FIJO no se gatea: ahí `resolveCupoIncomeBase` ignora esta query, así
+   * que esperarla sería sumarle su latencia al primer paint a cambio de nada.
+   * Con la query deshabilitada `isLoading` es false en RQ v5, así que el gate
+   * abre igual (mismo razonamiento que el gate de Fijos).
+   */
+  const cupoReady = dashboard.incomeMode !== 'dynamic' || !cupoIncomeQuery.isLoading
+
   const snapshot = useGastosSnapshot({
     familyId,
     userId,
@@ -542,6 +611,7 @@ export function NeoGastosScreen({ userId, familyId, preview = false }: NeoGastos
     cycleEnd: cycle.end,
     today,
     cupoDiario,
+    ready: cupoReady,
     // MISMO valor que el infinite query del controller y que el warm-prefetch
     // de Home: el queryKey del snapshot NO incluye daysPerPage, así que un
     // mismatch se cobra como cache-hit silencioso (ver GASTOS_DAYS_PER_PAGE).
@@ -924,7 +994,9 @@ const MovementRow = memo(function MovementRow({
       amount: `${MINUS}${formatMoney(e.price)}`,
       // rawName CRUDO para el sticker real (CategoryIcon del kit).
       catName: cat?.rawName ?? cat?.name,
-      note: outNote,
+      // `note` NO va acá: `GastosMovRow` la pintaría DENTRO del SwipeRow
+      // (overflow:hidden, radio 22) y la esquina redondeada le comía la
+      // primera letra. Se monta abajo, como hermana de la tarjeta.
     }
     a11yLabel = composeRowA11yLabel({
       title: e.description || cat?.name || t('common:terms.expense'),
@@ -951,12 +1023,12 @@ const MovementRow = memo(function MovementRow({
     a11yLabel = t('gastos:movementRow.incomeA11yLabel', { title: row.title })
   }
 
-  return (
-    // Wrapper (SIN overflow) que lleva la sombra neumórfica + la separación
-    // vertical entre filas (marginTop): el SwipeRow tiene overflow:hidden y
-    // cliparía la sombra. La fila va `flat` (sin sombra propia) — mismo patrón
-    // que la actividad de la Home neo. FIX D: se eliminó el View `rowWrap`
-    // externo (solo aportaba paddingTop:10) → un nodo nativo menos por fila.
+  // Wrapper (SIN overflow) que lleva la sombra neumórfica + la separación
+  // vertical entre filas (marginTop): el SwipeRow tiene overflow:hidden y
+  // cliparía la sombra. La fila va `flat` (sin sombra propia) — mismo patrón
+  // que la actividad de la Home neo. FIX D: se eliminó el View `rowWrap`
+  // externo (solo aportaba paddingTop:10) → un nodo nativo menos por fila.
+  const card = (
     <View
       style={[
         styles.rowShadowWrap,
@@ -989,6 +1061,16 @@ const MovementRow = memo(function MovementRow({
           <GastosMovRow mode={mode} row={row} flat />
         )}
       </SwipeRow>
+    </View>
+  )
+  // La nota M-3 va FUERA de la tarjeta: adentro la clipa el overflow del
+  // SwipeRow. Sin nota se devuelve la tarjeta pelada (un nodo menos por fila,
+  // que es el caso común).
+  if (!outNote) return card
+  return (
+    <View>
+      {card}
+      <GastosMovRowNote mode={mode} note={outNote} />
     </View>
   )
 }, areMovementRowPropsEqual)
@@ -1182,6 +1264,15 @@ function NeoGastosContent({
   // próximo focus con datos (patrón verificado en use-screen-tour).
   useScreenTour(GASTOS_TOUR, { enabled: !preview })
   const tourScrollRef = useRef<SectionList<MovementItem, MovimientosSection> | null>(null)
+  /**
+   * Tocar la tab ya activa vuelve al principio — ver la nota en
+   * `neo-home-screen`. En la `SectionList` el hook baja por
+   * `getScrollResponder()`, o sea que scrollea el ScrollView de adentro y NO
+   * usa `scrollToLocation` (que con secciones de alto variable aterriza mal).
+   * En las ramas de vacío y de ciclo cerrado el ref queda en null y el hook es
+   * no-op: no hay nada que rebobinar.
+   */
+  useScrollToTop(tourScrollRef)
   const tourMeasureRef = useRef<View | null>(null)
   const tourBindingRef = useRef<TourScrollHandlers | null>(null)
   const handleTourScroll = useCallback(
@@ -1353,11 +1444,19 @@ function NeoGastosContent({
   }, [selectedEdition, mode, t])
   // v2 · DS-6 — el calendario de una edición cerrada pasa a ser TAPPABLE: el
   // total por día ya estaba persistido en `daily_totals` y hasta v1 la grilla
-  // lo pintaba sin dejar leerlo. El día elegido se guarda por número de día
-  // (único dentro de un ciclo) y se limpia al cambiar de edición.
-  const [selectedClosedDay, setSelectedClosedDay] = useState<number | null>(null)
+  // lo pintaba sin dejar leerlo. El día elegido se guarda por ISO y se limpia
+  // al cambiar de edición.
+  //
+  // Se guardaba por NÚMERO de día, con el supuesto de que es único dentro de
+  // un ciclo. Ese supuesto se cayó con el modelo extendido: la edición cerrada
+  // hereda la ventana estirada tal cual (`close_monthly_cycle` archiva
+  // `period_end` = la fecha de confirmación, no el payday), así que puede
+  // durar más de un mes. Con el número como clave reaparecían los tres bugs
+  // del ciclo vivo — dos celdas marcadas a la vez, ‹ › caminando el tramo
+  // equivocado y el detalle mostrando el gemelo del otro mes.
+  const [selectedClosedIso, setSelectedClosedIso] = useState<string | null>(null)
   useEffect(() => {
-    setSelectedClosedDay(null)
+    setSelectedClosedIso(null)
   }, [viewedCycleId])
   const closedDayMeta = useMemo(
     () => (selectedEdition ? buildClosedDayMeta(selectedEdition) : new Map()),
@@ -1366,33 +1465,40 @@ function NeoGastosContent({
   const closedCells = useMemo(
     () =>
       (selectedEdition ? buildClosedCells(selectedEdition) : []).map((c) =>
-        c.blank || c.n == null ? c : { ...c, selected: c.n === selectedClosedDay },
+        c.blank || c.iso == null ? c : { ...c, selected: c.iso === selectedClosedIso },
       ),
-    [selectedEdition, selectedClosedDay],
+    [selectedEdition, selectedClosedIso],
   )
-  const closedNavDays = useMemo(
-    () => closedCells.filter((c) => !c.blank && c.n != null).map((c) => c.n as number),
+  const closedNavIsos = useMemo(
+    () => closedCells.filter((c) => !c.blank && c.iso != null).map((c) => c.iso as string),
     [closedCells],
   )
-  const handleSelectClosedDay = useCallback((n: number) => {
-    setSelectedClosedDay((prev) => (prev === n ? null : n))
+  const handleSelectClosedDay = useCallback((_n: number, iso?: string) => {
+    if (!iso) return
+    setSelectedClosedIso((prev) => (prev === iso ? null : iso))
   }, [])
-  const handleClearClosedDay = useCallback(() => setSelectedClosedDay(null), [])
-  const closedNavIndex = selectedClosedDay == null ? -1 : closedNavDays.indexOf(selectedClosedDay)
+  const handleClearClosedDay = useCallback(() => setSelectedClosedIso(null), [])
+  const closedNavIndex =
+    selectedClosedIso == null ? -1 : closedNavIsos.indexOf(selectedClosedIso)
   const handlePrevClosedDay = useCallback(() => {
-    setSelectedClosedDay((prev) => {
+    setSelectedClosedIso((prev) => {
       if (prev == null) return prev
-      const i = closedNavDays.indexOf(prev)
-      return i > 0 ? closedNavDays[i - 1] : prev
+      const i = closedNavIsos.indexOf(prev)
+      return i > 0 ? (closedNavIsos[i - 1] ?? prev) : prev
     })
-  }, [closedNavDays])
+  }, [closedNavIsos])
   const handleNextClosedDay = useCallback(() => {
-    setSelectedClosedDay((prev) => {
+    setSelectedClosedIso((prev) => {
       if (prev == null) return prev
-      const i = closedNavDays.indexOf(prev)
-      return i >= 0 && i < closedNavDays.length - 1 ? closedNavDays[i + 1] : prev
+      const i = closedNavIsos.indexOf(prev)
+      return i >= 0 && i < closedNavIsos.length - 1 ? (closedNavIsos[i + 1] ?? prev) : prev
     })
-  }, [closedNavDays])
+  }, [closedNavIsos])
+  /** Día-de-mes del día cerrado en foco — sólo para el header de la tarjeta. */
+  const selectedClosedDayNum = useMemo(() => {
+    const d = parseIsoLocalDate(selectedClosedIso)
+    return d ? d.getDate() : null
+  }, [selectedClosedIso])
   const closedBars = useMemo(
     () => (selectedEdition ? buildClosedRecentBars(selectedEdition) : undefined),
     [selectedEdition],
@@ -1433,9 +1539,22 @@ function NeoGastosContent({
     () => startOfLocalDay(controller.cycleEnd).toISOString(),
     [controller.cycleEnd],
   )
+  // ¿Existe siquiera una ventana fuera-de-ciclo? Sólo si el primer día fuera
+  // (`cycleEnd`) ya pasó. En modelo EXTENDIDO `cycleEnd` es MAÑANA por
+  // construcción, así que la ventana es vacía por definición: la query salía
+  // igual y traía todos los gastos desde mañana para descartarlos enteros.
+  // Un solo predicado para el gate y para el early-return de `outWindow`, así
+  // no pueden divergir.
+  const hasOutWindow = useMemo(
+    () =>
+      isOverdue &&
+      startOfLocalDay(controller.cycleEnd).getTime() <=
+        startOfLocalDay(controller.today).getTime(),
+    [isOverdue, controller.cycleEnd, controller.today],
+  )
   const outOfCycleQuery = useQuery<Expense[]>({
     queryKey: [...expenseQueryKeys.family(familyId), 'gastos-out-of-cycle', outOfCycleGte],
-    enabled: isOverdue && Boolean(familyId),
+    enabled: hasOutWindow && Boolean(familyId),
     staleTime: 5 * 60_000,
     queryFn: () =>
       loadExpenses(familyId, { excludeArchived: true, createdAtGte: outOfCycleGte }),
@@ -1449,10 +1568,9 @@ function NeoGastosContent({
       days: [] as { iso: string; dayOfMonth: number; date: Date; dateMs: number }[],
       byIso: new Map<string, { total: number; count: number; items: Expense[] }>(),
     }
-    if (!isOverdue) return empty
+    if (!hasOutWindow) return empty
     const start = startOfLocalDay(controller.cycleEnd)
     const end = startOfLocalDay(controller.today)
-    if (start.getTime() > end.getTime()) return empty
     const days: { iso: string; dayOfMonth: number; date: Date; dateMs: number }[] = []
     for (
       let d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
@@ -1482,7 +1600,7 @@ function NeoGastosContent({
       byIso.set(iso, bucket)
     }
     return { days, byIso }
-  }, [isOverdue, controller.cycleEnd, controller.today, outOfCycleQuery.data])
+  }, [hasOutWindow, controller.cycleEnd, controller.today, outOfCycleQuery.data])
 
   const selectedOutDay = useMemo(
     () =>
@@ -1503,6 +1621,18 @@ function NeoGastosContent({
   const handleFocusFirstOutDay = useCallback(() => {
     const first = outWindowDaysRef.current[0]
     if (first) setSelectedOutIso(first.iso)
+  }, [])
+
+  // "Ver días" en modo EXTENDIDO: los días de extendido SÍ están en la
+  // grilla del ciclo, así que el foco va por el camino in-cycle (no por
+  // `selectedOutIso`, que modela días que el controller no conoce).
+  const handleFocusFirstExtendedDay = useCallback(() => {
+    const nominal = startOfLocalDay(controllerRef.current.cycleNominalEnd)
+    setSelectedOutIso(null)
+    controllerRef.current.selectDayByIso(
+      formatLocalDateKey(nominal),
+      nominal.getDate(),
+    )
   }, [])
 
   // ── Selección de día (F3) ──────────────────────────────────────────
@@ -1529,7 +1659,7 @@ function NeoGastosContent({
     [controller.today],
   )
   const handleSelectDay = useCallback(
-    (n: number) => {
+    (n: number, iso?: string) => {
       // Celda FUERA-DE-CICLO (n ≥ OUT_N_BASE): foco en un día posterior al fin
       // del ciclo. El day-detail lleva los MISMOS CTAs que un día del ciclo
       // (registrar olvidado / marcar sin gastos) — ver `handleRegisterOutDay`.
@@ -1547,7 +1677,13 @@ function NeoGastosContent({
       // futuras no son seleccionables). El calendario del kit no distingue,
       // así que gateamos acá.
       setSelectedOutIso(null)
-      const date = cycleDates.find((d) => d.getDate() === n)
+      // El ISO de la celda manda: `find` por día-de-mes devolvía el PRIMER
+      // match y con la ventana estirada (5-jul → 13-ago) tocar el 7 de
+      // agosto abría el 7 de julio. El fallback por número queda para
+      // callers que no mandan iso.
+      const date = iso
+        ? cycleDates.find((d) => isoOf(d) === iso)
+        : cycleDates.find((d) => d.getDate() === n)
       if (!date || startOfLocalDay(date).getTime() > todayStartMs) return
       // HÁPTICO · va DESPUÉS del guard de día futuro (un tap que no hace nada no
       // debe confirmar nada). Antes solo vibraba la rama fuera-de-ciclo: la
@@ -1561,7 +1697,8 @@ function NeoGastosContent({
       // el day-detail aparecía DEBAJO del panel desplegado. Las celdas FUERA no
       // lo cierran, igual que en el handoff (rama de arriba).
       setIsDropdownOpen(false)
-      controllerRef.current.setSelectedDay(n)
+      // Por ISO: fija QUÉ día es, no sólo su número.
+      controllerRef.current.selectDayByIso(isoOf(date), n)
     },
     // controller vía controllerRef (FIX B): las deps restantes (outWindow.days/
     // cycleDates/todayStartMs) son memos data-driven, estables durante scroll.
@@ -1575,37 +1712,30 @@ function NeoGastosContent({
   // del ciclo al overflow y ← vuelve, clampando en los extremos reales (primer
   // día del ciclo ↔ último día fuera / hoy). Sin días fuera (ciclo no vencido)
   // queda solo el tramo del ciclo (mismo clamp a hoy que antes).
-  const focusTargets = useMemo<FocusTarget[]>(() => {
-    const targets: FocusTarget[] = []
-    for (const d of cycleDates) {
-      // cycleDates ya vienen normalizadas a medianoche local (new Date(y,m,d)).
-      if (d.getTime() <= todayStartMs) targets.push({ kind: 'cycle', day: d.getDate() })
-    }
-    if (isOverdue) {
-      for (const od of outWindow.days) targets.push({ kind: 'out', iso: od.iso })
-    }
-    return targets
-  }, [cycleDates, todayStartMs, isOverdue, outWindow.days])
+  const focusTargets = useMemo<FocusTarget[]>(
+    () =>
+      buildDayFocusTargets({
+        cycleDates,
+        todayStartMs,
+        outDays: outWindow.days,
+        isOverdue,
+      }),
+    [cycleDates, todayStartMs, isOverdue, outWindow.days],
+  )
 
   // Índice del foco actual dentro de la secuencia unificada. -1 = sin día en
   // foco (calendario a la vista) → sin nav.
-  const focusIndex = useMemo(() => {
-    if (selectedOutIso != null) {
-      return focusTargets.findIndex((tg) => tg.kind === 'out' && tg.iso === selectedOutIso)
-    }
-    if (controller.selectedDay != null) {
-      return focusTargets.findIndex(
-        (tg) => tg.kind === 'cycle' && tg.day === controller.selectedDay,
-      )
-    }
-    return -1
-  }, [focusTargets, selectedOutIso, controller.selectedDay])
+  const focusIndex = useMemo(
+    () =>
+      findDayFocusIndex(focusTargets, {
+        selectedDayIso: controller.selectedDayIso,
+        selectedOutIso,
+      }),
+    [focusTargets, selectedOutIso, controller.selectedDayIso],
+  )
 
   const navBounds = useMemo(
-    () => ({
-      canGoPrev: focusIndex > 0,
-      canGoNext: focusIndex >= 0 && focusIndex < focusTargets.length - 1,
-    }),
+    () => dayFocusNavBounds(focusIndex, focusTargets.length),
     [focusIndex, focusTargets.length],
   )
 
@@ -1615,7 +1745,12 @@ function NeoGastosContent({
     (target: FocusTarget) => {
       if (target.kind === 'cycle') {
         setSelectedOutIso(null)
-        controllerRef.current.setSelectedDay(target.day)
+        // `selectDayByIso`, NO `setSelectedDay`: el setter crudo deja intacto
+        // el `selectedDayIsoOverride` del día que se tocó en el calendario, y
+        // ese ISO es el que consulta el RPC del detalle. Resultado: navegabas
+        // con ‹ ›, el número del header cambiaba, pero los movimientos y las
+        // stats seguían siendo los del día original.
+        controllerRef.current.selectDayByIso(target.iso, target.day)
       } else {
         controllerRef.current.clearDay()
         setSelectedOutIso(target.iso)
@@ -1639,13 +1774,17 @@ function NeoGastosContent({
   }, [focusIndex, focusTargets, goToFocus])
   // Fecha concreta del día en foco — la usan las mutaciones (mark/register) y
   // el estado "marcado". Y-M-D LOCAL, nunca toISOString (corre el día ±1).
-  const selectedDate = useMemo(
-    () =>
-      controller.selectedDay == null
-        ? null
-        : (cycleDates.find((d) => d.getDate() === controller.selectedDay) ?? null),
-    [controller.selectedDay, cycleDates],
-  )
+  // Se resuelve por ISO: `find(d => d.getDate() === n)` devolvía la PRIMERA
+  // ocurrencia del número, así que en ventana extendida las mutaciones
+  // (marcar día limpio / registrar gasto en el día en foco) escribían un mes
+  // atrás. El barrido por número queda de fallback para el caso en que el
+  // controller todavía no tenga ISO.
+  const selectedDate = useMemo(() => {
+    if (controller.selectedDay == null) return null
+    const byIso = parseIsoLocalDate(controller.selectedDayIso)
+    if (byIso) return byIso
+    return cycleDates.find((d) => d.getDate() === controller.selectedDay) ?? null
+  }, [controller.selectedDay, controller.selectedDayIso, cycleDates])
 
   // ── Pose del Brot del header (reuso de derive-brot-pose) ───────────
   const hour = new Date().getHours()
@@ -1722,6 +1861,26 @@ function NeoGastosContent({
     controller.selectedCategoryId == null
       ? totalCount
       : (controller.expenseCountByCategoryId.get(controller.selectedCategoryId) ?? 0)
+  /**
+   * Categorías con presencia REAL en el ciclo (owner 2026-08-12). El carrusel
+   * listaba el catálogo ENTERO: con 15 movimientos repartidos en 2 categorías
+   * igual desfilaban ~12 chips en `0` que no filtran nada, empujando fuera de
+   * pantalla a los que sí tienen datos.
+   *
+   * La categoría filtrada se queda aunque caiga a cero (borrás el último gasto
+   * de Mercado con el filtro puesto): sin su chip el filtro activo se quedaría
+   * sin ancla en pantalla y el vacío F-4 ("Nada en Mercado este ciclo") estaría
+   * hablando de un chip que no está.
+   */
+  const filterCategories = useMemo(
+    () =>
+      categoriesList.filter(
+        (c) =>
+          (controller.expenseCountByCategoryId.get(c.id) ?? 0) > 0 ||
+          controller.selectedCategoryId === c.id,
+      ),
+    [categoriesList, controller.expenseCountByCategoryId, controller.selectedCategoryId],
+  )
   const filterChips = useMemo(
     () => [
       {
@@ -1730,7 +1889,7 @@ function NeoGastosContent({
         active: controller.selectedCategoryId == null,
         catIcon: null as string | null,
       },
-      ...categoriesList.map((c) => ({
+      ...filterCategories.map((c) => ({
         label: c.name,
         count: String(controller.expenseCountByCategoryId.get(c.id) ?? 0),
         active: controller.selectedCategoryId === c.id,
@@ -1738,7 +1897,7 @@ function NeoGastosContent({
         catIcon: (c.rawName ?? c.name) as string | null,
       })),
     ],
-    [t, totalCount, categoriesList, controller.selectedCategoryId, controller.expenseCountByCategoryId],
+    [t, totalCount, filterCategories, controller.selectedCategoryId, controller.expenseCountByCategoryId],
   )
   // ── v2 · F-1…F-4 — estado del filtro ───────────────────────────────
   //
@@ -1798,9 +1957,15 @@ function NeoGastosContent({
   // cerrar sobre `filterChips`, que es un array nuevo por render.
   const filterChipsRef = useRef(filterChips)
   filterChipsRef.current = filterChips
+  // Mismo espejo para las categorías VISIBLES: el índice del chip indexa contra
+  // la lista filtrada, no contra el catálogo. Va por ref (y no en deps) porque
+  // `filterCategories` cambia de identidad con cada conteo → como dep haría
+  // inestable a `handleSelectFilter`, que es dep del ListHeader (FIX B).
+  const filterCategoriesRef = useRef(filterCategories)
+  filterCategoriesRef.current = filterCategories
   const handleSelectFilter = useCallback(
     (i: number) => {
-      const id = i === 0 ? null : (categoriesList[i - 1]?.id ?? null)
+      const id = i === 0 ? null : (filterCategoriesRef.current[i - 1]?.id ?? null)
       // Solo loguea cuando cambia el filtro (paridad con la vieja).
       if (id !== controllerRef.current.selectedCategoryId) {
         trackTap('filter_pill', 'filters')
@@ -1833,7 +1998,7 @@ function NeoGastosContent({
     // que su identidad debe ser estable para que la memo del header aguante.
     // `t` solo cambia de identidad al cambiar de idioma (mismo criterio que el
     // resto de los bloques); los chips van por ref para no desestabilizarlo.
-    [categoriesList, trackTap, t],
+    [trackTap, t],
   )
   const handleClearFilters = useCallback(() => {
     void triggerHaptic('selection')
@@ -1938,9 +2103,12 @@ function NeoGastosContent({
         cycleDays: controller.cycleDays,
         today: controller.today,
         firstWeekdayOffset,
-        dayMoods: controller.dayMoods,
+        dayMoodsByIso: controller.dayMoodsByIso,
         noSpendMarkedDates,
         selectedDay: controller.selectedDay,
+        selectedDayIso: controller.selectedDayIso,
+        nominalEnd: controller.cycleNominalEnd,
+        extCellSub: t('gastos:overdue.extCellSub'),
         empty: isEmptyAccount,
         freshCycle: isFreshCycle,
       }),
@@ -1949,9 +2117,12 @@ function NeoGastosContent({
       controller.cycleDays,
       controller.today,
       firstWeekdayOffset,
-      controller.dayMoods,
+      controller.dayMoodsByIso,
       noSpendMarkedDates,
       controller.selectedDay,
+      controller.selectedDayIso,
+      controller.cycleNominalEnd,
+      t,
       isEmptyAccount,
       isFreshCycle,
     ],
@@ -2186,19 +2357,30 @@ function NeoGastosContent({
   )
 
   // Valores + callbacks del day-detail del día en foco (todo derivado; el
-  // "gastado del día" NO es un campo nuevo: sale de dailySpend[n]).
+  // "gastado del día" NO es un campo nuevo: sale del rollup diario).
+  //
+  // Por ISO. Los índices por día-de-mes (`dailySpend[n]` / `dayMoods[n]`)
+  // devuelven la PRIMERA ocurrencia del número, así que en ventana extendida
+  // (5-jul → 15-ago, el número se repite) GASTADO, MOVIMIENTOS y el badge
+  // "Día de exceso" mostraban los del gemelo de julio. Es la misma raíz que
+  // la nav, pero una lectura distinta: el feed de movimientos sale del RPC
+  // del día y ya iba por ISO; estas tres tarjetas salen del rollup del ciclo.
   const daySelected = controller.selectedDay != null
   const selectedDaySpend =
-    controller.selectedDay != null
-      ? controller.dailySpend[controller.selectedDay]
-      : undefined
+    controller.selectedDayIso != null
+      ? controller.dailySpendByIso[controller.selectedDayIso]
+      : controller.selectedDay != null
+        ? controller.dailySpend[controller.selectedDay]
+        : undefined
   const dayGastado = formatMoney(selectedDaySpend?.total ?? 0)
   const dayMovs = String(selectedDaySpend?.count ?? 0)
   const dayHasMovs = (selectedDaySpend?.count ?? 0) > 0
   const selectedDayMood =
-    controller.selectedDay != null
-      ? controller.dayMoods[controller.selectedDay]
-      : undefined
+    controller.selectedDayIso != null
+      ? controller.dayMoodsByIso[controller.selectedDayIso]
+      : controller.selectedDay != null
+        ? controller.dayMoods[controller.selectedDay]
+        : undefined
   // Badge = solo "Día de exceso" (amber/red). Bien/marcado → sin badge (el
   // brote del calendario + el botón "Revertir" comunican el estado marcado).
   const dayBadge =
@@ -2219,6 +2401,30 @@ function NeoGastosContent({
   const dayIsMarked = selectedDate
     ? noSpendMarkedDates.has(formatLocalDateKey(selectedDate))
     : false
+  // El día elegido cayó DESPUÉS del fin nominal → entró de extendido porque
+  // el cobro no se confirmó. `cycleNominalEnd` es exclusivo.
+  const dayIsExtendido =
+    selectedDate != null &&
+    controller.cycleIsExtended &&
+    startOfLocalDay(selectedDate).getTime() >=
+      startOfLocalDay(controller.cycleNominalEnd).getTime()
+  // Chips del day-detail. Se ACUMULAN: las condiciones no son excluyentes y
+  // el ternario de prioridad que había antes tapaba información — un día
+  // extendido que además se pasó del cupo mostraba sólo "Día de exceso" y el
+  // owner no se enteraba de que ese día había entrado de más.
+  //
+  // Orden: primero qué pasó con el gasto (el logro gana sobre el exceso: si
+  // el día está marcado sin gastos, no hay exceso que contar), después el
+  // encuadre del día. Un día futuro no lleva ninguno de los dos.
+  const dayChips = useMemo(() => {
+    const out: { label: string; tone: GastosBadgeTone }[] = []
+    if (!dayIsFuture) {
+      if (dayIsMarked) out.push({ label: t('gastos:calendar.cleanDayBadge'), tone: 'good' })
+      else if (dayBadge) out.push({ label: dayBadge, tone: 'warn' })
+    }
+    if (dayIsExtendido) out.push({ label: t('gastos:overdue.extBadge'), tone: 'ext' })
+    return out
+  }, [dayIsFuture, dayIsMarked, dayBadge, dayIsExtendido, t])
   const handleRegisterSelected = useCallback(() => {
     if (selectedDate) handleRegisterForgotten(selectedDate)
   }, [selectedDate, handleRegisterForgotten])
@@ -2304,7 +2510,15 @@ function NeoGastosContent({
   const activeGoalForSheet = useMemo(() => {
     const g = savingsGoalQuery.data
     if (!g || g.isActive === false) return null
-    return { id: g.id, title: g.title, emoji: g.emoji }
+    // Montos incluidos: la barra de progreso de la opción "Destinar a mi
+    // meta" del wrapped (pantalla 06) los necesita.
+    return {
+      id: g.id,
+      title: g.title,
+      emoji: g.emoji,
+      currentAmount: g.currentAmount,
+      goalAmount: g.goalAmount,
+    }
   }, [savingsGoalQuery.data])
   // Nombres display de categoría para el payload del wrapped — mismo shape que
   // la Home le pasa al orquestador.
@@ -2424,14 +2638,15 @@ function NeoGastosContent({
   // Copy del banner derivado de datos reales: "terminó el {día}" = último día
   // DENTRO del ciclo (cycleEnd es exclusivo → −1 día); "N días … fuera" =
   // cantidad de días de la ventana fuera (== nº de celdas fuera).
+  // Se rotula con el fin NOMINAL, no con el real. Con la ventana ESTIRADA
+  // el fin real es hoy+1, así que "Tu ciclo terminó el {{day}}" decía HOY —
+  // una afirmación falsa: el ciclo no terminó, se está estirando hasta que
+  // confirmes el cobro (QA del owner 2026-08-13).
   const overdueTitleDay = useMemo(() => {
-    const last = new Date(
-      controller.cycleEnd.getFullYear(),
-      controller.cycleEnd.getMonth(),
-      controller.cycleEnd.getDate() - 1,
-    )
+    const ref = controller.cycleNominalEnd
+    const last = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() - 1)
     return last.getDate()
-  }, [controller.cycleEnd])
+  }, [controller.cycleNominalEnd])
 
   // Secciones del feed con un día FUERA en foco: los gastos de ese día
   // (mapeados a MovementItem, sort por hora desc). Sin income intercalado — la
@@ -2607,9 +2822,26 @@ function NeoGastosContent({
         // Validá "volver de add-expense conserva scroll+páginas" EN LA TAB.
         const leftToSiblingTab = activeRouteName != null && activeRouteName !== 'expenses'
         if (!leftToSiblingTab) return
+        // Incondicional: es barato y evita que el shrink dispare `onEndReached`.
         canPaginateRef.current = false
-        void controllerRef.current.resetPagination()
-        tourScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: false })
+        // El scroll SOLO se rebobina si de verdad se recortaron páginas. Con una
+        // sola página cargada `resetPagination` es no-op, así que el contenido
+        // que hay al volver es el mismo que había al salir y no hay motivo para
+        // perder la posición del usuario: volver de Inicio ahora te deja donde
+        // estabas. Con varias páginas se sigue rebobinando — el contenido se
+        // achica bajo el viewport y sin el rewind iOS clampearía el offset en el
+        // próximo layout, que se ve como un salto.
+        //
+        // NO cierra el caso grande: quien scrollea hasta el fondo del feed
+        // normalmente ya paginó (la 1ª página son 2 días y la auto-paginación se
+        // prende con el primer drag), así que ahí sigue reseteando. Conservar el
+        // scroll SIEMPRE exige soltar el recorte de páginas, y eso reabre el
+        // re-fetch de N páginas por invalidación de realtime que motivó esta
+        // política — es una decisión de producto, no un bug.
+        void controllerRef.current.resetPagination().then((trimmed) => {
+          if (!trimmed) return
+          tourScrollRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: false })
+        })
       },
       [navigation],
     ),
@@ -2703,7 +2935,14 @@ function NeoGastosContent({
     // `insets.top` PISA el paddingTop 14 de la base (no se suma): así el
     // contenido arranca a la misma altura que Home/Fijos/Control, que
     // usan `Math.max(callerTop, insets.top)` en el Screen.
-    () => [styles.listContent, { paddingTop: insets.top, paddingBottom: insets.bottom + 96 }],
+    () => [
+      styles.listContent,
+      // MISMO despeje que las otras tres tabs (la SectionList no pasa por el
+      // contentContainer del `Screen`, así que lo aplica a mano). Reservaba 96:
+      // 48 pt menos que el resto y por debajo del tope del disco del FAB, que
+      // podía taparle la última fila.
+      { paddingTop: insets.top, paddingBottom: insets.bottom + TAB_SCREEN_BOTTOM_CLEARANCE },
+    ],
     [insets.top, insets.bottom],
   )
   const emptyScrollContentStyle = useMemo(
@@ -2713,7 +2952,7 @@ function NeoGastosContent({
     // la isla dinámica en el estado vacío.
     () => [
       styles.emptyScroll,
-      { paddingTop: insets.top, paddingBottom: insets.bottom + 96 },
+      { paddingTop: insets.top, paddingBottom: insets.bottom + TAB_SCREEN_BOTTOM_CLEARANCE },
     ],
     [insets.top, insets.bottom],
   )
@@ -2722,7 +2961,14 @@ function NeoGastosContent({
   // v2 · M-3 — con un día FUERA en foco, el feed muestra SOLO ese día, así que
   // todas sus filas llevan la nota. Un string (o undefined) es prop estable →
   // no derrota la memo de las filas.
-  const outRowNote = isOutDayFocused ? t('gastos:overdue.rowNote') : undefined
+  // M-3 · nota del grupo de movimientos. En EXTENDIDO el gasto no está en
+  // limbo: ya está contado en este ciclo, así que la nota lo dice en vez de
+  // anunciar una mudanza que no va a pasar.
+  const outRowNote = isOutDayFocused
+    ? t('gastos:overdue.rowNote')
+    : dayIsExtendido
+      ? t('gastos:overdue.extRowNote')
+      : undefined
   const keyExtractor = useCallback(
     (item: MovementItem) =>
       item.kind === 'expense' ? `e-${item.expense.id}` : `i-${item.income.id}`,
@@ -2880,12 +3126,28 @@ function NeoGastosContent({
       !isOverdue ? null : isFamilyOwner ? (
         <GastosOverdueBanner
           mode={mode}
-          title={t('gastos:overdue.title', { day: overdueTitleDay })}
-          subtitle={t('gastos:overdue.subtitle', { count: outWindow.days.length })}
+          // Modelo EXTENDIDO: no hay días "fuera del ciclo" —el ciclo los
+          // absorbió— así que `outWindow` viene VACÍA y el banner anunciaba
+          // "0 días sin confirmar". El copy de extendido dice lo que de
+          // verdad pasa y cuenta los días de extensión reales.
+          title={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extTitle')
+              : t('gastos:overdue.title', { day: overdueTitleDay })
+          }
+          subtitle={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extSubtitle', {
+                  count: controller.cycleExtensionDays,
+                })
+              : t('gastos:overdue.subtitle', { count: outWindow.days.length })
+          }
           confirmLabel={t('gastos:overdue.confirmCta')}
           confirmA11yLabel={t('gastos:overdue.confirmA11y')}
           onConfirm={handleOpenConfirmSheet}
-          brotPose="worried"
+          // `worried` es la cara del ciclo VENCIDO (nominal: hay gastos en
+          // limbo). En extendido el ciclo sigue corriendo y nada quedó afuera.
+          brotPose={controller.cycleIsExtended ? 'think' : 'worried'}
           // Este banner vive DENTRO del ListHeaderComponent de la SectionList:
           // su Brot convive con el scroll del feed, así que su loop Skia
           // (PictureRecorder + drawBrot por frame en el UI runtime) competía con
@@ -2895,14 +3157,43 @@ function NeoGastosContent({
       ) : (
         <GastosOverdueBanner
           mode={mode}
-          title={t('gastos:overdue.outNoticeTitle', { count: outMovementsCount })}
-          subtitle={t('gastos:overdue.outNoticeSub')}
-          confirmLabel={t('gastos:overdue.outNoticeCta')}
-          confirmA11yLabel={t('gastos:overdue.outNoticeCta')}
-          // "Ver días" NO muta nada: enfoca el primer día fuera, que es lo único
-          // que el no-owner puede hacer con esto.
-          onConfirm={outWindow.days.length > 0 ? handleFocusFirstOutDay : undefined}
-          brotPose="sad"
+          // En EXTENDIDO no hay "gastos que se van a mudar": el ciclo los
+          // absorbió. El copy habla de la extendido y "Ver días" enfoca el
+          // primer día de extendido, que sí está en la grilla.
+          title={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extNoticeTitle')
+              : t('gastos:overdue.outNoticeTitle', { count: outMovementsCount })
+          }
+          subtitle={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extNoticeSub', {
+                  count: controller.cycleExtensionDays,
+                })
+              : t('gastos:overdue.outNoticeSub')
+          }
+          confirmLabel={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extNoticeCta')
+              : t('gastos:overdue.outNoticeCta')
+          }
+          confirmA11yLabel={
+            controller.cycleIsExtended
+              ? t('gastos:overdue.extNoticeCta')
+              : t('gastos:overdue.outNoticeCta')
+          }
+          // "Ver días" NO muta nada: enfoca el primer día afectado, que es lo
+          // único que el no-owner puede hacer con esto.
+          onConfirm={
+            controller.cycleIsExtended
+              ? handleFocusFirstExtendedDay
+              : outWindow.days.length > 0
+                ? handleFocusFirstOutDay
+                : undefined
+          }
+          // `sad` comunica pérdida ("quedaron afuera"). En extendido no se
+          // perdió nada: el ciclo sigue corriendo.
+          brotPose={controller.cycleIsExtended ? 'think' : 'sad'}
           animated={false}
         />
       ),
@@ -2911,11 +3202,14 @@ function NeoGastosContent({
       mode,
       t,
       overdueTitleDay,
+      controller.cycleIsExtended,
+      controller.cycleExtensionDays,
       outWindow.days.length,
       outMovementsCount,
       isFamilyOwner,
       handleOpenConfirmSheet,
       handleFocusFirstOutDay,
+      handleFocusFirstExtendedDay,
     ],
   )
 
@@ -2978,9 +3272,11 @@ function NeoGastosContent({
     ],
   )
 
-  // ⑤ calendario / day-detail — día en foco → el day-detail REEMPLAZA el
+  // ⑥ calendario / day-detail — día en foco → el day-detail REEMPLAZA el
   //    calendario (paridad con el mock: showCal = !dayF). Prioridad: día FUERA
   //    (venc) > día del ciclo > calendario.
+  //    Los números siguen el orden EN PANTALLA (ver `ListHeader`): desde el
+  //    reorden del 2026-08-12 el filtro ⑤ va arriba, aunque acá se defina abajo.
   const calendarBlock = useMemo(
     () =>
       selectedOutDay ? (
@@ -3018,10 +3314,36 @@ function NeoGastosContent({
         <GastosDayDetail
           mode={mode}
           dayNum={String(controller.selectedDay)}
-          sub={dayIsFuture ? t('gastos:calendar.futureDaySub') : controller.cycleLabel}
-          // v2 · DS-3 — un día ya marcado sin gastos deja de mostrar "Día
-          // tranquilo" y muestra el logro.
-          badge={dayIsMarked ? t('gastos:calendar.cleanDayBadge') : dayBadge}
+          // El `sub` nombra la FECHA cuando la ventana es extendida: ahí la
+          // grilla tiene dos celdas con el mismo número (5..14 existen en los
+          // dos meses) y un header que dice sólo "14" no identifica cuál. Es
+          // literalmente lo que confundió al owner al navegar con ‹ ›. En
+          // ventana nominal el número ya es único, así que se conserva el
+          // rango del ciclo como venía.
+          sub={
+            dayIsFuture
+              ? t('gastos:calendar.futureDaySub')
+              : controller.cycleIsExtended && selectedDate
+                ? formatWeekdayDayMonth(selectedDate)
+                : dayIsExtendido
+                  ? t('gastos:overdue.extDaySub')
+                  : controller.cycleLabel
+          }
+          // v2 · DS-3/DS-5 — los chips del día. Las condiciones NO son
+          // excluyentes y antes se resolvían con un ternario de prioridad, así
+          // que un día extendido Y de exceso mostraba sólo uno de los dos.
+          // Ahora se apilan (la fila envuelve). Orden: primero lo que pasó con
+          // el gasto (logro o exceso), después el encuadre del día.
+          badge={null}
+          badges={dayChips}
+          // DS-5 · el strip de Brot — la pieza que el owner extrañaba. Pose
+          // `think`, no `sad`: en extendido no se perdió nada, el ciclo sigue
+          // corriendo y el gasto ya está contado donde corresponde.
+          brotStrip={
+            dayIsExtendido
+              ? { pose: 'think' as const, text: t('gastos:overdue.extBrotLine') }
+              : null
+          }
           // v2 · DS-4 — un día futuro no tiene "gastado 0", tiene "todavía no
           // sabemos": em-dash, no cero.
           gastado={dayIsFuture ? EM_DASH : dayGastado}
@@ -3070,15 +3392,23 @@ function NeoGastosContent({
             // grilla. Prioridad: días fuera (lo urgente) > recién arrancado
             // (explica el punteado) > invitación a tocar.
             hint={
-              isOverdue && outWindow.days.length > 0
-                ? t('gastos:calendar.hintOverdue', { count: outWindow.days.length })
-                : isFreshCycle
+              isOverdue && controller.cycleIsExtended
+                ? t('gastos:overdue.extHint', {
+                    count: controller.cycleExtensionDays,
+                  })
+                : isOverdue && outWindow.days.length > 0
+                  ? t('gastos:calendar.hintOverdue', { count: outWindow.days.length })
+                  : isFreshCycle
                   ? t('gastos:calendar.hintFresh', {
                       day: cycleDayIndex,
                       total: controller.cycleDays,
                     })
                   : t('gastos:calendar.hintTapShort')
             }
+            // CAL-2 — el hint pasa al durazno de alerta cuando lo que anuncia
+            // son días fuera del ciclo (o de extendido). Es la única variante
+            // del handoff que no lo pinta en el verde de marca.
+            hintWarn={isOverdue}
             footNote={
               isFreshCycle
                 ? {
@@ -3110,7 +3440,10 @@ function NeoGastosContent({
       controller.selectedDay,
       controller.cycleLabel,
       controller.clearDay,
-      dayBadge,
+      controller.cycleIsExtended,
+      controller.cycleExtensionDays,
+      dayIsExtendido,
+      dayChips,
       dayGastado,
       dayMovs,
       dayIsMarked,
@@ -3136,7 +3469,7 @@ function NeoGastosContent({
     ],
   )
 
-  // ⑥ filtro.
+  // ⑤ filtro — se pinta ENTRE el hero y el calendario (ver `ListHeader`).
   const filterBlock = useMemo(
     () => (
       <GastosTourStep
@@ -3246,6 +3579,14 @@ function NeoGastosContent({
   // Composición final: solo depende de las identidades de los sub-bloques → una
   // interacción localizada (p.ej. cambio de filtro) recomputa SOLO su bloque +
   // este fragmento liviano; el resto conserva identidad y hace bail-out.
+  //
+  // ORDEN · el filtro va ARRIBA del calendario (owner 2026-08-12). Filtrar por
+  // categoría no re-escopa solo el listado: re-escopa TAMBIÉN el hero y las
+  // celdas del calendario. Con el filtro entre el calendario y la lista se leía
+  // como si mandara nada más sobre lo que tiene debajo — y había que scrollear
+  // de vuelta hacia arriba para entender por qué el mes se había vaciado. Arriba
+  // queda antes que todo lo que gobierna, y el vacío F-4 ("Nada en Mercado este
+  // ciclo") aparece pegado al chip que lo causó, no dos bloques más abajo.
   const ListHeader = useMemo(
     () => (
       <>
@@ -3253,8 +3594,8 @@ function NeoGastosContent({
         {dropdownBlock}
         {overdueBlock}
         {heroBlock}
-        {calendarBlock}
         {filterBlock}
+        {calendarBlock}
         {sectionHeadBlock}
       </>
     ),
@@ -3450,13 +3791,22 @@ function NeoGastosContent({
             tappable y alterna con el detalle del día, igual que el ciclo vivo.
             El detalle es de SOLO LECTURA: total real de `daily_totals`,
             MOVIMIENTOS "—" (no se persiste el conteo) y sin CTAs. */}
-        {selectedClosedDay != null ? (
+        {selectedClosedIso != null ? (
           <GastosDayDetail
             mode={mode}
-            dayNum={String(selectedClosedDay)}
-            sub={t('gastos:closed.trigger', { label: selectedEdition.period_label })}
+            dayNum={String(selectedClosedDayNum ?? '')}
+            // La fecha completa cuando la edición archivada dura más de un mes
+            // (ventana extendida confirmada): ahí el número solo no identifica
+            // el día. Si no, el rango de la edición, como venía.
+            sub={
+              closedNavIsos.length > 31 && closedDayMeta.get(selectedClosedIso)
+                ? formatWeekdayDayMonth(
+                    closedDayMeta.get(selectedClosedIso)?.date ?? new Date(),
+                  )
+                : t('gastos:closed.trigger', { label: selectedEdition.period_label })
+            }
             badge={null}
-            gastado={formatMoney(closedDayMeta.get(selectedClosedDay)?.total ?? 0)}
+            gastado={formatMoney(closedDayMeta.get(selectedClosedIso)?.total ?? 0)}
             movs={EM_DASH}
             isOut={false}
             showCtas={false}
@@ -3466,7 +3816,7 @@ function NeoGastosContent({
             onBackToMonth={handleClearClosedDay}
             onPrev={closedNavIndex > 0 ? handlePrevClosedDay : undefined}
             onNext={
-              closedNavIndex >= 0 && closedNavIndex < closedNavDays.length - 1
+              closedNavIndex >= 0 && closedNavIndex < closedNavIsos.length - 1
                 ? handleNextClosedDay
                 : undefined
             }
