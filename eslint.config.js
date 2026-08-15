@@ -208,10 +208,16 @@ export default defineConfig([
     // del árbol y para cualquier archivo nuevo, que es el punto de la
     // regla, sin romper CI por trabajo en vuelo.
     //
+    // Esta lista tiene un ESPEJO: `TRANSITIONAL_RAW_IMPORTS` en
+    // `scripts/guard-font-scale.mjs`, que es la señal dura para estos
+    // archivos justamente porque acá están en `warn`. Si cambia una,
+    // cambia la otra.
+    //
     // Cómo se cierra: cuando el trabajo ajeno aterrice, borrar este bloque
-    // entero y verificar que `npm run lint` quede sin warnings de
-    // `no-restricted-imports`. No agregar archivos nuevos a esta lista: es
-    // una lista cerrada, no una allowlist.
+    // entero (y las listas del guard) y verificar que `npm run lint` quede
+    // sin warnings de `no-restricted-imports` y `npm run guard:font-scale`
+    // en verde. No agregar archivos nuevos a esta lista: es una lista
+    // cerrada, no una allowlist.
     // Ver docs/superpowers/plans/2026-08-14-font-scale-app.md.
     files: [
       'mobile/components/billing/free-period-nudge.tsx',

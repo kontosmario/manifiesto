@@ -58,6 +58,10 @@ jobs:
         if: always()
         run: npm run guard:motion-tokens
 
+      - name: Guard — font scale
+        if: always()
+        run: npm run guard:font-scale
+
       - name: Bundle iOS (regression guard)
         if: always()
         run: npx expo export --platform ios --output-dir /tmp/expo-export --dump-sourcemap=false

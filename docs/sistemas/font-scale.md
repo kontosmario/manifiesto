@@ -3,7 +3,7 @@
 > Sistema: de dónde sale el tamaño del texto. Responde SOLO a la preferencia
 > in-app (Ajustes → **Tamaño del texto**), nunca al `fontScale` del OS. Doc
 > vivo — actualizar al tocar el wrapper, el provider, el plugin de Android o
-> la guardia de ESLint.
+> cualquiera de las dos guardias (ESLint y `guard:font-scale`).
 
 Diseño y decisiones: [`docs/superpowers/specs/2026-08-14-font-scale-app-design.md`](../superpowers/specs/2026-08-14-font-scale-app-design.md).
 Plan de implementación: [`docs/superpowers/plans/2026-08-14-font-scale-app.md`](../superpowers/plans/2026-08-14-font-scale-app.md).
@@ -14,6 +14,8 @@ Archivos clave:
 - `mobile/components/ui/app-text.tsx` — `Text`, `AnimatedText` y `TextInput` drop-in.
 - `plugins/with-fixed-font-scale.cjs` — kill nativo de Android (`fontScale = 1f`).
 - `eslint.config.js` — guardia `@typescript-eslint/no-restricted-imports`.
+- `scripts/guard-font-scale.mjs` — guardia de lo que ESLint no ve
+  (`Animated.Text` crudo + el contrato del wrapper). `npm run guard:font-scale`.
 - `mobile/screens/settings/settings-screen.tsx` (bloque 9c) + `mobile/lib/i18n/locales/{es,en}/settings.json` (`fontSize.*`).
 
 ---
@@ -47,8 +49,11 @@ tienen tamaño de fuente) y se persiste en `persistent-kv` con la key
 > fuera del alcance de este sistema.
 
 Hidratación async al montar (settle después del primer render): arrancar con
-una escala guardada ≠ Normal muestra un salto de fuente en el primer frame,
-mismo trade-off ya aceptado en tema e idioma.
+una escala guardada ≠ Normal muestra un salto de fuente en el primer frame.
+Es el mismo **patrón** de tema e idioma (default + settle async), pero **no el
+mismo síntoma**: ellos, con la key rota, siempre hidratan al default y por eso
+nunca saltan. Corolario para QA: la escala de texto es hoy la única
+preferencia que sobrevive a matar la app (§9.5).
 
 ## 2. Las piezas
 
@@ -108,7 +113,23 @@ objeto que devuelve `useAnimatedStyle` es un `{ initial, viewDescriptors }`
 plano, así que aplanarlo para leer el `fontSize` es inocuo.
 
 `maxFontSizeMultiplier` / `minimumFontScale` que ya existían llegan por
-`...rest` y quedan inocuos con el escalado nativo apagado. No se limpiaron.
+`...rest`. Ninguno se limpió, pero **no son el mismo caso**:
+
+- `maxFontSizeMultiplier` **queda inocuo**: RN solo lo lee con
+  `allowFontScaling` prendido (`Text.d.ts`: «largest possible scale a font can
+  reach when allowFontScaling is enabled») y el wrapper lo apaga siempre.
+- `minimumFontScale` **sigue vivo**: no cuelga de `allowFontScaling` sino de
+  `adjustsFontSizeToFit` (`Text.d.ts`: «smallest possible scale a font can
+  reach when adjustsFontSizeToFit is enabled»), que sigue activo en el árbol.
+  El auto-shrink corre en las **dos** plataformas — el tipado lo declara en
+  `TextPropsIOS`, pero Android lo implementa igual
+  (`ReactBaseTextShadowNode.setMinimumFontScale` + `ReactTextView`).
+
+**La consecuencia se ve en device:** donde hay `adjustsFontSizeToFit`, el
+wrapper sube el `fontSize` y el sistema lo vuelve a encoger para que la línea
+entre en la caja — mover la preferencia ahí puede no cambiar nada visible.
+Es **esperado, no un bug**: ese flag existe justamente para eso. El inventario
+sitio por sitio está en el checklist de QA (§9).
 
 ## 3. El desacople del OS, plataforma por plataforma
 
@@ -214,7 +235,7 @@ worklets no pueden llamar funciones JS no-worklet. Su rama de conteo JS usa
 > `allowFontScaling={true}`, así que en iOS ese texto sigue escalando con
 > Dynamic Type (hasta 3.571× según la tabla de `RCTUtils.mm`) e ignora la
 > preferencia in-app — exactamente la rotura que este sistema existe para
-> impedir. El único gate es el grep de §6.
+> impedir. El gate es `npm run guard:font-scale` (§6), no el lint.
 
 **Estado transitorio (mismo motivo que §6):** en un checkout limpio de este
 branch quedan **tres** sitios con `Animated.Text` crudo — `count-up-text.tsx`
@@ -223,12 +244,41 @@ branch quedan **tres** sitios con `Animated.Text` crudo — `count-up-text.tsx`
 curso (Wrapped, ciclo extendido, fijos) y su migración viaja dentro de ese
 commit, igual que la cola de imports.
 
-## 6. La guardia de ESLint (y su bloque transitorio)
+## 6. Las guardias (ESLint + `guard:font-scale`) y su bloque transitorio
+
+### ESLint — solo ve imports
 
 `@typescript-eslint/no-restricted-imports` prohíbe importar `Text`/`TextInput`
 de valor desde `'react-native'` en todo `app/` + `mobile/`, con
 `allowTypeImports: true` (los `import type { TextInput }` para tipar refs son
 legítimos y siguen permitidos). Exento: el propio `app-text.tsx`.
+
+### `scripts/guard-font-scale.mjs` — lo que ESLint no puede ver
+
+`npm run guard:font-scale`, encadenado en `npm run validate` y con step propio
+en `.github/workflows/mobile-ci.yml`. Ataja las tres regresiones que dejan el
+sistema roto en silencio:
+
+1. **`Animated.Text` / `Animated.TextInput` crudos.** Vienen de
+   `react-native-reanimated`: ESLint no los toca ni podría (§5). Cuenta el tag
+   de apertura una sola vez y no cae en menciones dentro de comentarios ni de
+   strings.
+2. **El contrato del wrapper.** Los tres exports (`Text`, `AnimatedText`,
+   `TextInput`) tienen que existir, sacar `allowFontScaling` por destructuring
+   —si viaja en el `...rest`, el valor del consumidor pisa el del wrapper— y
+   mandarle `allowFontScaling={false}` al nativo. Si alguien lo saca, **todo**
+   el sistema se cae sin que nada lo cace: vitest corre en `env node`, sin
+   renderer, así que no hay test posible.
+3. **Imports crudos de `Text`/`TextInput`.** Redundante con ESLint app-wide,
+   pero para los archivos del bloque transitorio de abajo la regla está en
+   `warn`: ahí el guard es la única señal dura de que la lista no crezca.
+
+Excepciones: `// @font-scale-allow: <razón>` en la línea (o la de arriba). Para
+imports vale también el `eslint-disable-next-line …no-restricted-imports` que
+ya se usa, para no escribir dos comentarios para la misma excepción (la rama
+fluida de `count-up-text.tsx`).
+
+### El bloque transitorio (está DOS veces, en espejo)
 
 Hay **un bloque de override transitorio** que baja la regla a `warn` para una
 lista cerrada de **26 archivos**. Por qué existe: la barrida migró todo el
@@ -241,17 +291,31 @@ branch esos archivos todavía importan los primitivos crudos, y con la regla en
 `.github/workflows/mobile-ci.yml`— en rojo por 27 imports que nadie podía
 arreglar desde ahí.
 
-**Cómo se cierra:** cuando ese trabajo aterrice, borrar el bloque entero y
-verificar **las dos** cosas:
+El guard arrastra el **mismo criterio y los mismos paths**, en dos listas
+(`TRANSITIONAL_RAW_IMPORTS`, las mismas 26 entradas que ESLint, y
+`TRANSITIONAL_ANIMATED_TEXT`, los tres `Animated.Text` de §5). Un guard que
+deja CI en rojo por trabajo en vuelo se termina desactivando, y ahí no sirve
+para nada. Sobre un checkout limpio de HEAD reporta **0 blocking / 30
+transitorias**; sobre el árbol con el trabajo aterrizado, 0 y 0.
+
+> `wrapped/scenes/closing-scene.tsx` está en las **dos** listas, y no es
+> redundante: en HEAD importa `Text` crudo (línea 2 — eso lo ve ESLint) **y**
+> monta un `Animated.Text` (eso no lo ve nadie más que el guard). Verificado:
+> sacándolo del bloque de ESLint, `npx eslint` sobre ese archivo pasa de
+> `warning` a `error`.
+
+**Cómo se cierra:** cuando ese trabajo aterrice, borrar el bloque de
+`eslint.config.js` y las dos listas del guard, y verificar **las dos** cosas:
 
 1. `npm run lint` sin warnings de `no-restricted-imports`.
-2. `grep -rn 'Animated\.Text' mobile app | grep -v app-text.tsx` **sin
-   resultados** — el lint no ve el texto animado (§5), así que sin este grep se
+2. `npm run guard:font-scale` en verde y sin la línea de «las listas
+   transitorias ya no cazan nada» (esa línea es justamente el aviso de que se
+   pueden borrar). El lint no ve el texto animado (§5), así que sin el guard se
    puede declarar cerrado el sistema con labels animados todavía colgados del
    Dynamic Type del OS.
 
-Es una **lista cerrada, no una allowlist**: no agregar archivos nuevos. Si
-aparece un archivo con el import crudo, se migra al wrapper.
+Son **listas cerradas, no allowlists**: no agregar archivos nuevos. Si aparece
+un archivo con el import crudo, se migra al wrapper.
 
 ## 7. Ajustes
 
@@ -292,6 +356,12 @@ recortarse.
   y en iOS no lo es.
 - Al agregar un `SegmentedControl` de 4+ opciones, chequear el ancho de la
   etiqueta más larga a ×1.2 (§7).
+- Al tocar `app-text.tsx`: correr `npm run guard:font-scale`. El contrato de
+  los tres exports (destructurar `allowFontScaling` + mandar
+  `allowFontScaling={false}`) no lo cubre ningún test — vitest corre sin
+  renderer, ese guard es todo lo que hay.
+- ¿Un texto no crece al mover la preferencia? Antes de abrir bug, fijarse si
+  tiene `adjustsFontSizeToFit`: ahí es esperado (§2 y §9.4).
 
 ## 9. QA en device (pendiente — dev client, nunca Expo Go)
 
@@ -307,9 +377,51 @@ recortarse.
 3. A «Máxima» (1.2): Home (hero + contador fluido), Gastos (badges, calendario,
    filas), tab bar, wizards de alta, Jardín/Logros, Ajustes — sin recortes ni
    desbordes. Campos de formulario: label, input y placeholder coherentes.
-4. Matar y reabrir con «Máxima»: la preferencia persiste (con el salto de
+4. **Los sitios con `adjustsFontSizeToFit`: si el texto no crece, es ESPERADO,
+   no un bug.** El wrapper sube el `fontSize` y el auto-shrink lo vuelve a
+   encoger para que la línea entre en su caja; `minimumFontScale` sigue vivo
+   ahí (§2) y es el piso de ese encogido. No abrir bug, no «arreglarlo»
+   sacando el flag: el flag es lo que impide que la fila se parta o que el
+   monto desborde. Inventario verificado con
+   `grep -rn '^\s*adjustsFontSizeToFit' mobile app` — **17 sitios**, de los
+   cuales **13 declaran `minimumFontScale`** (los otros 4 caen en el piso
+   default de RN):
+
+   | Sitio | `minimumFontScale` | Qué se mira |
+   |---|---|---|
+   | `components/control-v2/control-v2-vsmes-card.tsx:502` | 0.8 | valor de la barra |
+   | `components/control-v2/daily-goal-sheet.tsx:252` | 0.7 | monto del hero (`AnimatedText`) |
+   | `components/gastos/add-gasto-parts/step2-summary.tsx:406` | 0.7 | importe del resumen |
+   | `components/gastos/add-income-parts/step2-summary.tsx:166` | 0.7 | importe del resumen |
+   | `components/home/amount-card.tsx:270` | — | monto de la card |
+   | `components/home/category-horizontal-rail.tsx:542` | 0.6 | label del tile (**pineado**, ver abajo) |
+   | `components/home/control-signal-tile.tsx:75` | 0.7 | valor de la señal |
+   | `components/home/greeting-header.tsx:49` | 0.72 | nombre del saludo |
+   | `components/home/quick-add-savings-sheet.tsx:275` | 0.7 | monto del aporte |
+   | `components/redesign/home/home-screen.tsx:316` | 0.72 | nombre del saludo (neo) |
+   | `components/savings-goals/wizard-steps/step-4-summary.tsx:64` | — | monto de la meta |
+   | `components/savings-goals/wizard-steps/wizard-value-well.tsx:88` | — | valor del pozo |
+   | `components/settings/settings-primitives.tsx:59` | 0.75 | valor del hero stat |
+   | `components/ui/numeric-edit-sheet.tsx:378` | — | valor del display |
+   | `components/wizard/parts/impact-columns.tsx:62` | 0.75 | las dos cifras del impacto |
+   | `screens/home/asistente-screen.tsx:694` | 0.7 | impacto de la tarea |
+   | `screens/settings/settings-screen.tsx:1208` | 0.7 | monto de la reserva |
+
+   El único **pineado** de la lista es el label del rail de categorías
+   (`allowFontScaling={false}`): ahí la preferencia no lo toca por decisión
+   propia (§8), no por el auto-shrink. En los otros 16 el `fontSize` sí sube;
+   lo que se ve depende de cuánto lugar sobre en la caja.
+5. Matar y reabrir con «Máxima»: la preferencia persiste (con el salto de
    fuente del primer frame, §1).
-5. **Regresión del override de Android:** con el tema en «Sistema», prender el
+   > **No comparar contra tema/idioma/animaciones: esas HOY no persisten en
+   > native.** Sus keys usan `:` (`manifiesto:theme-preference`,
+   > `manifiesto:language-preference`, `manifiesto:motion-preference`),
+   > `expo-secure-store` las rechaza (`/^[\w.-]+$/`) y `persistent-kv` se
+   > traga la excepción en silencio (§1). O sea que la escala de texto va a
+   > ser la **única** preferencia que sobreviva a matar la app: si el tema
+   > vuelve al default y la escala no, las dos cosas están bien. Deuda
+   > pre-existente, fuera del alcance de este sistema.
+6. **Regresión del override de Android:** con el tema en «Sistema», prender el
    modo oscuro del sistema con la app en foreground → cambia al toque, sin
    matar el proceso.
-6. Android de gama baja: pasada rápida de los mismos puntos.
+7. Android de gama baja: pasada rápida de los mismos puntos.

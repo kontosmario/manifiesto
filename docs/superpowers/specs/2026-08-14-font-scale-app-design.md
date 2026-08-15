@@ -81,8 +81,24 @@ API** que su primitivo, para que la barrida sea solo swap de import. Reglas
 5. Fast path: con factor 1.0, passthrough total (solo fuerza
    `allowFontScaling={false}`) — costo cero en el default.
 
-`maxFontSizeMultiplier` / `minimumFontScale` existentes quedan como props
-inocuas (el escalado nativo está apagado); no se tocan en la barrida.
+Ninguna de las dos se toca en la barrida, pero **no son el mismo caso** (la
+versión anterior de este párrafo las daba a las dos por inocuas, y es falso):
+
+- `maxFontSizeMultiplier` **sí queda inocua**: RN solo la lee cuando
+  `allowFontScaling` está prendido (`Text.d.ts`: «largest possible scale a font
+  can reach when allowFontScaling is enabled»), y el wrapper lo apaga siempre.
+- `minimumFontScale` **sigue viva**: no depende de `allowFontScaling` sino de
+  `adjustsFontSizeToFit` (`Text.d.ts`: «smallest possible scale a font can
+  reach when adjustsFontSizeToFit is enabled»), que la barrida no tocó. El
+  auto-shrink corre en las dos plataformas (Android:
+  `ReactBaseTextShadowNode.setMinimumFontScale` + `ReactTextView`).
+
+Consecuencia real, no teórica: donde hay `adjustsFontSizeToFit`, el wrapper
+sube el `fontSize` y el sistema lo vuelve a encoger para que la línea entre en
+la caja, así que mover la preferencia puede no cambiar nada visible. Es
+**esperado, no un bug** — es la misma razón por la que ese flag está ahí. El
+inventario verificado sitio por sitio está en el checklist de QA de
+[`docs/sistemas/font-scale.md`](../../sistemas/font-scale.md) §9.
 
 ### 4. Barrida + guardia ESLint
 
