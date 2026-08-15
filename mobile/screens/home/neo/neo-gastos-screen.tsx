@@ -150,18 +150,20 @@ import {
   composeRowA11yLabel,
   getMondayFirstOffset,
   incomeHappenedAtMs,
-  incomeKindFallback,
   startOfLocalDay,
   type MovementItem,
   type MovimientosSection,
 } from '@/features/gastos/gastos-helpers'
+import {
+  buildMovRowVM,
+  type MovementRowMemberLite,
+} from '@/features/gastos/build-mov-row-vm'
 import type { CategoryLite, GastosDayMood } from '@/features/gastos/gastos-aggregates.model'
 import {
   useCycleIncomeEventsTotal,
   useDeleteIncomeEvent,
   useIncomeEvents,
 } from '@/features/income/use-income-events'
-import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
 import {
   useDeleteExpense,
   useRecentExpenses,
@@ -881,8 +883,6 @@ interface NeoGastosContentProps {
   telemetry: ScreenTelemetryHandle
 }
 
-type MovementRowMemberLite = { id: string; name: string; color: string }
-
 interface MovementRowProps {
   item: MovementItem
   mode: GastosMode
@@ -976,7 +976,11 @@ const MovementRow = memo(function MovementRow({
     [onDelete, onEdit],
   )
 
-  let row: MovRowVM
+  // El armado del VM (emoji/tile/title/sub/amount/catName) vive en
+  // `buildMovRowVM` (compartido con el feed de solo lectura de una edición
+  // cerrada) — acá solo queda el a11yLabel, que es interactivo y no aplica
+  // a esa vista de sólo lectura.
+  const row: MovRowVM = buildMovRowVM({ item, categoriesById, memberById, t })
   let a11yLabel: string
 
   if (item.kind === 'expense') {
@@ -985,19 +989,6 @@ const MovementRow = memo(function MovementRow({
     const who = memberById.get(e.created_by)
     const whoName = who?.name || t('gastos:movementRow.someone')
     const catLabel = cat?.name || t('gastos:movementRow.noCategory')
-    row = {
-      kind: 'expense',
-      emoji: '🧾',
-      tile: 'mint',
-      title: e.description?.trim() || cat?.name || t('common:terms.expense'),
-      sub: `${whoName} · ${catLabel}`,
-      amount: `${MINUS}${formatMoney(e.price)}`,
-      // rawName CRUDO para el sticker real (CategoryIcon del kit).
-      catName: cat?.rawName ?? cat?.name,
-      // `note` NO va acá: `GastosMovRow` la pintaría DENTRO del SwipeRow
-      // (overflow:hidden, radio 22) y la esquina redondeada le comía la
-      // primera letra. Se monta abajo, como hermana de la tarjeta.
-    }
     a11yLabel = composeRowA11yLabel({
       title: e.description || cat?.name || t('common:terms.expense'),
       categoryName: catLabel,
@@ -1006,20 +997,6 @@ const MovementRow = memo(function MovementRow({
       iso: e.created_at,
     })
   } else {
-    const income = item.income
-    const who = memberById.get(income.created_by)
-    const whoName = who?.name || t('gastos:movementRow.someone')
-    const kindLabel = incomeKindFallback(income.kind)
-    row = {
-      kind: 'income',
-      emoji: INCOME_KIND_BY_KEY[income.kind]?.emoji ?? '💵',
-      tile: 'mint',
-      title: income.description?.trim() || kindLabel,
-      sub: `${whoName} · ${kindLabel}`,
-      amount: `+${formatMoney(income.amount)}`,
-      // Sin categoría → el kit cae al emoji del kind.
-      catName: undefined,
-    }
     a11yLabel = t('gastos:movementRow.incomeA11yLabel', { title: row.title })
   }
 
