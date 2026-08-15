@@ -262,7 +262,11 @@ sistema roto en silencio:
 1. **`Animated.Text` / `Animated.TextInput` crudos.** Vienen de
    `react-native-reanimated`: ESLint no los toca ni podría (§5). Cuenta el tag
    de apertura una sola vez y no cae en menciones dentro de comentarios ni de
-   strings.
+   strings. Cubre el alias real del import (`import Rea from
+   'react-native-reanimated'` + `<Rea.Text>`) y el acceso por namespace a
+   react-native (`import * as RN from 'react-native'` + `<RN.Text>`), que
+   esquiva a ESLint porque la regla restringe los **nombres importados**, no
+   el módulo.
 2. **El contrato del wrapper.** Los tres exports (`Text`, `AnimatedText`,
    `TextInput`) tienen que existir, sacar `allowFontScaling` por destructuring
    —si viaja en el `...rest`, el valor del consumidor pisa el del wrapper— y
@@ -272,6 +276,14 @@ sistema roto en silencio:
 3. **Imports crudos de `Text`/`TextInput`.** Redundante con ESLint app-wide,
    pero para los archivos del bloque transitorio de abajo la regla está en
    `warn`: ahí el guard es la única señal dura de que la lista no crezca.
+
+**Cómo parsea:** con el **AST de `typescript`**, no con un tokenizer propio. El
+primer intento blanqueaba strings y comentarios a mano y no conocía los
+literales de expresión regular ni el texto JSX: una `'` adentro de un
+`/[^\p{L}' -]/u` —o el apóstrofo de un copy— abría un string fantasma y
+blanqueaba el resto del archivo, dejando el chequeo 1 **ciego de ahí al EOF**,
+justo el único chequeo sin red de contención. Si `typescript` no resuelve, el
+guard **falla fuerte**: nunca pasa en verde por no haber podido mirar.
 
 Excepciones: `// @font-scale-allow: <razón>` en la línea (o la de arriba). Para
 imports vale también el `eslint-disable-next-line …no-restricted-imports` que
@@ -297,6 +309,16 @@ El guard arrastra el **mismo criterio y los mismos paths**, en dos listas
 deja CI en rojo por trabajo en vuelo se termina desactivando, y ahí no sirve
 para nada. Sobre un checkout limpio de HEAD reporta **0 blocking / 30
 transitorias**; sobre el árbol con el trabajo aterrizado, 0 y 0.
+
+**Las dos listas gatean por CUENTA, no por archivo** (mismo patrón que
+`scripts/motion-tokens-baseline.json`): el valor de cada entrada es el número
+exacto de hallazgos de ese archivo en un checkout limpio de HEAD —1 en todas
+salvo `delete-account-screen.tsx`, que importa `Text` **y** `TextInput`— y el
+hallazgo número tope+1 **bloquea**. Sin eso la lista no sería una señal dura
+sino un agujero: un `Animated.Text` nuevo en `redesign/gastos/gastos-screen.tsx`
+—pantalla viva, en las dos listas— no tendría **ninguna** señal, porque ESLint
+ahí no ve nada por definición (§5). Los topes solo **bajan**: al migrar un
+callsite se baja el número o se borra la entrada; nunca se sube.
 
 > `wrapped/scenes/closing-scene.tsx` está en las **dos** listas, y no es
 > redundante: en HEAD importa `Text` crudo (línea 2 — eso lo ve ESLint) **y**
@@ -374,6 +396,11 @@ recortarse.
    animados** en esta pasada (contador fluido del hero, label animado de
    Gastos, escenas de Wrapped): si alguno crece en iOS, quedó un
    `Animated.Text` crudo (§5) — el lint no lo caza.
+   > Antes de abrir bug por un texto **no** animado que crece en iOS: fijarse
+   > si el archivo está en el bloque transitorio de §6. Esos 26 todavía
+   > importan el primitivo crudo en un checkout limpio, no pasan por el
+   > wrapper y por eso siguen colgados del OS — el caso visible es el nombre
+   > del saludo del Home neo (§9.4). Es deuda conocida, no un hallazgo nuevo.
 3. A «Máxima» (1.2): Home (hero + contador fluido), Gastos (badges, calendario,
    filas), tab bar, wizards de alta, Jardín/Logros, Ajustes — sin recortes ni
    desbordes. Campos de formulario: label, input y placeholder coherentes.
@@ -398,7 +425,7 @@ recortarse.
    | `components/home/control-signal-tile.tsx:75` | 0.7 | valor de la señal |
    | `components/home/greeting-header.tsx:49` | 0.72 | nombre del saludo |
    | `components/home/quick-add-savings-sheet.tsx:275` | 0.7 | monto del aporte |
-   | `components/redesign/home/home-screen.tsx:316` | 0.72 | nombre del saludo (neo) |
+   | `components/redesign/home/home-screen.tsx:309` | 0.72 | nombre del saludo (neo) (**crudo**, ver abajo) |
    | `components/savings-goals/wizard-steps/step-4-summary.tsx:64` | — | monto de la meta |
    | `components/savings-goals/wizard-steps/wizard-value-well.tsx:88` | — | valor del pozo |
    | `components/settings/settings-primitives.tsx:59` | 0.75 | valor del hero stat |
@@ -407,10 +434,21 @@ recortarse.
    | `screens/home/asistente-screen.tsx:694` | 0.7 | impacto de la tarea |
    | `screens/settings/settings-screen.tsx:1208` | 0.7 | monto de la reserva |
 
-   El único **pineado** de la lista es el label del rail de categorías
-   (`allowFontScaling={false}`): ahí la preferencia no lo toca por decisión
-   propia (§8), no por el auto-shrink. En los otros 16 el `fontSize` sí sube;
-   lo que se ve depende de cuánto lugar sobre en la caja.
+   Dos filas de la tabla no responden a la preferencia, y en ninguna de las dos
+   la causa es el auto-shrink:
+
+   - **Pineado** — el label del rail de categorías lleva
+     `allowFontScaling={false}` explícito: la preferencia no lo toca por
+     decisión propia (§8).
+   - **Crudo (transitorio)** — `components/redesign/home/home-screen.tsx`
+     importa `Text` de `'react-native'` en un checkout limpio (es una de las 26
+     entradas del bloque transitorio de §6), así que **no pasa por el
+     wrapper**: su `fontSize` no sube con la preferencia y, al revés que el
+     resto de la app, ese texto **sí escala con el fontScale del OS**. Cuando
+     el archivo aterrice migrado, la fila se comporta como las otras 15.
+
+   En las otras 15 el `fontSize` sí sube; lo que se ve depende de cuánto lugar
+   sobre en la caja.
 5. Matar y reabrir con «Máxima»: la preferencia persiste (con el salto de
    fuente del primer frame, §1).
    > **No comparar contra tema/idioma/animaciones: esas HOY no persisten en

@@ -119,18 +119,30 @@ contrato de §3 (incluido `allowFontScaling={false}` siempre y el pineado por
 `allowFontScaling={false}` explícito). `entering`, `exiting` y los estilos de
 `useAnimatedStyle` viajan por `...rest` sin que la capa los toque, y los
 overrides se componen últimos: ningún sitio del repo anima métricas de
-fuente. **Todos los `Animated.Text` de la app usan `AnimatedText`** — escribir
-`Animated.Text` crudo deja el texto colgado del Dynamic Type del OS, que es
-justo lo que este sistema existe para evitar, y **ESLint no lo caza** (la
-guardia de §4 solo restringe imports de `'react-native'`).
+fuente. **La regla es que todo `Animated.Text` va por `AnimatedText`** —
+escribir `Animated.Text` crudo deja el texto colgado del Dynamic Type del OS,
+que es justo lo que este sistema existe para evitar, y **ESLint no lo caza**
+(la guardia de §4 solo restringe imports de `'react-native'`). Por eso el gate
+es `npm run guard:font-scale`.
 
-Única excepción: la rama fluida de `CountUpText`
+Única excepción de diseño: la rama fluida de `CountUpText`
 (`mobile/components/home/animated/count-up-text.tsx`), que hace
 `Animated.createAnimatedComponent(TextInput)` y necesita el primitivo nativo
 crudo para conservar la ref que `animatedProps` requiere. Ahí sí va
 `eslint-disable` justificado + escala a mano con `useFontScaleFactor()`, con
-el factor resuelto en JS fuera del worklet. Su rama de conteo JS usa
-`AnimatedText` como el resto.
+el factor resuelto en JS fuera del worklet.
+
+> **Estado transitorio — la regla todavía no está cumplida al 100%.** En un
+> checkout limpio del branch quedan **tres** `Animated.Text` crudos, y el
+> propio guard los reporta: `count-up-text.tsx:268` (la rama de conteo **JS**,
+> el contador del hero del Home — todavía NO usa `AnimatedText`),
+> `redesign/gastos/gastos-screen.tsx:1064` y
+> `wrapped/scenes/closing-scene.tsx:217`. Los tres caen encima del trabajo
+> ajeno en curso (Wrapped, ciclo extendido, fijos) y su migración viaja dentro
+> de ese commit, igual que la cola de imports de §4. Hasta entonces el
+> contador del hero **sigue escalando con el Dynamic Type de iOS**: no saltear
+> el punto 2 del QA en device por leer este spec. Detalle y cierre en
+> [`docs/sistemas/font-scale.md`](../../sistemas/font-scale.md) §5 y §6.
 
 ### 6. Kill nativo de respaldo (texto de terceros)
 
