@@ -4,10 +4,10 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from 'react-native'
+import type { TextInput as RNTextInput } from 'react-native'
+import { Text, TextInput } from '@/components/ui/app-text'
 import * as LocalAuthentication from 'expo-local-authentication'
 import { useRouter } from 'expo-router'
 import { MaterialIcons } from '@expo/vector-icons'
@@ -39,7 +39,19 @@ import { getErrorMessage } from '@/utils/error-message'
 
 interface DeleteAccountScreenProps {
   userId: string
-  familyId: string
+  /**
+   * Hogar del usuario, si se conoce. Es OPCIONAL a propósito: la baja la
+   * autoriza el `auth.uid()` del JWT en `request_account_deletion`, no la
+   * familia — acá el id sólo sirve para leer el rol y avisarle al dueño
+   * que primero tiene que traspasar el hogar. Sin id no hay rol, no hay
+   * aviso y la baja sigue disponible.
+   *
+   * Que fuera obligatorio escondía la salida entera: el paywall del gate
+   * duro la gateaba con `familyId`, que sale del home snapshot, así que
+   * si el snapshot fallaba el usuario quedaba sin forma de darse de baja
+   * dentro de la app (guideline 5.1.1(v) de Apple).
+   */
+  familyId?: string | null
   /** Cuando se monta como Modal anidado (p.ej. desde el paywall lockMode, que
    *  es un Modal nativo top-most donde no se puede navegar a la ruta), cancelar
    *  debe descartar ese Modal en vez de hacer router.back(). Si no se pasa, el
@@ -87,8 +99,8 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
   const { t } = useTranslation()
   const CONFIRM_PHRASE = t('settings:deleteAccount.confirmPhrase')
   const router = useRouter()
-  const inputRef = useRef<TextInput | null>(null)
-  const passwordInputRef = useRef<TextInput | null>(null)
+  const inputRef = useRef<RNTextInput | null>(null)
+  const passwordInputRef = useRef<RNTextInput | null>(null)
 
   const sessionQuery = useAuthSession()
   const accountEmail = sessionQuery.data?.user?.email ?? null
@@ -119,7 +131,7 @@ export function DeleteAccountScreen({ userId, familyId, onClose }: DeleteAccount
     useState<BiometricLoginState | null>(null)
 
   const requestDeletion = useRequestAccountDeletion()
-  const roleQuery = useMyFamilyRole(userId, familyId)
+  const roleQuery = useMyFamilyRole(userId, familyId ?? undefined)
   const memberStatsQuery = useFamilyMemberStats()
 
   // Bloqueamos el flow si el user es owner de una familia con otros

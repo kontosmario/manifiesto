@@ -78,3 +78,40 @@ export function normalizeEntitlementSnapshot(
     isPurchaser: row.is_purchaser == null ? true : Boolean(row.is_purchaser),
   }
 }
+
+/**
+ * Estado de la query de entitlement que alcanza para decidir si el árbol
+ * de la app puede pintar. Sólo los campos que miramos, para que el
+ * predicado sea puro y testeable sin React Query.
+ */
+export interface EntitlementQueryState {
+  data: EntitlementSnapshot | null | undefined
+  isError: boolean
+  /** La query resolvió DESPUÉS de montar (no vino del disco). */
+  isFetchedAfterMount: boolean
+  /** El dato en cache pasó su staleTime. */
+  isStale: boolean
+}
+
+/**
+ * ¿Podemos confiar en el entitlement para decidir el acceso?
+ *
+ * El acceso lo decide el SERVER, así que la app espera su respuesta antes
+ * de pintar el árbol; si no, una cuenta con el acceso pausado alcanza a
+ * ver su Home real antes de que el gate la tape.
+ *
+ * Tres formas de estar listo:
+ *  · `isFetchedAfterMount` — lo trajo esta sesión, es la palabra fresca.
+ *  · dato en cache y NO stale — el persister restauró algo de hace menos
+ *    de un staleTime; toda compra invalida la key, así que sigue siendo
+ *    la decisión vigente. Sin esta rama nos quedaríamos esperando un
+ *    refetch que React Query no va a hacer (el dato está fresco).
+ *  · `isError` — dejamos pasar. El gate falla ABIERTO sin dato, y clavar
+ *    el splash por un blip de red es peor que un ciclo sin bloquear. El
+ *    último snapshot conocido sigue en cache para el modo sin conexión.
+ */
+export function isEntitlementResolved(q: EntitlementQueryState): boolean {
+  if (q.isError) return true
+  if (q.isFetchedAfterMount) return true
+  return q.data != null && !q.isStale
+}

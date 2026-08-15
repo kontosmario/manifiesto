@@ -21,6 +21,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { useImportWizardContext } from '@/features/import-review/use-import-wizard-context'
 import { NeoPaywallView } from '@/components/billing/neo-paywall-view'
 import { ManageView } from '@/components/billing/manage-view'
+import { OverlayHosts } from '@/components/ui/overlay-hosts'
 import { DeleteAccountScreen } from '@/screens/settings/delete-account-screen'
 import {
   PurchaseResultSheet,
@@ -350,9 +351,12 @@ export function BillingScreen({
           onPurchase={doPurchase}
           onRestore={doRestore}
           onLogout={handleLogout}
-          onDeleteAccount={
-            userId && familyId ? () => setShowDelete(true) : undefined
-          }
+          // Sólo `userId`: la baja la autoriza el JWT, no el hogar. Gatearla
+          // también con `familyId` (que viene del home snapshot) hacía
+          // DESAPARECER la salida cuando el snapshot fallaba — y en el gate
+          // duro esa es la única forma de darse de baja sin pagar
+          // (guideline 5.1.1(v) de Apple).
+          onDeleteAccount={userId ? () => setShowDelete(true) : undefined}
           onContinueFree={welcomeMode ? onContinue : undefined}
           continueLabel={welcomeMode ? welcomeContinueLabel : undefined}
           // El back del kit ya pone su háptico ('light'); acá solo se
@@ -393,8 +397,9 @@ export function BillingScreen({
           ruta /settings/delete-account quedaría DEBAJO. En su lugar montamos la
           pantalla de baja como Modal anidado (se apila por encima del gate).
           onClose la descarta; tras agendar la baja, logoutSession dispara
-          SIGNED_OUT y desmonta todo. Solo se abre con userId + familyId. */}
-      {userId && familyId ? (
+          SIGNED_OUT y desmonta todo. `familyId` va como dato opcional (sirve
+          para leer el rol y avisarle al dueño), NO como condición. */}
+      {userId ? (
         <Modal
           visible={showDelete}
           animationType="slide"
@@ -406,6 +411,10 @@ export function BillingScreen({
             familyId={familyId}
             onClose={() => setShowDelete(false)}
           />
+          {/* Misma razón que en el gate: esta pantalla avisa por toast
+              (biometría no disponible, error al agendar la baja, fallo del
+              logout) y su ventana nativa tapa los hosts de afuera. */}
+          <OverlayHosts />
         </Modal>
       ) : null}
     </>

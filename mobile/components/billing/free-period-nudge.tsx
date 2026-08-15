@@ -1,6 +1,7 @@
-import { memo, useState } from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { HOME_SPEC, type HomeMode } from '@/components/redesign/home/home-spec'
@@ -18,8 +19,10 @@ import { nunitoFamily } from '@/theme/typography'
 /**
  * Recordatorio del período libre en Home. Banda raise del vocabulario neo
  * (material `raisedMd` + tile tintado + pill verde del catálogo), alineada con
- * las cards vecinas. Informativo — NUNCA dice "prueba/gratis". Dismissible por
- * sesión; el gate de cuándo mostrarlo lo decide el host (Home).
+ * las cards vecinas. Informativo — NUNCA dice "prueba/gratis". NO se puede
+ * cerrar (owner 2026-08-12): el aviso acompaña toda la ventana de los últimos
+ * días y su única salida es suscribirse; el gate de cuándo mostrarlo lo decide
+ * el host (Home).
  *
  * ACENTO DE AVISO (owner 2026-08-08). Antes el acento cálido sólo aparecía con
  * `daysLeft <= 2`: a 4 días la card salía verde de punta a punta —tile
@@ -62,8 +65,6 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
   const neo = neoTokens(mode)
   const s = HOME_SPEC[mode]
   const { t } = useTranslation()
-  const [dismissed, setDismissed] = useState(false)
-  if (dismissed) return null
 
   const urgent = daysLeft <= 2
   const title = urgent
@@ -79,10 +80,6 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
   const handleCta = () => {
     void triggerHaptic('selection')
     onSeePlans()
-  }
-  const handleDismiss = () => {
-    void triggerHaptic('selection')
-    setDismissed(true)
   }
 
   // El literal oscuro del spec (`ctaGreenPillInk` #2E7C39 sobre el pill crema)
@@ -149,15 +146,6 @@ export const FreePeriodNudge = memo(function FreePeriodNudge({
               <Text style={[styles.ctaText, { color: ctaInk }]}>{ctaLabel}</Text>
             </View>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('billing:nudge.close')}
-            onPress={handleDismiss}
-            hitSlop={10}
-            style={styles.close}
-          >
-            <MaterialIcons name="close" size={16} color={neo.textMuted} />
-          </Pressable>
         </View>
       </View>
     </RiseView>
@@ -206,5 +194,4 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
   },
-  close: { padding: 2 },
 })

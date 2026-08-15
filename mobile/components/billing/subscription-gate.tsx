@@ -2,6 +2,7 @@ import { Modal, StyleSheet, View } from 'react-native'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { useMyProfile } from '@/features/profile/use-profile'
+import { OverlayHosts } from '@/components/ui/overlay-hosts'
 import { BillingScreen } from '@/screens/settings/billing-screen'
 import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -46,6 +47,14 @@ export function SubscriptionGate() {
     >
       <View style={[styles.root, { backgroundColor: neoTokens(theme.mode).bg }]}>
         <BillingScreen lockMode />
+        {/* Las salidas del gate (cerrar sesión, eliminar cuenta) preguntan
+            y avisan. Los hosts de la raíz quedan DEBAJO de esta ventana
+            nativa, así que el gate lleva los suyos — sin esto "Cerrar
+            sesión" abría una confirmación que nadie podía ver y el botón
+            se leía como muerto (regresión de cbf19915, cuando el flujo
+            pasó de `Alert.alert` —diálogo del SO, siempre visible— a
+            `neoConfirm`). Ver el docblock de OverlayHosts. */}
+        <OverlayHosts />
       </View>
     </Modal>
   )

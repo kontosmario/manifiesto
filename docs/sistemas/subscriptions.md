@@ -155,9 +155,28 @@ clobberearse. Idempotente: nunca pisa estado más nuevo con más viejo.
   montado en el layout de tabs (corre DESPUÉS del unlock, como `ShareImportHost`).
   Lee el snapshot vía `useEntitlement`; si `has_access:false` monta
   `billing-screen` en `lockMode` como overlay no descartable.
+  El gate es un `<Modal>` nativo, así que **lleva su propio par de hosts de
+  overlay** ([overlay-hosts.tsx](../../mobile/components/ui/overlay-hosts.tsx)):
+  los de la raíz dibujan debajo de esa ventana y sus hojas las descarta iOS
+  en silencio — sin esto "Cerrar sesión" abría una confirmación invisible y
+  el botón se leía como muerto. Mismo motivo en el modal anidado de baja de
+  cuenta. Los buses (`confirm-bus`/`toast-bus`) entregan al host más interno.
+- **Resolución ANTES de la primera pintura**: el entitlement se dispara en
+  `app-stack-shell` en paralelo con `home_snapshot`, y el árbol espera detrás
+  del splash hasta que `isEntitlementResolved()` da verde. Antes el RPC recién
+  arrancaba al montar las tabs, así que una cuenta pausada alcanzaba a ver su
+  Home con los números reales. El predicado acepta el dato restaurado del
+  persister sólo si sigue fresco (si no, quien acaba de pagar vería un
+  parpadeo del paywall) y deja pasar con el RPC en error: el gate falla
+  ABIERTO sin dato y el último snapshot conocido queda en cache para el modo
+  sin conexión.
 - **`use-entitlement`** ([mobile/features/billing/use-entitlement.ts](../../mobile/features/billing/use-entitlement.ts)):
   hook React Query del snapshot. Default a prueba de fallos = BLOQUEADO.
   Lógica pura testeable en [entitlement-snapshot.ts](../../mobile/features/billing/entitlement-snapshot.ts).
+- **Salidas del gate duro** (guideline 5.1.1(v)): "Cerrar sesión" y "Eliminar
+  cuenta". La baja se gatea SÓLO por `userId` — la autoriza el `auth.uid()`
+  del JWT, no el hogar; pedir `familyId` (que sale del home snapshot) hacía
+  desaparecer la salida cuando el snapshot fallaba.
 - **Nudge del período libre** ([free-access-nudge.ts](../../mobile/features/billing/free-access-nudge.ts)):
   badge "Acceso completo: N días restantes" (copy neutro — NUNCA "Prueba"/
   "trial") + banner por umbrales [7,3,1] una vez por umbral. Solo cuando
@@ -176,7 +195,8 @@ clobberearse. Idempotente: nunca pisa estado más nuevo con más viejo.
 - Cliente: `use-entitlement.ts`, `entitlement-snapshot.ts`, `free-access-nudge.ts`,
   `subscription-gate.tsx`, `billing-screen.tsx` (lockMode), `settings-screen.tsx`
   (aviso leave), `(tabs)/_layout.tsx` (montaje del gate).
-- Tests: `entitlement-snapshot-shape.test.ts` (3), `free-access-nudge.test.ts` (8).
+- Tests: `entitlement-snapshot-shape.test.ts` (3), `free-access-nudge.test.ts` (8),
+  `entitlement-readiness.test.ts` (6), `overlay-hosts-innermost.test.ts` (5).
 
 ## Qué falta (Fases 2-4)
 
