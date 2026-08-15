@@ -73,6 +73,31 @@ export const decorativeDurations = {
   growBarFast: 600,
   growBar: 700,
   growBarSlow: 800,
+  // ── Familia Wrapped "La Edición" (source: design/wrapped-2026-08/README:83–92) ──
+  /** Wrapped nav — crossfade + slide 22px entre páginas (250ms). */
+  wrappedNav: 250,
+  /** Wrapped — el segmento de la barra story se llena (200ms). */
+  wrappedSegment: 200,
+  /** Wrapped 01 — el sello asienta scale 1.06→1 (400ms). */
+  wrappedSello: 400,
+  /** Wrapped 02 — count-up de las filas editoriales (800ms ease-out). */
+  wrappedFilas: 800,
+  /** Wrapped 05 — count-up del monto héroe del veredicto (700ms). */
+  wrappedVeredicto: 700,
+  /** Wrapped 05 — la estampa "sella": scale 1.4→1 + rotate settle (350ms). */
+  wrappedEstampa: 350,
+  /** Wrapped 05 EXCEDIDO — la estampa cae sin rebote (300ms). */
+  wrappedEstampaCae: 300,
+  /** Wrapped 06 — la option card pasa pozo→raised al seleccionar (150ms). */
+  wrappedSelect: 150,
+  /** Wrapped 06 — la barra de la meta anima el tramo nuevo (600ms ease-out). */
+  wrappedMetaBar: 600,
+  /** Wrapped 07 — la mini-card NUEVA baja al estante (450ms spring-feel). */
+  wrappedMiniDrop: 450,
+  /** Wrapped 07 — glow del borde de la mini-card nueva (800ms). */
+  wrappedMiniGlow: 800,
+  /** Wrapped reduced-motion — fade plano que reemplaza toda entrada (150ms). */
+  wrappedReducedFade: 150,
 } as const
 
 export type DecorativeDurationKey = keyof typeof decorativeDurations

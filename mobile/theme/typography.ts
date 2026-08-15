@@ -20,6 +20,56 @@ export function nunitoFamily(weight: TextStyle['fontWeight']): string {
   }
 }
 
+/**
+ * CAJA DE LÍNEA SEGURA — el `lineHeight` mínimo que no recorta el glifo.
+ *
+ * En iOS, RN fija `minimum/maximumLineHeight` al valor declarado
+ * (`RCTAttributedTextUtils.mm:226-227`) y sólo re-centra el glifo con un
+ * baseline offset si ese valor es ≥ la métrica natural de la fuente
+ * (`:328` → `if (maximumLineHeight < maximumFontLineHeight) return`).
+ * Por debajo NO hay offset: la caja se comprime contra el descendente y
+ * el ascendente queda GUILLOTINADO, porque `RCTParagraphComponentView`
+ * dibuja clipeado a sus bounds. En Android no pasa (`CustomLineHeightSpan`
+ * reparte el leading en dos mitades). En CSS tampoco: el glifo sobresale
+ * de la caja sin recortarse — por eso un `line-height:1` transcrito de un
+ * handoff web se ve perfecto en el navegador y cortado en device.
+ *
+ * Medido sobre `Nunito_900Black.ttf` (upem 1000): descendente `0.353 em`,
+ * lineHeight natural `1.364 em`. Con `L < 1.364·S` el ascendente
+ * disponible es `L − 0.353·S`, así que un glifo de altura `yMax` se
+ * recorta si `L < (yMax + 0.353)·S`. Peor caso por familia de glifos:
+ *
+ *   `Ú` `Á` `É` (mayúscula acentuada)  yMax 0.959 → **1.312**
+ *   `$`                                yMax 0.829 → **1.182**
+ *   `ú` `ó` `í` (minúscula acentuada)   yMax 0.788 → 1.141
+ *   dígitos · mayúsculas sin acento     yMax 0.716 → 1.069
+ *   `+`                                 yMax 0.537 → 0.890
+ *
+ * (Ese `+` es la firma del bug: en un monto a `lineHeight:1` sobrevive
+ * solo él y el número se ve como un "+" suelto.)
+ */
+export const NUNITO_SAFE_LH = 1.32
+/** Charset controlado de números/moneda (`0-9 . , + − $ % º`): el peor
+ *  caso es `$` (1.182), así que 1.2 alcanza y conserva el interlineado
+ *  apretado que los diseños piden para las cifras grandes. */
+export const NUNITO_SAFE_LH_NUMERIC = 1.2
+
+/**
+ * `lineHeight` en puntos, elevado al piso seguro. Usar SIEMPRE en lugar
+ * de multiplicar a mano — un ratio por debajo del piso recorta el glifo.
+ *
+ *   lineHeight: safeLineHeight(31, 1.12)              → 40.9 (elevado)
+ *   lineHeight: safeLineHeight(22, 1, { numeric: true }) → 26.4
+ */
+export function safeLineHeight(
+  fontSize: number,
+  mult: number,
+  opts?: { numeric?: boolean },
+): number {
+  const floor = opts?.numeric ? NUNITO_SAFE_LH_NUMERIC : NUNITO_SAFE_LH
+  return Math.round(fontSize * Math.max(mult, floor) * 10) / 10
+}
+
 export type TypographyPresetKey =
   | 'hero' | 'displayLarge' | 'screenTitle' | 'sectionTitle' | 'titleMedium'
   | 'metricLarge' | 'metricValue'

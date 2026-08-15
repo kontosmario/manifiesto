@@ -119,6 +119,10 @@ const Animated = {
   Text: 'Text',
   ScrollView: 'ScrollView',
   createAnimatedComponent: <T,>(component: T): T => component,
+  // No-op: en runtime whitelistea props nativas animables (p.ej. `text` del
+  // TextInput del contador fluido). Se llama a nivel de módulo, así que sin
+  // esto cualquier test que importe ese módulo explota al colectar.
+  addWhitelistedNativeProps: (_props: Record<string, boolean>): void => {},
 }
 
 export default Animated

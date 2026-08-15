@@ -2,10 +2,10 @@ import { useCallback, useMemo, useState, type ComponentProps, type ReactNode } f
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   View,
   type AccessibilityActionEvent,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import {
   Gesture,
@@ -108,8 +108,10 @@ const FLICK_VELOCITY_PX_S = 600
  *     del card hijo NO los expone como halo.
  *   - Cuando el row se desliza, los paneles se trasladan en sync usando
  *     un `useAnimatedStyle` que lee el mismo `translateX`. Entran desde
- *     off-screen y terminan exactamente en el borde del outer container,
- *     llenando las esquinas redondeadas sin huecos.
+ *     off-screen y terminan a ras del borde del outer container, con un
+ *     solape del ancho del radio METIDO DEBAJO de la fila para que la cuña
+ *     de la esquina redondeada quede pintada del color de la acción y no
+ *     de la superficie de atrás (ver `SwipeActionsPanel`).
  *   - Las acciones cierran el row antes de disparar su `onPress` (UX:
  *     siempre se ve la transición de close).
  *   - El gesto tiene `activeOffsetX([-10, 10])` y `failOffsetY([-15, 15])`
@@ -336,6 +338,7 @@ export function SwipeRow({
           actionWidth={actionWidth}
           translateX={translateX}
           skin={skin}
+          overlap={clipRadius}
           onActionPress={handleActionPress}
         />
       ) : null}
@@ -347,6 +350,7 @@ export function SwipeRow({
           actionWidth={actionWidth}
           translateX={translateX}
           skin={skin}
+          overlap={clipRadius}
           onActionPress={handleActionPress}
         />
       ) : null}
@@ -444,6 +448,9 @@ interface SwipeActionsPanelProps {
   actionWidth: number
   translateX: SharedValue<number>
   skin: SwipeRowSkin
+  /** Solape del panel POR DEBAJO de la fila (= radio del clip). Ver la nota
+   *  del panel: es lo que tapa el hueco de la esquina redondeada. */
+  overlap: number
   onActionPress: (action: SwipeAction) => void
 }
 
@@ -452,13 +459,30 @@ interface SwipeActionsPanelProps {
  * su propio componente, su `useAnimatedStyle` se instancia SOLO cuando el lado
  * tiene acciones y se renderiza — evita crear el mapper del panel ausente en cada
  * una de las ~60-70 filas montadas (ningún consumidor usa `leftActions`, así que
- * ese hook era 100% muerto). El transform es idéntico al original:
- *   - right: posicionado en right:0; en idle shifted +width (off-screen), y
+ * ese hook era 100% muerto). El transform sigue el mismo esquema:
+ *   - right: posicionado en right:0; en idle shifted +span (off-screen), y
  *     shifted=0 cuando translateX = -width (visible pegado al borde).
- *   - left: posicionado en left:0; en idle shifted -width, shifted=0 cuando
+ *   - left: posicionado en left:0; en idle shifted -span, shifted=0 cuando
  *     translateX = +width.
+ *   (`span` = ancho de los botones + solape; ver la nota del solape abajo.)
  * `translateX` es el mismo SharedValue del gesto (ref estable) → el panel sigue
  * al row en el UI thread exactamente como antes.
+ *
+ * SOLAPE (owner 2026-08-12). El panel medía EXACTO el ancho de sus botones y
+ * su borde interno aterrizaba justo contra el borde de la fila. Pero la fila
+ * tiene esquinas redondeadas: en su lado revelado quedaba una cuña —el arco de
+ * la esquina— por donde se veía la superficie de ATRÁS (en Gastos, el
+ * `rowShadowWrap`, un fill plano; la fila en dark es un degradé). O sea el
+ * hueco se leía en dos tonos, con un borde redondeado desalineado contra el
+ * borde recto del panel.
+ *
+ * Ahora el panel mide `ancho + solape` y avanza `(ancho+solape)/ancho` por cada
+ * píxel del dedo: en reposo sigue COMPLETAMENTE fuera del clip (mismo cero de
+ * antes, sin asomos en las esquinas) y a fila abierta su borde interno queda
+ * `solape` px POR DEBAJO de la fila. Como el panel se pinta debajo, ese excedente
+ * sólo se ve por donde la fila no llega — la cuña de la esquina — y el hueco
+ * queda de un solo color. El solape entra proporcional al gesto, así que en
+ * cualquier punto del arrastre la fila lo tapa.
  */
 function SwipeActionsPanel({
   side,
@@ -466,18 +490,24 @@ function SwipeActionsPanel({
   actionWidth,
   translateX,
   skin,
+  overlap,
   onActionPress,
 }: SwipeActionsPanelProps) {
   const width = actions.length * actionWidth
+  const span = width + overlap
   const panelStyle = useAnimatedStyle(() => {
-    const base = side === 'right' ? width : -width
-    return { transform: [{ translateX: base + translateX.value }] }
+    // `span` en reposo (translateX 0) → panel entero fuera del clip; 0 cuando la
+    // fila está abierta (translateX = ∓width) → borde externo a ras del
+    // contenedor y `overlap` metido debajo de la fila.
+    const ratio = span / width
+    const base = side === 'right' ? span : -span
+    return { transform: [{ translateX: base + translateX.value * ratio }] }
   })
   return (
     <Animated.View
       style={[
         side === 'right' ? styles.actionsAbsoluteRight : styles.actionsAbsoluteLeft,
-        { width },
+        { width: span },
         panelStyle,
       ]}
     >
@@ -485,7 +515,14 @@ function SwipeActionsPanel({
         <SwipeActionButton
           key={`${side[0]}-${action.label}-${i}`}
           action={action}
-          width={actionWidth}
+          // El solape se lo come el botón PEGADO A LA FILA (índice 0 en los dos
+          // lados: `row` lo deja a la izquierda, `row-reverse` a la derecha), así
+          // el excedente ya viene pintado de su color y no hace falta ni un View
+          // de relleno ni un fill en el panel. `innerPad` lo compensa para que
+          // ícono y label sigan centrados en la parte VISIBLE del botón.
+          width={i === 0 ? actionWidth + overlap : actionWidth}
+          innerPad={i === 0 ? overlap : 0}
+          side={side}
           skin={skin}
           onPress={() => onActionPress(action)}
         />
@@ -497,11 +534,23 @@ function SwipeActionsPanel({
 interface SwipeActionButtonProps {
   action: SwipeAction
   width: number
+  /** Parte del ancho que queda DEBAJO de la fila (solo el botón interno). Se
+   *  descuenta como padding del lado que da a la fila para no descentrar el
+   *  contenido respecto de lo que se ve. */
+  innerPad: number
+  side: 'left' | 'right'
   skin: SwipeRowSkin
   onPress: () => void
 }
 
-function SwipeActionButton({ action, width, skin, onPress }: SwipeActionButtonProps) {
+function SwipeActionButton({
+  action,
+  width,
+  innerPad,
+  side,
+  skin,
+  onPress,
+}: SwipeActionButtonProps) {
   const theme = useThemeTokens()
   const isDanger = action.tone === 'danger'
   const isNeo = skin === 'neo'
@@ -535,6 +584,11 @@ function SwipeActionButton({ action, width, skin, onPress }: SwipeActionButtonPr
       style={[
         styles.actionButton,
         { width, backgroundColor: background },
+        innerPad > 0
+          ? side === 'right'
+            ? { paddingLeft: innerPad }
+            : { paddingRight: innerPad }
+          : null,
         // El panel es el hueco que queda cuando la fila se corre: en neo
         // se lee como pozo. Sin soporte de inset (Android < 29) queda el
         // fill plano, que ya separa el panel de la fila por sí solo.

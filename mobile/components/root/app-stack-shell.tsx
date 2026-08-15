@@ -16,6 +16,8 @@ import { GlobalAdvisorActionHost } from '@/components/control-v2/global-advisor-
 import { ArcHubA11yShield, ArcHubHost } from '@/components/navigation/arc-hub-host'
 import { ArcHubProvider } from '@/components/navigation/arc-hub-context'
 import { useAuthSession } from '@/features/auth/use-auth-session'
+import { useEntitlement } from '@/features/billing/use-entitlement'
+import { isEntitlementResolved } from '@/features/billing/entitlement-snapshot'
 import { useLastUserProfileSync } from '@/features/auth/use-last-user-profile-sync'
 import { useTimezoneSync } from '@/features/auth/use-timezone-sync'
 import { useLanguageSync } from '@/features/preferences/use-language-sync'
@@ -87,6 +89,13 @@ export function AppStackShell() {
   const session = useAuthSession()
   const userId = session.data?.user.id
   const snapshot = useHomeSnapshot(userId)
+  // El entitlement se dispara ACÁ, en paralelo con el snapshot, y no
+  // cuando monta el SubscriptionGate. El gate vive dentro de las tabs,
+  // así que su RPC recién arrancaba DESPUÉS de que las tabs pintaran:
+  // una cuenta con el acceso pausado veía su Home con los números
+  // reales hasta que la respuesta llegaba y el paywall la tapaba.
+  // Misma query key → el gate la lee caliente, sin request extra.
+  const entitlement = useEntitlement(userId)
   // Mirror the active user's email + display name + avatar to a
   // SecureStore-backed cache so the login screen can show a
   // personalized hero on next launch.
@@ -147,12 +156,20 @@ export function AppStackShell() {
     }
   }, [snapshot.isError, snapshot.error])
 
+  // Reglas del predicado (fresco vs. restaurado del disco vs. error) en
+  // `entitlement-snapshot.ts`, con sus tests.
+  const entitlementResolved = isEntitlementResolved(entitlement)
+
   // If the user is authenticated, block the whole app tree until the
   // snapshot is seeded. Everything downstream (RequireAuth, tabs,
   // bridges) then mounts against a hot cache and issues zero extra
   // requests. Unauthenticated users pass through immediately —
   // RequireAuth below will redirect them to /(auth)/login.
-  if (userId && !snapshot.data && !snapshot.isError) {
+  //
+  // El entitlement entra en la MISMA espera (corre en paralelo, así que
+  // no suma round-trips salvo que sea el más lento) para que la decisión
+  // de acceso exista antes de la primera pintura del árbol.
+  if (userId && ((!snapshot.data && !snapshot.isError) || !entitlementResolved)) {
     return <BlockingScreenView message="Preparando tu espacio..." />
   }
 
@@ -176,9 +193,6 @@ export function AppStackShell() {
           <GlobalAdvisorActionHost familyId={familyId} userId={userId} />
           <AchievementUnlockBridge userId={userId} />
           <WeekCloseBridge familyId={familyId} userId={userId} />
-          <CycleWrappedBridge />
-          <ToastHost />
-          <NoSpendConfettiHost />
         </>
       ) : null}
       <ArcHubA11yShield>
@@ -416,6 +430,21 @@ export function AppStackShell() {
           NO es un `<Modal>`: una ventana nativa montada a mitad del touch
           no recibe el stream del gesto que arrancó en la raíz de RNGH. */}
       {userId && familyId ? <ArcHubHost /> : null}
+      {/* El wrapped va DESPUÉS del Stack y del ArcHubHost: es un overlay
+          full-screen con gestos (tap zones, swipe-down, option cards) y la
+          regla del repo es "último hermano para el hit-test; zIndex sólo
+          refuerza el pintado". Antes vivía antes del Stack y subía sólo por
+          zIndex — dibujaba bien pero el táctil dependía del orden de cada
+          plataforma. ToastHost y el confetti quedan DESPUÉS del wrapped a
+          propósito: un toast disparado por la decisión del sobrante tiene
+          que verse (y tocarse) por encima del modal. */}
+      {userId && familyId ? (
+        <>
+          <CycleWrappedBridge />
+          <ToastHost />
+          <NoSpendConfettiHost />
+        </>
+      ) : null}
     </ArcHubProvider>
   )
 }

@@ -29,6 +29,23 @@ import { useNumpadOffset } from '@/lib/numpad-visibility'
 import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
+/**
+ * Despeje inferior de una pantalla de TAB — el aire que se reserva debajo del
+ * último contenido.
+ *
+ * Tiene que cubrir dos cosas, no una: la barra flotante (footprint ≈ 101–113
+ * según el inset) y el DISCO del FAB, que asoma ~26 pt por encima de ella
+ * (`neo-tab-bar-live`: `top:-26` + `marginBottom:-26`). A esto se le suma
+ * `insets.bottom` en el cálculo final.
+ *
+ * FUENTE ÚNICA (2026-08-12). La `SectionList` de Gastos NO usa el
+ * contentContainer del `Screen` —arma el suyo— y reservaba 96 en vez de este
+ * número: 48 pt menos que las otras tres tabs, y por debajo del tope del disco
+ * del FAB, que podía taparle la última fila en el centro. Cualquier superficie
+ * de scroll que no pase por el `Screen` tiene que importar ESTA constante.
+ */
+export const TAB_SCREEN_BOTTOM_CLEARANCE = 144
+
 interface ScreenProps extends ScrollViewProps {
   title?: string
   titleColor?: string
@@ -207,7 +224,9 @@ export function Screen({
   const isTabScreenRef = useRef(segmentsAreTabs)
   if (segmentsAreTabs) isTabScreenRef.current = true
   const isTabScreen = isTabScreenRef.current
-  const baseBottomPadding = theme.spacing.xxl + (isTabScreen ? 96 : 20)
+  const baseBottomPadding = isTabScreen
+    ? TAB_SCREEN_BOTTOM_CLEARANCE
+    : theme.spacing.xxl + 20
   // Reserve extra bottom space when the shared InAppNumpad is open so
   // fields near the bottom of the scroll view stay reachable above
   // the numpad sheet.

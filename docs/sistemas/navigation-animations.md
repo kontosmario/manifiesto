@@ -208,6 +208,34 @@ alpha / ~8px). El color lo pasan los heroes desde el theme: Home/Gastos `heroAcc
 frame — animá un `TextInput` con `useAnimatedProps` y formateá en worklet. El conteo por
 `setState` siempre compite por el JS thread y se traba en boots/devices cargados.
 
+### `startWhen` — que el conteo no se gaste tapado (2026-08-13)
+
+El conteo del saldo de la Home arrancaba en el **mount del árbol de tabs**, o sea detrás
+del splash de post-login. Con `Easing.out(cubic)` la mayor parte del recorrido se consume
+en el primer tercio, así que para cuando la card se veía el número ya estaba casi en su
+valor final: el owner reportó que "no se ve el contador andando".
+
+`CountUpText` acepta `startWhen` (flourish-only): mientras sea `false` el número se queda
+en 0 sin animar; al abrir corre el conteo entero. **No rompe la regla de la §3**: el gate
+no marca `hasRevealedRef` cuando rebota, así que sólo POSPONE el mismo reveal — volver a la
+tab sigue sin recontar desde cero. Reduced motion tiene precedencia sobre el gate (en gama
+baja no hay animación que esperar: el valor final se asigna en seco igual, si no el número
+quedaría congelado en `$0`).
+
+La Home lo abre con `splashIsHidden && (!balanceHydrating || techo)`. **El techo de 2.5s no
+es opcional**: `balanceHydrating` incluye `cycleIncomeQuery.isError`, así que offline puede
+quedar en `true` para siempre.
+
+### `flightValue` — el color acoplado al número
+
+`CountUpText` también acepta `flightValue`: un `SharedValue` externo que el componente usa
+COMO su `progress` interno, de modo que el caller pueda derivar estilo del valor **en
+vuelo**. Lo usa el hero de Home para graduar la tinta del monto según cuánto se acerca a
+cero ([`hero-balance-ramp.ts`](../../mobile/features/home/hero-balance-ramp.ts)): antes la
+tinta la decidía la VARIANTE, que se resuelve con el saldo final desde el primer frame — si
+el ciclo cerraba en rojo, el color ya estaba en terracota mientras el número todavía bajaba
+desde cero. Ahora **el fondo dice QUÉ (la variante) y la tinta dice CUÁNTO (el valor)**.
+
 ---
 
 ## 7. Checklist para un screen de tab nuevo (no reintroducir el jank)

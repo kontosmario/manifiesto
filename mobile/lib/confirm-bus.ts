@@ -1,7 +1,7 @@
 // Pub/sub mínimo para confirmaciones neo. Misma topología que
-// `toast-bus`: un único listener (NeoConfirmHost, montado en
-// app-stack-shell) consume el stream y los productores llaman a
-// `neoConfirm(...)` desde donde sea.
+// `toast-bus`: un listener (NeoConfirmHost, montado en app-stack-shell)
+// consume el stream y los productores llaman a `neoConfirm(...)` desde
+// donde sea.
 //
 // Por qué imperativo y no un componente: reemplaza a `Alert.alert`, que
 // es una API global del SO. Sus call sites viven dentro de callbacks y
@@ -9,6 +9,16 @@
 // pantalla se desmontó — un `<ConfirmSheet visible={...}>` local se
 // desmontaría con ella y la pregunta se perdería en silencio. El host
 // global sobrevive igual que sobrevivía el diálogo del sistema.
+//
+// El pedido va SÓLO al host más interno (el último suscripto), no a
+// todos. Un `<Modal>` nativo de iOS se presenta por encima de todo el
+// árbol React, así que el host de la raíz dibuja DEBAJO de una toma de
+// pantalla modal (el gate de suscripción, la baja de cuenta anidada) y
+// iOS descarta en silencio un segundo `<Modal>` presentado desde el
+// mismo view controller. Esas tomas montan su propio host; el más
+// profundo monta después, así que "último suscripto" = el único que el
+// usuario puede ver. Es lo que daba gratis `Alert.alert` (diálogo del
+// SO, siempre sobre lo que esté arriba).
 
 export type ConfirmTone = 'destructive' | 'irreversible' | 'neutral'
 
@@ -32,7 +42,9 @@ export interface ConfirmRequest {
 
 type Listener = (request: ConfirmRequest) => void
 
-const listeners = new Set<Listener>()
+// Pila, no Set: el orden de montaje ES la profundidad, y el tope es el
+// host que está dentro de la ventana nativa más alta.
+const listeners: Listener[] = []
 let counter = 0
 
 export interface NeoConfirmOptions {
@@ -55,7 +67,8 @@ export function neoConfirm(
   title: string,
   opts?: NeoConfirmOptions,
 ): Promise<boolean> {
-  if (listeners.size === 0) return Promise.resolve(false)
+  const host = listeners[listeners.length - 1]
+  if (!host) return Promise.resolve(false)
   counter += 1
   const id = `${Date.now()}-${counter}`
   return new Promise<boolean>((resolve) => {
@@ -74,15 +87,14 @@ export function neoConfirm(
       tone: opts?.tone ?? 'neutral',
       resolve: once,
     }
-    listeners.forEach((l) => {
-      l(request)
-    })
+    host(request)
   })
 }
 
 export function subscribeConfirm(listener: Listener): () => void {
-  listeners.add(listener)
+  listeners.push(listener)
   return () => {
-    listeners.delete(listener)
+    const at = listeners.indexOf(listener)
+    if (at !== -1) listeners.splice(at, 1)
   }
 }

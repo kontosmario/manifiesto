@@ -114,9 +114,20 @@ const renderAddIcon = () => null
 // `variant="neo"` (F3): disco con surco + gradiente invertido en dark + press
 // inset. El host de ancho fijo (fabSlot en NeoTabBarLive) lo confina al centro.
 // Referencia module-level → estable entre renders.
-const renderNeoFab = () => (
-  <AddExpenseTabButton variant="neo" accessibilityState={{ selected: false }} />
+// ELEMENTO CONSTANTE, no una factory que fabrica uno nuevo por llamada. La
+// barra invoca `renderFab()` DENTRO de su render y su memo se invalida en cada
+// tap (le cambia `activeTab`), así que con un literal nuevo React reconciliaba
+// el subárbol entero del FAB —888 líneas, ~68 hooks, 6 queries y el array de
+// quick-actions rearmado con sus lookups de i18n— en cada cambio de tab. Con la
+// referencia idéntica hace bail-out.
+//
+// Congela las props del FAB: hoy no recibe ninguna que dependa de la tab
+// activa. Si alguna vez necesita una, esto vuelve a ser una factory.
+const NEO_FAB_A11Y_STATE = { selected: false } as const
+const NEO_FAB_ELEMENT = (
+  <AddExpenseTabButton variant="neo" accessibilityState={NEO_FAB_A11Y_STATE} />
 )
+const renderNeoFab = () => NEO_FAB_ELEMENT
 
 /**
  * Hoja memoizada que lee `useAdvisorBadge` AISLADO — igual patrón que

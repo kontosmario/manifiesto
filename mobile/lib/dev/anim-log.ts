@@ -135,8 +135,17 @@ export function sampleTransitionFrames(routeName: string): void {
 
 type ListenerMap = Record<string, ((e: { target?: string }) => void) | undefined>
 
+/**
+ * Las route keys de React Navigation son `${name}-${nanoid()}` y TANTO el
+ * nombre como el nanoid pueden llevar guiones, así que no se puede partir por
+ * el primero (daba `'fixed'` para `fixed-expenses-…`) ni por el último. Se
+ * matchea contra los nombres reales de las tabs.
+ */
+const TAB_ROUTE_NAMES = ['home', 'expenses', 'fixed-expenses', 'insights', 'add'] as const
+
 function routeNameFromTarget(target?: string): string {
-  return (target ?? '').split('-')[0] || 'unknown'
+  const key = target ?? ''
+  return TAB_ROUTE_NAMES.find((name) => key === name || key.startsWith(`${name}-`)) ?? 'unknown'
 }
 
 // Route actualmente focuseado (null cuando está blurreado). Sirve para
