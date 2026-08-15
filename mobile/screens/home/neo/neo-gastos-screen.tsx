@@ -3954,10 +3954,21 @@ function NeoGastosContent({
             las ediciones con `expenses_count === 0`, y ese filtro también
             alimenta el archivo de Wrappeds de Ajustes, así que no se toca acá);
             queda cubierto por si el filtro cambia o llega por deep-link. Después
-            el error de la query real, y recién ahí el fallback de "no se
-            conservaron" (ediciones cerradas ANTES de la retención larga, cuyas
-            filas ya fueron purgadas) — `closedFeedEmpty` ya exige
-            `closedFeed.isFetched`, así que mientras carga la primera página el
+            el error de la query real. Después el placeholder: `closedFeed` usa
+            `placeholderData: keepPreviousData` (perf, para que el hero/calendario
+            crucen suave) — al saltar de una edición cerrada a OTRA desde el
+            dropdown, mientras el fetch de la ventana NUEVA está en vuelo,
+            `closedFeed.data` sigue siendo el de la edición ANTERIOR aunque
+            `isFetched` ya mire la key nueva (0 fetches → false). Sin este gate,
+            `closedFeedEmpty` da false (por el `isFetched` en false) y el
+            ternario caía al feed real con las filas VIEJAS bajo el header
+            nuevo. `isPlaceholderData` es el único flag que distingue "estas
+            filas son de la key vieja" de "esta key nueva ya resolvió" — mientras
+            esté prendido no se pinta nada (ni feed ni fallback). Recién
+            resuelto el placeholder entra el fallback de "no se conservaron" (ediciones cerradas
+            ANTES de la retención larga, cuyas filas ya fueron purgadas) —
+            `closedFeedEmpty` ya exige `closedFeed.isFetched`, así que mientras
+            carga la primera página en frío (sin placeholder de por medio) el
             ternario cae al feed real, que sin data todavía no dibuja nada. */}
         {(selectedEdition.expenses_count ?? 0) === 0 ? (
           <GastosMovementsEmptyWell
@@ -3980,6 +3991,11 @@ function NeoGastosContent({
               void closedFeed.refetch()
             }}
           />
+        ) : closedFeed.isPlaceholderData ? (
+          // Todavía mostrando (por `keepPreviousData`) las filas de la edición
+          // ANTERIOR mientras la ventana nueva termina de resolver: no
+          // dibujamos nada acá — ni el feed viejo ni un fallback prematuro.
+          null
         ) : closedFeedEmpty ? (
           // Edición cerrada ANTES de la retención extendida: sus filas ya
           // fueron purgadas. El resumen (hero/calendario) sigue arriba.
