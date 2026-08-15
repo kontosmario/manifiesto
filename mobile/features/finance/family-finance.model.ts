@@ -79,6 +79,15 @@ export interface FinanceStoragePayload {
   /** Para cycle_type rolling, días por ciclo (14/7/N). NULL para monthly. */
   cycle_length_days: number | null
   /**
+   * Modelo de ciclo (2026-08). 'nominal' = congela en el payday (histórico);
+   * 'extended' = el ciclo se estira hasta que se confirma el cobro, así el
+   * gasto cargado después del payday resta del ciclo al que pertenece en vez
+   * de quedar en limbo. Lo activa este build al confirmar; el backend lo
+   * espeja en close_monthly_cycle / cycle_disponible / home_snapshot.
+   * Opcional: un upsert que NO lo incluya preserva el valor existente.
+   */
+  cycle_model?: 'nominal' | 'extended'
+  /**
    * Plata acumulada del cierre de meses anteriores cuando el user
    * eligió "Guardar como reserva" en el wrapped (Spec B). Solo se
    * lee — el upsert NUNCA pisa esta columna (el RPC `record_month_close_decision`
@@ -116,6 +125,9 @@ export interface UpsertFamilyFinanceInput {
   cycleType: 'monthly' | 'biweekly' | 'weekly' | 'custom'
   cycleAnchorDate: string | null
   cycleLengthDays: number | null
+  /** Modelo de ciclo. undefined → upsert lo omite → preserva. Solo las rutas
+   *  de confirmación de cobro lo mandan (es el cutover per-familia). */
+  cycleModel?: 'nominal' | 'extended'
 }
 
 export interface FamilyFinanceInputSnapshot {
@@ -142,6 +154,9 @@ export interface FamilyFinanceInputSnapshot {
   cycleType: 'monthly' | 'biweekly' | 'weekly' | 'custom'
   cycleAnchorDate: string | null
   cycleLengthDays: number | null
+  /** Modelo de ciclo. undefined → upsert lo omite → preserva. Solo las rutas
+   *  de confirmación de cobro lo mandan (es el cutover per-familia). */
+  cycleModel?: 'nominal' | 'extended'
 }
 
 const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205'])
@@ -230,6 +245,7 @@ export function defaultFinanceValues(): FinanceStoragePayload {
     cycle_type: 'monthly',
     cycle_anchor_date: null,
     cycle_length_days: null,
+    cycle_model: 'nominal',
     monthly_reserve_amount: 0,
   }
 }
@@ -329,6 +345,9 @@ export function normalizeFinancePayload(
       payload.cycle_length_days <= 365
         ? payload.cycle_length_days
         : null,
+    // Solo el literal 'extended' activa el modelo nuevo; cualquier otra cosa
+    // (null, columna ausente en una base vieja, valor corrupto) cae en nominal.
+    cycle_model: payload?.cycle_model === 'extended' ? 'extended' : 'nominal',
     // PostgREST devuelve `numeric` como string — coerce defensivo
     // (mismo pattern que current_cycle_starting_balance). Clamp >= 0
     // porque el CHECK constraint de DB exige no-negativo.
@@ -384,7 +403,8 @@ export function isMissingFinanceColumnError(
     | 'usd_rate_enabled'
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor'
-    | 'income_mode',
+    | 'income_mode'
+    | 'cycle_model',
 ) {
   return isMissingColumnError(error, columnName)
 }
@@ -412,6 +432,8 @@ export function financeInputToStoragePayload(
     cycle_type: input.cycleType,
     cycle_anchor_date: input.cycleAnchorDate,
     cycle_length_days: input.cycleLengthDays,
+    // undefined → el upsert omite la key → DB preserva el modelo actual.
+    cycle_model: input.cycleModel,
     // monthly_reserve_amount NUNCA viaja desde la UI hacia el upsert
     // — solo lo escribe el RPC `record_month_close_decision` (Spec B).
     // Si el upsert lo incluyera, sobrescribiría la reserva acumulada
@@ -543,6 +565,7 @@ export function buildFamilyFinanceInput(
     cycleType: snapshot.cycleType,
     cycleAnchorDate: snapshot.cycleAnchorDate,
     cycleLengthDays: snapshot.cycleLengthDays,
+    cycleModel: snapshot.cycleModel,
   }
 }
 
@@ -553,6 +576,12 @@ export function buildSalaryConfirmationInput(
   return buildFamilyFinanceInput({
     ...snapshot,
     lastSalaryConfirmedAt: confirmedAt.toISOString(),
+    // CUTOVER al ciclo extendido. Va acá (y en buildCycleStartingBalanceInput)
+    // y en ningún otro lado: el cambio de modelo tiene que ocurrir en el mismo
+    // upsert que estampa la confirmación, porque el trigger AFTER UPDATE de
+    // `family_finance` dispara el cierre en esa misma transacción y necesita
+    // ver el flag y el anchor juntos para cerrar con la ventana real.
+    cycleModel: 'extended',
   })
 }
 
@@ -581,5 +610,10 @@ export function buildCycleStartingBalanceInput(
     lastSalaryConfirmedAt: confirmedAt.toISOString(),
     currentCycleAnchor: cycleStart,
     currentCycleStartingBalance: startingBalance,
+    // Ver buildSalaryConfirmationInput: el flag viaja con la confirmación.
+    // `cycleStart` acá es la FECHA DE CONFIRMACIÓN (cycleAnchorTarget del
+    // dashboard en modo extendido), o sea el arranque del ciclo nuevo y el
+    // fin real del que se estaba estirando.
+    cycleModel: 'extended',
   })
 }

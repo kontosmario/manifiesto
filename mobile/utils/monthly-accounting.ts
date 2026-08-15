@@ -1,4 +1,5 @@
 import type { FinanceCycleConfig } from '@/utils/finance-cycle-config'
+import type { ExtendedCycleContext } from '@/utils/pay-cycle'
 import { getCurrentPayCycle, normalizeToStartOfDay } from '@/utils/pay-cycle'
 import { DAY_MS } from '@/utils/time'
 
@@ -39,6 +40,7 @@ export function computeMonthlyAccountingWindow(
   today: Date,
   freezeUntilSalaryConfirmation = false,
   followCycleWindow = false,
+  extended?: ExtendedCycleContext,
 ): MonthlyAccountingWindow {
   const todayNorm = normalizeToStartOfDay(today)
   if (cycleConfig.cycle_type === 'monthly' || followCycleWindow) {
@@ -49,7 +51,15 @@ export function computeMonthlyAccountingWindow(
     // con pending=false por la exención de computeIsSalaryPending-
     // Confirmation — mismas salidas que las dos ramas gemelas que
     // reemplaza (review 2026-07-08).
-    const cycle = getCurrentPayCycle(todayNorm, cycleConfig, freezeUntilSalaryConfirmation)
+    // El modelo extendido viaja junto al freeze: es la MISMA ventana, y si
+    // divergieran, el saldo (esta ventana) y el countdown (payCycle) dirían
+    // cosas distintas — la clase de bug que este módulo existe para evitar.
+    const cycle = getCurrentPayCycle(
+      todayNorm,
+      cycleConfig,
+      freezeUntilSalaryConfirmation,
+      extended,
+    )
     const daysIntoMonth =
       Math.floor((todayNorm.getTime() - cycle.start.getTime()) / DAY_MS) + 1
     const daysRemaining = Math.max(

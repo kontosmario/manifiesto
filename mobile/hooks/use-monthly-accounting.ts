@@ -7,6 +7,7 @@ import {
 } from '@/utils/monthly-accounting'
 import {
   computeIsSalaryPendingConfirmation,
+  financeToExtendedCycleContext,
   normalizeToStartOfDay,
 } from '@/utils/pay-cycle'
 
@@ -35,6 +36,10 @@ export function useMonthlyAccounting(
   // optional-chain adentro). El "modo dinámico → nunca freeze" vive en
   // computeIsSalaryPendingConfirmation (fuente única).
   const incomeMode = finance.data?.income_mode
+  // Mismo motivo que `incomeMode`: hoisteados para que el memo no dependa de
+  // un optional-chain que el compiler no preserva.
+  const cycleModel = finance.data?.cycle_model
+  const currentCycleAnchor = finance.data?.current_cycle_anchor
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
     const config = financeToCycleConfig(finance.data)
@@ -55,6 +60,10 @@ export function useMonthlyAccounting(
       today,
       freeze && pending,
       incomeMode === 'dynamic',
+      financeToExtendedCycleContext({
+        cycle_model: cycleModel,
+        current_cycle_anchor: currentCycleAnchor,
+      }),
     )
   }, [
     finance.data?.cycle_type,
@@ -63,6 +72,8 @@ export function useMonthlyAccounting(
     finance.data?.cycle_length_days,
     finance.data?.last_salary_confirmed_at,
     incomeMode,
+    cycleModel,
+    currentCycleAnchor,
     freeze,
   ])
 }

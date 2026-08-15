@@ -6,6 +6,19 @@ export interface PayCycle {
   end: Date
   weeks: number
   days: number
+  /**
+   * Fin NOMINAL de la ventana (el payday configurado), EXCLUSIVO.
+   *
+   * Igual a `end` salvo que el ciclo esté ESTIRADO (`cycle_model='extended'`
+   * + cobro sin confirmar): ahí `end` se corre hasta hoy+1 y `nominalEnd`
+   * conserva el día 5 (o el que sea) que el usuario tiene configurado.
+   * Espejo del `nominal_period_end` que `close_monthly_cycle` archiva.
+   *
+   * OPCIONAL a propósito: hay tests que construyen literales `PayCycle`.
+   * Usar `isCycleExtended()` / `getCycleExtensionDays()` en vez de
+   * compararlo a mano.
+   */
+  nominalEnd?: Date
 }
 
 export function normalizeToStartOfDay(date: Date): Date {
@@ -57,10 +70,68 @@ export function buildPayDate(year: number, month: number, paymentDay: number): D
   return normalizeToStartOfDay(new Date(year, month, normalizedPaymentDay))
 }
 
+/**
+ * Contexto del modelo de ciclo (2026-08, feature "ciclo extendido").
+ *
+ * `'nominal'` es el modelo histórico: pasado el día de cobro sin confirmar, la
+ * ventana se CONGELA en el payday y todo gasto posterior queda en un limbo —
+ * se guarda pero no resta de ningún saldo visible.
+ *
+ * `'extended'` implementa la decisión del owner: **no cobraste ⇒ no hay ciclo
+ * nuevo**. La plata que gastás sale de lo que quedaba del ciclo actual, que se
+ * ESTIRA hasta que confirmes. El ciclo siguiente arranca en la fecha de
+ * confirmación, así que los ciclos quedan contiguos y cada gasto pertenece a
+ * exactamente uno.
+ *
+ * El flag vive en `family_finance.cycle_model` y lo activa este build al
+ * confirmar el cobro. El servidor lo espeja en `close_monthly_cycle`,
+ * `cycle_disponible` y `home_snapshot` (migraciones 20260813120000-120300).
+ */
+export interface ExtendedCycleContext {
+  cycleModel: 'nominal' | 'extended'
+  /** `current_cycle_anchor` (YYYY-MM-DD): fecha en que se confirmó el cobro
+   *  que ABRIÓ el ciclo vigente. Es la frontera compartida con el servidor. */
+  currentCycleAnchor: string | null
+}
+
+function toPayCycle(start: Date, end: Date, nominalEnd?: Date): PayCycle {
+  const cycleDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / DAY_MS))
+  return {
+    start,
+    end,
+    weeks: Math.max(1, Math.ceil(cycleDays / 7)),
+    days: cycleDays,
+    nominalEnd: nominalEnd ?? end,
+  }
+}
+
+/** ¿La ventana está ESTIRADA? (modelo extendido + cobro sin confirmar). */
+export function isCycleExtended(cycle: Pick<PayCycle, 'end' | 'nominalEnd'>): boolean {
+  return cycle.nominalEnd != null && cycle.nominalEnd.getTime() < cycle.end.getTime()
+}
+
+/** Días de EXTENDIDO de la ventana: 0 si no está estirada. */
+export function getCycleExtensionDays(
+  cycle: Pick<PayCycle, 'end' | 'nominalEnd'>,
+): number {
+  if (cycle.nominalEnd == null) return 0
+  return Math.max(
+    0,
+    Math.round((cycle.end.getTime() - cycle.nominalEnd.getTime()) / DAY_MS),
+  )
+}
+
+function parseAnchorDate(anchor: string | null | undefined): Date | null {
+  if (typeof anchor !== 'string' || anchor.trim() === '') return null
+  const parsed = parseLocalDateKey(anchor)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
 function computeMonthAnchored(
   today: Date,
   paymentDay: number,
   freezeUntilSalaryConfirmation: boolean,
+  extended?: ExtendedCycleContext,
 ): PayCycle {
   const todayNormalized = normalizeToStartOfDay(today)
   const currentMonthPayDate = buildPayDate(
@@ -81,17 +152,42 @@ function computeMonthAnchored(
       ? currentMonthPayDate
       : buildPayDate(cycleStart.getFullYear(), cycleStart.getMonth() + 1, paymentDay)
 
-  const cycleDays = Math.max(
-    1,
-    Math.round((cycleEnd.getTime() - cycleStart.getTime()) / DAY_MS),
-  )
+  // MODELO EXTENDIDO. Espejo exacto de la rama `is_extended` del SQL
+  // `cycle_disponible` — cualquier divergencia acá desincroniza la app del
+  // push "Buen día", que es el bug que el freeze de paridad vino a matar.
+  if (extended?.cycleModel === 'extended') {
+    const anchor = parseAnchorDate(extended.currentCycleAnchor)
+    const isPending = freezeUntilSalaryConfirmation && todayNormalized >= currentMonthPayDate
 
-  return {
-    start: cycleStart,
-    end: cycleEnd,
-    weeks: Math.max(1, Math.ceil(cycleDays / 7)),
-    days: cycleDays,
+    if (isPending) {
+      // El ciclo arrancó en la confirmación anterior y se estira hasta HOY
+      // inclusive. El anchor manda si es coherente con el mes en curso.
+      const previousPayDate = buildPayDate(
+        todayNormalized.getFullYear(),
+        todayNormalized.getMonth() - 1,
+        paymentDay,
+      )
+      const start =
+        anchor && anchor >= previousPayDate && anchor <= currentMonthPayDate
+          ? anchor
+          : previousPayDate
+      const stretchedEnd = new Date(todayNormalized)
+      stretchedEnd.setDate(stretchedEnd.getDate() + 1)
+      // El fin NOMINAL (el payday configurado) se conserva: es lo que
+      // separa "el ciclo terminó el 5" de "sigue corriendo de extendido
+      // hasta que confirmes". Sin este dato el cliente sólo tenía el fin
+      // real y cada superficie elegía uno — de ahí la incoherencia
+      // "calendario dice 13 / Fijos dice 5" (QA del owner 2026-08-13).
+      return toPayCycle(start, stretchedEnd, currentMonthPayDate)
+    }
+
+    // Cobro confirmado: el ciclo arranca en la FECHA DE CONFIRMACIÓN (no en el
+    // payday nominal) y termina en el próximo payday configurado.
+    const start = anchor && anchor >= cycleStart && anchor < cycleEnd ? anchor : cycleStart
+    return toPayCycle(start, cycleEnd)
   }
+
+  return toPayCycle(cycleStart, cycleEnd)
 }
 
 function computeRollingN(
@@ -132,11 +228,34 @@ export function getCurrentPayCycle(
   referenceDate: Date,
   config: FinanceCycleConfig,
   freezeUntilSalaryConfirmation = false,
+  extended?: ExtendedCycleContext,
 ): PayCycle {
   if (config.cycle_type === 'monthly') {
-    return computeMonthAnchored(referenceDate, config.salary_payment_day, freezeUntilSalaryConfirmation)
+    return computeMonthAnchored(
+      referenceDate,
+      config.salary_payment_day,
+      freezeUntilSalaryConfirmation,
+      extended,
+    )
   }
   return computeRollingN(referenceDate, config.cycle_anchor_date, config.cycle_length_days)
+}
+
+/**
+ * Proyecta el row de `family_finance` al contexto del modelo de ciclo.
+ * Defensivo: cualquier valor que no sea exactamente `'extended'` cae en
+ * `'nominal'` (el comportamiento histórico).
+ */
+export function financeToExtendedCycleContext(
+  finance:
+    | { cycle_model?: string | null; current_cycle_anchor?: string | null }
+    | null
+    | undefined,
+): ExtendedCycleContext {
+  return {
+    cycleModel: finance?.cycle_model === 'extended' ? 'extended' : 'nominal',
+    currentCycleAnchor: finance?.current_cycle_anchor ?? null,
+  }
 }
 
 /**

@@ -111,6 +111,7 @@ export async function upsertFamilyFinance(
     | 'current_cycle_starting_balance'
     | 'current_cycle_anchor'
     | 'income_mode'
+    | 'cycle_model'
   > = [
     'daily_budget_checkin_hour',
     'daily_budget_nudges_enabled',
@@ -125,6 +126,9 @@ export async function upsertFamilyFinance(
     'current_cycle_starting_balance',
     'current_cycle_anchor',
     'income_mode',
+    // Base sin la migración 20260813120000 → el upsert reintenta sin la
+    // columna en vez de fallar entero (mismo patrón que income_mode).
+    'cycle_model',
   ]
 
   for (const columnName of optionalColumns) {

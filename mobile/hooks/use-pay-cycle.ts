@@ -3,6 +3,7 @@ import { useFamilyFinance } from '@/features/finance/use-family-finance'
 import { DEFAULT_SALARY_PAYMENT_DAY } from '@/features/finance/family-finance.model'
 import {
   computeIsSalaryPendingConfirmation,
+  financeToExtendedCycleContext,
   getCurrentPayCycle,
   normalizeToStartOfDay,
   type PayCycle,
@@ -49,6 +50,9 @@ export function usePayCycle(
   // optional-chain adentro). El "modo dinámico → nunca pending" vive en
   // computeIsSalaryPendingConfirmation (fuente única).
   const incomeMode = finance?.income_mode
+  // Mismo hoisting que `incomeMode`, por el mismo motivo del compiler.
+  const cycleModel = finance?.cycle_model
+  const currentCycleAnchor = finance?.current_cycle_anchor
 
   return useMemo(() => {
     const today = normalizeToStartOfDay(new Date())
@@ -69,10 +73,18 @@ export function usePayCycle(
       incomeMode,
     )
 
+    // Con `cycle_model = 'extended'` la ventana no se congela: se estira hasta
+    // hoy. Efecto directo en Gastos: el calendario deja de tener días "fuera de
+    // ciclo" (pasan a ser días del ciclo, que ya restan del saldo) y la ventana
+    // fuera-de-ciclo colapsa a vacía sola, sin tocar esa pantalla.
     const cycle = getCurrentPayCycle(
       today,
       config,
       freeze && isSalaryPendingConfirmation,
+      financeToExtendedCycleContext({
+        cycle_model: cycleModel,
+        current_cycle_anchor: currentCycleAnchor,
+      }),
     )
     return { cycle, salaryPaymentDay, today, isSalaryPendingConfirmation }
   }, [
@@ -82,6 +94,8 @@ export function usePayCycle(
     finance?.cycle_length_days,
     finance?.last_salary_confirmed_at,
     incomeMode,
+    cycleModel,
+    currentCycleAnchor,
     freeze,
   ])
 }
