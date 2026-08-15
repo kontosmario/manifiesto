@@ -44,7 +44,23 @@
     "outNoticeTitle_other": "{{count}} expenses outside the cycle",
     "outNoticeSub": "They move to the next cycle once you confirm the payment",
     "outNoticeCta": "See days",
-    "rowNote": "It stays outside the cycle until you confirm the payment."
+    "rowNote": "It stays outside the cycle until you confirm the payment.",
+    "extTitle": "Your cycle is still open",
+    "extSubtitle_one": "{{count}} extended day — what you spend comes out of this cycle",
+    "extSubtitle_other": "{{count}} extended days — what you spend comes out of this cycle",
+    "extCellSub": "EXTRA",
+    "extBadge": "Extended day",
+    "extDaySub": "Extended day · this one comes out of this cycle",
+    "extBrotLine": "Your cycle is still open because you haven't confirmed your pay yet. What you spend these days is already coming out of this cycle.",
+    "extRowNote": "Extended day — already counted in this cycle.",
+    "extNoticeTitle": "Your cycle is still open",
+    "extNoticeSub_one": "{{count}} extended day — it counts in this cycle until the household owner confirms the payment",
+    "extNoticeSub_other": "{{count}} extended days — they count in this cycle until the household owner confirms the payment",
+    "extNoticeCta": "See days",
+    "extHint_one": "+{{count}} extended · tap a day",
+    "extHint_other": "+{{count}} extended · tap a day",
+    "extSublineDays_one": "{{count}} extended day in this cycle",
+    "extSublineDays_other": "{{count}} extended days in this cycle"
   },
   "list": {
     "movementsTitle": "Movements",
@@ -259,7 +275,7 @@
   },
   "summaryChip": {
     "day": "day {{day}}",
-    "text": "{{count}} mov · {{period}} · {{cat}}"
+    "text": "{{count}} mov · {{cat}} · {{period}}"
   },
   "breakdown": {
     "noCategory": "No category",

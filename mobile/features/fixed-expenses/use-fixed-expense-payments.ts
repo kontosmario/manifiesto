@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { fetchPaymentsInRange } from '@/features/fixed-expenses/fixed-expense-payment.repository'
 import { keepPersistedFixedExpenseIds } from '@/features/fixed-expenses/fixed-expense-id'
 import { type FixedExpensePayment } from '@/features/fixed-expenses/fixed-expense-payment.model'
@@ -53,6 +53,13 @@ export function useFixedExpensePayments(params: {
     queryKey: fixedExpensePaymentsKey(params.familyId, startIso, endIso, idsSignature),
     enabled: Boolean(params.familyId) && persistedIds.length > 0,
     staleTime: 60_000,
+    // La firma de ids es parte de la KEY, así que borrar o crear un fijo estrena
+    // key: sin esto la query volvía a `isLoading` y la pantalla de Fijos —que
+    // mete este `isLoading` en su gate `ready`— reemplazaba header, hero, avisos
+    // y lista por el esqueleto durante el round-trip. Con `keepPreviousData` el
+    // gate no cae; el costo es que durante ese instante el conteo de pagos puede
+    // ser el anterior. Mismo patrón que ya usa Gastos en sus snapshots.
+    placeholderData: keepPreviousData,
     queryFn: () => fetchPaymentsInRange(persistedIds, startIso, endIso),
   })
 }

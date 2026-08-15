@@ -91,6 +91,8 @@
     "daysOverdue_one": "+{{count}} día sin cobrar",
     "daysOverdue_other": "+{{count}} días sin cobrar",
     "cycleDay": "día {{day}} de {{total}}",
+    "overPlan": "Te pasaste del plan",
+    "overCupoHint": "El cupo se reinicia con tu próximo ciclo",
     "a11yBalance": "Saldo del mes: {{amount}}.",
     "a11yDailyAllowance": "Cupo diario: {{amount}}.",
     "a11yProjectedClose": "Cierre proyectado: {{amount}}.",
@@ -417,15 +419,14 @@
     "createGoal": "Crear meta"
   },
   "heroChip": {
-    "acumuladoPeriod": "💰 Sobrante {{amount}} de {{period}}",
-    "acumuladoLastMonth": "💰 Sobrante {{amount}} del mes pasado",
-    "added": "📈 Sumaste {{amount}} al mes",
-    "adjusted": "✂️ Ajustado este mes",
-    "saving": "💚 {{label}}",
-    "fixedToPay": "🗓️ {{amount}} de fijos por pagar"
+    "acumuladoPeriod": "Sobrante {{amount}} de {{period}}",
+    "acumuladoLastMonth": "Sobrante {{amount}} del mes pasado",
+    "added": "Sumaste {{amount}} al mes",
+    "adjusted": "Ajustado este mes",
+    "fixedToPay": "{{amount}} de fijos por pagar"
   },
   "reserva": {
-    "chip": "🏦 Reserva {{amount}}"
+    "chip": "Reserva {{amount}}"
   },
   "sections": {
     "cycleSummary": "RESUMEN DEL CICLO",

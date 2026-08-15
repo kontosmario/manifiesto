@@ -161,25 +161,35 @@ function BrotParticlesImpl({
   // caller no re-randomice las partículas en cada render del padre.
   const paletteKey = paletteKeyFor(colors)
 
-  // Inicialización random UNA vez por (count, paleta), en el JS thread —
-  // mismos rangos que el _size() del original. El color se parsea acá
-  // (Skia.Color es invocable en el JS thread) para que el worklet reciba
-  // el Float32Array ya listo.
-  const particles = useMemo<Particle[]>(() => {
-    const palette = paletteKey.split('|')
+  // Inicialización random UNA vez por `count`, en el JS thread — mismos
+  // rangos que el _size() del original. GEOMETRÍA y COLOR van en dos memos
+  // separados: un cambio de paleta (p.ej. el hero flipeando forest↔terracota)
+  // re-TIÑE las mismas partículas sin re-randomizarlas — con la geometría y
+  // el color en el mismo memo, las 20 se teletransportaban en el flip
+  // (review 2026-08-13).
+  const geometry = useMemo(() => {
     const n = Math.max(0, Math.floor(count))
-    return Array.from({ length: n }, (_, i) => ({
+    return Array.from({ length: n }, () => ({
       x: Math.random(),
       y: Math.random(),
       r: 1.2 + Math.random() * 2.2,
       s: 0.006 + Math.random() * 0.012,
       ph: Math.random() * 6.28,
       tw: 0.6 + Math.random() * 1.2,
+    }))
+  }, [count])
+
+  // El color se parsea acá (Skia.Color es invocable en el JS thread) para que
+  // el worklet reciba el Float32Array ya listo.
+  const particles = useMemo<Particle[]>(() => {
+    const palette = paletteKey.split('|')
+    return geometry.map((g, i) => ({
+      ...g,
       // Sin Skia el componente rinde el fallback y esto nunca se usa.
       skColor:
         skiaEnv === null ? new Float32Array(4) : skiaEnv.Skia.Color(palette[i % palette.length]),
     }))
-  }, [count, paletteKey, skiaEnv])
+  }, [geometry, paletteKey, skiaEnv])
 
   // Fase random por instancia (como this._t0 del original) para que
   // varios overlays no parpadeen sincronizados.

@@ -24,6 +24,7 @@ import {
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import {
   buildPayDate,
+  financeToExtendedCycleContext,
   formatLocalDateKey,
   getCurrentPayCycle,
   normalizeToStartOfDay,
@@ -112,18 +113,28 @@ export function buildFamilyDashboardSnapshot({
     todayDate >= currentMonthPayDate &&
     (!lastSalaryConfirmedDate || lastSalaryConfirmedDate < currentMonthPayDate)
   const cycleConfig = financeToCycleConfig(finance ?? undefined)
+  // Modelo de ciclo (nominal / extendido). Con 'extended', la ventana no se
+  // congela en el payday: se ESTIRA hasta hoy mientras el cobro no se confirme,
+  // así el gasto cargado en esos días resta del ciclo al que pertenece en vez
+  // de quedar en limbo. Espejo del SQL `cycle_disponible`.
+  const extendedCycle = financeToExtendedCycleContext(finance)
+  const isExtendedCycle = extendedCycle.cycleModel === 'extended'
   const payCycle = getCurrentPayCycle(
     todayDate,
     cycleConfig,
     isSalaryPendingConfirmation,
+    extendedCycle,
   )
   // Monthly accounting window — el plano donde viven saldo/cupo/proyección
   // y la presión de fijos. Para monthly users coincide con `payCycle`; para
   // weekly/biweekly/custom es el mes calendario (sin regresión: el call-site
   // puede pasarlo explícito para mantener identidad estable con el hook,
   // si no lo derivamos aquí).
+  // El fallback conserva sus flags actuales (freeze/followCycleWindow en
+  // false) para no mover nada; solo suma el contexto del modelo de ciclo.
   const accounting =
-    monthlyAccounting ?? computeMonthlyAccountingWindow(cycleConfig, todayDate)
+    monthlyAccounting ??
+    computeMonthlyAccountingWindow(cycleConfig, todayDate, false, false, extendedCycle)
 
   const currentMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1)
   const nextMonthStart = new Date(todayDate.getFullYear(), todayDate.getMonth() + 1, 1)
@@ -221,9 +232,21 @@ export function buildFamilyDashboardSnapshot({
   // until they answer. After the confirm releases the freeze,
   // `payCycle.start === currentMonthPayDate`, so anchor still
   // matches and we don't re-prompt this cycle.
-  const cycleAnchorTarget = isSalaryPendingConfirmation
-    ? currentMonthPayDate
-    : payCycle.start
+  //
+  // MODELO EXTENDIDO: el objetivo es HOY mientras el cobro está pendiente. Dos
+  // cosas al precio de una: (1) nunca coincide con el anchor guardado (que es
+  // la confirmación anterior), así que el prompt sigue apareciendo; y (2) es el
+  // valor que se ESCRIBE al confirmar, o sea la fecha en que arranca el ciclo
+  // nuevo — la misma frontera que el servidor usa como `period_end` real del
+  // ciclo que se estiró. Ya confirmado, `payCycle.start` ES el anchor, así que
+  // coincide y no re-preguntamos.
+  const cycleAnchorTarget = isExtendedCycle
+    ? isSalaryPendingConfirmation
+      ? todayDate
+      : payCycle.start
+    : isSalaryPendingConfirmation
+      ? currentMonthPayDate
+      : payCycle.start
   const currentCycleAnchorDateKey = formatLocalDateKey(cycleAnchorTarget)
   const storedAnchor = finance?.current_cycle_anchor ?? null
   const storedBalance = finance?.current_cycle_starting_balance ?? null

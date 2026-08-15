@@ -16,6 +16,10 @@ import type { WeekClose } from '@/features/garden/garden-model'
 // Slide 2 — HomeHeroCard: $412.500 disponible, cupo $13.700/día, proyección sana.
 export const INTRO_HERO_METRICS: HomeHeroMetrics = {
   availableToday: 412_500,
+  // Slide ilustrativo: un hogar sano, así que el crudo coincide con el
+  // clampeado (nunca entra en la variante `over` del hero).
+  rawCycleBalance: 412_500,
+  balanceHydrating: false,
   cycleDay: 10,
   cycleTotalDays: 30,
   cycleMonth: '10 jun → 10 jul',

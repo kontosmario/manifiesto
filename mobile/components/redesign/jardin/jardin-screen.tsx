@@ -5,11 +5,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -50,7 +50,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { cssGradient, neoMaterial, neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
 import type { ResolvedThemeMode } from '@/theme/palette'
-import { nunitoFamily } from '@/theme/typography'
+import { nunitoFamily, safeLineHeight } from '@/theme/typography'
 
 /**
  * Kit réplica de **Mi jardín** (handoff `design/jardin-2026-08`) — Task 3 del
@@ -1949,7 +1949,7 @@ const styles = StyleSheet.create({
   // lineHeight 36 = 1.20 × 30, el ratio de Home y Control. Un lineHeight
   // == fontSize (el 31.5 del handoff) CLIPPEA el ascender de Nunito 900 en
   // RN — el gotcha ya documentado en gastos/fijos/control-header.
-  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 36 },
+  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: safeLineHeight(30, 1.2) },
   headerSub: { fontSize: 12.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 6 },
 
   // ─── Hero 2a–2f (HTML:42–59) ───
@@ -2002,10 +2002,10 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
     marginTop: 1,
-    lineHeight: 23,
+    lineHeight: safeLineHeight(22, 1.0455),
   },
-  heroTitleXl: { fontSize: 27, lineHeight: 27 },
-  heroTitleSm: { fontSize: 21, lineHeight: 22.7 },
+  heroTitleXl: { fontSize: 27, lineHeight: safeLineHeight(27, 1.0) },
+  heroTitleSm: { fontSize: 21, lineHeight: safeLineHeight(21, 1.081) },
   heroSub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 3 },
   heroCtaSpacing: { marginTop: 13 },
   heroCta: { borderRadius: 18, paddingVertical: 14, alignItems: 'center' },
@@ -2186,7 +2186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notaCloseGlyph: { fontSize: 17, fontWeight: '800', fontFamily: nunitoFamily('800'), lineHeight: 19 },
+  notaCloseGlyph: { fontSize: 17, fontWeight: '800', fontFamily: nunitoFamily('800'), lineHeight: safeLineHeight(17, 1.1176) },
 
   // ─── Sheet de historial (HTML:300–329) ───
   //

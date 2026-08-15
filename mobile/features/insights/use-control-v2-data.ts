@@ -791,7 +791,7 @@ async function fetchSummaries(
   const { data, error } = await supabase
     .from('monthly_summaries')
     .select(
-      'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, extra_income, savings_goal_amount, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at',
+      'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, extra_income, savings_goal_amount, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at, fixed_paid_count, total_fixed_spent',
     )
     .eq('family_id', familyId)
     .order('period_start', { ascending: false })

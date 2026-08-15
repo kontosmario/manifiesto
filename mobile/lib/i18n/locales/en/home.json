@@ -91,6 +91,8 @@
     "daysOverdue_one": "+{{count}} day without pay",
     "daysOverdue_other": "+{{count}} days without pay",
     "cycleDay": "day {{day}} of {{total}}",
+    "overPlan": "You went over plan",
+    "overCupoHint": "Your allowance resets with your next cycle",
     "a11yBalance": "Month balance: {{amount}}.",
     "a11yDailyAllowance": "Daily allowance: {{amount}}.",
     "a11yProjectedClose": "Projected close: {{amount}}.",
@@ -417,15 +419,14 @@
     "createGoal": "Create goal"
   },
   "heroChip": {
-    "acumuladoPeriod": "💰 {{amount}} left over from {{period}}",
-    "acumuladoLastMonth": "💰 {{amount}} left over from last month",
-    "added": "📈 You added {{amount}} to the month",
-    "adjusted": "✂️ Adjusted this month",
-    "saving": "💚 {{label}}",
-    "fixedToPay": "🗓️ {{amount}} in bills to pay"
+    "acumuladoPeriod": "{{amount}} left over from {{period}}",
+    "acumuladoLastMonth": "{{amount}} left over from last month",
+    "added": "You added {{amount}} to the month",
+    "adjusted": "Adjusted this month",
+    "fixedToPay": "{{amount}} in bills to pay"
   },
   "reserva": {
-    "chip": "🏦 Reserve {{amount}}"
+    "chip": "Reserve {{amount}}"
   },
   "sections": {
     "cycleSummary": "CYCLE SUMMARY",

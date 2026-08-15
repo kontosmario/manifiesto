@@ -47,12 +47,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -86,7 +86,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { cssGradient, neoMaterial, neoTokens } from '@/theme/neo-tokens'
 import type { ResolvedThemeMode } from '@/theme/palette'
-import { nunitoFamily } from '@/theme/typography'
+import { nunitoFamily, safeLineHeight } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -918,7 +918,7 @@ const styles = StyleSheet.create({
   // El mockup pone `line-height:1.05`; en iOS la baseline de Nunito 900 cae a
   // `lineHeight − descent` y con 1.05 una mayúscula acentuada se recorta
   // (mismo motivo documentado en el kit de Home para el nombre de 28px).
-  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: 30 * 1.15 },
+  headerTitle: { fontSize: 30, fontWeight: '900', fontFamily: nunitoFamily('900'), lineHeight: safeLineHeight(30, 1.15) },
   headerSub: { fontSize: 12.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 2 },
 
   // resumen
@@ -966,7 +966,7 @@ const styles = StyleSheet.create({
   },
   rowTexts: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 14.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
-  rowBody: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 1, lineHeight: 15 },
+  rowBody: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 1, lineHeight: safeLineHeight(11.5, 1.3043) },
   rowBarLine: { flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 7 },
   rowBarFlex: { flex: 1, minWidth: 0 },
   rowBarValue: { flexShrink: 0, fontSize: 11, fontWeight: '900', fontFamily: nunitoFamily('900') },

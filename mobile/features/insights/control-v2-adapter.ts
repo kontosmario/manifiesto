@@ -90,6 +90,14 @@ export interface MonthlySummaryHistory {
   top_expense: MonthlyTopExpense | null
   delta_vs_previous_percent: number | null
   mood: string | null
+  /** Fijos pagados en el ciclo + su monto — congelados por el rollup al
+   *  cierre. Opcionales: los selects viejos no los traían; el wrapped
+   *  (strip de fijos de la pantalla 03) los consume y oculta el strip
+   *  cuando faltan. OJO cache: si un select los omite y otro los trae,
+   *  el strip aparecería y desaparecería entre refetches — por eso los
+   *  TRES selects que arman este shape los piden. */
+  fixed_paid_count?: number | null
+  total_fixed_spent?: number | null
   /** When set, the "Manifiesto Wrapped" of this cycle was already viewed
    *  (drives the header discoverability pulse). Null = not seen yet. */
   wrapped_seen_at: string | null

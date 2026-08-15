@@ -1,6 +1,7 @@
 // @i18n-ignore-file — tooling dev-only gated por __DEV__.
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { HomeFinalScreen, type HomeFinalScreenProps } from '@/components/redesign/home/home-screen'
@@ -37,8 +38,32 @@ export const HOME_STATE_FIXTURES: HomeStatePreset[] = [
         variant: 'adjusted',
         balance: '$318.400',
         usdLine: '≈ US$ 210',
-        eventChip: { tone: 'green', label: 'saldo ajustado' },
-        fixedChip: '🗓️ $123k de fijos',
+        eventChip: { tone: 'green', label: 'saldo ajustado', icon: 'content-cut' },
+        fixedChip: '$123k de fijos',
+      },
+    },
+  },
+  // Hero "te pasaste" — saldo del ciclo NEGATIVO. Paleta terracota portada de
+  // la variante `corto` del hero de Control. El medidor cede su lugar a la
+  // fila Brot `worried` + "El cupo se reinicia…" (interna a la variante; en
+  // web el Brot es una caja vacía — Skia solo rinde en device). Números de la
+  // cuenta QA del ciclo extendido.
+  {
+    key: 'pasado',
+    label: 'te pasaste',
+    props: {
+      hero: {
+        variant: 'over',
+        // Sin `balanceValue`, igual que el resto de los presets: el fixture
+        // aprueba el DIBUJO, y el conteo fluido rinde en un TextInput animado
+        // que en el preview web se queda en el valor inicial.
+        balance: '-$1.262.200',
+        overSub: 'Te pasaste del plan',
+        usdLine: '≈ -US$ 1.052',
+        dayPill: 'día 37 de 37',
+        eventChip: null,
+        fixedChip: '$1,79M de fijos',
+        gauge: null,
       },
     },
   },
@@ -49,9 +74,9 @@ export const HOME_STATE_FIXTURES: HomeStatePreset[] = [
     label: 'con reserva',
     props: {
       hero: {
-        eventChip: { tone: 'green', label: '📈 Sumaste $139k al mes' },
-        reservaChip: '🏦 Reserva $340k',
-        fixedChip: '🗓️ $123k de fijos',
+        eventChip: { tone: 'green', label: 'Sumaste $139k al mes', icon: 'trending-up' },
+        reservaChip: 'Reserva $340k',
+        fixedChip: '$123k de fijos',
       },
     },
   },

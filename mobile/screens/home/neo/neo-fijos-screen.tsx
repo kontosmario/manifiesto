@@ -32,22 +32,27 @@
  * ── ESCRITURAS REALES ───────────────────────────────────────────────────
  * El CTA "✓ Confirmar cobro" del estado E8 escribe `family_finance` de
  * verdad: NO es reversible desde acá y además descongela el saldo de Home.
- * Por eso va con `neoConfirm` de confirmación explícito.
+ * Por eso pasa por una confirmación explícita — y desde el 2026-08-12 esa
+ * confirmación es EL MISMO sheet que la Home y Gastos (`HomeDashboardSheets`
+ * → SalaryConfirmationSheet / OnboardingAvailableSheet), no un `neoConfirm`
+ * de sí/no. Tres entradas al mismo flujo de dinero tenían que verse igual, y
+ * el diálogo chico además no ofrecía lo que el sheet sí: ajustar el monto
+ * disponible del ciclo en vez de aceptar el sueldo completo a ciegas.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   RefreshControl,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollView,
 } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useQueryClient } from '@tanstack/react-query'
-import { useIsFocused } from '@react-navigation/native'
+import { useIsFocused, useScrollToTop } from '@react-navigation/native'
 import { useTranslation } from 'react-i18next'
 import { router } from 'expo-router'
 
@@ -60,6 +65,8 @@ import {
   useTourTargetRef,
 } from '@/features/tours'
 import { ConfirmFixedPaymentSheet } from '@/components/fijos/confirm-fixed-payment-sheet'
+// MISMA superficie de confirmación de cobro que la Home y Gastos.
+import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 // La lista de "Todos tus fijos" reusa el componente COLAPSABLE de la pantalla
 // viva, no las filas del kit. El kit dibuja UNA fila por categoría, sin
 // expansión y sin superficie por-fijo, así que no puede mostrar los fijos
@@ -112,7 +119,7 @@ import { useFixedExpensePayments } from '@/features/fixed-expenses/use-fixed-exp
 import { useFixedExpenses } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useHomeSnapshot } from '@/features/home/use-home-snapshot'
 import { useFamilyDashboard } from '@/hooks/use-family-dashboard'
-import { useGatedLayout } from '@/hooks/use-layout-transition-gate'
+import { useGatedLayout, useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 // NO se monta `useMonthlyAccounting`: la spec (§2.2/C4) lo pedía para
 // `daysIntoMonth`, pero el review del view-model —posterior— estableció que el
 // header necesita el día DEL CICLO (`computeDaysIntoCycle`), no el del mes
@@ -271,6 +278,10 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   const sectionLayout = useGatedLayout(
     LinearTransition.duration(motionDurations.standard).easing(motionEasings.standard),
   )
+  /** Abre el gate de arriba en la primera interacción — ver sus dos call-sites. */
+  const openLayoutGate = useOpenLayoutGate()
+  /** Tocar la tab ya activa vuelve al principio — ver la nota en `neo-home-screen`. */
+  useScrollToTop(scrollRef)
   const payCycle = usePayCycle(familyId, { freeze: false })
   const fixedExpensesQuery = useFixedExpenses(familyId)
   const dismissedHikes = useDismissedHikes()
@@ -290,12 +301,13 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   }, [snapshot])
   const dashboard = useFamilyDashboard(familyId)
 
-  const { confirmCycleStartingBalance, isSavingSalary } = useCycleConfirmation({
-    dashboard,
-    familyId,
-    t,
-    userId,
-  })
+  const { confirmCycleStartingBalance, salaryErrorMessage, isSavingSalary } =
+    useCycleConfirmation({
+      dashboard,
+      familyId,
+      t,
+      userId,
+    })
 
   // `fixedExpenseIds` tiene que salir de ESTA misma lista o el queryKey difiere
   // del que ya cacheó el controller y se dispara un fetch de verdad.
@@ -749,19 +761,42 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
    * ESCRITURA REAL y NO reversible desde acá: ancla el ciclo y descongela el
    * saldo de Home. Por eso la confirmación explícita antes de mutar.
    *
-   * `tone: 'irreversible'` y no `'destructive'`: no borra nada, pero tampoco
-   * se puede deshacer. El naranja de alerta lo separa del rojo de "eliminar",
-   * que en esta misma pantalla significa perder el historial de un fijo.
+   * La superficie es la MISMA que la de Home y Gastos (`HomeDashboardSheets`):
+   * el CTA sólo ABRE el sheet, y quien escribe es su "Guardar" (monto ajustado
+   * del ciclo) o su "tengo el sueldo completo" (`null` = se conserva el
+   * default). El `neoConfirm` de sí/no que había acá no era el mismo flujo:
+   * confirmaba a ciegas con `null` sin dejar ajustar el disponible, que es
+   * justo la decisión que este momento del ciclo pide.
+   *
+   * `isOnboardingFlow` se deriva igual que en Gastos (`neo-gastos-screen`):
+   * decide entre el sheet de sueldo recurrente y el de onboarding — la misma
+   * bifurcación que ya hace la Home.
    */
+  const storedCycleAnchor = dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null
+  const isOnboardingFlow = controller.incomeMode !== 'dynamic' && storedCycleAnchor == null
+  const remainingDaysInCycle = Math.max(1, dashboard.remainingUntilPayday)
+  const [isCycleBalanceSheetOpen, setCycleBalanceSheetOpen] = useState(false)
   const handleConfirmCobro = useCallback(() => {
-    void (async () => {
-      const confirmed = await neoConfirm(t('fijos:neo.confirmCobro.title'), {
-        message: t('fijos:neo.confirmCobro.message'),
-        tone: 'irreversible',
-      })
-      if (confirmed) confirmCycleStartingBalance(null)
-    })()
-  }, [confirmCycleStartingBalance, t])
+    void triggerHaptic('selection')
+    setCycleBalanceSheetOpen(true)
+  }, [])
+  // Mismo guard que Home y Gastos: con la mutación en vuelo el sheet no se
+  // cierra por backdrop ni por gesto.
+  const handleCycleSheetClose = useCallback(() => {
+    if (isSavingSalary) return
+    setCycleBalanceSheetOpen(false)
+  }, [isSavingSalary])
+  const handleCycleSheetSave = useCallback(
+    (amount: number) => {
+      setCycleBalanceSheetOpen(false)
+      confirmCycleStartingBalance(amount)
+    },
+    [confirmCycleStartingBalance],
+  )
+  const handleCycleSheetKeepDefault = useCallback(() => {
+    setCycleBalanceSheetOpen(false)
+    confirmCycleStartingBalance(null)
+  }, [confirmCycleStartingBalance])
 
   // ── Gate ────────────────────────────────────────────────────────────────
   // `isLoading` y NO `isFetched`: `useFixedExpensePayments` está `enabled` solo
@@ -773,28 +808,33 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
     !paymentsQuery.isLoading &&
     !commitmentExpensesQuery.isLoading
 
-  if (controller.error && controller.allItems.length === 0) {
-    return (
-      <Screen backgroundColor={s.bg} scrollable={false}>
-        <NeoStateBlock
-          icon="error-outline"
-          description={getErrorMessage(controller.error, t('states:error.server'))}
-          title={t('states:errorState.title')}
-          actionLabel={t('states:errorState.action')}
-          tone="error"
-          onAction={() => void snapshot.refetch()}
-        />
-      </Screen>
-    )
-  }
-
-  if (!ready) {
-    return (
-      <Screen backgroundColor={s.bg} scrollable={false}>
-        <NeoFijosSkeleton mode={mode} />
-      </Screen>
-    )
-  }
+  /**
+   * UNA SOLA RAÍZ para las tres ramas (error / esqueleto / contenido).
+   *
+   * Antes cada rama devolvía su propio `<Screen>`, y las dos primeras con
+   * `scrollable={false}`: eso conmuta entre `ScrollView` y `View` en la misma
+   * posición del árbol (`screen.tsx`), o sea que React DESTRUYE el contenedor
+   * de scroll y con él el offset, el registro del scroller para el tour y el
+   * estado del material del borde. Con la raíz compartida sólo cambian los
+   * hijos. Mismo patrón que ya usa Gastos.
+   *
+   * El `RefreshControl` sigue montándose sólo con contenido: tirar para
+   * refrescar sobre el esqueleto dispararía un refetch que compite con el que
+   * ya está en vuelo.
+   */
+  const fallback =
+    controller.error && controller.allItems.length === 0 ? (
+      <NeoStateBlock
+        icon="error-outline"
+        description={getErrorMessage(controller.error, t('states:error.server'))}
+        title={t('states:errorState.title')}
+        actionLabel={t('states:errorState.action')}
+        tone="error"
+        onAction={() => void snapshot.refetch()}
+      />
+    ) : !ready ? (
+      <NeoFijosSkeleton mode={mode} />
+    ) : null
 
   return (
     <Screen
@@ -802,25 +842,32 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
       contentContainerStyle={styles.body}
       onContentSizeChange={onTourContentSizeChange}
       onScroll={handleScroll}
+      // Primera interacción = abrir el gate de layout (ver el `onTouchStart` de
+      // la sección de categorías). Mismo cableado que Control.
+      onScrollBeginDrag={openLayoutGate}
       // 16ms = un evento por frame a 60fps. La matemática de auto-scroll del
       // tour lee la Y trackeada para ubicar cada paso; con un throttle más
       // grueso la Y se atrasa y el highlight cae fuera del target.
       scrollEventThrottle={16}
       refreshControl={
-        <RefreshControl
-          colors={[s.text]}
-          onRefresh={handleRefresh}
-          // Android dibuja el spinner sobre un DISCO propio, blanco por
-          // default: sobre el canvas oscuro queda como un parche brillante
-          // ajeno al material. Con el color de card el disco se integra.
-          progressBackgroundColor={s.cardBackground}
-          refreshing={isRefreshing}
-          tintColor={s.text}
-        />
+        fallback ? undefined : (
+          <RefreshControl
+            colors={[s.text]}
+            onRefresh={handleRefresh}
+            // Android dibuja el spinner sobre un DISCO propio, blanco por
+            // default: sobre el canvas oscuro queda como un parche brillante
+            // ajeno al material. Con el color de card el disco se integra.
+            progressBackgroundColor={s.cardBackground}
+            refreshing={isRefreshing}
+            tintColor={s.text}
+          />
+        )
       }
       scrollRef={scrollRef}
       scrollable
     >
+      {fallback ?? (
+        <>
       <FijosHeader
         // El tour apunta al botón por ref: el header del kit no sabe del tour.
         calendarButtonRef={addButtonTourRef}
@@ -886,6 +933,20 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
       >
       <View
         onLayout={handleSectionLayout}
+        // GATE DE LAYOUT · abre en el TOUCH-DOWN, no en el `onPress`.
+        //
+        // El provider de la ruta re-cierra el gate en cada blur y sólo lo abría
+        // por el fallback de 1500 ms: esta pantalla nunca llamaba al opener
+        // (importaba `useGatedLayout` pero no `useOpenLayoutGate`), así que
+        // durante el primer segundo y medio de CADA visita cambiar de tab o
+        // abrir una categoría snapeaba el alto en vez de transicionar.
+        //
+        // Va en `onTouchStart` y no en el handler del press porque el gate tiene
+        // que estar abierto ANTES del commit que cambia el layout; con el
+        // `onPress` el primer cambio todavía saldría snapeado. Cubre las dos
+        // interacciones que animan esta región: las tabs de estado y el colapso
+        // de categorías.
+        onTouchStart={openLayoutGate}
         ref={sectionRef}
         style={fijosAvisosCategoriesSpacing}
       >
@@ -929,6 +990,22 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
         </Animated.View>
       </View>
       </TourTarget>
+      {/* Confirmar cobro — MISMO sheet que la Home y Gastos. No dispara el
+          wrapped de cierre de mes: esa orquestación sigue siendo de la Home
+          (dueña única del auto-open, ver la nota de `useMonthCloseOrchestration`
+          en `neo-gastos-screen`). Acá cambia la superficie de confirmación,
+          nada del post-confirm. */}
+      <HomeDashboardSheets
+        errorMessage={salaryErrorMessage}
+        isOnboardingFlow={isOnboardingFlow}
+        isOpen={isCycleBalanceSheetOpen}
+        isSaving={isSavingSalary}
+        monthlyIncome={dashboard.monthlyIncome}
+        onClose={handleCycleSheetClose}
+        onKeepDefault={handleCycleSheetKeepDefault}
+        onSaveBalance={handleCycleSheetSave}
+        remainingDaysInCycle={remainingDaysInCycle}
+      />
       {/* Confirmación de precio para el 2do+ pago — mismo sheet que la viva. */}
       <ConfirmFixedPaymentSheet
         fixedExpenseName={confirmFor?.name ?? ''}
@@ -940,6 +1017,8 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
         visible={confirmFor != null}
         wasOverdue={confirmFor?.computedStatus === 'overdue'}
       />
+        </>
+      )}
     </Screen>
   )
 }
@@ -955,10 +1034,15 @@ function NeoFijosSkeleton({ mode }: { mode: FijosMode }) {
   const s = FIJOS_SPEC[mode]
   const { t } = useTranslation()
   return (
+    // SIN `styles.body`: la sangría ya la pone el `contentContainerStyle` del
+    // `Screen` compartido. Cuando el esqueleto tenía su propio `Screen` la
+    // duplicaba (20 + 20), así que el molde salía 20pt más angosto de cada lado
+    // que el contenido real — justo el layout-shift que este placeholder existe
+    // para evitar.
     <View
       accessibilityLabel={t('states:loading.fixedExpenses')}
       accessibilityRole="progressbar"
-      style={styles.body}
+      style={styles.skeletonStack}
     >
       <View style={styles.skHeaderRow}>
         {/* Columna izquierda = título (lineHeight 38) + trigger de ciclo
@@ -1026,6 +1110,8 @@ const styles = StyleSheet.create({
   categoryList: { marginTop: 12 },
   skAvisos: { borderRadius: FIJOS_RADII.card, height: 260, marginTop: 20 },
   // 48 + marginTop 2 = `headerIconBtn` del header real (antes 44 sin margen).
+  // El molde no lleva sangría propia (la pone el `Screen`), sólo se apila.
+  skeletonStack: { alignSelf: 'stretch' },
   skCalendarBtn: { borderRadius: 22, height: 48, marginTop: 2, width: 48 },
   skCyclePill: { borderRadius: 14, height: 18, marginTop: 6, width: 190 },
   skHeaderRow: {

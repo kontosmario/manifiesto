@@ -44,7 +44,23 @@
     "outNoticeTitle_other": "{{count}} gastos fuera del ciclo",
     "outNoticeSub": "Al confirmar el cobro pasan al próximo ciclo",
     "outNoticeCta": "Ver días",
-    "rowNote": "Queda fuera del ciclo hasta confirmar el cobro."
+    "rowNote": "Queda fuera del ciclo hasta confirmar el cobro.",
+    "extTitle": "Tu ciclo sigue abierto",
+    "extSubtitle_one": "{{count}} día extendido — lo que gastes sale de este ciclo",
+    "extSubtitle_other": "{{count}} días extendidos — lo que gastes sale de este ciclo",
+    "extCellSub": "EXTRA",
+    "extBadge": "Día extendido",
+    "extDaySub": "Día extendido · lo de este día sale de este ciclo",
+    "extBrotLine": "Tu ciclo sigue abierto porque todavía no confirmaste el cobro. Lo que gastas estos días ya está restando de este ciclo.",
+    "extRowNote": "Día extendido — ya está contado en este ciclo.",
+    "extNoticeTitle": "Tu ciclo sigue abierto",
+    "extNoticeSub_one": "{{count}} día extendido — cuenta en este ciclo hasta que el dueño del hogar confirme el cobro",
+    "extNoticeSub_other": "{{count}} días extendidos — cuentan en este ciclo hasta que el dueño del hogar confirme el cobro",
+    "extNoticeCta": "Ver días",
+    "extHint_one": "+{{count}} extendidos · toca un día",
+    "extHint_other": "+{{count}} extendidos · toca un día",
+    "extSublineDays_one": "{{count}} día extendido en este ciclo",
+    "extSublineDays_other": "{{count}} días extendidos en este ciclo"
   },
   "list": {
     "movementsTitle": "Movimientos",
@@ -259,7 +275,7 @@
   },
   "summaryChip": {
     "day": "día {{day}}",
-    "text": "{{count}} mov · {{period}} · {{cat}}"
+    "text": "{{count}} mov · {{cat}} · {{period}}"
   },
   "breakdown": {
     "noCategory": "Sin categoria",

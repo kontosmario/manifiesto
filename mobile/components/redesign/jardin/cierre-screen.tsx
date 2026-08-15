@@ -79,7 +79,8 @@
  * con su copy del bundle.
  */
 import { useCallback, useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -107,7 +108,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { cssGradient, neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
 import type { ResolvedThemeMode } from '@/theme/palette'
-import { nunitoFamily } from '@/theme/typography'
+import { nunitoFamily, safeLineHeight } from '@/theme/typography'
 
 // Press-feedback del kit: mismo patrón que gastos/home (usePressScale +
 // AnimatedPressable a nivel módulo). En reposo el visual es idéntico al mockup.
@@ -1086,7 +1087,7 @@ const styles = StyleSheet.create({
   // superponga las líneas.
   titlePerfecta: {
     fontSize: 37,
-    lineHeight: 41,
+    lineHeight: safeLineHeight(37, 1.1081),
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
     textAlign: 'center',
@@ -1094,7 +1095,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 31,
-    lineHeight: 35,
+    lineHeight: safeLineHeight(31, 1.129),
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
     textAlign: 'center',
@@ -1164,11 +1165,11 @@ const styles = StyleSheet.create({
   statTileNeutral: { paddingVertical: 10, paddingHorizontal: 6 },
   statValuePerfecta: {
     fontSize: 23,
-    lineHeight: 23,
+    lineHeight: safeLineHeight(23, 1.0, { numeric: true }),
     fontWeight: '900',
     fontFamily: nunitoFamily('900'),
   },
-  statValue: { fontSize: 22, lineHeight: 22, fontWeight: '900', fontFamily: nunitoFamily('900') },
+  statValue: { fontSize: 22, lineHeight: safeLineHeight(22, 1.0, { numeric: true }), fontWeight: '900', fontFamily: nunitoFamily('900') },
   statLabel: {
     fontSize: 9,
     fontWeight: '800',

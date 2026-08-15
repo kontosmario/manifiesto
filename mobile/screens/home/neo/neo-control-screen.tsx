@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshControl, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { useFocusEffect, useIsFocused } from '@react-navigation/native'
+import { useFocusEffect, useIsFocused, useScrollToTop } from '@react-navigation/native'
 import { useBranchLog, useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useOpenLayoutGate } from '@/hooks/use-layout-transition-gate'
 import { Screen } from '@/components/ui/screen'
@@ -29,6 +29,7 @@ import {
   controlSectionSpacing,
   type ControlMode,
 } from '@/components/redesign/control/control-screen'
+import { CONTROL_RADII } from '@/components/redesign/control/control-spec'
 import {
   buildAlcanciaContent,
   buildComparativaContent,
@@ -118,7 +119,7 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
     data,
     view,
     signals,
-    isLoading,
+    isLoading: coreLoading,
     noConfig,
     dynamicNoIncome,
     dynamicIncomeHydrating,
@@ -127,16 +128,17 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
     wrappedSeen,
   } = useControlV2Data(familyId, userId)
 
+  // Mismo orden que el render: la carga gana, y recién con datos se clasifica.
   useBranchLog(
     'control-neo',
-    noConfig
-      ? 'noConfig'
-      : dynamicIncomeHydrating
-        ? 'dynamicHydrating'
-        : dynamicNoIncome
-          ? 'dynamicNoIncome'
-          : isLoading
-            ? 'loading'
+    coreLoading
+      ? 'loading'
+      : noConfig
+        ? 'noConfig'
+        : dynamicIncomeHydrating
+          ? 'dynamicHydrating'
+          : dynamicNoIncome
+            ? 'dynamicNoIncome'
             : 'content',
   )
 
@@ -189,6 +191,8 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
   const scrollRef = useRef<ScrollView | null>(null)
   const { onScroll: onTourScroll, onContentSizeChange: onTourContentSizeChange } =
     useRegisterTourScrollView(CONTROL_TOUR, scrollRef)
+  /** Tocar la tab ya activa vuelve al principio — ver la nota en `neo-home-screen`. */
+  useScrollToTop(scrollRef)
   const offsetsRef = useRef<Map<ControlSectionAnchor, number>>(new Map())
   const [pulsingSection, setPulsingSection] = useState<ControlSectionAnchor | null>(null)
 
@@ -519,16 +523,74 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
   }, [alcanciaVariant, router])
 
   const animated = !reduceMotion
-  // La tab se pre-monta (lazy:false): sin foco los loops decorativos
-  // (dots, knob, anillo) no deben correr. `animated` también gatea los
-  // entering — que en el pre-mount igual quedan skippeados por el
-  // RiseViewGate de la ruta, así que no se pierde nada.
+  // La tab se pre-monta (lazy:false): sin foco los loops decorativos (dots,
+  // knob) no deben correr. Los `entering` no dependen de esto —son
+  // mount-scoped y el mount pasa en el boot, fuera de pantalla— y desde que
+  // `RiseViewGate` COMPONE, el gate duro de la ruta ya los cubre aunque esta
+  // pantalla monte el suyo con `skip={reduceMotion}`.
+  //
+  // OJO: lo que se cuelgue de acá tiene que ser un LOOP o un one-shot de
+  // montaje. Cualquier animación que reaccione al flanco de `animated` se
+  // vuelve a disparar en CADA entrada a la tab — es lo que le pasaba al anillo
+  // del score, que se redibujaba 1,1 s por visita hasta que `ScoreRing` pasó a
+  // latchear por valor.
   const cardsAnimated = animated && isFocused
 
-  // ── Rama vacía: sin ingreso configurado (o dinámico sin ingresos) ──
-  if (noConfig || dynamicNoIncome || dynamicIncomeHydrating) {
-    return (
-      <Screen backgroundColor={s.bg} contentContainerStyle={styles.body} scrollable>
+  /**
+   * Rama vacía: sin ingreso configurado (o dinámico sin ingresos).
+   *
+   * NO es un early return con `<Screen>` propio. Las dos ramas comparten raíz
+   * (Provider + `Screen`) porque devolvían tipos DISTINTOS en la misma posición
+   * del árbol —`<Screen>` pelado vs `<ControlAnchorsContext.Provider><Screen>`—
+   * y React eso lo resuelve desmontando y volviendo a montar: cruzar de vacío a
+   * contenido ESTANDO en Control (cargar el primer ingreso del ciclo desde su
+   * propio empty state, o mover la ventana del ciclo) apagaba la pantalla a
+   * opacity 0 y la refadeaba 420 ms, con el scroll a 0, porque el `Screen`
+   * nuevo reiniciaba su `useTabScreenEntrance`.
+   *
+   * `emptyBranch` ya estaba derivado arriba (lo usa la selección de variantes).
+   *
+   * ── Rama de CARGA (owner 2026-08-12) ────────────────────────────────────
+   * Va ANTES que la vacía. `classifyControlMode` deriva `noConfig` de
+   * `finance`, y mientras esa query no resolvió `finance` es `undefined` → la
+   * pantalla afirmaba "configurá tu ingreso" a una cuenta que SÍ lo tiene. Hoy
+   * casi no se percibe (la tab se pre-monta y consume ese estado fuera de
+   * pantalla), pero es una afirmación falsa sobre la cuenta esperando a que
+   * cambie cualquier timing. Con el molde no se afirma nada.
+   *
+   * `isLoading` y no `isPending`: en RQ v5 una query DESHABILITADA queda
+   * `isPending: true` para siempre, así que gatear por eso podía dejar el molde
+   * pegado. `isLoading` sólo es true con un fetch realmente en vuelo.
+   */
+  return (
+    <ControlAnchorsContext.Provider value={anchorsController}>
+      <Screen
+        backgroundColor={s.bg}
+        contentContainerStyle={styles.body}
+        onContentSizeChange={onTourContentSizeChange}
+        onScroll={onTourScroll}
+        onScrollBeginDrag={openLayoutGate}
+        refreshControl={
+          <RefreshControl
+            colors={[s.text]}
+            onRefresh={handleRefresh}
+            // Android dibuja el spinner sobre un DISCO propio, blanco por
+            // default: sobre el canvas oscuro queda como un parche brillante
+            // ajeno al material. Con el color de card el disco se integra.
+            progressBackgroundColor={s.cardBackground}
+            refreshing={isRefreshing}
+            tintColor={s.text}
+          />
+        }
+        // 16ms = un evento por frame a 60fps: la Y trackeada alimenta el
+        // auto-scroll del tour y el scroll-to-section del asesor.
+        scrollEventThrottle={16}
+        scrollRef={scrollRef}
+        scrollable
+      >
+      {coreLoading ? (
+        <NeoControlSkeleton mode={mode} />
+      ) : emptyBranch ? (
         <View style={styles.stack}>
             <ControlHeader
               animated={animated}
@@ -562,36 +624,8 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
               </View>
           )}
         </View>
-      </Screen>
-    )
-  }
-
-  return (
-    <ControlAnchorsContext.Provider value={anchorsController}>
-      <Screen
-        backgroundColor={s.bg}
-        contentContainerStyle={styles.body}
-        onContentSizeChange={onTourContentSizeChange}
-        onScroll={onTourScroll}
-        onScrollBeginDrag={openLayoutGate}
-        refreshControl={
-          <RefreshControl
-            colors={[s.text]}
-            onRefresh={handleRefresh}
-            // Android dibuja el spinner sobre un DISCO propio, blanco por
-            // default: sobre el canvas oscuro queda como un parche brillante
-            // ajeno al material. Con el color de card el disco se integra.
-            progressBackgroundColor={s.cardBackground}
-            refreshing={isRefreshing}
-            tintColor={s.text}
-          />
-        }
-        // 16ms = un evento por frame a 60fps: la Y trackeada alimenta el
-        // auto-scroll del tour y el scroll-to-section del asesor.
-        scrollEventThrottle={16}
-        scrollRef={scrollRef}
-        scrollable
-      >
+      ) : (
+        <>
         {/* La ruta monta <RiseViewGate skip> para el primer attach de la
             tab; este gate interior lo re-habilita con el criterio ancho
             del proyecto (preferencia + SO + hardware) — mismo patrón que
@@ -605,6 +639,7 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
                   cycleLabel={headerVm.cycleLabel}
                   mode={mode}
                   onPressCycle={hasWrapped ? () => void launchWrapped() : undefined}
+                  unseenDot={hasWrapped && !wrappedSeen}
                   onPressScore={goalEditable ? () => setGoalSheetVisible(true) : undefined}
                   score={headerVm.score}
                   scoreA11yLabel={t('control:neo.header.scoreA11y', { score: headerVm.score })}
@@ -838,8 +873,51 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
             onSubmit={handleQuickEditSubmit}
           />
         ) : null}
+        </>
+      )}
       </Screen>
     </ControlAnchorsContext.Provider>
+  )
+}
+
+/**
+ * Molde de carga de Control. Mismo criterio que `NeoFijosSkeleton`: NO usa ni
+ * un componente del kit —el kit trae los fixtures del mockup por default, y
+ * montarlo acá reintroduciría el fixture-leak que el gate existe para evitar—
+ * sino `View`s planos con los tokens de `CONTROL_SPEC`. Sin animación.
+ *
+ * La sangría la pone el `contentContainerStyle` del `Screen` compartido, así
+ * que acá no se repite (es el error que tenía el molde de Fijos y salía 20 pt
+ * más angosto que el contenido real).
+ *
+ * Las alturas son aproximadas a ojo de las cards reales: a diferencia de Fijos
+ * —donde se midieron— acá el molde sólo se ve con el scroll arriba de todo, así
+ * que un desfasaje no produce salto perceptible.
+ */
+function NeoControlSkeleton({ mode }: { mode: ControlMode }) {
+  const s = CONTROL_SPEC[mode]
+  const { t } = useTranslation()
+  const card = { backgroundColor: s.cardBackground, boxShadow: s.cardShadow }
+  const well = { backgroundColor: s.bg, boxShadow: s.insMd }
+  return (
+    <View
+      accessibilityLabel={t('states:loading.control')}
+      accessibilityRole="progressbar"
+      style={styles.skStack}
+    >
+      <View style={styles.skHeaderRow}>
+        <View>
+          <View style={styles.skTitleSlot}>
+            <View style={[styles.skTitle, well]} />
+          </View>
+          <View style={[styles.skCyclePill, well]} />
+        </View>
+        <View style={[styles.skRing, card]} />
+      </View>
+      <View style={[styles.skHero, card]} />
+      <View style={[styles.skCard, card]} />
+      <View style={[styles.skCard, card]} />
+    </View>
   )
 }
 
@@ -857,4 +935,19 @@ const styles = StyleSheet.create({
     // secciones los ponen los spacing exports del kit, no un gap).
     position: 'relative',
   },
+  // ─── Molde de carga (NeoControlSkeleton) ─────────────────────────────
+  skStack: { alignSelf: 'stretch' },
+  skHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  // Alto de la caja del título real del header.
+  skTitleSlot: { height: 38, justifyContent: 'center' },
+  skTitle: { borderRadius: 14, height: 26, width: 150 },
+  skCyclePill: { borderRadius: 14, height: 18, marginTop: 6, width: 170 },
+  // El anillo del score: 56 es el `size` default de `ScoreRing`.
+  skRing: { borderRadius: 28, height: 56, width: 56 },
+  skHero: { borderRadius: CONTROL_RADII.hero, height: 300, marginTop: 16 },
+  skCard: { borderRadius: CONTROL_RADII.card, height: 150, marginTop: 22 },
 })

@@ -1,6 +1,7 @@
 // @i18n-ignore-file — kit de rediseño; fixtures literales del markup, el copy real llega por props (i18n vive en el view-model).
 import { memo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import { CONTROL_SPEC, type ControlMode } from '@/components/redesign/control/control-spec'
 import { CtlGlowDot, ScoreRing } from '@/components/redesign/control/control-primitives'
@@ -87,6 +88,11 @@ export interface ControlHeaderProps extends Partial<ControlHeaderContent> {
   /** Con callback, el trigger de ciclo entero se vuelve Pressable
    *  (patrón FijosHeader). */
   onPressCycle?: () => void
+  /** Edición del wrapped SIN VER: dot durazno junto al trigger de ciclo.
+   *  Se apaga cuando `wrapped_seen_at` se estampa (al reproducirse el
+   *  wrapped). La vista neo lo había perdido en el rediseño — el usuario
+   *  no tenía ninguna señal de que había un cierre esperándolo. */
+  unseenDot?: boolean
   /** Con callback, el anillo del score se vuelve Pressable — es la
    *  entrada al sheet de "Mi meta diaria" que en la vista vieja vivía
    *  en la score pill del header (la única surface equivalente acá). */
@@ -102,6 +108,7 @@ export const ControlHeader = memo(function ControlHeader({
   onPressCycle,
   onPressScore,
   scoreA11yLabel,
+  unseenDot = false,
   ...overrides
 }: ControlHeaderProps) {
   const s = CONTROL_SPEC[mode]
@@ -112,6 +119,9 @@ export const ControlHeader = memo(function ControlHeader({
       <CtlGlowDot animated={animated} color={s.cycTrigDot} size={7} />
       <Text style={[styles.cycTrigLabel, { color: s.cycTrigInk }]}>{c.cycleLabel}</Text>
       <Text style={[styles.cycCaret, { color: s.cycTrigInk }]}>▾</Text>
+      {unseenDot ? (
+        <View style={[styles.unseenDot, { backgroundColor: s.orange }]} />
+      ) : null}
     </View>
   )
 
@@ -183,6 +193,8 @@ const styles = StyleSheet.create({
   cycTrig: { alignItems: 'center', flexDirection: 'row', gap: 6, marginTop: 6 },
   cycTrigLabel: { fontFamily: nunitoFamily('800'), fontSize: 12.5, fontWeight: '800' },
   cycCaret: { fontSize: 9, opacity: 0.75 },
+  // Badge "edición sin ver" — sólido (no glow: es aviso, no decoración).
+  unseenDot: { borderRadius: 3, height: 6, marginLeft: 2, width: 6 },
   pressedDim: { opacity: 0.65 },
   // `flex:none; margin-top:-2px; padding-right:6px` del markup — el box
   // del anillo queda corrido 6px del borde derecho y Brot se ancla al

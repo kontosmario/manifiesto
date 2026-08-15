@@ -1,6 +1,7 @@
 // @i18n-ignore-file — primitivas presentacionales del kit Control; no hay copy propio.
-import { useEffect } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Platform, Pressable, StyleSheet, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   Keyframe,
@@ -10,7 +11,6 @@ import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Circle } from 'react-native-svg'
@@ -18,6 +18,7 @@ import { CONTROL_RADII, type ControlSpec } from '@/components/redesign/control/c
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { startPulseLoop } from '@/lib/motion/pulse-loop'
 import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle)
@@ -61,19 +62,25 @@ export function CtlGlowDot({ color, size = 8, animated = true, style }: CtlGlowD
   const pulse = useSharedValue(0)
 
   useEffect(() => {
-    if (!loop) {
+    // Reduced motion conserva su reposo documentado (halo a media intensidad).
+    if (reduceMotion) {
       cancelAnimation(pulse)
       pulse.value = 0.5
       return
     }
-    pulse.value = 0
-    pulse.value = withRepeat(
-      withTiming(1, { duration: decorativeDurations.ctlDotPulse / 2, easing: motionEasings.warm }),
-      -1,
-      true,
-    )
+    // Pausa por foco: SÓLO cancelar. Escribir el valor acá (y resetear a 0 al
+    // reanudar) se veía en las dos puntas de la transición de tab — ver
+    // `startPulseLoop`.
+    if (!loop) {
+      cancelAnimation(pulse)
+      return
+    }
+    startPulseLoop(pulse, {
+      duration: decorativeDurations.ctlDotPulse,
+      easing: motionEasings.warm,
+    })
     return () => cancelAnimation(pulse)
-  }, [loop, pulse])
+  }, [loop, pulse, reduceMotion])
 
   // Opacidad BAJA a propósito: el markup difumina el glow con un
   // `box-shadow` (blur 5→12px) y acá el halo es un disco sólido sin
@@ -120,19 +127,23 @@ export function CtlKnob({ color, glowColor, size = 14, animated = true, style }:
   const pulse = useSharedValue(0)
 
   useEffect(() => {
-    if (!loop) {
+    // Mismo criterio que CtlGlowDot: reposo fijo con reduced motion, congelado
+    // en su lugar cuando la pausa es por foco.
+    if (reduceMotion) {
       cancelAnimation(pulse)
       pulse.value = 0.5
       return
     }
-    pulse.value = 0
-    pulse.value = withRepeat(
-      withTiming(1, { duration: decorativeDurations.ctlKnobPulse / 2, easing: motionEasings.warm }),
-      -1,
-      true,
-    )
+    if (!loop) {
+      cancelAnimation(pulse)
+      return
+    }
+    startPulseLoop(pulse, {
+      duration: decorativeDurations.ctlKnobPulse,
+      easing: motionEasings.warm,
+    })
     return () => cancelAnimation(pulse)
-  }, [loop, pulse])
+  }, [loop, pulse, reduceMotion])
 
   // Mismo criterio que CtlGlowDot: sin blur real, un disco de alfa alta
   // lee como pelota. La perilla sí lleva algo más de presencia que los
@@ -246,6 +257,20 @@ export function ScoreRing({ score, spec, size = 56, animated = true }: ScoreRing
   const c = 2 * Math.PI * r
   const clamped = Math.max(0, Math.min(100, score)) / 100
   const progress = useSharedValue(0)
+  /**
+   * Último valor YA dibujado. El efecto tiene `animated` en las deps y el
+   * screen lo cablea como `animated && isFocused`, así que cada entrada a la
+   * tab lo hacía pasar de false a true y el anillo se re-dibujaba desde 0
+   * durante 1,1 s — con el número del centro ya escrito. Se leía como si la
+   * pantalla se estuviera recargando, y `useIsFocused()` flipea al ARRANQUE de
+   * la transición, así que el reset caía con el anillo ya en pantalla.
+   *
+   * El latch es por VALOR y no por bandera: el trazo vuelve a correr cuando el
+   * puntaje CAMBIA de verdad (que es cuando significa algo), y en las
+   * re-entradas el anillo aparece completo. Si el score cambió mientras Control
+   * estaba sin foco, `clamped` difiere y el dibujo corre al volver.
+   */
+  const drawnForRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!animated || reduceMotion) {
@@ -253,6 +278,11 @@ export function ScoreRing({ score, spec, size = 56, animated = true }: ScoreRing
       progress.value = clamped
       return
     }
+    if (drawnForRef.current === clamped) {
+      progress.value = clamped
+      return
+    }
+    drawnForRef.current = clamped
     progress.value = 0
     progress.value = withTiming(clamped, {
       duration: decorativeDurations.scoreRingDraw,

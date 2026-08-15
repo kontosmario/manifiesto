@@ -91,4 +91,19 @@ export const REDESIGN_APPROVAL: Record<string, PreviewApprovalStatus> = {
   // rediseño sino un banco de tuning. Queda en 'pendiente' porque el
   // veredicto del degradé sale del iPhone y todavía no se miró en device.
   'edge-effect': 'pendiente',
+  // WRAPPED "LA EDICIÓN" (handoff design/wrapped-2026-08, 2026-08-13):
+  // rediseño del cierre de ciclo completo — SIGUE EL TEMA DEL SISTEMA
+  // (ajuste del owner post-integración: forest nocturno en oscuro,
+  // material del sistema en claro), 6 pantallas V1 (portada con sello,
+  // números, top 3, veredicto con estampa, destino/plan de recuperación,
+  // contratapa con estantería; la 04 jardín llega en V1.5 con su
+  // migración), navegación POR BOTÓN (CTA en el footer de todas las
+  // páginas; tap y swipe-down de atajos). Mismo precedente que
+  // CONTROL/JARDÍN (orden del owner: integración de punta a punta,
+  // plan en design/wrapped-2026-08/PLAN-INTEGRACION.md): el cableado
+  // live ya se ejecutó sin esperar el flip. El preview es la matriz de
+  // 6 estados en Settings → Desarrollo → "Preview · Cierre de ciclo"
+  // (probar en AMBOS temas). Flipear a 'aprobada' cuando el owner lo
+  // mire en device.
+  'wrapped': 'pendiente',
 }

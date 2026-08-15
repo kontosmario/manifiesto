@@ -1,14 +1,16 @@
 // @i18n-ignore-file — kit de rediseño bajo gate; copy literal, i18n en el pase posterior.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import i18n from '@/lib/i18n'
 import { type Ref } from 'react'
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, StyleSheet, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated'
 import Svg, { Path, Rect } from 'react-native-svg'
@@ -18,6 +20,7 @@ import { FIJOS_RADII, FIJOS_SPEC, type FijosMode, type FijosSpec } from '@/compo
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { startPulseLoop } from '@/lib/motion/pulse-loop'
 import { neoParticlePresets } from '@/theme/neo-tokens'
 import { withAlpha } from '@/theme/color-utils'
 import { nunitoFamily } from '@/theme/typography'
@@ -1359,16 +1362,24 @@ function LiveDot({ s, paused }: { s: FijosSpec; paused: boolean }) {
   const pulse = useSharedValue(0)
 
   useEffect(() => {
-    if (reduced || paused) {
+    // Reduced motion fija el extremo apagado (reposo documentado arriba).
+    if (reduced) {
       cancelAnimation(pulse)
       pulse.value = 0
       return
     }
-    pulse.value = withRepeat(
-      withTiming(1, { duration: decorativeDurations.liveDotPulse / 2, easing: motionEasings.warm }),
-      -1,
-      true,
-    )
+    // La pausa por foco NO escribe el valor: se congela donde está. Escribirlo
+    // se veía — `useIsFocused()` flipea al arrancar la transición, así que el
+    // salto al mínimo caía durante el fundido de salida, con la tira todavía a
+    // la vista. Ver `startPulseLoop`.
+    if (paused) {
+      cancelAnimation(pulse)
+      return
+    }
+    startPulseLoop(pulse, {
+      duration: decorativeDurations.liveDotPulse,
+      easing: motionEasings.warm,
+    })
     return () => cancelAnimation(pulse)
   }, [reduced, paused, pulse])
 
@@ -1468,17 +1479,25 @@ const TICKER_FADE_WIDTH = 24
  * Reduced motion: sin animación, `translateX` en `0` — la lista se ve
  * arrancando desde la primera copia completa, nunca cortada a la mitad.
  *
- * `paused` (hilo de `FijosAvisos`) sigue el mismo criterio que `reduced`:
- * cancela el loop de 30s y vuelve `translateX` a `0` en vez de dejarlo
- * corriendo en el hilo de UI con la tab sin foco (`freezeOnBlur:false`). Al
- * des-pausar, el loop arranca de nuevo desde `-shiftWidth` (no resume a
- * mitad de camino) — mismo comportamiento que ya tiene el gate de reduced
- * motion.
+ * `paused` (hilo de `FijosAvisos`) cancela el loop de 30s para no dejarlo
+ * corriendo en el hilo de UI con la tab sin foco (`freezeOnBlur:false`), pero
+ * —a diferencia de `reduced`— NO toca `translateX`: la tira se congela donde
+ * está y al volver retoma desde ahí. Volver a 0 en la pausa se veía: como
+ * `useIsFocused()` flipea al ARRANQUE de la transición, la tira pegaba un salto
+ * lateral al principio durante el fundido de salida, cuando todavía se la ve.
+ *
+ * El retome usa que la lista está DUPLICADA: al terminar el recorrido que le
+ * quedaba, `-shiftWidth` dibuja exactamente los mismos píxeles que 0, así que
+ * el wrap a 0 —necesario porque `withRepeat` captura su origen al arrancar— es
+ * invisible. Si cambia `shiftWidth`, el valor viejo ya no significa lo mismo y
+ * ahí sí se renormaliza a 0.
  */
 function FijosTicker({ s, items, paused }: { s: FijosSpec; items: FijosTickerItem[]; paused: boolean }) {
   const reduced = useReducedMotion()
   const translateX = useSharedValue(0)
   const [copyWidth, setCopyWidth] = useState(0)
+  /** Ancho de copia con el que se calculó el `translateX` vigente. */
+  const shiftRef = useRef(0)
 
   const onLayoutCopy = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width
@@ -1488,18 +1507,50 @@ function FijosTicker({ s, items, paused }: { s: FijosSpec; items: FijosTickerIte
   const shiftWidth = copyWidth > 0 ? copyWidth + TICKER_GAP : 0
 
   useEffect(() => {
-    if (reduced || paused || shiftWidth <= 0) {
+    const shiftChanged = shiftRef.current !== shiftWidth
+    shiftRef.current = shiftWidth
+    if (reduced || shiftWidth <= 0) {
       cancelAnimation(translateX)
       translateX.value = 0
       return
     }
+    if (paused) {
+      cancelAnimation(translateX)
+      return
+    }
+    cancelAnimation(translateX)
     // Sentido DERECHA → IZQUIERDA (fallo del owner 2026-07-30). Antes iba de
     // `-shiftWidth` a `0`, o sea los chips entraban por la izquierda y salían
     // por la derecha — al revés de cómo se lee un ticker. Ahora arranca en 0 y
     // se desplaza a `-shiftWidth`: la lista duplicada hace que el loop sea
     // igual de continuo en este sentido.
-    translateX.value = 0
-    translateX.value = withRepeat(withTiming(-shiftWidth, { duration: decorativeDurations.tickerLoop, easing: Easing.linear }), -1, false)
+    const loop = withRepeat(
+      withTiming(-shiftWidth, { duration: decorativeDurations.tickerLoop, easing: Easing.linear }),
+      -1,
+      false,
+    )
+    // Parkeo válido = el de una pausa por foco con el mismo ancho de copia.
+    const parked = shiftChanged ? 0 : translateX.value
+    const travelled = Math.min(Math.max(-parked / shiftWidth, 0), 1)
+    if (travelled <= 0.001) {
+      translateX.value = 0
+      translateX.value = loop
+      return
+    }
+    // Termina el tramo que le faltaba a la vuelta en curso (a la MISMA
+    // velocidad), wrapea a 0 —invisible, la copia duplicada cae en fase— y
+    // sigue en loop.
+    translateX.value = withSequence(
+      withTiming(-shiftWidth, {
+        duration: decorativeDurations.tickerLoop * (1 - travelled),
+        easing: Easing.linear,
+      }),
+      // El wrap: -shiftWidth ≡ 0 con la copia duplicada, y `withRepeat` captura
+      // su origen al arrancar, así que el loop tiene que empezar desde 0.
+      // @motion-allow: no es una duración de diseño, es un salto instantáneo.
+      withTiming(0, { duration: 0 }),
+      loop,
+    )
     return () => cancelAnimation(translateX)
   }, [reduced, paused, shiftWidth, translateX])
 
