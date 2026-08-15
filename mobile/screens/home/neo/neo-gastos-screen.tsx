@@ -3820,6 +3820,12 @@ function NeoGastosContent({
   // ScrollView plano (contenido corto/fijo → sin virtualizar) y SIN
   // pull-to-refresh (no re-dispara las RPCs del ciclo vivo).
   if (viewingClosed && selectedEdition) {
+    // Total real del día tocado, mismo `daily_totals` que alimenta `gastado`
+    // más abajo — se reusa (no se recalcula) para decidir si el conteo de
+    // `movs` es creíble: ver comentario junto al prop `movs`.
+    const selectedClosedDayTotal = selectedClosedIso
+      ? (closedDayMeta.get(selectedClosedIso)?.total ?? 0)
+      : 0
     return (
       <ScrollView
         contentContainerStyle={emptyScrollContentStyle}
@@ -3870,8 +3876,10 @@ function NeoGastosContent({
         {/* v2 · CAL-3 + DS-6 — el calendario de una edición cerrada ahora es
             tappable y alterna con el detalle del día, igual que el ciclo vivo.
             El detalle es de SOLO LECTURA: total real de `daily_totals`,
-            MOVIMIENTOS = conteo real de `closedDayQuery` (guion largo solo
-            mientras esa query no terminó de cargar) y sin CTAs. */}
+            MOVIMIENTOS = conteo real de `closedDayQuery` (guion largo mientras
+            esa query no terminó de cargar, si terminó en error, o si resolvió
+            vacía en un día con gasto — ver comentario junto al prop `movs`)
+            y sin CTAs. */}
         {selectedClosedIso != null ? (
           <>
             <GastosDayDetail
@@ -3888,8 +3896,20 @@ function NeoGastosContent({
                   : t('gastos:closed.trigger', { label: selectedEdition.period_label })
               }
               badge={null}
-              gastado={formatMoney(closedDayMeta.get(selectedClosedIso)?.total ?? 0)}
-              movs={closedDayQuery.isFetched ? String(closedDayRows.length) : EM_DASH}
+              gastado={formatMoney(selectedClosedDayTotal)}
+              // "0" solo es honesto si el día realmente no tuvo gasto. Si la
+              // consulta todavía no terminó, terminó en error, o resolvió sin
+              // filas mientras `daily_totals` dice que ese día SÍ gastó
+              // (edición purgada por el cron de retención), "0" afirmaría un
+              // conteo que no existe y contradice al well de abajo — mejor el
+              // guion largo, que no promete un número que no tenemos.
+              movs={
+                !closedDayQuery.isFetched || closedDayQuery.isError
+                  ? EM_DASH
+                  : closedDayRows.length === 0 && selectedClosedDayTotal > 0
+                    ? EM_DASH
+                    : String(closedDayRows.length)
+              }
               isOut={false}
               showCtas={false}
               variant="closed"
