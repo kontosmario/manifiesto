@@ -23,8 +23,9 @@
     "heroChip": "{{count}} mov · closed",
     "calendarHint": "month summary",
     "sectionChip": "closed edition",
-    "movementsTitle": "Movements aren't kept",
-    "movementsSub": "We keep each closed edition's summary —the total, the categories and your month— but the movement-by-movement detail isn't archived.",
+    "loadMoreDays": "Show more days",
+    "notRetainedTitle": "This edition's movements weren't kept",
+    "notRetainedBody": "This edition closed before we started archiving the detail. From now on, every edition keeps its movements.",
     "emptyTitle": "{{month}} closed with no expenses logged",
     "emptyBody": "A closed edition cannot be edited, but you can review the others.",
     "backToCurrent": "Back to the current cycle ›"

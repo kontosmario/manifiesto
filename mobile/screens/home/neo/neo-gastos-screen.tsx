@@ -1568,7 +1568,29 @@ function NeoGastosContent({
     isoDate: viewingClosed ? selectedClosedIso : null,
     categoryId: null,
   })
-  const closedDayRows = closedDayQuery.data ?? []
+  // Memoizado (mismo patrón que `closedRows` arriba): `?? []` sin envolver
+  // crea un array NUEVO por render → desestabiliza el `useMemo` de abajo,
+  // que depende de esta referencia.
+  const closedDayRows = useMemo(() => closedDayQuery.data ?? [], [closedDayQuery.data])
+  // Mismo puente `GastosExpenseRow` → `Expense` que `closedExpenses` arriba
+  // (la fila de un día suelto viaja por el mismo `buildMovRowVM` que el feed).
+  const closedDayExpenses = useMemo<Expense[]>(
+    () =>
+      closedDayRows.map((row) => ({
+        id: row.id,
+        family_id: row.family_id,
+        category_id: row.category_id,
+        commitment_id: row.commitment_id,
+        description: row.description,
+        notes: row.notes,
+        price: row.price,
+        created_at: row.created_at,
+        created_by: row.created_by,
+        creator_display_name: row.creator_display_name ?? t('gastos:misc.noName'),
+        paid_in_arrears: row.paid_in_arrears === true,
+      })),
+    [closedDayRows, t],
+  )
 
   // ── F5 · Ciclo VENCIDO + días FUERA-DE-CICLO ───────────────────────
   // Estado VENCIDO = MISMA señal que la Home (isSalaryPendingConfirmation): el
@@ -3848,38 +3870,65 @@ function NeoGastosContent({
         {/* v2 · CAL-3 + DS-6 — el calendario de una edición cerrada ahora es
             tappable y alterna con el detalle del día, igual que el ciclo vivo.
             El detalle es de SOLO LECTURA: total real de `daily_totals`,
-            MOVIMIENTOS "—" (no se persiste el conteo) y sin CTAs. */}
+            MOVIMIENTOS = conteo real de `closedDayQuery` (guion largo solo
+            mientras esa query no terminó de cargar) y sin CTAs. */}
         {selectedClosedIso != null ? (
-          <GastosDayDetail
-            mode={mode}
-            dayNum={String(selectedClosedDayNum ?? '')}
-            // La fecha completa cuando la edición archivada dura más de un mes
-            // (ventana extendida confirmada): ahí el número solo no identifica
-            // el día. Si no, el rango de la edición, como venía.
-            sub={
-              closedNavIsos.length > 31 && closedDayMeta.get(selectedClosedIso)
-                ? formatWeekdayDayMonth(
-                    closedDayMeta.get(selectedClosedIso)?.date ?? new Date(),
-                  )
-                : t('gastos:closed.trigger', { label: selectedEdition.period_label })
-            }
-            badge={null}
-            gastado={formatMoney(closedDayMeta.get(selectedClosedIso)?.total ?? 0)}
-            movs={EM_DASH}
-            isOut={false}
-            showCtas={false}
-            variant="closed"
-            noteLine={t('gastos:calendar.noActionsClosed')}
-            backLabel={t('gastos:calendar.backToCalendar')}
-            onBackToMonth={handleClearClosedDay}
-            onPrev={closedNavIndex > 0 ? handlePrevClosedDay : undefined}
-            onNext={
-              closedNavIndex >= 0 && closedNavIndex < closedNavIsos.length - 1
-                ? handleNextClosedDay
-                : undefined
-            }
-            animated={false}
-          />
+          <>
+            <GastosDayDetail
+              mode={mode}
+              dayNum={String(selectedClosedDayNum ?? '')}
+              // La fecha completa cuando la edición archivada dura más de un mes
+              // (ventana extendida confirmada): ahí el número solo no identifica
+              // el día. Si no, el rango de la edición, como venía.
+              sub={
+                closedNavIsos.length > 31 && closedDayMeta.get(selectedClosedIso)
+                  ? formatWeekdayDayMonth(
+                      closedDayMeta.get(selectedClosedIso)?.date ?? new Date(),
+                    )
+                  : t('gastos:closed.trigger', { label: selectedEdition.period_label })
+              }
+              badge={null}
+              gastado={formatMoney(closedDayMeta.get(selectedClosedIso)?.total ?? 0)}
+              movs={closedDayQuery.isFetched ? String(closedDayRows.length) : EM_DASH}
+              isOut={false}
+              showCtas={false}
+              variant="closed"
+              noteLine={t('gastos:calendar.noActionsClosed')}
+              backLabel={t('gastos:calendar.backToCalendar')}
+              onBackToMonth={handleClearClosedDay}
+              onPrev={closedNavIndex > 0 ? handlePrevClosedDay : undefined}
+              onNext={
+                closedNavIndex >= 0 && closedNavIndex < closedNavIsos.length - 1
+                  ? handleNextClosedDay
+                  : undefined
+              }
+              animated={false}
+            />
+            {closedDayExpenses.length > 0 ? (
+              <View>
+                {closedDayExpenses.map((expense) => (
+                  <View
+                    key={expense.id}
+                    style={[
+                      styles.rowShadowWrap,
+                      { backgroundColor: s.movRowBackground, boxShadow: s.movRowShadow },
+                    ]}
+                  >
+                    <GastosMovRow
+                      mode={mode}
+                      row={buildMovRowVM({
+                        item: { kind: 'expense', iso: selectedClosedIso, expense },
+                        categoriesById: controller.categoriesById,
+                        memberById,
+                        t,
+                      })}
+                      flat
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
         ) : (
           <GastosCalendar
             mode={mode}
@@ -3898,14 +3947,18 @@ function NeoGastosContent({
           />
         )}
         <GastosMovSectionHead mode={mode} chipLabel={t('gastos:closed.sectionChip')} />
-        {/* Movimientos NO listados (no persisten): well honesto, sin CTA de
-            registrar (nada que registrar en un ciclo cerrado).
+        {/* Feed de solo lectura de la edición cerrada. Orden de las ramas:
             v2 · EV7 — si la edición cerró SIN gastos, el well cambia de mensaje:
             no es que el detalle no se conserve, es que no hubo nada. Hoy este
             caso NO es alcanzable desde el dropdown (`useMonthlyEditions` filtra
             las ediciones con `expenses_count === 0`, y ese filtro también
             alimenta el archivo de Wrappeds de Ajustes, así que no se toca acá);
-            queda cubierto por si el filtro cambia o llega por deep-link. */}
+            queda cubierto por si el filtro cambia o llega por deep-link. Después
+            el error de la query real, y recién ahí el fallback de "no se
+            conservaron" (ediciones cerradas ANTES de la retención larga, cuyas
+            filas ya fueron purgadas) — `closedFeedEmpty` ya exige
+            `closedFeed.isFetched`, así que mientras carga la primera página el
+            ternario cae al feed real, que sin data todavía no dibuja nada. */}
         {(selectedEdition.expenses_count ?? 0) === 0 ? (
           <GastosMovementsEmptyWell
             mode={mode}
@@ -3915,13 +3968,79 @@ function NeoGastosContent({
             onPressCta={handleBackToCurrent}
             animated={false}
           />
-        ) : (
+        ) : closedFeed.isError ? (
+          // Mismo patrón error/retry del resto de la pantalla.
+          <NeoStateBlock
+            icon="error-outline"
+            description={getErrorMessage(closedFeed.error, t('states:error.server'))}
+            title={t('gastos:errors.loadTitle')}
+            actionLabel={t('states:errorState.action')}
+            tone="error"
+            onAction={() => {
+              void closedFeed.refetch()
+            }}
+          />
+        ) : closedFeedEmpty ? (
+          // Edición cerrada ANTES de la retención extendida: sus filas ya
+          // fueron purgadas. El resumen (hero/calendario) sigue arriba.
           <GastosMovementsEmptyWell
             mode={mode}
-            title={t('gastos:closed.movementsTitle')}
-            sub={t('gastos:closed.movementsSub')}
+            title={t('gastos:closed.notRetainedTitle')}
+            sub={t('gastos:closed.notRetainedBody')}
             animated={false}
           />
+        ) : (
+          <View>
+            {closedSections.map((sec) => (
+              <View key={sec.dateMs}>
+                <View style={styles.sectionHeaderWrap}>
+                  <GastosMovDayHeader
+                    mode={mode}
+                    label={sec.title.toUpperCase()}
+                    total={sec.total > 0 ? `${MINUS}${formatMoney(sec.total)}` : ''}
+                  />
+                </View>
+                {sec.data.map((item) => (
+                  <View
+                    key={item.kind === 'expense' ? item.expense.id : item.income.id}
+                    style={[
+                      styles.rowShadowWrap,
+                      { backgroundColor: s.movRowBackground, boxShadow: s.movRowShadow },
+                    ]}
+                  >
+                    {/* Solo lectura: GastosMovRow directo, sin SwipeRow ni
+                        long-press (nada que editar en una edición cerrada). */}
+                    <GastosMovRow
+                      mode={mode}
+                      row={buildMovRowVM({
+                        item,
+                        categoriesById: controller.categoriesById,
+                        memberById,
+                        t,
+                      })}
+                      flat
+                    />
+                  </View>
+                ))}
+              </View>
+            ))}
+            {closedFeed.hasNextPage ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('gastos:closed.loadMoreDays')}
+                disabled={closedFeed.isFetchingNextPage}
+                onPress={() => void closedFeed.fetchNextPage()}
+                style={[
+                  styles.rowShadowWrap,
+                  { backgroundColor: s.movRowBackground, boxShadow: s.movRowShadow },
+                ]}
+              >
+                <Text style={{ padding: 14, textAlign: 'center', color: s.sectionLabelInk }}>
+                  {closedFeed.isFetchingNextPage ? '…' : t('gastos:closed.loadMoreDays')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         )}
       </ScrollView>
     )

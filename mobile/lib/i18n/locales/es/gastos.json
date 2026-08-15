@@ -23,8 +23,9 @@
     "heroChip": "{{count}} mov · cerrado",
     "calendarHint": "resumen del mes",
     "sectionChip": "edición cerrada",
-    "movementsTitle": "Los movimientos no se conservan",
-    "movementsSub": "Guardamos el resumen de cada edición cerrada —el total, las categorías y tu mes—, pero el detalle movimiento por movimiento no queda archivado.",
+    "loadMoreDays": "Ver más días",
+    "notRetainedTitle": "Los movimientos de esta edición no se conservaron",
+    "notRetainedBody": "Esta edición cerró antes de que empezáramos a archivar el detalle. Desde ahora, cada edición guarda sus movimientos.",
     "emptyTitle": "{{month}} cerró sin gastos registrados",
     "emptyBody": "No se puede editar una edición cerrada, pero puedes revisar las otras.",
     "backToCurrent": "Volver al ciclo actual ›"
