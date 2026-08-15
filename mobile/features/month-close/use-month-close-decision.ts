@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { syncAllAfterMutation } from '@/lib/sync-after-mutation'
 import {
   computeSobranteFromSummary,
-  SOBRANTE_THRESHOLD,
+  cycleIncomeFromSummary,
+  sobranteThreshold,
 } from '@/features/month-close/sobrante'
 
 export const monthCloseDecisionQueryKey = (familyId?: string) =>
@@ -90,7 +91,9 @@ export function useMonthCloseDecisionPending(familyId?: string): PendingDecision
   // define como el sobrante mismo) y daba 0 idéntico: la decisión no
   // se disparó nunca para ninguna familia. Ver sobrante.ts.
   const sobrante = computeSobranteFromSummary(row)
-  if (sobrante < SOBRANTE_THRESHOLD) return null
+  // Umbral relativo unificado (sobrante.ts) — el MISMO que gatea el
+  // pending del wrapped y la banda JUSTO del veredicto.
+  if (sobrante < sobranteThreshold(cycleIncomeFromSummary(row))) return null
   return {
     monthlySummaryId: row.id,
     sobrante,

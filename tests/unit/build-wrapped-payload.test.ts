@@ -368,3 +368,89 @@ describe('buildWrappedPayloadFromSummary — períodos cortos e ingreso del cicl
     expect(payload.savingsDelta).toBe(80_000)
   })
 })
+
+// ── Rediseño "La Edición" (design/wrapped-2026-08) ───────────────────
+
+describe('buildWrappedPayloadFromSummary — La Edición', () => {
+  const breakdown = [
+    { category_id: 'c-hogar', name: 'Hogar', total: 710_352 },
+    { category_id: 'c-mercado', name: 'Mercado', total: 487_406 },
+    { category_id: 'c-transf', name: 'Transferencia', total: 690_000 },
+    { category_id: 'c-ocio', name: 'Ocio', total: 120_000 },
+  ]
+
+  it('topCategories: hasta 3, orden desc, share contra total_spent', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({
+        total_spent: 3_008_920,
+        category_breakdown: breakdown,
+      }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.topCategories).toHaveLength(3)
+    expect(payload.topCategories?.map((c) => c.name)).toEqual([
+      'Hogar',
+      'Transferencia',
+      'Mercado',
+    ])
+    // share recalculado en cliente: amount / total_spent (NO la base variable)
+    expect(payload.topCategories?.[0]?.share).toBeCloseTo(710_352 / 3_008_920, 5)
+    // topCategory legacy = el primero del ranking
+    expect(payload.topCategory?.name).toBe('Hogar')
+  })
+
+  it('cycleDays y periodRangeDisplay salen del rango — también en ciclos calendario', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary({ period_start: '2026-03-01', period_end: '2026-04-01' }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(payload.cycleDays).toBe(31)
+    // Ciclo calendario: periodRange (legacy) es null, pero el sello de la
+    // portada SIEMPRE muestra rango.
+    expect(payload.periodRange).toBeNull()
+    expect(payload.periodRangeDisplay).toBeTruthy()
+    expect(payload.periodRangeDisplay).not.toBe(payload.periodLabel)
+  })
+
+  it('fijos: passthrough cuando el select los trae, null cuando no', () => {
+    const con = buildWrappedPayloadFromSummary({
+      summary: makeSummary({ fixed_paid_count: 16, total_fixed_spent: 1_350_482 }),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(con.fixedPaidCount).toBe(16)
+    expect(con.totalFixedSpent).toBe(1_350_482)
+
+    const sin = buildWrappedPayloadFromSummary({
+      summary: makeSummary(),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+    })
+    expect(sin.fixedPaidCount).toBeNull()
+    expect(sin.totalFixedSpent).toBeNull()
+  })
+
+  it('passthroughs del contexto: edición, ciclo previo, reserva, estantería, rol', () => {
+    const payload = buildWrappedPayloadFromSummary({
+      summary: makeSummary(),
+      categoryNameById: new Map(),
+      achievementsEarnedAt: [],
+      editionNumber: 3,
+      previousCycle: { label: 'Mayo 2026', saldo: -1_588_087 },
+      reserveAvailable: 324_617,
+      shelf: {
+        previous: [{ label: 'Mayo 2026', saldo: -1_588_087 }],
+        accumulatedSaved: 463_725,
+        totalEditions: 3,
+      },
+      canDecide: false,
+    })
+    expect(payload.editionNumber).toBe(3)
+    expect(payload.previousCycle?.saldo).toBe(-1_588_087)
+    expect(payload.reserveAvailable).toBe(324_617)
+    expect(payload.shelf?.totalEditions).toBe(3)
+    expect(payload.canDecide).toBe(false)
+  })
+})

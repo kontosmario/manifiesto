@@ -19,7 +19,14 @@ import {
   useMonthCloseDecisionPending,
   type ApplyDecisionInput,
 } from '@/features/month-close/use-month-close-decision'
-import { computeSobranteFromSummary } from '@/features/month-close/sobrante'
+import {
+  computeSobranteFromSummary,
+  cycleIncomeFromSummary,
+  sobranteThreshold,
+} from '@/features/month-close/sobrante'
+import { fetchPastLeftoverDecision } from '@/features/wrapped/fetch-past-leftover-decision'
+import { fetchWrappedShelf } from '@/features/wrapped/fetch-wrapped-shelf'
+import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import {
   controlIntelligenceQueryKey,
   useControlIntelligence,
@@ -56,7 +63,13 @@ interface UseMonthCloseOrchestrationParams {
   /** Gate compartido: ningún sheet aparece con el overlay de transición visible. */
   splashIsHidden: boolean
   categoryNameById: Map<string, string>
-  activeGoalForSheet: { id: string; title: string; emoji: string } | null
+  activeGoalForSheet: {
+    id: string
+    title: string
+    emoji: string
+    currentAmount?: number
+    goalAmount?: number
+  } | null
   t: TFunction
   /**
    * `false` en la ruta dev de preview de la Home neo (`preview`): con la
@@ -200,7 +213,7 @@ export function useMonthCloseOrchestration({
         toast.error(t('home:dashboard.saveDecisionError'))
       }
     },
-    [applyDecisionMutateAsync],
+    [applyDecisionMutateAsync, t],
   )
 
   // "Decidir más tarde" cierra el sheet pero NO persiste una decisión
@@ -218,6 +231,12 @@ export function useMonthCloseOrchestration({
     setDecisionSheetOpen(false)
   }, [applyDecision.isPending])
 
+  // Rol del usuario en el hogar — gate de UI de la decisión del paso 06
+  // (el RPC `apply_month_close_decision` es owner-only). La query ya la
+  // siembra `home_snapshot`, así que en la práctica es lectura de cache.
+  const roleQuery = useMyFamilyRole(sessionUserId, familyId)
+  const canDecide = roleQuery.data === 'owner'
+
   // Declarado ANTES de fireWrappedForClosedCycle: el flujo de auto-fire
   // dinámico stampa como visto el summary REALMENTE reproducido.
   const markWrappedSeenHome = useMarkCycleWrappedSeen(familyId)
@@ -231,13 +250,7 @@ export function useMonthCloseOrchestration({
   // El DB trigger `trg_family_finance_salary_confirm` cierra el ciclo
   // sync con el upsert. Por eso esperamos un wait corto post-haptic y
   // luego invalidamos la cache + refetch para leer la summary fresca.
-  const fireWrappedForClosedCycle = useCallback(async (opts?: {
-    /** Auto-fire dinámico: stampa wrapped_seen_at del summary que
-     *  realmente se reproduce (el más nuevo por query directa) — marcar
-     *  el [0] del cache de intelligence podía divergir si un cierre
-     *  nuevo aterrizó entre el warm del cache y este fire. */
-    markSeenAfterPlay?: boolean
-  }) => {
+  const fireWrappedForClosedCycle = useCallback(async () => {
     if (isOnboardingFlow) return
     // Lock SINCRONO: evita que el sheet standalone se abra durante el
     // wait + refetch. Se libera en TODOS los early-return y al final
@@ -268,7 +281,7 @@ export function useMonthCloseOrchestration({
       const { data } = await supabase
         .from('monthly_summaries')
         .select(
-          'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, extra_income, savings_goal_amount, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at',
+          'id, period_start, period_end, period_label, total_variable_spent, total_spent, expenses_count, monthly_income, savings_delta, extra_income, savings_goal_amount, category_breakdown, daily_totals, by_member, top_expense, delta_vs_previous_percent, mood, wrapped_seen_at, fixed_paid_count, total_fixed_spent',
         )
         .eq('family_id', familyId)
         .order('period_start', { ascending: false })
@@ -310,36 +323,22 @@ export function useMonthCloseOrchestration({
     let pastForWrapped:
       | import('@/lib/cycle-wrapped-emitter').CycleWrappedPayload['pastLeftoverDecision']
       | undefined
+    // Contexto del rediseño: ordinal de la edición, estantería de la
+    // contratapa y reserva (plan de recuperación). Corre en paralelo con
+    // el lookup de decisión; toda falla degrada a null (el wrapped abre
+    // igual, sin estantería/ordinal).
+    const shelfPromise = summaryId
+      ? fetchWrappedShelf(familyId, summaryId)
+      : Promise.resolve(null)
     if (summaryId != null) {
-      const { data: existing } = await supabase
-        .from('month_close_decisions')
-        .select('id, decision, sobrante, decided_at, meta_goal_id')
-        .eq('monthly_summary_id', summaryId)
-        .maybeSingle()
-      if (existing) {
-        // Decisión persistida → modo read-only en la closing scene.
-        const dec = existing as {
-          decision: 'meta' | 'acumular' | 'reserva' | 'skip'
-          sobrante: number | string
-          decided_at: string
-          meta_goal_id: string | null
-        }
-        let metaGoalTitle: string | null = null
-        if (dec.decision === 'meta' && dec.meta_goal_id) {
-          const { data: goal } = await supabase
-            .from('savings_goals')
-            .select('title')
-            .eq('id', dec.meta_goal_id)
-            .maybeSingle()
-          metaGoalTitle = (goal as { title?: string } | null)?.title ?? null
-        }
-        pastForWrapped = {
-          decision: dec.decision,
-          sobrante: Number(dec.sobrante),
-          metaGoalTitle,
-          decidedAt: dec.decided_at,
-        }
-      } else if (sobranteFromSummary >= 1000) {
+      // Decisión persistida → modo read-only en la closing scene.
+      const past = await fetchPastLeftoverDecision(summaryId)
+      if (past) {
+        pastForWrapped = past
+      } else if (
+        sobranteFromSummary >=
+        sobranteThreshold(cycleIncomeFromSummary(latest as { monthly_income?: number | string; extra_income?: number | string }))
+      ) {
         pendingForWrapped = { monthlySummaryId: summaryId, sobrante: sobranteFromSummary }
       }
     }
@@ -351,6 +350,7 @@ export function useMonthCloseOrchestration({
       lastShownDecisionIdRef.current = pendingForWrapped.monthlySummaryId
     }
 
+    const shelfData = await shelfPromise
     triggerCycleWrapped(
       buildWrappedPayloadFromSummary({
         summary: latest,
@@ -359,6 +359,17 @@ export function useMonthCloseOrchestration({
         pendingLeftoverDecision: pendingForWrapped,
         pastLeftoverDecision: pastForWrapped,
         activeGoal: activeGoalForSheet,
+        editionNumber: shelfData?.editionNumber ?? null,
+        previousCycle: shelfData?.previous[0] ?? null,
+        reserveAvailable: shelfData?.reserveAvailable ?? null,
+        shelf: shelfData
+          ? {
+              previous: shelfData.previous,
+              accumulatedSaved: shelfData.accumulatedSaved,
+              totalEditions: shelfData.totalEditions,
+            }
+          : null,
+        canDecide,
         // El inicio del nuevo ciclo == period_end del recién cerrado (exclusivo).
         nextCycleAnchor: latest.period_end,
         onApplyLeftoverDecision: pendingForWrapped
@@ -376,8 +387,11 @@ export function useMonthCloseOrchestration({
           : undefined,
       }),
     )
-    // Auto-fire dinámico: visto = el row que ACABAMOS de reproducir.
-    if (opts?.markSeenAfterPlay && summaryId) {
+    // Visto = el row que ACABAMOS de reproducir — en TODOS los paths, no
+    // solo en el auto-fire dinámico. El path fixed (confirmar cobro) nunca
+    // marcaba: el dot de "edición sin ver" de Control quedaba prendido
+    // aunque el usuario acabara de mirar el wrapped entero.
+    if (summaryId) {
       markWrappedSeenMutate(summaryId)
     }
     // Wrapped lanzado. `lastShownDecisionIdRef` ya quedó seteado más
@@ -393,6 +407,8 @@ export function useMonthCloseOrchestration({
     activeGoalForSheet,
     applyDecisionMutateAsync,
     markWrappedSeenMutate,
+    canDecide,
+    t,
   ])
 
   // Auto-fire del Wrapped en modo DINÁMICO: el ciclo cierra solo (cron
@@ -412,7 +428,7 @@ export function useMonthCloseOrchestration({
     if (lastAutoWrappedIdRef.current === latest.id) return
     lastAutoWrappedIdRef.current = latest.id
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fireWrapped setea el lock wrappedInFlight (sync) igual que el path fixed; guard por ref evita re-disparos
-    void fireWrappedForClosedCycle({ markSeenAfterPlay: true })
+    void fireWrappedForClosedCycle()
   }, [
     enabled,
     dynamicWrappedPending,

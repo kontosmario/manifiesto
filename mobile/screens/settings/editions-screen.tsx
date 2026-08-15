@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated from 'react-native-reanimated'
 import { BrotMascot } from '@/components/brot'
@@ -17,6 +18,8 @@ import { useCategories } from '@/features/categories/use-categories'
 import { useMonthlyEditions } from '@/features/wrapped/use-monthly-editions'
 import { computeCycleSurplusSigned } from '@/features/month-close/sobrante'
 import { buildWrappedPayloadFromSummary } from '@/features/wrapped/build-wrapped-payload'
+import { fetchPastLeftoverDecision } from '@/features/wrapped/fetch-past-leftover-decision'
+import { fetchWrappedShelf } from '@/features/wrapped/fetch-wrapped-shelf'
 import { triggerCycleWrapped } from '@/lib/cycle-wrapped-emitter'
 import { formatMoney } from '@/utils/money'
 import { monthShort } from '@/utils/date-format'
@@ -100,13 +103,31 @@ export function EditionsScreen() {
     return { sobranteById: map, latestSobrante: latest }
   }, [editions])
 
-  const handleEditionPress = (summary: MonthlySummaryHistory) => {
+  const handleEditionPress = async (summary: MonthlySummaryHistory) => {
     void triggerHaptic('selection')
+    // Replay enriquecido: decisión persistida (modo lectura) + contexto
+    // del rediseño (ordinal, estantería). Antes se disparaba el payload
+    // PELADO y una edición vieja parecía no decidida. Si las queries
+    // fallan, degradamos al replay vanilla.
+    const [past, shelfData] = await Promise.all([
+      fetchPastLeftoverDecision(summary.id).catch(() => null),
+      familyId ? fetchWrappedShelf(familyId, summary.id) : Promise.resolve(null),
+    ])
     triggerCycleWrapped(
       buildWrappedPayloadFromSummary({
         summary,
         categoryNameById,
         achievementsEarnedAt: [],
+        pastLeftoverDecision: past ?? undefined,
+        editionNumber: shelfData?.editionNumber ?? null,
+        previousCycle: shelfData?.previous[0] ?? null,
+        shelf: shelfData
+          ? {
+              previous: shelfData.previous,
+              accumulatedSaved: shelfData.accumulatedSaved,
+              totalEditions: shelfData.totalEditions,
+            }
+          : null,
       }),
     )
   }
@@ -157,7 +178,7 @@ export function EditionsScreen() {
                 <EditionRow
                   edition={ed}
                   sobrante={sobranteById.get(ed.id) ?? 0}
-                  onPress={() => handleEditionPress(ed)}
+                  onPress={() => void handleEditionPress(ed)}
                 />
               </RiseView>
             ))}

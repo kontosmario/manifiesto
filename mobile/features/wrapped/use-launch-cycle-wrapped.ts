@@ -2,8 +2,15 @@ import { useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { triggerCycleWrapped, type CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
 import { useMarkCycleWrappedSeen } from '@/features/wrapped/use-mark-cycle-wrapped-seen'
+import { fetchPastLeftoverDecision } from '@/features/wrapped/fetch-past-leftover-decision'
+import { fetchWrappedShelf } from '@/features/wrapped/fetch-wrapped-shelf'
+import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 import { useApplyMonthCloseDecision } from '@/features/month-close/use-month-close-decision'
-import { computeSobranteFromSummary } from '@/features/month-close/sobrante'
+import {
+  computeSobranteFromSummary,
+  cycleIncomeFromSummary,
+  sobranteThreshold,
+} from '@/features/month-close/sobrante'
 import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
 import { useLatestSavingsGoal } from '@/features/savings-goals/use-latest-savings-goal'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
@@ -32,29 +39,54 @@ export function useLaunchCycleWrapped(input: {
   const monthlyAccounting = useMonthlyAccounting(familyId)
   const savingsGoalQuery = useLatestSavingsGoal(familyId)
 
+  // Rol para el gate de UI de la decisión (el RPC es owner-only).
+  const roleQuery = useMyFamilyRole(userId, familyId)
+  const canDecide = roleQuery.data === 'owner'
+
   const activeGoalForWrapped = useMemo(() => {
     const g = savingsGoalQuery.data
     if (!g) return null
     if (g.isActive === false) return null
-    return { id: g.id, title: g.title, emoji: g.emoji }
+    // Montos incluidos: la barra de progreso de la opción "Destinar a mi
+    // meta" del wrapped (pantalla 06) los necesita.
+    return {
+      id: g.id,
+      title: g.title,
+      emoji: g.emoji,
+      currentAmount: g.currentAmount,
+      goalAmount: g.goalAmount,
+    }
   }, [savingsGoalQuery.data])
 
   const launchWrapped = useCallback(async () => {
     if (!wrappedPayload) return
     let enrichedPayload = wrappedPayload
     if (wrappedSummaryId) {
-      const [summaryRes, existingRes] = await Promise.all([
+      const [summaryRes, past, shelfData] = await Promise.all([
         supabase
           .from('monthly_summaries')
           .select('monthly_income, extra_income, total_spent, savings_goal_amount')
           .eq('id', wrappedSummaryId)
           .maybeSingle(),
-        supabase
-          .from('month_close_decisions')
-          .select('id, decision, sobrante, decided_at, meta_goal_id')
-          .eq('monthly_summary_id', wrappedSummaryId)
-          .maybeSingle(),
+        fetchPastLeftoverDecision(wrappedSummaryId),
+        fetchWrappedShelf(familyId, wrappedSummaryId),
       ])
+      // Contexto del rediseño (ordinal, estantería, reserva, rol) — se
+      // adjunta SIEMPRE, tanto en replay read-only como en pending.
+      enrichedPayload = {
+        ...enrichedPayload,
+        editionNumber: shelfData?.editionNumber ?? null,
+        previousCycle: shelfData?.previous[0] ?? null,
+        reserveAvailable: shelfData?.reserveAvailable ?? null,
+        shelf: shelfData
+          ? {
+              previous: shelfData.previous,
+              accumulatedSaved: shelfData.accumulatedSaved,
+              totalEditions: shelfData.totalEditions,
+            }
+          : null,
+        canDecide,
+      }
       const summary = summaryRes.data as
         | {
             monthly_income: number | string
@@ -64,34 +96,17 @@ export function useLaunchCycleWrapped(input: {
           }
         | null
       const sobrante = summary ? computeSobranteFromSummary(summary) : 0
-      if (existingRes.data) {
-        const dec = existingRes.data as {
-          decision: 'meta' | 'acumular' | 'reserva' | 'skip'
-          sobrante: number | string
-          decided_at: string
-          meta_goal_id: string | null
-        }
-        let metaGoalTitle: string | null = null
-        if (dec.decision === 'meta' && dec.meta_goal_id) {
-          const { data: goal } = await supabase
-            .from('savings_goals')
-            .select('title')
-            .eq('id', dec.meta_goal_id)
-            .maybeSingle()
-          metaGoalTitle = (goal as { title?: string } | null)?.title ?? null
-        }
+      if (past) {
         enrichedPayload = {
-          ...wrappedPayload,
-          pastLeftoverDecision: {
-            decision: dec.decision,
-            sobrante: Number(dec.sobrante),
-            metaGoalTitle,
-            decidedAt: dec.decided_at,
-          },
+          ...enrichedPayload,
+          pastLeftoverDecision: past,
         }
-      } else if (sobrante >= 1000) {
+      } else if (
+        summary &&
+        sobrante >= sobranteThreshold(cycleIncomeFromSummary(summary))
+      ) {
         enrichedPayload = {
-          ...wrappedPayload,
+          ...enrichedPayload,
           pendingLeftoverDecision: {
             monthlySummaryId: wrappedSummaryId,
             sobrante,
@@ -116,6 +131,8 @@ export function useLaunchCycleWrapped(input: {
     applyDecision,
     activeGoalForWrapped,
     monthlyAccounting,
+    familyId,
+    canDecide,
   ])
 
   return { launchWrapped, hasWrapped: wrappedPayload != null }

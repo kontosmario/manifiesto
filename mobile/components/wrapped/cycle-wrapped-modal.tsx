@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  BackHandler,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native'
+import { StatusBar } from 'expo-status-bar'
+import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
-  cancelAnimation,
-  Easing,
-  FadeIn,
   interpolate,
-  interpolateColor,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,19 +24,18 @@ import { BrotParticles } from '@/components/brot/brot-particles'
 import { ConfettiBurst } from '@/components/ui/confetti-burst'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
-import { neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
-import { useThemeTokens } from '@/theme/theme-provider'
-import { nunitoFamily } from '@/theme/typography'
-import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
-import { buildScenes } from './build-scenes'
-import { CycleWrappedCta } from './scenes/cycle-wrapped-cta'
-import { ProgressSegment } from './scenes/progress-segment'
-import type { LeftoverOption } from './scenes/types'
 import {
-  EXPO_OUT,
-  SCENE_DURATION_MS,
-  SCENE_TRANSITION_MS,
-} from './wrapped-constants'
+  decorativeDurations,
+  motionEasings,
+  motionSprings,
+} from '@/lib/motion/tokens'
+import { cssGradient } from '@/theme/neo-tokens'
+import { useThemeTokens } from '@/theme/theme-provider'
+import type { CycleWrappedPayload } from '@/lib/cycle-wrapped-emitter'
+import { buildWrappedScenes, type WrappedDecisionState } from './build-scenes'
+import { resolveVerdictState } from './scenes/veredicto-scene'
+import { WRAPPED_ANIM, wrappedSpec } from './wrapped-spec'
+import { WrCta, WrMarker, WrProgressBar } from './wrapped-primitives'
 
 interface CycleWrappedModalProps {
   /** Payload del ciclo cerrado. `null` mantiene el modal oculto. */
@@ -39,300 +44,292 @@ interface CycleWrappedModalProps {
 }
 
 /**
- * "Manifiesto Wrapped" — post-cobro recap del ciclo cerrado.
+ * Wrapped de cierre — "La Edición" (rediseño design/wrapped-2026-08).
  *
- * Diseñado como una edición de revista mensual de finanzas personales,
- * no como un slideshow tipo Spotify Wrapped. La gramática de stories
- * (progress bars + tap-to-advance) se mantiene porque el usuario la
- * reconoce y comunica "esto es un momento, no un popup"; pero la
- * estética se aleja deliberadamente del cliché dark + neón:
+ * Marco editorial (sello, estampa, estantería) que SIGUE EL TEMA DEL
+ * SISTEMA ([OWNER-1], decisión del owner 2026-08-13): forest nocturno en
+ * oscuro, material del sistema en claro. Un solo fondo para todas las
+ * pantallas; tipografía Nunito 800/900; Brot como guía en cada página.
  *
- *   • Materiales del vocabulario neumórfico, uno por escena.
- *   • Tipografía editorial weight-driven (Nunito 800/900).
- *   • Un solo elemento dominante por escena — sin grids de widgets.
- *   • El material CODIFICA el resultado del ciclo (verde profundo /
- *     excedido / superficie neutra), no un hue decorativo.
- *   • Confetti restrained, solo en la escena del veredicto si ahorraste.
+ * Navegación: el BOTÓN PRIMARIO del pie es la vía principal en TODAS las
+ * páginas (orden del owner — más intuitivo que la gramática de story).
+ * Sin auto-avance (README:20 regla 2). Tap derecha/izquierda y
+ * swipe-down quedan como atajos (la edición queda guardada igual). La
+ * barra story de N segmentos y el marcador "N DE M" salen de
+ * `scenes.length` (JUSTO salta la 06 → flujo de 5 en V1).
  *
- * Motion: ease-out-expo 360ms entre escenas, stagger 60ms eyebrow →
- * hero → subtitle dentro de cada escena. Progress bar linear sobre
- * 4.5s. Long-press pausa, tap left/right navega, swipe-down dismiss.
- *
- * Las scenes individuales viven en `./scenes/*`. Este file es el
- * orchestrator: hooks de animation top-level, scene index logic,
- * dispatch del render.
- *
- * Los materiales de cada escena salen de `wrappedPalette()`
- * (`./wrapped-constants`), que es la ÚNICA fuente: la pantalla de
- * Ediciones y las escenas leen la misma tabla.
+ * Reglas de la carcasa que este archivo cumple a propósito:
+ *   · Tap zones declaradas PRIMERO — header, CTA y option cards vienen
+ *     después en el árbol y les ganan el hit-test (regla del repo:
+ *     último hermano gana; zIndex sólo refuerza el pintado).
+ *   · SIN `overflow: 'hidden'` en el card — la tinta de Brot sobresale
+ *     ~12u de su caja y un clip la guillotina.
+ *   · El efecto de reset tiene deps acotadas AL PAYLOAD: incluir
+ *     `selected`/`scenes` re-ejecutaría el reset al tocar una opción y
+ *     el wrapped arrancaría de nuevo desde la portada (bug reportado
+ *     por el owner en la versión anterior).
+ *   · Pan de cierre con `activeOffsetY(8)` + `failOffsetX(±16)` y
+ *     resolución en `onEnd` — receta de `modal-card.tsx` (en iOS un Pan
+ *     que no activa muere sin emitir).
  */
 export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps) {
-  const theme = useThemeTokens()
-  const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
   const reduced = useReducedMotion()
   const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const theme = useThemeTokens()
+  const shell = wrappedSpec(theme.mode).shell
+  const { height: windowHeight } = useWindowDimensions()
+  /**
+   * Umbral de densidad. El frame del handoff es 830pt de alto SIN status
+   * bar ni safe areas; sumando insets típicos (59 + 34) el diseño pide
+   * ~800pt de ventana para respirar como fue dibujado. Por debajo de 800
+   * (iPhone SE 667, 13 mini 812 al filo, ventanas divididas de iPad) las
+   * escenas comprimen aire y bloques fijos. Por encima —el device del
+   * owner, 874— `compact` es false y la composición es la del handoff,
+   * intacta.
+   */
+  const compact = windowHeight < 800
 
   const [sceneIndex, setSceneIndex] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
-  // Spec B — selección dentro de la closing scene cuando hay decisión
-  // pendiente. Null = aún no eligió → CTA queda disabled. Se resetea
-  // al llegar un payload nuevo (ver effect de hidratación más abajo).
-  const [leftoverSelected, setLeftoverSelected] = useState<LeftoverOption | null>(null)
-  const [applyingLeftover, setApplyingLeftover] = useState(false)
-  // Confetti pulse — increment cuando el user confirma una decisión
-  // real (meta/acumular/reserva). NO en flow vanilla "Empezar el
-  // próximo" ni en past mode (read-only).
+  const [selected, setSelected] = useState<string | null>(null)
+  const [applying, setApplying] = useState(false)
+  const [decided, setDecided] = useState<WrappedDecisionState['decided']>(null)
   const [confettiToken, setConfettiToken] = useState(0)
-  // CR Sprint D Minor #3: memoizado para evitar identity churn en cada
-  // render del modal — el CTA tiene `fireConfetti` en handlePress deps,
-  // sin memo causaba re-creation del Pressable closure por frame.
-  const fireConfettiCallback = useCallback(() => {
-    setConfettiToken((t) => t + 1)
-  }, [])
 
-  const handleSelectLeftover = useCallback((next: LeftoverOption) => {
-    void triggerHaptic('selection')
-    setLeftoverSelected(next)
-  }, [])
-
-  const scenes = useMemo(
-    () =>
-      payload
-        ? buildScenes(payload, theme.mode, leftoverSelected, handleSelectLeftover)
-        : [],
-    [payload, theme.mode, leftoverSelected, handleSelectLeftover],
-  )
-  const sceneCount = scenes.length
-  // CR Sprint D Minor #1: derive el índice del verdict desde el array
-  // en lugar de hardcodear `confettiSceneIdx: 1` en verdict-scene.ts.
-  // Robusto ante reordering o conditional skip de scenes futuros.
-  const verdictSceneIdx = useMemo(
-    () => scenes.findIndex((s) => s.id === 'verdict'),
-    [scenes],
-  )
-
-  // Master entrance driver: scrim + first scene fade-in.
-  const enter = useSharedValue(0)
-  // Per-scene progress bar fill. Resets every scene transition.
-  const progress = useSharedValue(0)
-  // Scene-content opacity for crossfade between scenes.
-  const sceneAlpha = useSharedValue(1)
-  // Parallax X slide al cambiar de escena — incoming arranca en +12
-  // y baja a 0 en 280ms ease-out-expo. Movimiento sutil que da sensación
-  // de "página que entra" sin distraer del contenido.
-  const sceneTranslateX = useSharedValue(0)
-  // Background crossfade entre escenas. 0 = bg previo, 1 = bg actual.
-  // Se anima junto con sceneAlpha en cada transición → en vez del salto
-  // duro de color (forest→cream→…), el bg interpola smooth.
-  const sceneBgProgress = useSharedValue(1)
-  // Background previo como SHARED VALUE (no ref) — el worklet del
-  // cardBgStyle lo lee. Si fuera ref-en-worklet, Reanimated alerta
-  // sobre mutación de propiedad ya serializada.
-  // El default es el fondo del sistema, no negro: si el primer frame del
-  // crossfade llega a leerlo (payload antes de que corra el effect de
-  // hidratación) se ve el material de la app, no un flash negro que no
-  // existe en ninguna pantalla.
-  const prevSceneBgSv = useSharedValue<string>(neo.bg)
-
-  // sceneIndex como ref JS-only (no entra al worklet). Permite que
-  // los event handlers lean el index actual sin recrear el callback en
-  // cada render — y critically, evita warnings "modify key current of
-  // serialized worklet object" si lo refactoreáramos para entrar al UI
-  // thread (lo cual NO hacemos: solo lo lee JS).
   const sceneIndexRef = useRef(0)
   useEffect(() => {
     sceneIndexRef.current = sceneIndex
   }, [sceneIndex])
 
-  // ── Reset on new payload ────────────────────────────────────
-  // Hydrate scene state cada vez que llega un wrapped nuevo. Fires
-  // raramente (1×/ciclo en prod) — no es un sync-state-in-effect
-  // peligroso, es el reset del estado interno al abrirse el modal.
+  // ── Animación de entrada + transición entre páginas ─────────────────
+  const enter = useSharedValue(0)
+  const sceneAlpha = useSharedValue(1)
+  const sceneTranslateX = useSharedValue(0)
+  const dragY = useSharedValue(0)
+
+  // ── Reset por payload nuevo ─────────────────────────────────────────
+  // Deps acotadas a la sesión (ver encabezado). El default de selección
+  // sale del README:46 — meta activa si existe; si no, "Reservar aparte";
+  // EXCEDIDO arranca en "Ajustar el nuevo ciclo".
   useEffect(() => {
     if (!payload) return
     void triggerHaptic('success')
-     
     setSceneIndex(0)
     sceneIndexRef.current = 0
-    setIsPaused(false)
-     
-    setLeftoverSelected(null)
-     
-    setApplyingLeftover(false)
+    setApplying(false)
+    setDecided(null)
+    setConfettiToken(0)
+    const verdict = resolveVerdictState(payload)
+    if (verdict === 'excedido') {
+      setSelected('ajustar')
+    } else if (verdict === 'margen') {
+      setSelected(payload.activeGoal ? 'meta' : 'reserva')
+    } else {
+      setSelected(null)
+    }
+    dragY.value = 0
     enter.value = 0
     if (reduced) {
       enter.value = 1
     } else {
-      // @motion-allow: 420ms wrapped scene entrance — designer-tuned para el deck cinemático del wrapped; entre standard (240) y slow (480), matches el feel del source-of-truth deck.
-      enter.value = withTiming(1, { duration: 420, easing: EXPO_OUT })
+      // @motion-allow: 420ms wrapped entrance — designer-tuned para el deck del wrapped (entre standard 240 y slow 480), heredado de la versión anterior.
+      enter.value = withTiming(1, { duration: 420, easing: motionEasings.enterSmooth })
     }
-    // CRITICAL: deps == solo lo que define una NUEVA sesión de wrapped.
-    // NO incluir leftoverSelected / handleSelectLeftover / scenes
-    // porque cualquiera cambia al tap-ear una opción → el effect se
-    // re-ejecutaría → setSceneIndex(0) → reset desde escena 1. Bug
-    // exacto reportado por el owner.
-  }, [payload, reduced, enter])
+  }, [payload, reduced, enter, dragY])
 
-  // Init del bg previo cuando llega un payload nuevo. Separado del
-  // reset arriba para mantener sus deps mínimas (ver comentario).
-  // Lee la primera escena directamente del useMemo `scenes` — para el
-  // bg, leftoverSelected no influye porque las primeras escenas no
-  // tocan el leftover state.
-  useEffect(() => {
-    if (!payload) return
-    const firstBg = scenes[0]?.background
-    if (firstBg) prevSceneBgSv.value = firstBg
-    // Deps incluyen `theme.mode` porque `buildScenes` rebuildea las
-    // escenas con ese modo — si el user switcha el tema mientras está
-    // abierto el wrapped, el bg base de la primera escena cambia y
-    // queremos que el SharedValue refleje el nuevo tono. NO incluimos
-    // `scenes` ni `leftoverSelected` (cambian al tap-ear option y
-    // dispararían un reset incorrecto del bg previo).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payload, prevSceneBgSv, theme.mode])
-
-  // Transición a una escena nueva. Captura el bg previo en el shared
-  // value, resetea sceneAlpha/translateX/bgProgress a sus initialValues
-  // SINCRÓNICAMENTE en el event handler (BEFORE el setState), y dispara
-  // setSceneIndex. Como las shared value mutations pasan ANTES del
-  // re-render de React, el primer paint del scene nuevo ya tiene los
-  // valores iniciales correctos — no hay flash. Y como las mutations
-  // pasan en handler (no en render), no hay warning de strict mode.
+  // ── Transición a otra página ────────────────────────────────────────
+  // Mutación SINCRÓNICA de los shared values ANTES del setState: el
+  // primer paint de la página nueva ya arranca invisible/corrida y el
+  // withTiming del efecto de abajo la trae. Patrón heredado 1:1.
   const transitionToScene = useCallback(
     (nextIdx: number) => {
-      const currentIdx = sceneIndexRef.current
-      if (nextIdx === currentIdx) return
-      const prevScene = scenes[currentIdx]
-      if (prevScene) prevSceneBgSv.value = prevScene.background
+      if (nextIdx === sceneIndexRef.current) return
       if (!reduced) {
         sceneAlpha.value = 0
-        sceneTranslateX.value = 12
-        sceneBgProgress.value = 0
+        sceneTranslateX.value = WRAPPED_ANIM.navSlidePx
       }
       sceneIndexRef.current = nextIdx
       setSceneIndex(nextIdx)
     },
-    [
-      scenes,
-      reduced,
-      sceneAlpha,
-      sceneTranslateX,
-      sceneBgProgress,
-      prevSceneBgSv,
-    ],
+    [reduced, sceneAlpha, sceneTranslateX],
   )
-
-  // ── Auto-advance driver ─────────────────────────────────────
-  // Maneja: (a) avanzar al cumplirse la duración, (b) llenar el
-  // progress bar linearmente, (c) respetar pausa por long-press,
-  // (d) reduced motion → no auto-advance (usuario controla manual).
-  const advance = useCallback(() => {
-    const idx = sceneIndexRef.current
-    if (idx + 1 >= sceneCount) {
-      onDismiss()
-      return
-    }
-    transitionToScene(idx + 1)
-  }, [sceneCount, onDismiss, transitionToScene])
 
   useEffect(() => {
     if (!payload) return
-    // Cancel cualquier animación previa y resetea
-    cancelAnimation(progress)
-    progress.value = 0
-    // Animar hacia los valores finales. Los initialValues (alpha=0,
-    // translateX=12, bgProgress=0) ya están seteados sincrónicamente
-    // durante el render via el tracker abajo — sin eso, el primer
-    // paint del scene nuevo flasheaba a opacity=1.
-    if (!reduced) {
-      sceneAlpha.value = withTiming(1, {
-        duration: SCENE_TRANSITION_MS,
-        easing: EXPO_OUT,
-      })
-      sceneTranslateX.value = withTiming(0, {
-        duration: SCENE_TRANSITION_MS,
-        easing: EXPO_OUT,
-      })
-      sceneBgProgress.value = withTiming(1, {
-        duration: SCENE_TRANSITION_MS,
-        easing: EXPO_OUT,
-      })
-    } else {
+    if (reduced) {
       sceneAlpha.value = 1
       sceneTranslateX.value = 0
-      sceneBgProgress.value = 1
+      return
     }
+    sceneAlpha.value = withTiming(1, {
+      duration: decorativeDurations.wrappedNav,
+      easing: motionEasings.enterSmooth,
+    })
+    sceneTranslateX.value = withTiming(0, {
+      duration: decorativeDurations.wrappedNav,
+      easing: motionEasings.enterSmooth,
+    })
+  }, [sceneIndex, payload, reduced, sceneAlpha, sceneTranslateX])
 
-    if (isPaused || reduced) return
-    // Última escena con decisión pendiente → no auto-advance. El user
-    // tiene que tomar la decisión con el CTA; cerrar solo por timer le
-    // saca tiempo y desactiva la oportunidad de Spec B inline.
-    const isLastScene = sceneIndex + 1 >= sceneCount
-    const hasPendingOnLast =
-      isLastScene &&
-      Boolean(payload.pendingLeftoverDecision && payload.onApplyLeftoverDecision)
-    if (hasPendingOnLast) return
-    // Arranca el progress timer — al llegar a 1, avanza.
-    progress.value = withTiming(
-      1,
-      { duration: SCENE_DURATION_MS, easing: Easing.linear },
-      (finished) => {
-        if (finished) runOnJS(advance)()
-      },
-    )
-    return () => {
-      cancelAnimation(progress)
-    }
-  }, [
-    sceneIndex,
-    sceneCount,
-    isPaused,
-    payload,
-    reduced,
-    progress,
-    sceneAlpha,
-    sceneTranslateX,
-    sceneBgProgress,
-    advance,
-  ])
+  // ── Acciones ────────────────────────────────────────────────────────
+  const sceneCountRef = useRef(0)
 
-  // ── Touch zone handlers ─────────────────────────────────────
-  const handleTapLeft = useCallback(() => {
-    void triggerHaptic('selection')
-    const next = Math.max(0, sceneIndexRef.current - 1)
-    transitionToScene(next)
-  }, [transitionToScene])
-  const handleTapRight = useCallback(() => {
-    void triggerHaptic('selection')
+  const handleAdvance = useCallback(() => {
     const idx = sceneIndexRef.current
-    if (idx + 1 >= sceneCount) {
+    if (idx + 1 >= sceneCountRef.current) {
       onDismiss()
-    } else {
-      transitionToScene(idx + 1)
+      return
     }
-  }, [sceneCount, onDismiss, transitionToScene])
-  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const handlePressIn = useCallback(() => {
-    // Hold ≥160ms → pause. Tap simple no debe pausar.
-    pauseTimerRef.current = setTimeout(() => {
-      setIsPaused(true)
-    }, 160)
-  }, [])
-  const handlePressOut = useCallback(() => {
-    if (pauseTimerRef.current) {
-      clearTimeout(pauseTimerRef.current)
-      pauseTimerRef.current = null
-    }
-    if (isPaused) setIsPaused(false)
-  }, [isPaused])
+    void triggerHaptic('selection')
+    transitionToScene(idx + 1)
+  }, [onDismiss, transitionToScene])
 
-  // ── Animated styles ─────────────────────────────────────────
-  const scrimStyle = useAnimatedStyle(() => ({ opacity: enter.value }))
+  const handleBack = useCallback(() => {
+    const idx = sceneIndexRef.current
+    if (idx === 0) return
+    void triggerHaptic('selection')
+    transitionToScene(idx - 1)
+  }, [transitionToScene])
+
+  const handleSelect = useCallback((id: string) => {
+    setSelected(id)
+  }, [])
+
+  const payloadRef = useRef(payload)
+  useEffect(() => {
+    payloadRef.current = payload
+  }, [payload])
+
+  const handleConfirmDestino = useCallback(async () => {
+    const p = payloadRef.current
+    if (!p || !selected || applying) return
+    const verdict = resolveVerdictState(p)
+
+    if (verdict === 'margen') {
+      const pending = p.pendingLeftoverDecision
+      if (!pending || !p.onApplyLeftoverDecision) {
+        handleAdvance()
+        return
+      }
+      setApplying(true)
+      try {
+        await p.onApplyLeftoverDecision({
+          monthlySummaryId: pending.monthlySummaryId,
+          decision: selected as 'meta' | 'reserva' | 'acumular',
+          metaGoalId: selected === 'meta' ? p.activeGoal?.id : undefined,
+          newCycleAnchor: selected === 'acumular' ? p.nextCycleAnchor : undefined,
+        })
+        // Confetti POST-await (regla M2 del review viejo): nunca antes
+        // de que el RPC confirme.
+        setDecided({
+          kind: selected,
+          metaTitle: selected === 'meta' ? (p.activeGoal?.title ?? null) : null,
+        })
+        setConfettiToken((n) => n + 1)
+        handleAdvance()
+      } catch {
+        // El wrapper del caller ya toasteó el error — acá sólo se
+        // resetea el spinner y el usuario puede reintentar.
+      } finally {
+        setApplying(false)
+      }
+      return
+    }
+
+    // EXCEDIDO — plan de recuperación.
+    if (selected === 'cubrir' && p.onApplyReserve && p.reserveAvailable) {
+      setApplying(true)
+      try {
+        await p.onApplyReserve({
+          amount: Math.min(p.reserveAvailable, Math.abs(p.savingsDelta)),
+        })
+        setDecided({ kind: 'plan-cubrir' })
+        handleAdvance()
+      } catch {
+        // Toast del wrapper del caller; spinner abajo.
+      } finally {
+        setApplying(false)
+      }
+    } else if (selected === 'revisar') {
+      // "Revisar el top 3" = navegación, no persistencia: cierra la
+      // edición y aterriza en Gastos para mirar el ciclo.
+      setDecided({ kind: 'plan-revisar' })
+      onDismiss()
+      router.push('/(app)/(tabs)/expenses')
+    } else {
+      // "Ajustar el nuevo ciclo": no persiste nada — el rojo se
+      // descuenta solo del arranque del ciclo (copy honesto, plan §6.5).
+      setDecided({ kind: 'plan-ajustar' })
+      handleAdvance()
+    }
+  }, [selected, applying, handleAdvance, onDismiss, router])
+
+  // ── Escenas ─────────────────────────────────────────────────────────
+  const state = useMemo<WrappedDecisionState>(
+    () => ({ selected, applying, decided }),
+    [selected, applying, decided],
+  )
+  const handlers = useMemo(
+    () => ({
+      onSelect: handleSelect,
+      onConfirmDestino: () => void handleConfirmDestino(),
+      onAdvance: handleAdvance,
+      onDismiss,
+    }),
+    [handleSelect, handleConfirmDestino, handleAdvance, onDismiss],
+  )
+  const scenes = useMemo(
+    () =>
+      payload
+        ? buildWrappedScenes(payload, t, state, handlers, wrappedSpec(theme.mode))
+        : [],
+    [payload, t, state, handlers, theme.mode],
+  )
+  sceneCountRef.current = scenes.length
+
+  // ── Back físico (Android) ───────────────────────────────────────────
+  useEffect(() => {
+    if (!payload) return
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onDismiss()
+      return true
+    })
+    return () => sub.remove()
+  }, [payload, onDismiss])
+
+  // ── Swipe-down para cerrar (receta modal-card.tsx) ──────────────────
+  const handleDragDismissed = useCallback(() => {
+    onDismiss()
+  }, [onDismiss])
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY(12)
+        .failOffsetX([-16, 16])
+        .onUpdate((event) => {
+          'worklet'
+          if (event.translationY > 0) {
+            dragY.value = event.translationY
+          }
+        })
+        .onEnd((event) => {
+          'worklet'
+          const shouldDismiss = event.translationY > 110 || event.velocityY > 900
+          if (shouldDismiss) {
+            runOnJS(handleDragDismissed)()
+          } else {
+            dragY.value = withSpring(0, motionSprings.sheetDismiss)
+          }
+        }),
+    [dragY, handleDragDismissed],
+  )
+
+  // ── Estilos animados ────────────────────────────────────────────────
   const cardStyle = useAnimatedStyle(() => ({
-    opacity: enter.value,
+    opacity: enter.value * interpolate(dragY.value, [0, 600], [1, 0.5], 'clamp'),
     transform: [
-      { translateY: interpolate(enter.value, [0, 1], [24, 0]) },
+      { translateY: interpolate(enter.value, [0, 1], [24, 0]) + dragY.value },
       { scale: interpolate(enter.value, [0, 1], [0.97, 1]) },
     ],
   }))
@@ -341,298 +338,167 @@ export function CycleWrappedModal({ payload, onDismiss }: CycleWrappedModalProps
     transform: [{ translateX: sceneTranslateX.value }],
   }))
 
-  // Background interpolado entre el bg de la escena previa y la actual.
-  // sceneBgProgress 0→1 driveado en el useEffect de cambio de escena;
-  // prevSceneBgSv lo seta `transitionToScene` ANTES del setSceneIndex,
-  // así que el worklet siempre tiene el color de origen correcto para
-  // el crossfade.
-  const currentSceneBg = scenes[sceneIndex]?.background ?? neo.bg
-  const cardBgStyle = useAnimatedStyle(
-    () => ({
-      backgroundColor: interpolateColor(
-        sceneBgProgress.value,
-        [0, 1],
-        [prevSceneBgSv.value, currentSceneBg],
-      ),
-    }),
-    [currentSceneBg],
-  )
-
-  // ── Early return ────────────────────────────────────────────
-  if (!payload || sceneCount === 0) return null
-
-  const scene = scenes[sceneIndex]
+  // ── Early return ────────────────────────────────────────────────────
+  if (!payload || scenes.length === 0) return null
+  const scene = scenes[sceneIndex] ?? scenes[0]
   if (!scene) return null
 
+  const isLast = sceneIndex + 1 >= scenes.length
+  const markerText = t('control:wrapped.edicion.marker', {
+    n: sceneIndex + 1,
+    total: scenes.length,
+  })
+
   return (
-    <Animated.View
-      pointerEvents={payload ? 'auto' : 'none'}
-      style={[
-        styles.scrim,
-        scrimStyle,
-        // Scrim del rediseño: SÓLIDO, no negro con alfa (regla explícita
-        // del handoff) y distinto por tema. El wrapped es modal pesado y
-        // su card ocupa la pantalla entera, así que el scrim sólo se ve
-        // durante el fade de entrada/salida.
-        { backgroundColor: neo.scrim },
-      ]}
-    >
-      <Animated.View
-        style={[
-          styles.card,
-          {
-            paddingTop: Math.max(16, insets.top + 8),
-            paddingBottom: Math.max(20, insets.bottom + 16),
-          },
-          cardBgStyle,
-          cardStyle,
-        ]}
-      >
-        {/* Partículas del handoff — capa de fondo de la escena que las
-            pide (veredicto positivo y cierre). Van PRIMERO para quedar
-            debajo del contenido; el gate de Reduce Motion las congela. */}
-        {scene.particles ? (
-          <BrotParticles
-            key={scene.id}
-            colors={scene.particles.colors}
-            count={scene.particles.count}
-            animated={!reduced}
-          />
-        ) : null}
-
-        {/* ── Progress bars (top) ──────────────────────────── */}
-        <View style={styles.progressRow}>
-          {scenes.map((_, idx) => (
-            <ProgressSegment
-              key={idx}
-              index={idx}
-              currentIndex={sceneIndex}
-              progress={progress}
-              trackColor={scene.progressTrack}
-              fillColor={scene.progressFill}
-            />
-          ))}
-        </View>
-
-        {/* ── Header strip: back (cuando aplica) + brand + close ── */}
-        <View style={styles.headerRow}>
-          {/* Back chevron — visible SIEMPRE en la última escena (no
-              solo cuando hay pending decision). Las tap zones se
-              deshabilitan en la última escena para que el CTA y los
-              OptionCards reciban taps; el chevron es la única manera
-              de retroceder de la última escena. Antes solo aparecía
-              con pending → en mes neutro (sin pending) el user no
-              podía volver atrás y al tocar el CTA caía sobre la tap
-              zone. */}
-          {sceneIndex > 0 && sceneIndex + 1 >= sceneCount ? (
-            <Animated.View
-              entering={
-                reduced
-                  ? undefined
-                  : FadeIn.duration(220).easing(EXPO_OUT)
-              }
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('control:wrapped.a11yPrevScene')}
-                onPress={handleTapLeft}
-                hitSlop={16}
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  { opacity: pressed ? 0.6 : 1 },
-                ]}
-              >
-                <MaterialIcons
-                  name="chevron-left"
-                  size={22}
-                  color={scene.foregroundSoft}
-                />
-              </Pressable>
-            </Animated.View>
-          ) : null}
-          <Text
-            style={[styles.brandMark, { color: scene.foregroundSoft }]}
-            accessibilityRole="header"
-          >
-            {t('control:wrapped.brandMark')}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('control:wrapped.a11yClose')}
-            onPress={onDismiss}
-            hitSlop={16}
-            style={({ pressed }) => [
-              styles.closeBtn,
-              { opacity: pressed ? 0.6 : 1 },
+    <View style={styles.host} pointerEvents="auto">
+      <StatusBar style={shell.statusBarStyle} />
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          accessibilityViewIsModal
+          style={[
+            styles.card,
+            {
+              paddingTop: Math.max(16, insets.top + 8),
+              paddingBottom: Math.max(20, insets.bottom + 14),
+            },
+            cardStyle,
+          ]}
+        >
+          {/* Fondo en capa PROPIA, no en el nodo animado: claro = sólido
+              del sistema, oscuro = gradiente forest. Un
+              `experimental_backgroundImage` sobre un nodo que Reanimated
+              anima pinta una forma rectangular fantasma fuera de su caja
+              (QA del owner 2026-08-13, mismo síntoma en el sello, la
+              option card y la mini-card nueva). */}
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              shell.bgCss
+                ? cssGradient(shell.bgCss, shell.bgFallback)
+                : { backgroundColor: shell.bgFallback },
             ]}
-          >
-            <MaterialIcons
-              name="close"
-              size={20}
-              color={scene.foregroundSoft}
+          />
+
+          {/* Partículas — capa de fondo de la escena que las pide. */}
+          {scene.particleCount > 0 ? (
+            <BrotParticles
+              key={scene.id}
+              colors={shell.particleColors}
+              count={scene.particleCount}
+              animated={!reduced}
             />
-          </Pressable>
-        </View>
+          ) : null}
 
-        {/* ── Scene content ─────────────────────────────────── */}
-        <Animated.View style={[styles.sceneStage, sceneContentStyle]}>
-          {scene.render({ reduced })}
-        </Animated.View>
-
-        {/* ── Footer: CTA on last scene, hint otherwise ────── */}
-        <View style={styles.footer}>
-          {sceneIndex === sceneCount - 1 ? (
-            <CycleWrappedCta
-              payload={payload}
-              leftoverSelected={leftoverSelected}
-              applyingLeftover={applyingLeftover}
-              setApplyingLeftover={setApplyingLeftover}
-              onDismiss={onDismiss}
-              fireConfetti={fireConfettiCallback}
-              ctaBg={scene.ctaBg}
-              ctaGradientCss={scene.ctaGradientCss}
-              ctaShadow={scene.ctaShadow}
-              ctaFg={scene.ctaFg}
-              reduced={reduced}
-            />
-          ) : (
-            <Text style={[styles.hint, { color: scene.foregroundSoft }]}>
-              {isPaused
-                ? t('control:wrapped.hintPaused')
-                : t('control:wrapped.hintHold')}
-            </Text>
-          )}
-        </View>
-
-        {/* ── Tap zones (above content, below close) ─────────
-            En la ÚLTIMA escena NO mostramos las tap zones (de cualquier
-            tipo: vanilla, pending, past). Razones:
-              - El CTA ("Empezar el próximo" / "Confirmar y empezar")
-                recibe los taps directo sin que el wrapper los intercepte.
-              - Los OptionCards (pending decision) reciben los taps directo.
-              - El chevron back del header reemplaza la tap zone
-                izquierda para retroceder al scene anterior.
-              - El close X cierra el modal.
-            Antes el gate dependía de pending decision → en mes neutro
-            las tap zones quedaban activas y tapaban el CTA (owner
-            feedback 2026-06-08). */}
-        {sceneIndex + 1 < sceneCount ? (
+          {/* Tap zones — PRIMERO en el árbol a propósito: todo lo
+              interactivo declarado después (header, CTA, option cards)
+              les gana el hit-test donde se superponen. */}
           <View style={styles.tapZones} pointerEvents="box-none">
             <Pressable
-              onPress={handleTapLeft}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
               accessibilityLabel={t('control:wrapped.a11yPrevScene')}
+              onPress={handleBack}
               style={styles.tapZoneLeft}
             />
-            <Pressable
-              onPress={handleTapRight}
-              onPressIn={handlePressIn}
-              onPressOut={handlePressOut}
-              accessibilityLabel={t('control:wrapped.a11yNextScene')}
-              style={styles.tapZoneRight}
-            />
+            {!scene.blockTapAdvance ? (
+              <Pressable
+                accessibilityLabel={
+                  isLast
+                    ? t('control:wrapped.a11yClose')
+                    : t('control:wrapped.a11yNextScene')
+                }
+                onPress={handleAdvance}
+                style={styles.tapZoneRight}
+              />
+            ) : null}
           </View>
-        ) : null}
 
-        {/* Confetti solo en el veredicto positivo. `colors` EXPLÍCITO: el
-            veredicto positivo cae sobre el verde profundo del sistema en
-            los DOS temas, así que el default por tema no serviría en claro. */}
-        {scene.confetti ? (
-          <ConfettiBurst
-            pulseToken={sceneIndex === verdictSceneIdx ? 1 : 0}
-            originY={200}
-            colors={neoParticlePresets.celebrationDark.colors}
-          />
-        ) : null}
+          {/* Barra story + cierre. */}
+          <View style={styles.topRow} pointerEvents="box-none">
+            <View style={styles.progressWrap} pointerEvents="none">
+              <WrProgressBar count={scenes.length} current={sceneIndex} />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('control:wrapped.a11yClose')}
+              onPress={onDismiss}
+              hitSlop={14}
+              style={({ pressed }) => [styles.closeBtn, { opacity: pressed ? 0.6 : 1 }]}
+            >
+              <MaterialIcons name="close" size={20} color={shell.marker.ink} />
+            </Pressable>
+          </View>
 
-        {/* Confetti al confirmar decisión de leftover real (meta /
-            acumular / reserva). Disparado por setConfettiToken en el
-            CTA. Skip en reduced motion (es decorativo).
-            `colors` EXPLÍCITO: cae sobre la escena de cierre, que es el
-            panel profundo del sistema en los DOS temas — el default claro
-            (tokens oscuros del tema) desaparecería ahí. */}
-        {!reduced ? (
-          <ConfettiBurst
-            pulseToken={confettiToken}
-            originY={400}
-            colors={neoParticlePresets.celebrationDark.colors}
-          />
-        ) : null}
-      </Animated.View>
-    </Animated.View>
+          {/* Página actual. */}
+          <Animated.View style={[styles.sceneStage, sceneContentStyle]}>
+            {scene.render({ active: true, reduced, compact })}
+          </Animated.View>
+
+          {/* Pie: CTA de la página + marcador. */}
+          <View style={styles.footer}>
+            {scene.cta ? (
+              <WrCta
+                label={scene.cta.label}
+                onPress={scene.cta.onPress}
+                disabled={scene.cta.disabled}
+                busy={scene.cta.busy}
+              />
+            ) : null}
+            <WrMarker text={markerText} />
+          </View>
+
+          {/* Confetti al confirmar una decisión real (post-await). */}
+          {!reduced ? (
+            <ConfettiBurst
+              pulseToken={confettiToken}
+              originY={400}
+              colors={shell.particleColors}
+            />
+          ) : null}
+        </Animated.View>
+      </GestureDetector>
+    </View>
   )
 }
 
 // ── Styles ───────────────────────────────────────────────────────────
+// SIN overflow:'hidden' en `card` (la tinta de Brot sobresale de su caja).
 
 const styles = StyleSheet.create({
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
-  },
   card: {
-    width: '100%',
-    height: '100%',
-    flexDirection: 'column',
-    paddingHorizontal: 24,
-    overflow: 'hidden',
-  },
-  progressRow: {
-    flexDirection: 'row',
-    gap: 4,
-    marginBottom: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  brandMark: {
-    fontSize: 11,
-    fontWeight: '900',
-    fontFamily: nunitoFamily('900'),
-    letterSpacing: 3,
+    flex: 1,
+    paddingHorizontal: 26,
   },
   closeBtn: {
-    width: 32,
-    height: 32,
     alignItems: 'center',
+    height: 32,
     justifyContent: 'center',
+    width: 32,
   },
+  footer: {
+    gap: 12,
+    justifyContent: 'flex-end',
+    minHeight: 84,
+    paddingTop: 10,
+  },
+  host: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999,
+  },
+  progressWrap: { flex: 1 },
   sceneStage: {
     flex: 1,
     justifyContent: 'center',
   },
-  footer: {
-    paddingTop: 12,
-    minHeight: 56,
-    justifyContent: 'center',
-  },
-  hint: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: nunitoFamily('600'),
-    letterSpacing: 0.4,
-    textAlign: 'center',
-  },
-  tapZones: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    // Sit below the close button and progress bar (which have higher
-    // z by virtue of declaration order in the parent View).
-  },
-  tapZoneLeft: { width: '33%', height: '100%' },
+  tapZoneLeft: { height: '100%', width: '38%' },
   tapZoneRight: { flex: 1, height: '100%' },
+  tapZones: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+  },
+  topRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 10,
+  },
 })

@@ -1,35 +1,19 @@
-import { Dimensions } from 'react-native'
-import { motionEasings } from '@/lib/motion/tokens'
 import { neoInk } from '@/theme/neo-ink'
 import { neoCalendar, neoTokens, type NeoShadows } from '@/theme/neo-tokens'
 import { withAlpha } from '@/theme/color-utils'
 import type { ResolvedThemeMode } from '@/theme/palette'
 
-// ── Pacing tokens ────────────────────────────────────────────────────
-// El Wrapped se dispara una vez al mes. No hay que apurarse — el
-// usuario quiere leer. 4500ms por escena permite mirar el número,
-// procesar la copy, y avanzar antes de aburrir.
-export const SCENE_DURATION_MS = 4500
-export const SCENE_TRANSITION_MS = 280
-// CR Sprint D Minor #2: re-export desde `motionEasings.enterSmooth`
-// (curva idéntica) en lugar de redeclarar la bezier. Single source of
-// truth en `mobile/lib/motion/tokens.ts`.
-export const EXPO_OUT = motionEasings.enterSmooth
-
-// Stagger entrance entre OptionCards (Spec B). Solo aplica al primer
-// mount de la closing scene en MODE pending.
-export const OPTION_STAGGER_MS = 70
-export const OPTION_ENTER_MS = 260
-
-export const SCREEN_WIDTH = Dimensions.get('window').width
-
-// ── Paleta de escenas ────────────────────────────────────────────────
+// ── Paleta de MINIATURA del wrapped ──────────────────────────────────
 //
-// SINGLE SOURCE de los tonos del wrapped: antes cada escena declaraba sus
-// hexes a mano y la pantalla de Ediciones los copiaba otra vez.
+// Desde el rediseño "La Edición" (design/wrapped-2026-08) las escenas
+// del wrapped viven en `wrapped-spec.ts` (nocturno canónico) y ya NO
+// leen esta tabla. La conserva la pantalla de EDICIONES: sus filas son
+// la miniatura de cada edición y siguen el tema del sistema, así que
+// resuelven sus tintas (margen/excedido/empatado) contra este vocabulario
+// y no contra el spec nocturno.
 //
-// Todo sale del vocabulario neumórfico. Las escenas son PANELES a sangre
-// del material del sistema, así que dos reglas gobiernan la tabla:
+// Todo sale del vocabulario neumórfico. Las filas son PANELES del
+// material del sistema, así que dos reglas gobiernan la tabla:
 //
 //  1. El RELIEVE sigue al panel, no al tema. Un panel oscuro (`green`,
 //     `deep`, `warm` en oscuro) usa las recetas de sombra oscuras en los
