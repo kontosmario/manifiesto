@@ -129,7 +129,11 @@ import {
   findDayFocusIndex,
   type DayFocusTarget,
 } from '@/features/gastos/day-focus-sequence'
-import { GASTOS_DAYS_PER_PAGE } from '@/features/gastos/use-gastos-endpoints'
+import {
+  GASTOS_DAYS_PER_PAGE,
+  useGastosExpensesForDay,
+  useGastosExpensesPaginated,
+} from '@/features/gastos/use-gastos-endpoints'
 import { useGastosSnapshot } from '@/features/gastos/use-gastos-snapshot'
 import { useGastosRealtime } from '@/features/gastos/use-gastos-realtime'
 import { useGastosTelemetry } from '@/features/gastos/use-gastos-telemetry'
@@ -158,7 +162,11 @@ import {
   buildMovRowVM,
   type MovementRowMemberLite,
 } from '@/features/gastos/build-mov-row-vm'
-import type { CategoryLite, GastosDayMood } from '@/features/gastos/gastos-aggregates.model'
+import {
+  groupGastosByDay,
+  type CategoryLite,
+  type GastosDayMood,
+} from '@/features/gastos/gastos-aggregates.model'
 import {
   useCycleIncomeEventsTotal,
   useDeleteIncomeEvent,
@@ -1488,6 +1496,79 @@ function NeoGastosContent({
       ),
     )
   }, [selectedEdition])
+
+  // ── Movimientos de la edición cerrada ──────────────────────────────
+  // Reusa las RPCs del ciclo vivo (`gastos_expenses_paginated` /
+  // `gastos_expenses_for_day`) con la ventana [period_start, period_end) de la
+  // edición en vez de la del ciclo vivo: ninguna de las dos filtra por
+  // `archived_at`, así que sirven tal cual para ventanas ya cerradas. La query
+  // key incluye la ventana → cero colisión con el cache del ciclo vivo. Gate:
+  // sólo fetchea mientras `viewingClosed` (mismo patrón que `useMonthlyEditions`
+  // con `isDropdownOpen || viewedCycleId != null`).
+  const closedWindow = useMemo(() => {
+    if (!selectedEdition) return null
+    // Mismo parseo que el resto de esta sección para `period_start`/`period_end`
+    // (`parseIsoLocalDate`, arriba): nunca `new Date(iso)` a secas, que
+    // interpreta UTC y corre el día ±1 según tz del device.
+    const start = parseIsoLocalDate(selectedEdition.period_start)
+    const end = parseIsoLocalDate(selectedEdition.period_end)
+    if (!start || !end) return null
+    return { start, end }
+  }, [selectedEdition])
+  const closedFeed = useGastosExpensesPaginated({
+    familyId: viewingClosed ? familyId : undefined,
+    cycleStart: closedWindow?.start ?? controller.cycleStart,
+    cycleEnd: closedWindow?.end ?? controller.cycleEnd,
+    today: controller.today,
+    categoryId: null,
+  })
+  const closedRows = useMemo(
+    () => closedFeed.data?.pages.flatMap((p) => p.expenses) ?? [],
+    [closedFeed.data],
+  )
+  // Mismo puente que el controller del ciclo vivo (`rowToExpense` en
+  // use-gastos-controller.ts): `groupGastosByDay` espera `Expense[]` y las
+  // filas de las RPCs paginadas son `GastosExpenseRow[]`. La función del
+  // controller es privada del módulo (no exportada) — se replica acá el mismo
+  // mapeo campo a campo, sin inventar un adaptador nuevo.
+  const closedExpenses = useMemo<Expense[]>(
+    () =>
+      closedRows.map((row) => ({
+        id: row.id,
+        family_id: row.family_id,
+        category_id: row.category_id,
+        commitment_id: row.commitment_id,
+        description: row.description,
+        notes: row.notes,
+        price: row.price,
+        created_at: row.created_at,
+        created_by: row.created_by,
+        creator_display_name: row.creator_display_name ?? t('gastos:misc.noName'),
+        paid_in_arrears: row.paid_in_arrears === true,
+      })),
+    [closedRows, t],
+  )
+  const closedSections = useMemo<MovimientosSection[]>(() => {
+    if (!viewingClosed) return []
+    return buildGastosSections({
+      groups: groupGastosByDay({ expenses: closedExpenses, today: controller.today }),
+      cycleIncomeEvents: [],
+      selectedDay: null,
+      hasNextPage: closedFeed.hasNextPage,
+    })
+  }, [viewingClosed, closedExpenses, controller.today, closedFeed.hasNextPage])
+  // Fetched y sin filas ⇒ o la edición no tiene gastos en su ventana, o ya
+  // pasó el hard-delete de los 14 días (edición purgada pre-feature) — el
+  // fallback "no se conservaron" cubre ambos casos por igual.
+  const closedFeedEmpty = closedFeed.isFetched && closedRows.length === 0
+  // Day-detail cerrado: movimientos reales del día tocado en la grilla
+  // (`selectedClosedIso`, ya declarado arriba — no crear un segundo estado).
+  const closedDayQuery = useGastosExpensesForDay({
+    familyId: viewingClosed ? familyId : undefined,
+    isoDate: viewingClosed ? selectedClosedIso : null,
+    categoryId: null,
+  })
+  const closedDayRows = closedDayQuery.data ?? []
 
   // ── F5 · Ciclo VENCIDO + días FUERA-DE-CICLO ───────────────────────
   // Estado VENCIDO = MISMA señal que la Home (isSalaryPendingConfirmation): el
