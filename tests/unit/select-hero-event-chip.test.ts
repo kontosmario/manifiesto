@@ -55,7 +55,8 @@ describe('selectHeroEventChip — precedencia (uno por vez)', () => {
     const chip = selectHeroEventChip({ ...allSignals, acumulado: null })
     expect(chip?.kind).toBe('sumado')
     expect(chip?.tone).toBe('green')
-    expect(chip?.label).toBe('📈 Sumaste $139k al mes')
+    expect(chip?.label).toBe('Sumaste $139k al mes')
+    expect(chip?.icon).toBe('trending-up')
   })
 
   it('ajustado gana cuando el override es DOWN (diff < 0)', () => {
@@ -66,7 +67,8 @@ describe('selectHeroEventChip — precedencia (uno por vez)', () => {
     })
     expect(chip?.kind).toBe('ajustado')
     expect(chip?.tone).toBe('neutral')
-    expect(chip?.label).toBe('✂️ Ajustado este mes')
+    expect(chip?.label).toBe('Ajustado este mes')
+    expect(chip?.icon).toBe('content-cut')
   })
 
   it('ajustado gana también con diff == 0 (override al sueldo exacto)', () => {
@@ -85,7 +87,8 @@ describe('selectHeroEventChip — precedencia (uno por vez)', () => {
     })
     expect(chip?.kind).toBe('ahorrando')
     expect(chip?.tone).toBe('green')
-    expect(chip?.label).toBe('💚 Ahorrando $500k')
+    expect(chip?.label).toBe('Ahorrando $500k')
+    expect(chip?.icon).toBe('savings')
   })
 
   it('null cuando nada aplica', () => {
@@ -103,9 +106,10 @@ describe('selectHeroEventChip — precedencia (uno por vez)', () => {
 })
 
 describe('selectHeroEventChip — copy del acumulado (arrastre real, decisión owner)', () => {
-  it('usa 💰 Sobrante + el período del stack viejo (lowercased)', () => {
+  it('usa Sobrante + el período del stack viejo (lowercased)', () => {
     const chip = selectHeroEventChip(allSignals)
-    expect(chip?.label).toBe('💰 Sobrante $837k de junio 2026')
+    expect(chip?.label).toBe('Sobrante $837k de junio 2026')
+    expect(chip?.icon).toBe('account-balance-wallet')
   })
 
   it('sin periodLabel cae al patrón "del mes pasado"', () => {
@@ -113,7 +117,7 @@ describe('selectHeroEventChip — copy del acumulado (arrastre real, decisión o
       ...allSignals,
       acumulado: { amount: 837_000, periodLabel: '  ' },
     })
-    expect(chip?.label).toBe('💰 Sobrante $837k del mes pasado')
+    expect(chip?.label).toBe('Sobrante $837k del mes pasado')
   })
 
   it('acumulado con amount ≤ 0 o no finito no gana el slot (guarda defensiva)', () => {
@@ -128,14 +132,15 @@ describe('selectHeroEventChip — copy del acumulado (arrastre real, decisión o
 })
 
 describe('selectHeroEventChip — ahorrando (default documentado a validar por owner)', () => {
-  it('partial → tone green con 💚 y el label del helper', () => {
+  it('partial → tone green con el label del helper tal cual', () => {
     const chip = selectHeroEventChip({ ...emptyInput, savingsChip: partialChip })
     expect(chip?.kind).toBe('ahorrando')
     expect(chip?.tone).toBe('green')
-    expect(chip?.label).toBe('💚 $320k de meta $500k')
+    expect(chip?.label).toBe('$320k de meta $500k')
+    expect(chip?.icon).toBe('savings')
   })
 
-  it('consumed → tone neutral, label-aviso del helper sin 💚', () => {
+  it('consumed → tone neutral, label-aviso del helper', () => {
     const chip = selectHeroEventChip({ ...emptyInput, savingsChip: consumedChip })
     expect(chip?.kind).toBe('ahorrando')
     expect(chip?.tone).toBe('neutral')
@@ -159,12 +164,12 @@ describe('selectHeroEventChip — ahorrando (default documentado a validar por o
 
 describe('selectFixedChip — chip de fijos APARTE del selector', () => {
   it('formatea con el helper del stack viejo (formatMoneyShort)', () => {
-    expect(selectFixedChip(123_000)).toBe('🗓️ $123k de fijos por pagar')
+    expect(selectFixedChip(123_000)).toBe('$123k de fijos por pagar')
   })
 
   it('montos en millones usan el tramo M del formato corto', () => {
     // Test env fuerza 'es' → decimal con coma (es-AR).
-    expect(selectFixedChip(1_500_000)).toBe('🗓️ $1,5M de fijos por pagar')
+    expect(selectFixedChip(1_500_000)).toBe('$1,5M de fijos por pagar')
   })
 
   it('null cuando no hay fijos pendientes (0, negativo o no finito)', () => {

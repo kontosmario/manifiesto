@@ -1,8 +1,11 @@
 // @i18n-ignore-file — kit de rediseño bajo gate; copy literal, i18n en el pase F3.5.
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Fragment, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { AnimatedText, Text } from '@/components/ui/app-text'
+import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   cancelAnimation,
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -10,6 +13,10 @@ import Animated, {
 } from 'react-native-reanimated'
 import Svg, { Circle, Line, Path } from 'react-native-svg'
 import { CountUpText } from '@/components/home/animated/count-up-text'
+import {
+  heroBalanceRampScale,
+  heroBalanceRampT,
+} from '@/features/home/hero-balance-ramp'
 import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import { BrotParticles } from '@/components/brot/brot-particles'
 import { GoalIcon } from '@/components/savings-goals/goal-icon'
@@ -24,7 +31,7 @@ import {
 import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { neoParticlePresets } from '@/theme/neo-tokens'
-import { decorativeDurations, motionEasings } from '@/lib/motion/tokens'
+import { decorativeDurations, motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { nunitoFamily } from '@/theme/typography'
 
 // Press-feedback (spring `motionSprings.press`, reduced-motion-aware) sobre
@@ -520,11 +527,86 @@ export function HomeChipsRow({
 
 // ─── ① Hero saldo (pozo hundido + medidor de cupo) ───────────────────
 
-export type HomeHeroVariant = 'steady' | 'adjusted' | 'empty'
+export type HomeHeroVariant = 'steady' | 'adjusted' | 'empty' | 'over'
+
+/**
+ * Paleta del hero cuando el saldo del ciclo es NEGATIVO ("te pasaste").
+ *
+ * Es el port de la variante `corto` del hero de Control
+ * (`control/parts/control-hero.tsx`): misma familia terracota, para que las
+ * dos pantallas digan lo mismo con el mismo color. Igual en ambos temas — el
+ * hero es una superficie oscura propia, como ya pasa con el forest y con las
+ * paletas de Control (que tampoco se tematizan).
+ *
+ * NO incluye Brot: el hero del Home no tiene muñeco (decisión del rediseño),
+ * solo el campo de partículas — que sí se tiñe.
+ */
+/**
+ * Stops de la RAMPA de la tinta del monto — el color sigue al valor EN
+ * VUELO del contador (pedido del owner 2026-08-13). El ancla holgada (t=0)
+ * la pone la variante vía `restInkRef`; estos dos son los otros extremos.
+ */
+/** t = 0.5, el saldo justo en CERO. Es el MISMO durazno que ya usa la
+ *  variante `adjusted` (`balanceAdjustedInk`, home-spec:279/:433) → no entra
+ *  ningún color nuevo al sistema. */
+const HERO_BALANCE_EDGE_INK = '#FBD9BC'
+
+const HERO_OVER_PALETTE = {
+  heroGradientCss: 'linear-gradient(155deg, #7A3A24 0%, #A6503A 52%, #C26B45 100%)',
+  heroDot: '#F6C6AE',
+  heroLabel: 'rgba(255,237,224,0.85)',
+  dayPillBackground: '#F6C6AE',
+  dayPillInk: '#5A2312',
+  wellBackground: 'rgba(58,20,10,0.36)',
+  balanceInk: '#FFEDE0',
+  usdInk: 'rgba(255,237,224,0.72)',
+  // Sombras inset SIN el rim verde: las forest terminan en un highlight
+  // rgba(130,190,130,…) que sobre terracota delataba la paleta equivocada.
+  // El pozo usa el WELL_INSET exacto de la variante `corto` de Control
+  // (control-hero.tsx); el chip, su valor forest menos el rim.
+  wellShadow: 'inset 6px 6px 14px rgba(6,20,10,0.5)',
+  eventChipShadow: 'inset 3px 3px 7px rgba(6,20,10,0.45)',
+} as const
+
+/** t = 1, el extremo PASADO de la rampa. El dot terracota de la paleta
+ *  `over`: sobre el pozo del hero tiene más presencia que su `balanceInk`
+ *  (#FFEDE0, casi blanco), que es la tinta pensada para la rama SIN conteo.
+ *  Esa sigue intacta para el mockup/preview. */
+const HERO_BALANCE_OVER_INK = HERO_OVER_PALETTE.heroDot
+
+/**
+ * Fallback SÓLIDO del hero, bajo el gradiente. Es el primer stop de cada
+ * gradiente, el mismo criterio que `gradientFallback` en control-spec.
+ *
+ * `styles.hero` no traía `backgroundColor`, así que donde el gradiente no
+ * rinde (preview web; y en Android viejo el mismo `experimental_backgroundImage`
+ * es frágil) la tarjeta quedaba TRANSPARENTE. Para el forest eso pasaba
+ * desapercibido; para el estado `over` sería fatal — el rojo es justamente la
+ * señal, y sin fallback el hogar pasado de plan se vería idéntico a uno sano.
+ * Con el gradiente rindiendo, este color es invisible: cero cambio en device.
+ */
+const HERO_GRADIENT_FALLBACK: Record<HomeHeroVariant, string> = {
+  steady: '#244235',
+  adjusted: '#244235',
+  empty: '#244235',
+  over: '#7A3A24',
+}
+
+/** Tinta de la sub-línea "Te pasaste del plan" dentro del pozo. */
+const HERO_OVER_SUB_INK = 'rgba(255,237,224,0.82)'
+
+/** Partículas del hero en estado `over` — la terna de `corto` de Control. */
+const HERO_OVER_PARTICLES = ['#FBD9BC', '#F2C0A0', '#FFE9D6'] as const
+
+type MaterialIconName = ComponentProps<typeof MaterialIcons>['name']
 
 export interface HomeEventChipVM {
   tone: 'green' | 'neutral'
   label: string
+  /** Glifo Material a la izquierda del label. El chip rota entre cuatro
+   *  significados (sobrante / sumaste / ajustado / ahorrando), así que el
+   *  ícono viaja con el dato — lo elige `selectHeroEventChip`. */
+  icon?: MaterialIconName
 }
 
 export interface HomeGaugeVM {
@@ -544,8 +626,17 @@ export interface HomeGaugeVM {
 export interface HomeHeroProps {
   mode: HomeMode
   /** adjusted = saldo + chip de evento en durazno (§3) · empty = usuario
-   *  nuevo sin ingresos (§14: sin chips ni medidor, fila Brot + CTA). */
+   *  nuevo sin ingresos (§14: sin chips ni medidor, fila Brot + CTA) ·
+   *  over = saldo del ciclo NEGATIVO, hero terracota (paleta `corto` de
+   *  Control) con el monto en menos. */
   variant?: HomeHeroVariant
+  /** Sub-línea del pozo en la variante `over` ("Te pasaste del plan"). Sin
+   *  ella el monto negativo queda sin explicación. */
+  overSub?: string
+  /** Copy de la fila Brot que reemplaza al medidor en `over` ("El cupo se
+   *  reinicia con tu próximo ciclo"). Suma el dato que el pozo no da —
+   *  CUÁNDO vuelve el cupo — en vez de repetir el "te pasaste". */
+  overCupoHint?: string
   /** Eyebrow del pozo (default = literal del mockup; la neo pasa t()). */
   balanceLabel?: string
   balance?: string
@@ -555,6 +646,16 @@ export interface HomeHeroProps {
    *  `balance` string queda de fallback (preview/mockup). */
   balanceValue?: number
   formatBalance?: (n: number) => string
+  /** Escala de la GRADACIÓN de la tinta del monto: la distancia (en pesos)
+   *  entre "holgado" y "al borde". La neo pasa el CUPO DIARIO — leída en
+   *  cupos la señal es auditable ("te queda menos de un día"). Sin ella la
+   *  tinta gradúa igual, con el piso de `heroBalanceRampScale`. */
+  balanceScale?: number
+  /** Gate del PRIMER conteo del saldo. `false` = el monto se queda en $0
+   *  sin animar. La neo lo abre cuando el splash se fue Y el saldo asentó,
+   *  para que el reveal 0→saldo no se gaste tapado ni con un valor
+   *  provisorio. Default `true` (el preview/mockup cuenta al montar). */
+  balanceCountReady?: boolean
   /** null oculta la línea (real condicional; el mockup la dibuja siempre). */
   usdLine?: string | null
   dayPill?: string
@@ -587,7 +688,7 @@ export interface HomeHeroProps {
   onPressProjection?: () => void
 }
 
-const MOCKUP_EVENT_CHIP: HomeEventChipVM = { tone: 'green', label: '+$139k al mes' }
+const MOCKUP_EVENT_CHIP: HomeEventChipVM = { tone: 'green', label: '+$139k al mes', icon: 'trending-up' }
 const MOCKUP_GAUGE: HomeGaugeVM = {
   cupoAmount: '$179k',
   spentLabel: '$52k',
@@ -703,10 +804,11 @@ function HomeCupoGauge({
     <View style={styles.gaugeSection}>
       <View style={styles.cupoRow}>
         {/* Pastilla "CUPO HOY" — pozo hundido con 2 NOTCHES tipo cupón. Los
-            notches son del color del hero (verde forest) para leerse como el
-            fondo asomando por un recorte del cupón, no como puntos encima.
-            Columnas full-height + justify center = centrado robusto sin
-            depender de la altura calculada. */}
+            notches son TROQUEL HUNDIDO (oscuro translúcido): antes imitaban
+            el fondo del hero con un verde plano y el gradiente real los
+            delataba (fix owner 2026-08-13, ver docblock de `cupoNotch` en
+            home-spec). Columnas full-height + justify center = centrado
+            robusto sin depender de la altura calculada. */}
         <View style={[styles.cupoWell, { backgroundColor: s.cupoWellBg, boxShadow: s.cupoWellShadow }]}>
           <View style={[styles.cupoNotchCol, styles.cupoNotchColLeft]} pointerEvents="none">
             <View style={[styles.cupoNotch, { backgroundColor: s.cupoNotch }]} />
@@ -767,6 +869,61 @@ function HomeCupoGauge({
   )
 }
 
+/**
+ * Reemplazo del medidor de cupo cuando el saldo del ciclo es NEGATIVO
+ * (variante `over`). Pedido del owner 2026-08-13: en vez de ocultar la
+ * sección, un emote de Brot — pose `worried`, la MISMA que usa el estado
+ * `corto` del hero de Control, que ya convive con la paleta terracota — más
+ * el dato que el pozo no da (cuándo vuelve el cupo). El link de proyección se
+ * mantiene: Control es donde vive el plan de recuperación del ciclo en rojo.
+ *
+ * La fila espeja la del hero vacío (slot 40 + copy flex:1, gap 11). El
+ * headroom de la tinta de Brot (~4.9dp a size 44, BROT_INK_BLEED_TOP) lo
+ * absorbe el paddingTop:13 de `gaugeSection` — y el hero NO tiene
+ * overflow:'hidden', así que nada la guillotina.
+ */
+function HeroCupoOverRow({
+  hint,
+  projectionLabel,
+  projectionA11yLabel,
+  onPressProjection,
+}: {
+  hint: string
+  projectionLabel: string
+  projectionA11yLabel: string
+  onPressProjection?: () => void
+}) {
+  const projectionPress = usePressScale({ pressedScale: 0.95 })
+  const projectionLink = (
+    <Text style={[styles.gaugeLink, { color: HERO_OVER_PALETTE.usdInk }]}>{projectionLabel}</Text>
+  )
+  return (
+    <View style={styles.gaugeSection}>
+      <View style={styles.overCupoRow}>
+        <View style={styles.overCupoBrotSlot} pointerEvents="none">
+          <BrotMascot pose="worried" size={44} shadow={false} />
+        </View>
+        <Text style={[styles.overCupoCopy, { color: HERO_OVER_SUB_INK }]}>{hint}</Text>
+      </View>
+      {onPressProjection ? (
+        <AnimatedPressable
+          accessibilityRole="button"
+          accessibilityLabel={projectionA11yLabel}
+          hitSlop={6}
+          onPress={onPressProjection}
+          onPressIn={projectionPress.onPressIn}
+          onPressOut={projectionPress.onPressOut}
+          style={projectionPress.animatedStyle}
+        >
+          {projectionLink}
+        </AnimatedPressable>
+      ) : (
+        projectionLink
+      )}
+    </View>
+  )
+}
+
 export function HomeHero({
   mode,
   variant = 'steady',
@@ -774,10 +931,12 @@ export function HomeHero({
   balance,
   balanceValue,
   formatBalance,
+  balanceScale,
+  balanceCountReady = true,
   dayPill,
   usdLine = '≈ US$ 1.619',
   eventChip = MOCKUP_EVENT_CHIP,
-  fixedChip = '🗓️ $123k de fijos por pagar',
+  fixedChip = '$123k de fijos por pagar',
   reservaChip = null,
   gauge = MOCKUP_GAUGE,
   emptySub = 'Cargá tu primer ingreso para activar tu mes',
@@ -791,10 +950,131 @@ export function HomeHero({
   projectionA11yLabel = 'Proyección de cierre en Control',
   onPressEmptyCta,
   onPressProjection,
+  overSub = 'Te pasaste del plan',
+  overCupoHint = 'El cupo se reinicia con tu próximo ciclo',
 }: HomeHeroProps) {
-  const s = HOME_SPEC[mode]
-  // El press del link de proyección y el shared value del bar viven en
-  // HomeCupoGauge (bajo hooks estables, tras el early-return del hero vacío).
+  // `over` repinta el hero entero (gradiente, dot, pill del día, pozo, tintas)
+  // con la paleta terracota. El spread deja los END-STATES para lo que no se
+  // anima (chips, glow del contador); los sólidos que sí transicionan llevan
+  // además un estilo animado que interpola entre las dos paletas — al llegar
+  // a progreso 1 coincide exactamente con estos valores. El medidor nunca se
+  // dibuja en `over`: HomeHero lo reemplaza por la fila Brot (branch abajo),
+  // así que sus tokens forest no pueden filtrarse sobre el terracota.
+  const spec = HOME_SPEC[mode]
+  const s = variant === 'over' ? { ...spec, ...HERO_OVER_PALETTE } : spec
+
+  // ── Transición de paleta forest↔terracota ──────────────────────────
+  // Los strings de gradiente no son animables (precedente AuthCta, auth-kit):
+  // crossfade de DOS capas de fondo con UN shared value + interpolateColor
+  // para los sólidos. Inicializado en el estado final para no animar el mount
+  // (mismo criterio que AuthCta). Estos hooks viven ANTES del early-return
+  // del hero vacío: la variante puede cambiar en runtime (empty→steady al
+  // configurar el sueldo) y el orden de hooks debe ser estable.
+  const reduceMotion = useReducedMotion()
+  const isOver = variant === 'over'
+  const overProgress = useSharedValue(isOver ? 1 : 0)
+  useEffect(() => {
+    if (reduceMotion) {
+      cancelAnimation(overProgress)
+      overProgress.value = isOver ? 1 : 0
+      return
+    }
+    overProgress.value = withTiming(isOver ? 1 : 0, {
+      duration: motionDurations.deliberate,
+      easing: motionEasings.standard,
+    })
+    return () => cancelAnimation(overProgress)
+  }, [isOver, reduceMotion, overProgress])
+
+  const overLayerStyle = useAnimatedStyle(() => ({ opacity: overProgress.value }))
+  const heroDotStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      overProgress.value,
+      [0, 1],
+      [spec.heroDot, HERO_OVER_PALETTE.heroDot],
+    ),
+  }))
+  const heroLabelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      overProgress.value,
+      [0, 1],
+      [spec.heroLabel, HERO_OVER_PALETTE.heroLabel],
+    ),
+  }))
+  const dayPillBgStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      overProgress.value,
+      [0, 1],
+      [spec.dayPillBackground, HERO_OVER_PALETTE.dayPillBackground],
+    ),
+  }))
+  const dayPillInkStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      overProgress.value,
+      [0, 1],
+      [spec.dayPillInk, HERO_OVER_PALETTE.dayPillInk],
+    ),
+  }))
+  const wellBgStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(
+      overProgress.value,
+      [0, 1],
+      [spec.wellBackground, HERO_OVER_PALETTE.wellBackground],
+    ),
+  }))
+  // El ancla "no-over" del monto depende de `adjusted` (durazno): la
+  // transición steady↔adjusted sigue siendo en seco, como siempre fue.
+  // CONGELADA mientras variant === 'over': si el flip viene DESDE adjusted,
+  // recalcular el ancla en ese mismo render haría que el fade arranque en
+  // crema cuando lo que se veía era durazno (snap de un frame). El ref
+  // retiene la tinta que realmente se estaba mostrando; al salir de `over`
+  // se actualiza en ese render y el extremo visible (progreso 1, terracota)
+  // no se mueve.
+  const restInkRef = useRef(variant === 'adjusted' ? spec.balanceAdjustedInk : spec.balanceInk)
+  if (variant !== 'over') {
+    restInkRef.current = variant === 'adjusted' ? spec.balanceAdjustedInk : spec.balanceInk
+  }
+  const balanceRestInk = restInkRef.current
+
+  // Valor EN VUELO del conteo — lo escribe `CountUpText` (vía `flightValue`)
+  // y lo lee la tinta del monto. Semilla 0 (el conteo arranca ahí); con
+  // reduced motion arranca en el valor final, porque ahí no hay conteo que
+  // corrija un frame de durazno en un hogar holgado.
+  const balanceFlight = useSharedValue(reduceMotion ? (balanceValue ?? 0) : 0)
+  const hasBalanceCount = balanceValue != null
+  const rampScale = useMemo(
+    () => heroBalanceRampScale(balanceScale ?? 0, balanceValue ?? 0),
+    [balanceScale, balanceValue],
+  )
+
+  const balanceInkStyle = useAnimatedStyle(() => {
+    // Sin conteo (preview/mockup con `balance` string): la tinta sigue a la
+    // VARIANTE, exactamente como hasta hoy — no hay valor en vuelo del que
+    // agarrarse.
+    if (!hasBalanceCount) {
+      return {
+        color: interpolateColor(
+          overProgress.value,
+          [0, 1],
+          [balanceRestInk, HERO_OVER_PALETTE.balanceInk],
+        ),
+      }
+    }
+    // Con conteo: la VARIANTE define el extremo holgado (`balanceRestInk`:
+    // crema en steady, durazno en adjusted) y el VALOR EN VUELO define la
+    // POSICIÓN dentro de la rampa. El fondo sigue diciendo QUÉ; la tinta
+    // pasa a decir CUÁNTO.
+    return {
+      color: interpolateColor(
+        heroBalanceRampT(balanceFlight.value, rampScale),
+        [0, 0.5, 1],
+        [balanceRestInk, HERO_BALANCE_EDGE_INK, HERO_BALANCE_OVER_INK],
+      ),
+    }
+  })
+  const usdInkStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(overProgress.value, [0, 1], [spec.usdInk, HERO_OVER_PALETTE.usdInk]),
+  }))
 
   // Hero vacío (§14) — transcripción literal de estados.dc.html:60-69
   // (claro) / :104-113 (oscuro): radius 28, padding 16/16/15, label 10.5,
@@ -803,7 +1083,18 @@ export function HomeHero({
   // partículas (el panel no las dibuja).
   if (variant === 'empty') {
     return (
-      <View style={[styles.heroEmpty, { experimental_backgroundImage: s.heroGradientCss, boxShadow: s.heroShadow }]}>
+      <View
+        style={[
+          styles.heroEmpty,
+          {
+            // Mismo fallback sólido que el hero lleno: sin él, donde el
+            // gradiente no rinde la card queda transparente.
+            backgroundColor: HERO_GRADIENT_FALLBACK.empty,
+            experimental_backgroundImage: s.heroGradientCss,
+            boxShadow: s.heroShadow,
+          },
+        ]}
+      >
         <View style={styles.heroTopRow}>
           <View style={styles.heroEmptyLabelRow}>
             <View style={[styles.heroEmptyDot, { backgroundColor: s.heroDot }]} />
@@ -836,12 +1127,38 @@ export function HomeHero({
     )
   }
 
-  const balanceInk = variant === 'adjusted' ? s.balanceAdjustedInk : s.balanceInk
   const eventChipInk =
     variant === 'adjusted' ? s.balanceAdjustedInk : eventChip?.tone === 'green' ? s.eventChipGreenInk : s.eventChipNeutralInk
 
   return (
-    <View style={[styles.hero, { experimental_backgroundImage: s.heroGradientCss, boxShadow: s.heroShadow }]}>
+    <View style={[styles.hero, { backgroundColor: HERO_GRADIENT_FALLBACK.steady, boxShadow: s.heroShadowOutset }]}>
+      {/* Fondo en DOS capas (los gradientes no se interpolan): base forest
+          SIEMPRE opaca — sin valle de transparencia a mitad del crossfade — y
+          capa terracota encima cuya opacity es lo único que anima. Cada capa
+          conserva su fallback sólido: donde experimental_backgroundImage no
+          rinde (preview web, Android viejo) la transición se sigue leyendo. */}
+      <View
+        pointerEvents="none"
+        style={[styles.heroBgLayer, { experimental_backgroundImage: spec.heroGradientCss }]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.heroBgLayer,
+          overLayerStyle,
+          {
+            backgroundColor: HERO_GRADIENT_FALLBACK.over,
+            experimental_backgroundImage: HERO_OVER_PALETTE.heroGradientCss,
+          },
+        ]}
+      />
+      {/* Rim light (inset 0 1px 0) en su PROPIA capa, encima de los dos
+          gradientes: en el root quedaba tapado por las capas opacas en
+          Android (el inset de RN se dibuja bajo los hijos) — por eso el
+          heroShadow del root pasó a `heroShadowOutset`. Overlay único (no
+          duplicado en cada capa): constante durante el crossfade y sin alfa
+          acumulado en iOS. */}
+      <View pointerEvents="none" style={[styles.heroBgLayer, { boxShadow: s.heroRimInset }]} />
       <View style={styles.heroParticles} pointerEvents="none">
         {/* PARTÍCULAS DEL REDISEÑO — pedido owner 2026-07-28 ("volver a las
             partículas del rediseño"), propagado desde Gastos para no dejar el
@@ -864,33 +1181,52 @@ export function HomeHero({
             Gate de costo (nuevo acá, no lo tenía `CardParticles`): el campo se
             congela sin foco de navegación y con reduced-motion —que colapsa
             `deviceYearClass < 2020`—, así que en gama baja no anima. */}
-        <BrotParticles {...neoParticlePresets.hero} count={20} borderRadius={32} />
+        <BrotParticles
+          {...neoParticlePresets.hero}
+          colors={variant === 'over' ? HERO_OVER_PARTICLES : neoParticlePresets.hero.colors}
+          count={20}
+          borderRadius={32}
+        />
       </View>
       <View>
         <View style={styles.heroTopRow}>
           <View style={styles.heroLabelRow}>
-            <View style={[styles.heroDot, { backgroundColor: s.heroDot }]} />
-            <Text style={[styles.heroLabel, { color: s.heroLabel }]}>{balanceLabel}</Text>
+            <Animated.View style={[styles.heroDot, heroDotStyle]} />
+            <AnimatedText style={[styles.heroLabel, heroLabelStyle]}>{balanceLabel}</AnimatedText>
           </View>
-          <View style={[styles.dayPill, { backgroundColor: s.dayPillBackground, boxShadow: s.dayPillShadow }]}>
-            <Text style={[styles.dayPillText, { color: s.dayPillInk }]}>{dayPill ?? 'día 18 de 30'}</Text>
-          </View>
+          <Animated.View style={[styles.dayPill, dayPillBgStyle, { boxShadow: s.dayPillShadow }]}>
+            <AnimatedText style={[styles.dayPillText, dayPillInkStyle]}>{dayPill ?? 'día 18 de 30'}</AnimatedText>
+          </Animated.View>
         </View>
 
-        <View style={[styles.well, { backgroundColor: s.wellBackground, boxShadow: s.wellShadow }]}>
+        <Animated.View style={[styles.well, wellBgStyle, { boxShadow: s.wellShadow }]}>
           {balanceValue != null ? (
             // Conteo fluido (UI thread) + destello al asentar — misma
             // animación que la home vigente. Nunca resetea a 0.
             <CountUpText
               value={balanceValue}
               flourish
-              unit="money"
+              // El valor en vuelo sale acá para que `balanceInkStyle` tiña
+              // el monto según cuánto se acerca a cero, y el gate evita
+              // que el reveal 0→saldo se gaste detrás del splash.
+              flightValue={balanceFlight}
+              startWhen={balanceCountReady}
+              // `moneySigned` SIEMPRE (no solo en `over`): el path fluido
+              // formatea en el worklet e IGNORA `format`, y el string se
+              // deriva del shared value — que puede seguir NEGATIVO en vuelo
+              // cuando la variante ya flipeó a steady (cargaste un ingreso y
+              // el saldo pasó a positivo: el conteo baja desde -$1.2M). Con la
+              // unit condicionada a la variante, ese tramo se dibujaba SIN
+              // signo — un déficit disfrazado de plata a favor (review
+              // 2026-08-13). Para n ≥ 0 'moneySigned' rinde byte-idéntico a
+              // 'money', así que steady/adjusted no cambian.
+              unit="moneySigned"
               glowColor={s.heroDot}
               format={formatBalance ?? ((n) => `${n}`)}
               style={[
                 styles.balance,
+                balanceInkStyle,
                 {
-                  color: balanceInk,
                   textShadowColor: 'rgba(10,30,15,0.35)',
                   textShadowOffset: { width: 0, height: 2 },
                   textShadowRadius: 8,
@@ -898,11 +1234,11 @@ export function HomeHero({
               ]}
             />
           ) : (
-            <Text
+            <AnimatedText
               style={[
                 styles.balance,
+                balanceInkStyle,
                 {
-                  color: balanceInk,
                   textShadowColor: 'rgba(10,30,15,0.35)',
                   textShadowOffset: { width: 0, height: 2 },
                   textShadowRadius: 8,
@@ -910,32 +1246,56 @@ export function HomeHero({
               ]}
             >
               {balance ?? '$2.452.537'}
-            </Text>
+            </AnimatedText>
           )}
-          {usdLine ? <Text style={[styles.usd, { color: s.usdInk }]}>{usdLine}</Text> : null}
-        </View>
+          {variant === 'over' ? (
+            <Text style={[styles.overSub, { color: HERO_OVER_SUB_INK }]}>{overSub}</Text>
+          ) : null}
+          {usdLine ? (
+            <AnimatedText style={[styles.usd, usdInkStyle]}>{usdLine}</AnimatedText>
+          ) : null}
+        </Animated.View>
 
         {eventChip || fixedChip || reservaChip ? (
           <View style={styles.eventChipsRow}>
             {eventChip ? (
-              <View style={[styles.eventChip, { backgroundColor: s.eventChipBackground, boxShadow: s.eventChipShadow }]}>
-                <Text style={[styles.eventChipText, { color: eventChipInk }]}>{eventChip.label}</Text>
-              </View>
+              <HomeHeroChip s={s} ink={eventChipInk} icon={eventChip.icon} label={eventChip.label} />
             ) : null}
+            {/* Fijos y reserva tienen UN solo significado cada uno, así que su
+                glifo se fija acá y no viaja con el string (ver
+                `selectFixedChip` / `selectReservaChip`). */}
             {reservaChip ? (
-              <View style={[styles.eventChip, { backgroundColor: s.eventChipBackground, boxShadow: s.eventChipShadow }]}>
-                <Text style={[styles.eventChipText, { color: s.eventChipReservaInk }]}>{reservaChip}</Text>
-              </View>
+              <HomeHeroChip
+                s={s}
+                ink={s.eventChipReservaInk}
+                icon="account-balance"
+                label={reservaChip}
+              />
             ) : null}
             {fixedChip ? (
-              <View style={[styles.eventChip, { backgroundColor: s.eventChipBackground, boxShadow: s.eventChipShadow }]}>
-                <Text style={[styles.eventChipText, { color: s.eventChipNeutralInk }]}>{fixedChip}</Text>
-              </View>
+              <HomeHeroChip
+                s={s}
+                ink={s.eventChipNeutralInk}
+                icon="calendar-month"
+                label={fixedChip}
+              />
             ) : null}
           </View>
         ) : null}
 
-        {gauge ? (
+        {/* En `over` el medidor SIEMPRE cede su lugar a la fila Brot — aunque
+            llegue un `gauge` (la neo lo pasa sin mirar la variante, y
+            deriveGaugeState puede devolver estado con saldo de ciclo
+            negativo): sin este branch los tokens forest del medidor se
+            filtrarían sobre el terracota. */}
+        {variant === 'over' ? (
+          <HeroCupoOverRow
+            hint={overCupoHint}
+            projectionLabel={projectionLabel}
+            projectionA11yLabel={projectionA11yLabel}
+            onPressProjection={onPressProjection}
+          />
+        ) : gauge ? (
           <HomeCupoGauge
             s={s}
             gauge={gauge}
@@ -949,6 +1309,39 @@ export function HomeHero({
           />
         ) : null}
       </View>
+    </View>
+  )
+}
+
+/**
+ * Chip del hero (evento / reserva / fijos). Ícono Material + label, los dos
+ * con la MISMA tinta.
+ *
+ * ÍCONOS, NO EMOJIS (owner 2026-08-12). Los tres chips traían el glifo como
+ * emoji al principio del string (💚/💰/📈/✂️/🗓️/🏦). Un emoji no es parte del
+ * sistema visual: lo dibuja la fuente de la plataforma —distinto en iOS, en
+ * Android y en cada versión—, ignora la tinta del chip (queda a todo color
+ * sobre el verde del hero) y no escala con el peso tipográfico. Además vivía
+ * dentro del copy traducido, así que se colaba en lo que anuncia el lector de
+ * pantalla y había que repetirlo en cada idioma.
+ */
+function HomeHeroChip({
+  s,
+  ink,
+  icon,
+  label,
+}: {
+  s: HomeSpec
+  ink: string
+  icon?: MaterialIconName
+  label: string
+}) {
+  return (
+    <View
+      style={[styles.eventChip, { backgroundColor: s.eventChipBackground, boxShadow: s.eventChipShadow }]}
+    >
+      {icon ? <MaterialIcons name={icon} size={14} color={ink} /> : null}
+      <Text style={[styles.eventChipText, { color: ink }]}>{label}</Text>
     </View>
   )
 }
@@ -1781,6 +2174,9 @@ const styles = StyleSheet.create({
 
   // ① hero
   hero: { position: 'relative', marginTop: 18, borderRadius: 32, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 },
+  // Capa de fondo del crossfade forest↔terracota. `styles.hero` NO tiene
+  // overflow:'hidden' (Brot/tinta), así que cada capa lleva su propio radius.
+  heroBgLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 32 },
   heroParticles: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 32, overflow: 'hidden' },
   heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heroLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -1794,8 +2190,28 @@ const styles = StyleSheet.create({
   // clippea en browser pero sí acá). ~1.2× despeja el tope sin mover el layout.
   balance: { fontSize: 41, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.82, lineHeight: 49 },
   usd: { fontSize: 13.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 7 },
+  // Sub-línea del pozo en `over` ("Te pasaste del plan"). Métrica del `usd`
+  // pero un punto más chica y en 800: es una etiqueta de estado, no un monto,
+  // y no debe competir con el número grande que tiene arriba.
+  overSub: { fontSize: 12.5, fontWeight: '800', fontFamily: nunitoFamily('800'), marginTop: 6 },
+  // Fila Brot del cupo en `over` — espejo métrico de heroEmptyBrotRow/Slot
+  // (gap 11, slot 40, copy 11/700 lh 15.4). Sin marginTop propio: el aire lo
+  // pone el paddingTop:13 de gaugeSection, que además absorbe el bleed de la
+  // tinta de Brot (~4.9dp a size 44).
+  overCupoRow: { flexDirection: 'row', alignItems: 'center', gap: 11 },
+  overCupoBrotSlot: { width: 40, alignItems: 'center', justifyContent: 'flex-end' },
+  overCupoCopy: { flex: 1, fontSize: 11, fontWeight: '700', fontFamily: nunitoFamily('700'), lineHeight: 15.4 },
   eventChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
-  eventChip: { borderRadius: 18, paddingVertical: 9, paddingHorizontal: 13 },
+  // Fila: el ícono Material reemplazó al emoji del prefijo (ver `HomeHeroChip`).
+  // El `gap: 6` es el mismo aire que tenía el espacio después del emoji.
+  eventChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 18,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+  },
   eventChipText: { fontSize: 12, fontWeight: '800', fontFamily: nunitoFamily('800') },
   // Cupo diario (rediseño 2026-07-21): contenedor columna = row (pastilla +
   // info) con el link de proyección debajo.

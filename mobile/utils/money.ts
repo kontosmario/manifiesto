@@ -192,6 +192,14 @@ export function formatUsd(n: number): string {
   return 'US$ ' + homeIntegerFormatter.format(Math.round(Math.abs(n)))
 }
 
+/** "-US$ 1.052" — el equivalente en dólares de un saldo NEGATIVO. `formatUsd`
+ *  aplica `Math.abs()`, así que sin este helper el déficit se dibuja como si
+ *  fuera plata a favor. Solo antepone el menos: los positivos quedan igual que
+ *  con `formatUsd` (sin "+", que en el hero leería como un ingreso). */
+export function formatUsdWithSign(n: number): string {
+  return (n < 0 ? '-' : '') + formatUsd(n)
+}
+
 const shortDecimalFormatter = makeLocaleAwareFormatter({
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,

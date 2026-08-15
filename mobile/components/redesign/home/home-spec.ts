@@ -54,6 +54,15 @@ export interface HomeSpec {
   // ① Hero saldo (gradiente idéntico en ambos temas; cambia la sombra).
   heroGradientCss: string
   heroShadow: string
+  /** `heroShadow` PARTIDO para el hero lleno, que pinta el gradiente en capas
+   *  hijas (crossfade forest↔terracota): el componente `inset 0 1px 0` del
+   *  root quedaba TAPADO por esas capas en Android (el inset se dibuja bajo
+   *  los hijos) y duplicado en iOS si se copiaba en vez de moverse (quirk de
+   *  zPosition). El outset queda en el root; el rim vive en una capa overlay
+   *  encima de los gradientes — constante durante el crossfade. El hero
+   *  VACÍO sigue usando `heroShadow` entero (su gradiente sigue en el root). */
+  heroShadowOutset: string
+  heroRimInset: string
   heroDot: string
   heroLabel: string
   dayPillBackground: string
@@ -91,9 +100,13 @@ export interface HomeSpec {
   // Pastilla "CUPO HOY" (pozo hundido + 2 knobs + divisor punteado).
   cupoWellBg: string
   cupoWellShadow: string
-  /** Notch tipo cupón: el VERDE DEL HERO (forest #297811 en la zona del
-   *  cupo), no un verde brillante — así se lee como el fondo asomando por un
-   *  recorte del cupón, no como un punto encima (pedido owner 2026-07-21). */
+  /** Notch tipo cupón: TROQUEL HUNDIDO (oscuro translúcido, familia del
+   *  barTrackBg). Antes imitaba el fondo del hero con un verde PLANO
+   *  (#297811), pero el fondo real es un gradiente: a la altura del cupón el
+   *  color verdadero es más oscuro y el "agujero" se delataba — y donde el
+   *  gradiente no rinde quedaban dos puntos verde brillante sobre el fallback
+   *  #244235. El translúcido lee como agujero prensado sobre cualquier fondo,
+   *  incluida la transición de paleta (fix owner 2026-08-13). */
   cupoNotch: string
   cupoDivider: string
   cupoLabelInk: string
@@ -253,6 +266,8 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     // acá para revertir en 1 línea). Ángulo 155deg del lenguaje nuevo.
     heroGradientCss: 'linear-gradient(155deg, #244235 0%, #1F590D 33%, #297811 67%, #297811 100%)',
     heroShadow: '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)',
+    heroShadowOutset: '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85)',
+    heroRimInset: 'inset 0 1px 0 rgba(255,255,255,0.25)',
     heroDot: '#C9F3C6',
     heroLabel: 'rgba(240,248,230,0.85)',
     dayPillBackground: 'rgba(255,255,255,0.16)',
@@ -276,7 +291,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     gaugeLinkInk: 'rgba(240,248,230,0.62)',
     cupoWellBg: 'rgba(13,34,18,0.32)',
     cupoWellShadow: 'inset 4px 4px 10px rgba(6,20,10,0.5), inset -3px -3px 8px rgba(130,190,130,0.15)',
-    cupoNotch: '#297811',
+    cupoNotch: 'rgba(6,20,10,0.45)',
     cupoDivider: 'rgba(240,248,230,0.28)',
     cupoLabelInk: 'rgba(240,248,230,0.7)',
     barTrackBg: 'rgba(6,20,10,0.42)',
@@ -405,6 +420,8 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     // en claro (el gradiente era idéntico en ambos temas, acá también).
     heroGradientCss: 'linear-gradient(155deg, #244235 0%, #1F590D 33%, #297811 67%, #297811 100%)',
     heroShadow: '14px 14px 30px rgba(0,0,0,0.5), -6px -6px 16px rgba(101,152,113,0.14), inset 0 1px 0 rgba(164,227,166,0.18)',
+    heroShadowOutset: '14px 14px 30px rgba(0,0,0,0.5), -6px -6px 16px rgba(101,152,113,0.14)',
+    heroRimInset: 'inset 0 1px 0 rgba(164,227,166,0.18)',
     heroDot: '#C9F3C6',
     heroLabel: 'rgba(240,248,230,0.85)',
     dayPillBackground: 'rgba(255,255,255,0.16)',
@@ -428,7 +445,7 @@ export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
     gaugeLinkInk: 'rgba(240,248,230,0.62)',
     cupoWellBg: 'rgba(13,34,18,0.32)',
     cupoWellShadow: 'inset 4px 4px 10px rgba(6,20,10,0.5), inset -3px -3px 8px rgba(130,190,130,0.15)',
-    cupoNotch: '#297811',
+    cupoNotch: 'rgba(6,20,10,0.45)',
     cupoDivider: 'rgba(240,248,230,0.28)',
     cupoLabelInk: 'rgba(240,248,230,0.7)',
     barTrackBg: 'rgba(6,20,10,0.42)',

@@ -103,6 +103,7 @@
 //     fila). El paso fab lo registra la tab bar real.
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -120,6 +121,7 @@ import {
 } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'expo-router'
+import { useScrollToTop } from '@react-navigation/native'
 import { useScreenLifecycleLog } from '@/lib/dev/anim-log'
 import { useSignalDestinationReady } from '@/features/auth-flow/use-signal-destination-ready'
 import { useIsAuthOverlayVisible } from '@/features/auth-flow/use-auth-flow'
@@ -211,6 +213,7 @@ import {
   selectHeroEventChip,
   selectReservaChip,
 } from '@/features/home/select-hero-event-chip'
+import { selectHeroVariant } from '@/features/home/select-hero-variant'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { useUnreadNotificationsCount } from '@/features/notifications/use-notifications'
 import { useColdStartBiometricCheck } from '@/features/auth/use-cold-start-biometric-check'
@@ -239,7 +242,12 @@ import { triggerHaptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast-bus'
 import { useThemeMode } from '@/theme/theme-provider'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
-import { formatMoney, formatMoneyShort, formatUsd } from '@/utils/money'
+import {
+  formatMoney,
+  formatMoneyShort,
+  formatMoneyWithSign,
+  formatUsdWithSign,
+} from '@/utils/money'
 import { getErrorMessage } from '@/utils/error-message'
 
 // ─── Helpers puros locales ───────────────────────────────────────────
@@ -281,6 +289,10 @@ type MovementItem =
 const INCOME_TILE_COLOR = '#329315'
 const NO_CATEGORY_COLOR = '#888888'
 const ACTIVITY_LIMIT = 6
+/** Techo del gate del conteo del saldo — ver `balanceCountReady`. No es
+ *  una animación (el guard de motion-tokens sólo mira withTiming/withSpring):
+ *  es el corte que evita que un `balanceHydrating` colgado congele el monto. */
+const HERO_COUNT_GATE_CEILING_MS = 2500
 
 type TourScrollHandlers = {
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
@@ -351,6 +363,21 @@ export function NeoHomeScreen({ userId, familyId, preview = false }: NeoHomeScre
   // por ref para no forzar re-render del outer.
   const tourScrollRef = useRef<ScrollView | null>(null)
   const tourScrollBindingRef = useRef<TourScrollHandlers | null>(null)
+
+  /**
+   * Tocar la tab YA activa vuelve al principio (convención de iOS y Android).
+   * Antes ese toque vibraba y no hacía nada: la barra emite `tabPress` siempre
+   * —hace falta para el `preventDefault()` del tour— pero nadie lo escuchaba,
+   * así que había confirmación táctil de una acción inexistente.
+   *
+   * Se usa el hook de React Navigation y no un bus propio (había uno,
+   * `lib/tab-focus-pulse`, sin un solo suscriptor y con el productor roto —se
+   * borró): ya resuelve los tres bordes que importan — actúa SÓLO con la
+   * pantalla enfocada, respeta el `defaultPrevented` del tour, y no se dispara
+   * al volver de un modal (un pop no emite `tabPress`), así que la posición de
+   * scroll sobrevive a add-expense/jardín/ajustes.
+   */
+  useScrollToTop(tourScrollRef)
 
   // AppStackShell ya dispara y seedea el snapshot; acá solo necesitamos
   // el refetch handle (pull-to-refresh) + el gate de render.
@@ -764,7 +791,15 @@ function NeoHomeDashboard({
     const g = savingsGoalQuery.data
     if (!g) return null
     if (g.isActive === false) return null
-    return { id: g.id, title: g.title, emoji: g.emoji }
+    // Montos incluidos: la barra de progreso de la opción "Destinar a mi
+    // meta" del wrapped (pantalla 06) los necesita.
+    return {
+      id: g.id,
+      title: g.title,
+      emoji: g.emoji,
+      currentAmount: g.currentAmount,
+      goalAmount: g.goalAmount,
+    }
   }, [savingsGoalQuery.data])
 
   const {
@@ -824,15 +859,23 @@ function NeoHomeDashboard({
   )
 
   // ── Handlers de navegación (rutas de la vieja, tabla §11) ──────────
+  //
+  // El háptico va en los TRES: cambiar de vista principal se siente igual se
+  // haya tocado la barra de tabs (que lo dispara en su `tabPress`) o una card
+  // que lleva al mismo lado. Sin esto, "Ver todos" saltaba a Gastos en silencio
+  // mientras la tab de al lado vibraba — el mismo destino con dos sensaciones.
   const handleViewGastos = useCallback(() => {
+    void triggerHaptic('selection')
     trackTap('month_summary_variables', 'S5', '/(app)/(tabs)/expenses')
     router.push('/(app)/(tabs)/expenses')
   }, [router, trackTap])
   const handleViewFijos = useCallback(() => {
+    void triggerHaptic('selection')
     trackTap('month_summary_fixed', 'S5', '/(app)/(tabs)/fixed-expenses')
     router.push('/(app)/(tabs)/fixed-expenses')
   }, [router, trackTap])
   const handleViewAllActivity = useCallback(() => {
+    void triggerHaptic('selection')
     trackTap('activity_view_all', 'S7', '/(app)/(tabs)/expenses')
     router.push('/(app)/(tabs)/expenses')
   }, [router, trackTap])
@@ -924,9 +967,57 @@ function NeoHomeDashboard({
 
   // ── Números del hero (fuentes canónicas, tabla NÚMEROS del plan) ───
   const hero = homeMetrics.hero
+
+  // ── Gate del conteo del saldo del hero ──────────────────────────────
+  // El conteo arrancaba en el MOUNT del árbol de tabs, o sea DETRÁS del
+  // splash de post-login: con `Easing.out(cubic)` la mayor parte del
+  // recorrido se consume en el primer tercio, así que para cuando la card
+  // se veía el número ya estaba prácticamente en su valor final y el
+  // usuario nunca lo veía trepar. Ahora espera DOS cosas: que el splash se
+  // haya ido y que el saldo esté ASENTADO (`home_snapshot` no siembra la
+  // suma de income-events del ciclo, así que el primer valor puede ser
+  // provisorio y gastaría el reveal contra un número que todavía cambia).
+  //
+  // El techo es obligatorio: `balanceHydrating` incluye
+  // `cycleIncomeQuery.isError` (use-home-metrics.ts:493), así que offline
+  // puede quedar en `true` PARA SIEMPRE — sin techo el monto se congelaría
+  // en "$0", una regresión peor que la que estamos arreglando. En un boot
+  // sano no se alcanza nunca.
+  const [countGateCeiling, setCountGateCeiling] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setCountGateCeiling(true), HERO_COUNT_GATE_CEILING_MS)
+    return () => clearTimeout(id)
+  }, [])
+  const balanceCountReady =
+    splashIsHidden && (!hero.balanceHydrating || countGateCeiling)
   // El promedio lineal del ciclo ya NO se calcula acá: era el numerador del
   // medidor y lo dejaba clavado. La proyección de cierre, que sí lo necesita,
   // lo deriva en `use-home-metrics` y llega por `hero.projectedClose`.
+
+  // Estado vacío del hero: fijo sin sueldo configurado, o dinámico sin
+  // ingresos del ciclo (gates anti-flash: cycleIncomeHydrating +
+  // !cycleAdjusted — espejo de home-hero-card:80-86).
+  // Vive ACÁ (antes del usdLine) porque la línea USD sigue al mismo saldo que
+  // muestra el hero, y ese saldo depende de la variante.
+  const dynamicSetup =
+    isDynamicIncome &&
+    !hero.hasCycleIncome &&
+    !hero.cycleAdjusted &&
+    !hero.cycleIncomeHydrating
+  const heroVariant: HomeHeroVariant = selectHeroVariant({
+    incomeConfigured: hero.incomeConfigured,
+    isDynamicIncome,
+    dynamicSetup,
+    rawCycleBalance: hero.rawCycleBalance,
+    balanceHydrating: hero.balanceHydrating,
+    cycleAdjusted: hero.cycleAdjusted,
+    cycleBalanceDiff: hero.cycleBalanceDiff,
+  })
+  // El saldo que el hero MUESTRA: crudo (negativo) solo en 'over'; clampeado
+  // en el resto — incluida la hidratación, donde el crudo puede ser un
+  // negativo transitorio que la variante ya decidió no mostrar.
+  const heroDisplayBalance =
+    heroVariant === 'over' ? hero.rawCycleBalance : hero.availableToday
 
   // USD susurro — gate literal (usd_rate_enabled + moneda ≠ USD + rate OK).
   const usdRateCurrency = dashboard.familyFinanceQuery.data?.local_currency ?? null
@@ -941,8 +1032,12 @@ function NeoHomeDashboard({
     const rate = usdRateQuery.data
     if (!usdRateEnabled || !rate || !hero.incomeConfigured) return null
     if (!Number.isFinite(rate.ratePerUsd) || rate.ratePerUsd <= 0) return null
-    return `≈ ${formatUsd(hero.availableToday / rate.ratePerUsd)}`
-  }, [usdRateEnabled, usdRateQuery.data, hero.availableToday, hero.incomeConfigured])
+    // El MISMO saldo que muestra el hero: crudo con signo en 'over' (un
+    // déficit en dólares debe contar la misma historia; `formatUsd` aplica
+    // Math.abs), clampeado en el resto — sin esto la línea USD podía quedar
+    // negativa sobre un hero verde durante la hidratación.
+    return `≈ ${formatUsdWithSign(heroDisplayBalance / rate.ratePerUsd)}`
+  }, [usdRateEnabled, usdRateQuery.data, heroDisplayBalance, hero.incomeConfigured])
 
   // Chip de ahorro (apagado en dinámico — gate explícito, literal).
   const savingsChip = useMemo(
@@ -980,21 +1075,6 @@ function NeoHomeDashboard({
   // Chip gold "Reserva $X" acoplado del hero viejo (decisión owner): que la
   // reserva del ciclo no desaparezca visualmente. Informativo, junto a fijos.
   const reservaChipLabel = selectReservaChip(hero.monthlyReserveAmount)
-
-  // Estado vacío del hero: fijo sin sueldo configurado, o dinámico sin
-  // ingresos del ciclo (gates anti-flash: cycleIncomeHydrating +
-  // !cycleAdjusted — espejo de home-hero-card:80-86).
-  const dynamicSetup =
-    isDynamicIncome &&
-    !hero.hasCycleIncome &&
-    !hero.cycleAdjusted &&
-    !hero.cycleIncomeHydrating
-  const heroVariant: HomeHeroVariant =
-    (!isDynamicIncome && !hero.incomeConfigured) || dynamicSetup
-      ? 'empty'
-      : hero.cycleAdjusted && hero.cycleBalanceDiff <= 0
-        ? 'adjusted'
-        : 'steady'
 
   // Cupo diario (F2): pastilla "CUPO HOY" + bar GASTADO/DISPONIBLE; oculto si
   // cupo ≤ 0. spentRatio = fillRatio (clamp 0-1) de deriveGaugeState.
@@ -1048,7 +1128,11 @@ function NeoHomeDashboard({
     sessionId: telemetry.sessionId,
     elementId: 'hero_projection_link',
     slot: 'S3',
-    isVisible: !preview && heroVariant !== 'empty' && gaugeVM != null,
+    // Espejo de la condición REAL de render del link: en 'over' se dibuja
+    // siempre (fila Brot del cupo, que reemplaza al medidor y suele venir
+    // con gaugeVM null); en el resto solo existe con medidor visible.
+    isVisible:
+      !preview && (heroVariant === 'over' || (heroVariant !== 'empty' && gaugeVM != null)),
   })
   const handlePressProjection = useCallback(() => {
     void triggerHaptic('selection')
@@ -1263,6 +1347,22 @@ function NeoHomeDashboard({
         muted: true,
       }
     }
+    // Sin los pagos del ciclo, el reparto pagado/vencido es una AFIRMACIÓN
+    // FALSA (todo lo que ya pasó su fecha se clasifica como vencido), no un
+    // dato incompleto: en un arranque en frío la fila decía "0 de 16" y podía
+    // anunciar vencidos inexistentes, y ~300 ms después se corregía sola. Hasta
+    // que resuelvan, la fila muestra el monto y el próximo fijo —lo que SÍ
+    // sabemos— y el ratio aparece cuando existe de verdad.
+    if (!monthSummary.fixedPaymentsReady) {
+      return {
+        amount,
+        sub: nextFixed
+          ? `${nextFixed.name} ${formatDaysUntilDue(nextFixed.daysUntil).toLowerCase()}`
+          : '',
+        subAlert: null,
+        tone: 'normal',
+      }
+    }
     const paidOf = `${monthSummary.fixedPaid}/${monthSummary.fixedCount}`
     if (monthSummary.fixedOverdue > 0) {
       const n = monthSummary.fixedOverdue
@@ -1301,6 +1401,7 @@ function NeoHomeDashboard({
     monthSummary.fixedCount,
     monthSummary.fixedPaid,
     monthSummary.fixedOverdue,
+    monthSummary.fixedPaymentsReady,
     nextFixed,
     t,
   ])
@@ -1590,10 +1691,24 @@ function NeoHomeDashboard({
           mode={mode}
           variant={heroVariant}
           balanceLabel={t('home:hero.balanceLabel')}
-          balance={formatMoney(hero.availableToday)}
+          // En `over` el hero muestra el saldo CRUDO (negativo) con su signo;
+          // en el resto de los estados el crudo y el clampeado coinciden.
+          // `heroDisplayBalance` es la fuente única (la comparte la línea USD).
+          balance={
+            heroVariant === 'over'
+              ? formatMoneyWithSign(heroDisplayBalance)
+              : formatMoney(heroDisplayBalance)
+          }
           // Conteo fluido del saldo (misma animación que la home vigente).
-          balanceValue={hero.availableToday}
-          formatBalance={formatMoney}
+          balanceValue={heroDisplayBalance}
+          formatBalance={heroVariant === 'over' ? formatMoneyWithSign : formatMoney}
+          // Escala de la gradación de la tinta: UN CUPO DIARIO. Es la
+          // unidad con la que el hogar ya piensa ("te queda menos de un día
+          // de cupo") y la que ya manda el medidor.
+          balanceScale={hero.dailyBudget}
+          balanceCountReady={balanceCountReady}
+          overSub={t('home:hero.overPlan')}
+          overCupoHint={t('home:hero.overCupoHint')}
           usdLine={usdLine}
           dayPill={dayPill}
           eventChip={eventChipVM}

@@ -50,6 +50,21 @@ export interface HomeAlert {
 
 export interface HomeHeroMetrics {
   availableToday: number
+  /**
+   * Saldo del ciclo SIN clampear. `availableToday` está clampeado a 0, así que
+   * un hogar que se pasó del plan es indistinguible de uno que quedó justo:
+   * los dos leen "$0". El hero (y SOLO el hero) usa este valor para dibujar el
+   * estado "te pasaste" con el monto real; todo el resto sigue con el clamp.
+   */
+  rawCycleBalance: number
+  /**
+   * `true` mientras algún insumo del saldo está en su PRIMERA carga (la suma
+   * de income extra no tiene seed en home_snapshot, así que llega después que
+   * el resto). La variante 'over' del hero se gatea con esto: hasta que el
+   * monto termina de cargar, un rawCycleBalance negativo es probablemente un
+   * artefacto de hidratación, no el estado real del hogar.
+   */
+  balanceHydrating: boolean
   cycleDay: number
   cycleTotalDays: number
   cycleMonth: string
@@ -190,6 +205,24 @@ export interface HomeMonthSummary {
    * "vencido" de la fila FIJOS (catálogo §6); la vieja no lo consume.
    */
   fixedOverdue: number
+  /**
+   * `false` mientras la query de PAGOS del ciclo no resolvió.
+   *
+   * `fixedTotal`/`fixedCount` salen de los fijos y son estables, pero el
+   * REPARTO (pagado / pendiente / vencido) sale de los pagos: sin ellos
+   * `summarizeFijos` ve cero pagos y clasifica como impago TODO lo que ya
+   * pasó su fecha. O sea que en un arranque en frío la Home no sólo mostraba
+   * "0 de N pagados" antes de saltar al número real — podía anunciar
+   * "3 vencidos" que no existen. El consumidor omite esas dos afirmaciones
+   * hasta que esto sea `true` (ver `fijosVM` en `neo-home-screen`).
+   *
+   * Se mide con `isLoading` y no con `isFetched`: la query está `enabled`
+   * sólo con ≥1 fijo persistido, así que en una familia sin fijos nunca
+   * corre y su `isFetched` quedaría en `false` para siempre. En RQ v5 una
+   * query deshabilitada tiene `isLoading: false` — mismo criterio que el
+   * gate de la pantalla de Fijos.
+   */
+  fixedPaymentsReady: boolean
 }
 
 export interface HomeGoalMetrics {
@@ -275,6 +308,9 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     cycleStart: realCycle.start,
     cycleEnd: realCycle.end,
   })
+  // Ver `HomeMonthSummary.fixedPaymentsReady`: sin los pagos, el reparto
+  // pagado/pendiente/vencido es una afirmación falsa, no un dato incompleto.
+  const paymentsLoading = paymentsQuery.isLoading
   const dismissedHikes = useDismissedHikes()
 
   const categoriesById = useMemo(() => {
@@ -370,14 +406,21 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
         - projectedTotalSpend,
     )
 
-    // When `isSalaryPendingConfirmation` is true the cycle is frozen
-    // on the previous payday — `cycleEnd` equals the (unconfirmed)
-    // upcoming payday, so the gap between today and `cycleEnd` is
-    // exactly the days overdue. 0 = payday is literally today.
+    // Días de atraso del cobro, medidos contra el fin NOMINAL del ciclo.
+    //
+    // Antes se medían contra `cycleEnd` porque en el modelo NOMINAL la
+    // ventana se congela en el payday, así que `cycleEnd` ERA el payday sin
+    // confirmar. En el modelo EXTENDIDO eso dejó de ser cierto: la ventana
+    // se estira hasta hoy+1, así que `today − cycleEnd` da −1 → clamp 0 →
+    // la Home decía "Cobra hoy" el día 13 mientras el resto de la app
+    // contaba 8 días de atraso (QA del owner 2026-08-13). `nominalEnd` es
+    // el payday configurado en los dos modelos, así que la cuenta vale
+    // para ambos. 0 = el payday es literalmente hoy.
+    const paydayReference = dashboard.payCycle.nominalEnd ?? cycleEnd
     const paydayDaysOverdue = dashboard.isSalaryPendingConfirmation
       ? Math.max(
           0,
-          Math.round((today.getTime() - cycleEnd.getTime()) / msPerDay),
+          Math.round((today.getTime() - paydayReference.getTime()) / msPerDay),
         )
       : 0
 
@@ -410,6 +453,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
 
     const hero: HomeHeroMetrics = {
       availableToday,
+      rawCycleBalance: disponible.rawCycleBalance,
       cycleDay,
       cycleTotalDays,
       cycleMonth: formatCycleLabel(monthStart, monthEnd),
@@ -436,6 +480,24 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       hasCycleIncome: cycleExtraIncome > 0,
       cycleIncomeHydrating:
         dashboard.incomeMode === 'dynamic' && cycleIncomeQuery.isLoading,
+      // `true` mientras CUALQUIER insumo de rawCycleBalance está en su primera
+      // carga. La pieza que casi siempre llega última es cycleIncomeQuery:
+      // home_snapshot siembra finance+gastos+fijos atómicamente pero NUNCA
+      // siembra income-events-cycle-sum, así que el primer paint calcula el
+      // saldo con gasto real y cero income extra → puede dar negativo y
+      // pintar el hero rojo por ~300ms (flash reportado por el owner
+      // 2026-08-13). Además la key de esa query incluye la ventana del ciclo
+      // derivada de finance: cuando finance resuelve y corre la ventana, la
+      // entrada nueva nace vacía y el flash se repetiría — isLoading también
+      // cubre esa re-hidratación. isLoading y NO isPending (queda true para
+      // siempre en queries deshabilitadas, ver fixedPaymentsReady arriba) ni
+      // isFetching (apagaría el estado en cada refetch de background).
+      // isError también gatea: una suma de income que FALLÓ no es un dato
+      // asentado — sin esto, el fallback `?? 0` del extra income podía pintar
+      // un rojo indebido con datos incompletos (en queries deshabilitadas
+      // isError es false, no reintroduce la trampa de isPending).
+      balanceHydrating:
+        dashboard.isLoadingDashboard || cycleIncomeQuery.isLoading || cycleIncomeQuery.isError,
       monthlyIncome: dashboard.monthlyIncome,
       acumulado,
       monthlyReserveAmount,
@@ -470,6 +532,7 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
       fixedPaid,
       fixedCount,
       fixedOverdue: fijosSummary?.overdueItems.length ?? 0,
+      fixedPaymentsReady: !paymentsLoading,
     }
 
     // Hide hikes the user already acknowledged at the current price
@@ -513,11 +576,17 @@ export function useHomeMetrics(familyId: string): HomeMetrics {
     dashboard.isSalaryPendingConfirmation,
     dashboard.incomeMode,
     dashboard.familyFinanceQuery.data?.monthly_reserve_amount,
+    dashboard.isLoadingDashboard,
     cycleExtraIncome,
     cycleIncomeQuery.isLoading,
+    // Sin esta dep, la transición error→success con resultado 0 no mueve
+    // ninguna otra (extra 0→0, isLoading false→false) y el memo devolvería
+    // un balanceHydrating:true rancio que ocultaría un 'over' legítimo.
+    cycleIncomeQuery.isError,
     expenses,
     comparisonQuery.data,
     fijosSummary,
+    paymentsLoading,
     savingsGoalQuery.data,
     dismissedHikes,
     acumulado,

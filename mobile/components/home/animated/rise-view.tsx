@@ -26,6 +26,14 @@ const RiseViewGateContext = createContext<{ skip: boolean }>({ skip: false })
  * Keyframe. Use this at the top of a screen during the navigation
  * transition window to keep the UI thread free; remove the gate
  * after the transition completes (typically ~280ms post-mount).
+ *
+ * COMPONE con el gate de arriba (2026-08-12). Antes publicaba su `skip` crudo,
+ * y como `RiseView` lee el proveedor MÁS CERCANO, un gate interno lo pisaba
+ * entero: las rutas de Gastos y Control montan `<RiseViewGate skip>` (duro,
+ * para que la tab pre-montada nunca dispare su cascada) y adentro las pantallas
+ * montan otro con `skip={reduceMotion}` — o sea que en hardware normal el de la
+ * ruta quedaba inerte y su intención se perdía en silencio. Con el OR los dos
+ * usos conviven: el ancho de gama baja y el duro de la ruta.
  */
 export function RiseViewGate({
   skip,
@@ -34,7 +42,9 @@ export function RiseViewGate({
   skip: boolean
   children: React.ReactNode
 }) {
-  const value = useMemo(() => ({ skip }), [skip])
+  const parent = useContext(RiseViewGateContext)
+  const parentSkip = parent.skip
+  const value = useMemo(() => ({ skip: skip || parentSkip }), [skip, parentSkip])
   return <RiseViewGateContext.Provider value={value}>{children}</RiseViewGateContext.Provider>
 }
 

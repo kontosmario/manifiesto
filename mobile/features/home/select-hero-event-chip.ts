@@ -12,23 +12,26 @@
  * Decisión de owner (2026-07-21, fijada): el chip "SOBRANTE $X" es el
  * ARRASTRE REAL del mes anterior (el dato `acumulado` que ya existe —
  * `use-current-cycle-acumulado.ts`), NO la proyección de cierre. Por eso el
- * copy del catálogo "💰 Sobrante $837k al cierre" no aplica tal cual
+ * copy del catálogo "Sobrante $837k al cierre" no aplica tal cual
  * ("al cierre" = semántica de proyección):
  *
  *   DECISIÓN DE COPY (documentada, a validar por owner): se mantiene el
- *   lenguaje 💰/"Sobrante" del catálogo + la atribución de período del stack
+ *   lenguaje "Sobrante" del catálogo + la atribución de período del stack
  *   VIEJO (`hero.acumuladoChip` = "+{{amount}} de {{period}}", con
  *   `periodLabel.toLowerCase()` igual que `home-hero-card.tsx:414-417`):
- *     "💰 Sobrante $837k de junio 2026"
- *   Fallback sin periodLabel: "💰 Sobrante $837k del mes pasado".
+ *     "Sobrante $837k de junio 2026"
+ *   Fallback sin periodLabel: "Sobrante $837k del mes pasado".
  *
  * Copy restante = literales del catálogo (`estados.dc.html`):
- *   "📈 Sumaste $X al mes" · "✂️ Ajustado este mes". El chip AHORRANDO no
- *   tiene visual en el handoff (solo README:55) → default documentado a
- *   validar por owner: tone 'green' + "💚 {label del helper}" para los
- *   estados positivos (healthy/partial); el estado `consumed` ("Sin ahorro
- *   este mes") es un aviso, no un "AHORRANDO" → tone 'neutral' y el label
- *   del helper sin emoji.
+ *   "Sumaste $X al mes" · "Ajustado este mes". El chip AHORRANDO no tiene
+ *   visual en el handoff (solo README:55) → default documentado: tone 'green'
+ *   con el label del helper para los estados positivos (healthy/partial); el
+ *   estado `consumed` ("Sin ahorro este mes") es un aviso, no un "AHORRANDO"
+ *   → tone 'neutral'.
+ *
+ * ÍCONOS, NO EMOJIS (owner 2026-08-12): el prefijo de cada chip era un emoji
+ * embebido en el string traducido. Ahora cada chip declara su glifo Material
+ * en `icon` y el copy queda limpio — ver `HeroEventChipIcon`.
  *
  * Formato de montos: `formatMoneyShort` — el MISMO helper del stack viejo
  * (no se inventa formato; "$123k" coincide con el mockup).
@@ -45,6 +48,28 @@ export type HeroEventChipKind = 'acumulado' | 'sumado' | 'ajustado' | 'ahorrando
 export type HeroEventChipTone = 'green' | 'neutral'
 
 /**
+ * Glifo del chip — nombre de MaterialIcons (owner 2026-08-12: los chips del
+ * hero pasan de emoji a ícono del sistema). El emoji vivía DENTRO del string
+ * traducido, así que además de romper el vocabulario visual —cada plataforma
+ * dibuja el suyo, y no toman el color de la tinta del chip— se colaba en el
+ * copy y en lo que anuncia el lector de pantalla. Ahora el ícono viaja aparte
+ * del label y el kit lo pinta con la misma tinta que el texto.
+ *
+ * Es una unión CERRADA a propósito (y no el `name` completo de MaterialIcons):
+ * este módulo es puro y no debe importar el paquete de íconos. Los cuatro
+ * nombres son glifos válidos del set y el kit los acepta tal cual.
+ */
+export type HeroEventChipIcon =
+  /** sobrante arrastrado del mes anterior */
+  | 'account-balance-wallet'
+  /** override que SUMÓ plata al mes */
+  | 'trending-up'
+  /** override que recortó el mes */
+  | 'content-cut'
+  /** ahorro del mes (alcancía) */
+  | 'savings'
+
+/**
  * Shape que consume `HomeHero` del kit (`HomeEventChipVM` en
  * `mobile/components/redesign/home/home-screen.tsx:356-359`: `{tone,label}`)
  * + `kind` discriminante para telemetría/tests. Un `HeroEventChip` es
@@ -54,6 +79,7 @@ export interface HeroEventChip {
   kind: HeroEventChipKind
   tone: HeroEventChipTone
   label: string
+  icon: HeroEventChipIcon
 }
 
 export interface SelectHeroEventChipInput {
@@ -99,6 +125,7 @@ export function selectHeroEventChip(input: SelectHeroEventChipInput): HeroEventC
     return {
       kind: 'acumulado',
       tone: 'green',
+      icon: 'account-balance-wallet',
       label: period
         ? i18n.t('home:heroChip.acumuladoPeriod', { amount, period: period.toLowerCase() })
         : i18n.t('home:heroChip.acumuladoLastMonth', { amount }),
@@ -109,12 +136,18 @@ export function selectHeroEventChip(input: SelectHeroEventChipInput): HeroEventC
     return {
       kind: 'sumado',
       tone: 'green',
+      icon: 'trending-up',
       label: i18n.t('home:heroChip.added', { amount: formatMoneyShort(cycleBalanceDiff) }),
     }
   }
 
   if (cycleAdjusted) {
-    return { kind: 'ajustado', tone: 'neutral', label: i18n.t('home:heroChip.adjusted') }
+    return {
+      kind: 'ajustado',
+      tone: 'neutral',
+      icon: 'content-cut',
+      label: i18n.t('home:heroChip.adjusted'),
+    }
   }
 
   if (savingsChip && incomeMode !== 'dynamic') {
@@ -122,9 +155,12 @@ export function selectHeroEventChip(input: SelectHeroEventChipInput): HeroEventC
     return {
       kind: 'ahorrando',
       tone: positive ? 'green' : 'neutral',
-      // Default documentado (sin visual en el handoff): 💚 solo en los
-      // estados positivos; `consumed` conserva el label-aviso del helper.
-      label: positive ? i18n.t('home:heroChip.saving', { label: savingsChip.label }) : savingsChip.label,
+      icon: 'savings',
+      // El label sale tal cual del helper. Antes los estados positivos lo
+      // envolvían en `heroChip.saving` sólo para anteponerle el 💚; ahora ese
+      // rol lo cumple el ícono y el chip no necesita el wrapper. `consumed`
+      // ("Sin ahorro este mes") es un aviso: sigue en tono neutral.
+      label: savingsChip.label,
     }
   }
 
@@ -135,9 +171,12 @@ export function selectHeroEventChip(input: SelectHeroEventChipInput): HeroEventC
  * Chip de FIJOS por pagar — va APARTE del selector (el mockup los muestra
  * conviviendo: evento + fijos). Fuente: `fixedPendingReserved`
  * (`use-home-metrics.ts` ← `effectiveCommitmentReserved`). Copy literal del
- * mockup principal (`home.dc.html`): "🗓️ $123k de fijos por pagar" — mismo
- * texto que el stack viejo (`hero.fixedReservedChip` = "{{amount}} de fijos
- * por pagar") con el 🗓️ del mockup. `null` cuando no hay fijos pendientes.
+ * mockup principal (`home.dc.html`): "$123k de fijos por pagar" — mismo texto
+ * que el stack viejo (`hero.fixedReservedChip`). El 🗓️ del mockup lo
+ * reemplaza el ícono `calendar-month`, que pone el kit: este chip tiene UN
+ * solo significado, así que no hace falta que el glifo viaje con el dato
+ * (a diferencia del chip de evento, que rota entre cuatro).
+ * `null` cuando no hay fijos pendientes.
  */
 export function selectFixedChip(fixedPendingReserved: number): string | null {
   if (!Number.isFinite(fixedPendingReserved) || fixedPendingReserved <= 0) return null
@@ -149,8 +188,9 @@ export function selectFixedChip(fixedPendingReserved: number): string | null {
  * 2026-07-21, review finding #6). Reserva del ciclo que NO debe desaparecer
  * visualmente. Informativo, aparte del selector rotativo; se muestra siempre
  * que monthly_reserve_amount > 0. Copy: mismo patrón que home.json
- * `hero.reserveChip` ("Reserva {{amount}}") con emoji prefix como los demás
- * chips del hero nuevo. i18n en `home:reserva.chip` (pase F3.5).
+ * `hero.reserveChip` ("Reserva {{amount}}"). Ícono `account-balance`, puesto
+ * por el kit (mismo criterio que el chip de fijos). i18n en `home:reserva.chip`
+ * (pase F3.5).
  */
 export function selectReservaChip(monthlyReserveAmount: number): string | null {
   if (!Number.isFinite(monthlyReserveAmount) || monthlyReserveAmount <= 0) return null

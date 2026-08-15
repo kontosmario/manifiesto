@@ -1,7 +1,8 @@
 // mobile/components/home/home-dashboard.tsx
 import { useCallback, useMemo, useState } from 'react'
 import { useCurrentDate } from '@/hooks/use-current-date'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
@@ -358,7 +359,15 @@ export function HomeDashboard({
     const g = savingsGoalQuery.data
     if (!g) return null
     if (g.isActive === false) return null
-    return { id: g.id, title: g.title, emoji: g.emoji }
+    // Montos incluidos: la barra de progreso de la opción "Destinar a mi
+    // meta" del wrapped (pantalla 06) los necesita.
+    return {
+      id: g.id,
+      title: g.title,
+      emoji: g.emoji,
+      currentAmount: g.currentAmount,
+      goalAmount: g.goalAmount,
+    }
   }, [savingsGoalQuery.data])
 
   // Orquestación del cierre de mes (wrapped + decisión del sobrante) —

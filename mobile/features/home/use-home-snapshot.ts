@@ -495,6 +495,30 @@ function seedCaches(
           .filter((id): id is string => typeof id === 'string'),
       ),
     )
+    // ⚠️ ESTA SIEMBRA HOY NO HACE HIT — auditoría 2026-08-12. Se deja porque el
+    // dato viaja igual en el payload y arreglarla es gratis en red, pero que
+    // nadie asuma que está funcionando: son DOS desalineaciones independientes.
+    //
+    //   1. FORMATO E INSTANTE. Acá se pasan los timestamps CRUDOS del RPC
+    //      ("2026-08-01T00:00:00+00:00": el SQL castea un `date` a timestamptz
+    //      con la tz de la sesión, UTC). El consumidor arma la key con
+    //      `cycleStart.toISOString()` sobre Dates de medianoche LOCAL
+    //      ("2026-08-01T03:00:00.000Z" en AR). No coinciden ni el formato ni el
+    //      instante. Se arregla llevando las dos puntas a una clave de fecha
+    //      local (YYYY-MM-DD) — pero ojo con leer las partes en UTC y no en
+    //      local, o se corre un día.
+    //   2. VENTANA. El RPC calcula el ciclo CONGELADO (con el cobro sin
+    //      confirmar usa el anterior) y los dos consumidores usan
+    //      `usePayCycle(..., { freeze: false })`. Alinear el formato sin mirar
+    //      esto sembraría, en la ventana "cobro pendiente", pagos de un ciclo
+    //      distinto al que la key promete — o sea plata mal clasificada. La
+    //      salida correcta es que la key sea la ventana REAL que cubre el
+    //      payload: si el consumidor pide otra, que no haga hit y fetchee, como
+    //      hoy.
+    //
+    // Mientras tanto el síntoma que se veía —Home mostrando "0 de N pagados" y
+    // saltando— está cortado en la capa de presentación: ver
+    // `HomeMonthSummary.fixedPaymentsReady`.
     client.setQueryData(
       fixedExpensePaymentsKey(
         familyId,
