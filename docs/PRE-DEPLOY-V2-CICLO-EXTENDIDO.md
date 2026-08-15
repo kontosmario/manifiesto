@@ -231,7 +231,10 @@ restan). El banner de "¿Ya cobraste?" sigue apareciendo, que es lo correcto.
   ventanas de largo desigual (39 vs 23 días).
 - Gating del título short-period del Wrapped (`< 21 días`) para el ciclo corto post-extensión.
 - Runbook de operador: `p_force` sobre un summary extendido debe pasar la ventana **real**
-  leída del row, y pasados 14 días del archivado el purge ya borró los gastos variables.
+  leída del row. Desde `20260814120000_extend_archived_expenses_retention.sql` el purge de
+  gastos variables archivados pasó de 14 días a 13 meses (los pagos de fijos ya tenían su
+  propia retención last-3, sin cambios), así que esta ventana de riesgo se corrió mucho más
+  lejos pero no desaparece.
 - Unificación de la frontera de tz del archivado (sliver 21:00–23:59 AR, preexistente).
 
 ---

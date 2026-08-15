@@ -156,7 +156,9 @@ la barra story y el marcador "N DE M" salen de `scenes.length`.
 
 La **04 "Tu jardín"** llega en V1.5 (necesita la migración de racha
 congelada; los días plantados se derivan de fuentes durables, nunca de
-`expenses` — la purga de 14 días la vaciaría).
+`expenses` — aunque el purge de archivados ahora retiene 13 meses en vez de
+14 días, sigue sin ser una fuente durable para un dato que debe persistir
+indefinidamente).
 
 ### Veredicto (05) — 3 estados
 

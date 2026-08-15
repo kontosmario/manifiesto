@@ -20,7 +20,7 @@ Esto recomputa la fila para esa familia. Útil después de una corrección de da
 select public.cron_purge_archived_expenses();
 ```
 
-Borra todos los `expenses` con `archived_at < now() - 14 days` en chunks de 10K. Idempotente.
+Borra los `expenses` variables (`commitment_id is null`) con `archived_at < now() - 13 months` en chunks de 10K. Idempotente. Retención ampliada desde 14 días el 2026-08-14 (`20260814120000_extend_archived_expenses_retention.sql`) para que la vista Gastos pueda mostrar el feed de movimientos de una edición cerrada. Los pagos de fijos (`commitment_id` no nulo) no pasan por acá — tienen su propia retención last-3 por fijo (`cron_prune_fixed_payment_expenses`, sin cambios).
 
 ### Forzar retention mensual completo (todas las tablas)
 
