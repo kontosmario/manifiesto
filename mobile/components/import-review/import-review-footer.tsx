@@ -9,134 +9,213 @@ import Animated, {
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import { NeoButton } from '@/components/ui/neo-button'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion/tokens'
 import { triggerHaptic } from '@/lib/haptics'
 import { cssGradient, neoRadii } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { formatMissingFields } from '@/lib/form-missing-fields'
+import { formatMoney } from '@/features/import-review/format'
 import { useImportReviewNeo } from './import-review-neo'
 
+/** Qué está mirando el usuario. El footer NO decide, sólo se adapta. */
+export type FooterView = 'receipt' | 'list' | 'edit'
+
 interface Props {
-  /** Zero-indexed current step. Last index = summary step. */
-  stepIndex: number
-  /** Total review rows (NOT counting the summary step). */
-  totalSteps: number
-  /** When true, the wizard is showing the final summary. */
-  isSummary: boolean
-  /** Number of submittable expenses across the whole import. */
+  view: FooterView
+  /** Etiqueta del CTA primario ya resuelta por el sheet. */
   expensesCount: number
-  /** Number of submittable incomes across the whole import. */
   incomesCount: number
-  /** Whether confirm is allowed (no invalid steps, has at least one). */
+  /** Plata que se va a cargar. Encabeza el CTA junto al conteo. */
+  submittableTotal: number
+  /** `false` cuando hay filas incompletas o no hay nada para cargar. */
   canConfirm: boolean
-  /** Whether the current movement has every required field filled.
-   *  When false, "Siguiente" disables and the helper line below lists
-   *  the missing pieces. Always true on the summary step. */
-  canAdvanceCurrent: boolean
-  /** Human-readable missing field names for the current row
-   *  (`['descripción', 'monto', 'categoría']` etc). Empty on summary. */
+  /** Campos faltantes de la fila abierta (sólo en `edit` y `receipt`). */
   missingFields: readonly string[]
-  /** Whether the current step is already marked as skipped. */
+  /** Cuántas filas quedan sin completar (sólo en `list`). */
+  missingCount: number
+  /** En `edit`: si la fila abierta está marcada como "no cargar". */
   isCurrentSkipped: boolean
+  /** En `edit`: hay otra fila incompleta a la que saltar. */
+  hasNextPending: boolean
+  /** En `list`/`edit` con más de una fila: se puede volver a la bandeja. */
+  canGoBack: boolean
+  /** Hubo un intento con filas caídas: el CTA pasa a ser un reintento. */
+  hasFailures: boolean
   busy: boolean
-  onPrev: () => void
-  onSkip: () => void
-  /** Single handler for the primary CTA. The sheet routes it
-   *  contextually: advance on a valid step, confirm on the summary,
-   *  or bump the row's highlightToken on a disabled tap so the row
-   *  marks its missing fields with `warning`. Footer stays dumb. */
   onPrimary: () => void
+  onBack: () => void
+  onEdit: () => void
+  /** En `list`: abre la primera fila incompleta. */
+  onResolveMissing: () => void
+  onNotNow: () => void
+  onToggleSkip: () => void
+  onNextPending: () => void
 }
 
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 /**
- * Wizard footer. Anterior + Saltear son tiles extruidos con icono + label
- * (no texto fantasma), cada uno con 44pt de alto táctil, para que se vea de
- * un vistazo qué se puede tocar. El CTA primario domina abajo a todo el
- * ancho.
+ * Footer del flujo. Tres formas, una por vista:
  *
- * On the summary step the layout simplifies: Saltear disappears
- * (nothing to skip from a summary), Anterior becomes "Volver a editar",
- * and the primary CTA flips to "Confirmar".
+ *  - `receipt` → CTA de registrar + [Editar] [Ahora no]
+ *  - `list`    → CTA de cargar todo + [Completá los que faltan] / [Ahora no]
+ *  - `edit`    → CTA de volver a la raíz + [No cargar este] [Siguiente pendiente]
+ *
+ * "Ahora no" NUNCA destruye: cierra la hoja dejando lo no decidido
+ * pendiente. Descartar un movimiento es "No cargar este", que vive adentro
+ * de la edición y es reversible mientras la hoja siga abierta. Antes los dos
+ * significados compartían el verbo "Saltear", y en Apple Pay ese verbo
+ * borraba la única copia del pago.
  */
 export function ImportReviewFooter({
-  stepIndex,
-  totalSteps,
-  isSummary,
+  view,
   expensesCount,
   incomesCount,
+  submittableTotal,
   canConfirm,
-  canAdvanceCurrent,
   missingFields,
+  missingCount,
   isCurrentSkipped,
+  hasNextPending,
+  canGoBack,
+  hasFailures,
   busy,
-  onPrev,
-  onSkip,
   onPrimary,
+  onBack,
+  onEdit,
+  onResolveMissing,
+  onNotNow,
+  onToggleSkip,
+  onNextPending,
 }: Props) {
   const { neo, ink } = useImportReviewNeo()
   const { t } = useTranslation()
-  const isFirst = stepIndex <= 0
-  const isLastMovement = !isSummary && stepIndex >= totalSteps - 1
+
   const totalSubmittable = expensesCount + incomesCount
+
+  const countParts = (() => {
+    const parts: string[] = []
+    if (expensesCount > 0) {
+      parts.push(t('gastos:import.summary.expensesCount', { count: expensesCount }))
+    }
+    if (incomesCount > 0) {
+      parts.push(t('gastos:import.summary.incomesCount', { count: incomesCount }))
+    }
+    return parts.join(t('gastos:import.summary.and'))
+  })()
 
   const primaryLabel = (() => {
     if (busy) return `${t('states:loading.import')}…`
-    if (isSummary) {
-      // All-skipped: the CTA now closes (the sheet routes this to onClose),
-      // so it must read as a real action, not an inert "nada para cargar".
-      if (totalSubmittable === 0) return t('common:actions.close')
-      const parts: string[] = []
-      if (expensesCount > 0) {
-        parts.push(t('gastos:import.summary.expensesCount', { count: expensesCount }))
-      }
-      if (incomesCount > 0) {
-        parts.push(t('gastos:import.summary.incomesCount', { count: incomesCount }))
-      }
-      return t('gastos:import.footer.confirmWith', { parts: parts.join(t('gastos:import.summary.and')) })
+    // Desde la edición se vuelve SIEMPRE a la raíz — pero con un solo
+    // movimiento esa raíz es el recibo, no una lista: prometer "volver a la
+    // lista" ahí sería mentir sobre a dónde lleva el tap.
+    if (view === 'edit') {
+      return canGoBack ? t('gastos:import.footer.backToList') : t('common:actions.done')
     }
-    if (isLastMovement) return t('gastos:import.footer.reviewAndConfirm')
-    return t('common:actions.next')
+    if (totalSubmittable === 0) return t('common:actions.close')
+    // Después de un fallo el CTA deja de prometer una carga nueva: lo que
+    // queda en la hoja es exactamente lo que se cayó.
+    if (hasFailures) return t('gastos:import.repair.retry')
+    if (view === 'receipt') {
+      return incomesCount > 0
+        ? t('gastos:import.receipt.confirmIncome')
+        : t('gastos:import.receipt.confirmExpense')
+    }
+    return t('gastos:import.footer.confirmTotal', {
+      parts: countParts,
+      amount: formatMoney(submittableTotal),
+    })
   })()
 
   const primaryIcon: keyof typeof MaterialIcons.glyphMap = (() => {
-    if (isSummary) return totalSubmittable === 0 ? 'close' : 'check'
-    return 'arrow-forward'
+    if (view === 'edit') return 'check'
+    if (totalSubmittable === 0) return 'close'
+    if (hasFailures) return 'refresh'
+    return 'check'
   })()
 
-  // Visual-only disabled: the CTA stays tappable even when "disabled"
-  // so a tap can route to the sheet's "bump highlightToken" branch
-  // instead of advancing. The caller's `onPrimary` decides what each
-  // press means. `lookDisabled` hunde el botón sin bloquearlo; `busy`
-  // sí bloquea (durante el roundtrip de red) porque ahí un segundo tap
-  // es un bug.
-  // All-skipped → the CTA is a live "Cerrar", not a pending/disabled state.
-  const lookDisabled = isSummary
-    ? totalSubmittable > 0 && !canConfirm
-    : !canAdvanceCurrent
+  // Visual-only disabled: el CTA sigue siendo tappable para que el tap
+  // pueda enrutar al "marcá lo que falta" en vez de no hacer nada.
+  const lookDisabled =
+    view === 'edit'
+      ? missingFields.length > 0 && !isCurrentSkipped
+      : totalSubmittable > 0 && !canConfirm
 
-  const showMissingHelper =
-    !isSummary && !canAdvanceCurrent && missingFields.length > 0
+  const helperLine = (() => {
+    if (busy) return null
+    if (view === 'list') return null
+    if (missingFields.length > 0 && !isCurrentSkipped) {
+      return formatMissingFields(missingFields)
+    }
+    return null
+  })()
 
   return (
     <View style={styles.stack}>
       <View style={styles.secondaryRow}>
-        <SecondaryButton
-          icon="chevron-left"
-          label={isSummary ? t('gastos:import.footer.backToEdit') : t('gastos:import.footer.previous')}
-          onPress={onPrev}
-          disabled={isFirst || busy}
-        />
-        {isSummary ? (
-          <View style={styles.secondarySpacer} />
+        {view === 'edit' ? (
+          <>
+            <SecondaryButton
+              icon={isCurrentSkipped ? 'restore' : 'block'}
+              label={
+                isCurrentSkipped
+                  ? t('gastos:import.footer.loadThis')
+                  : t('gastos:import.footer.dontLoad')
+              }
+              onPress={onToggleSkip}
+              disabled={busy}
+            />
+            {hasNextPending ? (
+              <SecondaryButton
+                icon="arrow-downward"
+                label={t('gastos:import.footer.nextPending')}
+                onPress={onNextPending}
+                disabled={busy}
+              />
+            ) : canGoBack ? (
+              <SecondaryButton
+                icon="chevron-left"
+                label={t('gastos:import.footer.backToList')}
+                onPress={onBack}
+                disabled={busy}
+              />
+            ) : (
+              <View style={styles.spacer} />
+            )}
+          </>
+        ) : view === 'receipt' ? (
+          <>
+            <SecondaryButton
+              icon="edit"
+              label={t('gastos:import.footer.edit')}
+              onPress={onEdit}
+              disabled={busy}
+            />
+            <SecondaryButton
+              icon="schedule"
+              label={hasFailures ? t('gastos:import.repair.giveUp') : t('gastos:import.footer.notNow')}
+              onPress={onNotNow}
+              disabled={busy}
+            />
+          </>
         ) : (
-          <SecondaryButton
-            icon={isCurrentSkipped ? 'restore' : 'block'}
-            label={isCurrentSkipped ? t('gastos:import.footer.restore') : t('gastos:import.footer.skipThis')}
-            onPress={onSkip}
-            disabled={busy}
-          />
+          <>
+            {missingCount > 0 ? (
+              <SecondaryButton
+                icon="arrow-downward"
+                label={t('gastos:import.list.resolveCta', { count: missingCount })}
+                onPress={onResolveMissing}
+                disabled={busy}
+              />
+            ) : null}
+            <SecondaryButton
+              icon="schedule"
+              label={hasFailures ? t('gastos:import.repair.giveUp') : t('gastos:import.footer.notNow')}
+              onPress={onNotNow}
+              disabled={busy}
+            />
+          </>
         )}
       </View>
 
@@ -157,13 +236,17 @@ export function ImportReviewFooter({
         }
       />
 
-      {showMissingHelper ? (
+      {helperLine !== null ? (
         <View style={styles.helperRow}>
           <MaterialIcons name="error-outline" size={14} color={ink.warn} />
           <Text style={[styles.helperText, { color: ink.warn }]} numberOfLines={2}>
-            {formatMissingFields(missingFields)}
+            {helperLine}
           </Text>
         </View>
+      ) : view !== 'edit' ? (
+        <Text style={[styles.footnote, { color: neo.textMuted }]} numberOfLines={2}>
+          {t('gastos:import.footer.notNowHint')}
+        </Text>
       ) : null}
     </View>
   )
@@ -188,6 +271,7 @@ interface SecondaryButtonProps {
  */
 function SecondaryButton({ icon, label, disabled = false, onPress }: SecondaryButtonProps) {
   const { neo, wellFallback } = useImportReviewNeo()
+  const reduced = useReducedMotion()
   const pressScale = useSharedValue(1)
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -212,13 +296,16 @@ function SecondaryButton({ icon, label, disabled = false, onPress }: SecondaryBu
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPressIn={() => {
-          if (disabled) return
+          // Con Movimiento reducido el press-scale no corre: era uno de los
+          // tres press-scale hechos a mano que ignoraban la preferencia.
+          if (disabled || reduced) return
           pressScale.value = withTiming(0.95, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
           })
         }}
         onPressOut={() => {
+          if (reduced) return
           pressScale.value = withTiming(1, {
             duration: motionDurations.micro,
             easing: EASE_IOS,
@@ -249,7 +336,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryWrap: { flex: 1 },
-  secondarySpacer: { flex: 1 },
+  spacer: { flex: 1 },
   secondaryBtn: {
     minHeight: 44,
     paddingHorizontal: 12,
@@ -281,5 +368,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
     textAlign: 'center',
     flexShrink: 1,
+  },
+  footnote: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    textAlign: 'center',
+    paddingHorizontal: 8,
   },
 })

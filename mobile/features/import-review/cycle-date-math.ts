@@ -50,19 +50,46 @@ export function isoDateToLocalNoonTimestamp(iso: string): string | undefined {
 /**
  * Builds a flat list of CycleDay entries covering [cycleStart, cycleStart + cycleDays).
  * Used by CycleDateSlider to render the horizontal strip of selectable days.
+ *
+ * `includeISO` ENSANCHA la ventana hacia atrás para que la fecha de la fila
+ * siempre tenga su tile. Sin eso, una captura vieja —o un pago de Apple Pay
+ * de un ciclo anterior— caía fuera del riel: ningún día quedaba seleccionado
+ * y el usuario no tenía forma de cambiar la fecha desde la UI. Sólo se
+ * extiende hacia ATRÁS: un gasto futuro no existe y ya está anclado a hoy
+ * por el mapeo, así que una fecha posterior al ciclo se ignora.
  */
 export function buildCycleDays(
   cycleStart: Date,
   cycleDays: number,
   todayISO: string,
+  includeISO?: string | null,
 ): CycleDay[] {
   if (cycleDays <= 0) return []
+
+  let start = cycleStart
+  let total = cycleDays
+  const startISO = formatISO(cycleStart)
+  // Comparación lexicográfica válida para YYYY-MM-DD.
+  if (includeISO && /^\d{4}-\d{2}-\d{2}$/.test(includeISO) && includeISO < startISO) {
+    const [y, m, d] = includeISO.split('-').map(Number)
+    const target = new Date(y, m - 1, d)
+    const extraDays = Math.round(
+      (new Date(cycleStart.getFullYear(), cycleStart.getMonth(), cycleStart.getDate()).getTime() -
+        target.getTime()) /
+        86_400_000,
+    )
+    if (extraDays > 0) {
+      start = target
+      total = cycleDays + extraDays
+    }
+  }
+
   const out: CycleDay[] = []
-  for (let i = 0; i < cycleDays; i++) {
+  for (let i = 0; i < total; i++) {
     const d = new Date(
-      cycleStart.getFullYear(),
-      cycleStart.getMonth(),
-      cycleStart.getDate() + i,
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate() + i,
     )
     const iso = formatISO(d)
     out.push({

@@ -41,6 +41,15 @@ export interface ReviewRow {
   date: string
   notes: string | null
   categoryId: string | null
+  /**
+   * `true` cuando la categoría la resolvió la app (historial de comercios de
+   * Apple Pay), no el usuario. Es lo único que separa "adiviné esto" de "esto
+   * lo elegiste vos", y la UI lo confiesa con el chip "sugerida". Se apaga en
+   * cuanto el usuario toca el riel (`PATCH_ROW` con `categoryId`).
+   *
+   * El camino OCR nunca la prende: ahí la categoría se pide siempre a mano.
+   */
+  categorySuggested: boolean
   incomeKind: IncomeKind
   warnings: ReviewRowWarning[]
   source: ReviewRowSource

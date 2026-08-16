@@ -109,31 +109,87 @@ Reglas:
 - Currency `USD` / `USDc` / `USDT` → multiplica por `usdToArsRate`, registra `appliedRate`
 - Currency otra (EUR, BRL, etc.) → kind=`skip` + warning `foreign-currency`
 - `secondaryAmount` con currency distinta → warning `swap-ambiguous` + kind=`skip` (típico cambio FX)
-- Merchant vacío → warning `no-merchant`
+- Merchant vacío → warning `no-merchant` **y `description: ''`** (VACÍA, nunca un placeholder: `"(sin descripción)"` como valor satisfacía `description.trim() !== ''` y la fila se insertaba con ese nombre)
 - Date `null` → warning `no-date`, fecha cae a `today`
-- `categoryId: null` **siempre** (ver [decisión: no pre-seleccionar](#decisión-no-pre-seleccionar-categoríakind))
+- `categoryId: null` **siempre** en OCR (ver [decisión: no pre-seleccionar](#decisión-no-pre-seleccionar-categoríakind)) + `categorySuggested: false`. Apple Pay SÍ pre-resuelve por historial y lo marca con `categorySuggested: true`, que es lo que rinde el chip "sugerida"
 - `incomeKind: 'other'` default (el usuario lo cambia explícitamente)
 
-### 5. Wizard (`ImportReviewSheet`)
+### 5. Revisión (`ImportReviewSheet`)
 
-El sheet es un wizard de N+1 pasos donde `N = totalRows` y el último índice es el **summary final**.
+> **Rediseño 2026-08-15 (direcciones C + A).** Antes era un wizard lineal de
+> N+1 pasos con el resumen al final. Los N movimientos de un import son
+> **independientes entre sí**, así que forzar el orden no ayudaba: escondía el
+> conjunto y dejaba sin respuesta las tres preguntas del usuario ("cuántos
+> son", "en cuál estoy", "cómo me muevo"). Ahora el conjunto va primero y el
+> detalle es bajo demanda.
 
-Cada paso de movimiento muestra:
-- **Step indicator** ([`import-review-step-indicator.tsx`](../../mobile/components/import-review/import-review-step-indicator.tsx)): franja de progreso de **dos ideas** — relleno=manejado (primary, cubre done/current/skipped) vs apagado=pendiente (line), más **rojo** (danger) solo para fila inválida (lo único accionable). El "Movimiento N de M" del header ya es el progreso lineal; no hay pulso de avance ni 5 colores.
-- **Header slim** ([`import-review-header.tsx`](../../mobile/components/import-review/import-review-header.tsx)): thumbnail 44×44 + "Movimiento N de M" / "Resumen final" (sin eyebrow decorativo).
-- **Row form** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)): kind toggle + AmountCard compact + TextField descripción + CycleDateSlider (con label **Fecha** + la fecha elegida en texto) + CategoryHorizontalRail/IncomeKindSection + NotesRow. Los tappables del form (toggle, pills, Restaurar) responden al toque con press-scale (helper `PressScale`, transform SIEMPRE array para esquivar el crash de iOS). Los warnings se dicen **una vez**: el campo se tinta (border+label) + el footer lista los faltantes bajo el CTA; el bloque al pie del form (`infoWarnings`) solo carga los **contextuales** (no-date/future-date/foreign-currency/swap-ambiguous), nunca los de campo requerido (no-merchant/value-zero).
-- **Footer** ([`import-review-footer.tsx`](../../mobile/components/import-review/import-review-footer.tsx)): Anterior · Saltear · primary CTA (Siguiente → / Confirmar N → / **Cerrar** si todo quedó salteado / hard-block en busy).
+El sheet tiene **tres vistas**, no pasos. La raíz la decide la cantidad de
+filas, así que siempre se vuelve al mismo lugar del que se salió:
 
-El summary final ([`import-review-summary.tsx`](../../mobile/components/import-review/import-review-summary.tsx)) es **sobrio**: es el paso de CONFIRMAR, todavía no se cargó nada, así que no hay celebración acá (el confetti real es post-confirm). Un encabezado de una línea que **lidera** la jerarquía ("Vas a cargar N gastos y M ingresos.", peso/escala mayor que los items), la lista de movimientos por cargar **sin card ni rótulo gasto/ingreso** (el `+`/`$` y el tinte primary ya lo comunican; stagger capeado a 5 items) y una línea muted con la cantidad de skipped. Cada item es **tappable** → salta directo a editar ese movimiento (`onJumpTo`→`jumpTo`, con chevron + un `accessibilityLabel` que verbaliza tipo+descripción+monto para VoiceOver).
+| Vista | Cuándo es la raíz | Qué es |
+|---|---|---|
+| `receipt` | `totalRows === 1` | El **recibo**: el dato como hecho consumado, con su procedencia. Se acepta de UN tap. |
+| `list` | `totalRows >= 2` | La **bandeja**: conteo, total en plata, estado por fila. Cualquier fila a un tap. |
+| `edit` | nunca (siempre bajo demanda) | El formulario de UNA fila. Se entra por tap y se vuelve a la raíz. |
+
+- **Recibo** ([`import-review-receipt.tsx`](../../mobile/components/import-review/import-review-receipt.tsx)):
+  procedencia ("Apple Pay · 14:32" + por qué está ahí), monto grande, comercio,
+  y filas de hecho (fecha, categoría). Si la categoría vino del historial se
+  marca con el chip **"sugerida"** y una línea que explica el motivo. Si falta
+  la categoría, el riel aparece inline con "Solo falta esto".
+- **Bandeja** ([`import-review-list.tsx`](../../mobile/components/import-review/import-review-list.tsx)):
+  hero con **total a cargar** (y "de $X leídos" cuando hay descartes), pista de
+  progreso por conteo — los tramos pendientes quedan **vacíos**, que es lo que
+  hace legible "cuánto falta" — y chips de listos / sin completar / fallaron /
+  sin cargar. Cada fila lleva su estado en un badge y es tappable.
+- **Edición** ([`import-review-row.tsx`](../../mobile/components/import-review/import-review-row.tsx)):
+  el formulario de siempre (kind toggle + AmountCard + descripción + CycleDateSlider
+  + rail de categorías/tipo de ingreso + nota), con
+  [`import-review-header.tsx`](../../mobile/components/import-review/import-review-header.tsx)
+  arriba, que dice **de dónde salió el dato** y la posición dentro de la bandeja.
+- **Footer** ([`import-review-footer.tsx`](../../mobile/components/import-review/import-review-footer.tsx)):
+  una forma por vista. `receipt` → [Editar] [Ahora no] + "Registrar gasto".
+  `list` → [Completa los N que faltan] [Ahora no] + "Cargar N · $X".
+  `edit` → [No cargar este] [Siguiente pendiente | Volver] + "Listo".
+
+#### Aplazar ≠ descartar
+
+Los dos significados compartían el verbo "Saltear", y en Apple Pay ese verbo
+**borraba la única copia del pago**. Ahora están separados:
+
+- **"Ahora no"** (footer de la raíz) cierra la hoja dejando pendiente todo lo
+  que el usuario no decidió. NUNCA destruye.
+- **"No cargar este"** (dentro de la edición) marca la fila `kind: 'skip'`. Es
+  reversible mientras la hoja siga abierta ("Sí cargar este") y **no
+  auto-avanza**: el estado queda a la vista con su deshacer al lado.
 
 #### Navegación
 
-- `goNext()` checks `missingFields` del row actual. Si falla, bump `highlightToken` + warning haptic → no avanza. Si pasa, slide-left con `FadeInRight`/`FadeOutLeft`.
-- `goPrev()` simétrico (slide-right). Funciona en cualquier estado.
-- `handleSkipToggle()` toggle kind=skip ↔ unskip + auto-advance al siguiente cuando salta.
-- `handleConfirmAttempt()`: con invalid items → jump-to-first-invalid + toast + warning haptic; con **todo salteado** (0 submittable, 0 inválidos) → `onClose()` directo (no miente "falta completar algo" ni deja un dead-end). El CTA en ese estado dice "Cerrar".
-- `jumpTo(idx)` también lo dispara el tap en un item del summary (jump-to-fix de 1 tap).
-- Confirm exitoso (total > 0, 0 fallidos) dispara haptic `success` — el clímax del flujo ya no es mudo.
+- `openRow(rowId, flagMissing?)` — abre una fila. Con `flagMissing` **marca sus
+  campos faltantes al entrar**: el salto automático aterrizaba en un formulario
+  que se veía normal, justo después de un aviso que decía "hay un movimiento
+  sin completar".
+- `goToRoot()` — vuelve a `receipt` o `list` según la cantidad de filas.
+- El CTA primario de la raíz confirma; con filas incompletas salta a la primera.
+- "Siguiente pendiente" salta sólo a lo que falta, no a la fila de al lado.
+
+#### Reparación de fallos
+
+Si el confirm falla parcialmente, **la hoja NO se cierra**. Se queda con las
+filas caídas (las que sí entraron se sacan del set, así el reintento no
+duplica), las marca con el estado `failed`, muestra la cabecera de reparación
+con el motivo real y el CTA pasa a **"Reintentar"**. Antes se cerraba con un
+toast que decía cuántas fallaron pero no cuáles, sobre una pantalla que ya no
+existía y con el trabajo de edición inalcanzable.
+
+#### Categoría: la única decisión obligatoria
+
+Es lo único que el humano tiene que aportar en el camino OCR, y era lo peor
+servido (~30 tiles en orden de catálogo). Ahora llega **rankeada por uso del
+hogar** (`rankCategoriesByUsage`) y el ancho de tile sale de
+[`rail-metrics.ts`](../../mobile/components/import-review/rail-metrics.ts), que
+resta el padding del `ModalCard` (22pt) en vez del de `Screen` (40pt) para que
+**asome el quinto tile** — el peek es lo que anuncia que hay más.
 
 ### 6. Confirm (`use-confirm-import.ts`)
 

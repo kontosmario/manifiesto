@@ -1,4 +1,3 @@
-import i18n from '@/lib/i18n'
 import type { Transaction } from '@/features/activity-ocr/types'
 import type { IncomeKind, ReviewRow, ReviewRowKind, ReviewRowWarning } from './types'
 
@@ -70,7 +69,14 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     id: ctx.generateRowId(),
     kind,
     amount,
-    description: hasMerchant ? merchant : i18n.t('gastos:import.noDescription'),
+    // VACÍA cuando el OCR no leyó comercio, nunca un placeholder de relleno.
+    // `"(sin descripción)"` como VALOR satisfacía la validación
+    // (`description.trim() !== ''`), así que la fila pasaba el gate verde y
+    // se insertaba un gasto real llamado así. Vacía, el campo muestra su
+    // placeholder real y el footer la lista como faltante. El texto de
+    // relleno sobrevive sólo como etiqueta de LECTURA en la bandeja y el
+    // resumen (`gastos:import.noDescription`).
+    description: merchant,
     date,
     notes: null,
     // Category intentionally left unset. Pre-selecting "first available"
@@ -79,6 +85,7 @@ function mapOne(tx: Transaction, ctx: MapContext): ReviewRow {
     // the actual purchase. Forcing manual pick on every expense costs
     // one tap per row, gains data integrity.
     categoryId: null,
+    categorySuggested: false,
     incomeKind: DEFAULT_INCOME_KIND,
     warnings,
     source: {

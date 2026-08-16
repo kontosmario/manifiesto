@@ -1,20 +1,26 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, {
   Easing,
+  FadeIn,
   FadeInLeft,
   FadeInRight,
   FadeOutLeft,
   FadeOutRight,
   FadeOutUp,
 } from 'react-native-reanimated'
+import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
 import { WizardSkinProvider, type WizardMode } from '@/components/wizard/wizard-skin'
+import { motionDurations } from '@/lib/motion/tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeMode } from '@/theme/theme-provider'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useCategories } from '@/features/categories/use-categories'
+import { rankCategoriesByUsage } from '@/features/expenses/category-ranking'
+import { useExpenses } from '@/features/expenses/use-expenses'
 import { toast } from '@/lib/toast-bus'
 import { confetti } from '@/lib/confetti-bus'
 import { triggerHaptic } from '@/lib/haptics'
@@ -22,16 +28,19 @@ import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useImportReviewController } from '@/features/import-review/use-import-review-controller'
 import { useConfirmImport } from '@/features/import-review/use-confirm-import'
 import { formatISO } from '@/features/import-review/cycle-date-math'
-import type { ConfirmResult, ReviewRow, ReviewState } from '@/features/import-review/types'
+import { formatMoney } from '@/features/import-review/format'
+import type {
+  ConfirmFailure,
+  ConfirmResult,
+  ReviewRow,
+  ReviewState,
+} from '@/features/import-review/types'
 import { ImportReviewRow } from './import-review-row'
 import { ImportReviewFooter } from './import-review-footer'
 import { ImportReviewEmpty } from './import-review-empty'
 import { ImportReviewHeader } from './import-review-header'
-import { ImportReviewSummary } from './import-review-summary'
-import {
-  ImportReviewStepIndicator,
-  type StepStatus,
-} from './import-review-step-indicator'
+import { ImportReviewList } from './import-review-list'
+import { ImportReviewReceipt } from './import-review-receipt'
 import { useImportReviewNeo } from './import-review-neo'
 
 interface Props {
@@ -41,10 +50,10 @@ interface Props {
   userId: string
   /**
    * Cierre del sheet. Recibe las filas FINALES —como quedaron después de
-   * editarlas/saltearlas— para que el que lo monta pueda actuar sobre lo que
-   * el usuario decidió, aunque no haya confirmado nada. El host de Apple Pay
-   * las usa para descartar las capturas nativas de las filas salteadas; el
-   * resto de los puntos de montaje ignoran el parámetro.
+   * editarlas/marcarlas "no cargar"— para que el que lo monta pueda actuar
+   * sobre lo que el usuario decidió, aunque no haya confirmado nada. El host
+   * de Apple Pay las usa para descartar las capturas nativas de esas filas;
+   * el resto de los puntos de montaje ignoran el parámetro.
    *
    * Viene `undefined` cuando el cierre no lo decidió el usuario sobre un set
    * de filas (p. ej. el sheet vacío).
@@ -58,33 +67,42 @@ interface Props {
    *
    * PRECEDENCIA: gana sobre `onConfirmRows`. Con `previewMode` en true el
    * confirm se resuelve con el resultado falso y el callback inyectado NO
-   * corre — en silencio, sin warning. Pasar los dos juntos no tiene
-   * sentido; si alguna vez hace falta, hay que decidir cuál manda acá.
+   * corre — en silencio, sin warning.
    */
   previewMode?: boolean
   /**
    * Destino de la confirmación. Por defecto escribe con `useConfirmImport`
    * (el camino del import por OCR). Apple Pay inyecta el suyo para poder
    * limpiar las capturas nativas drenadas después de insertar.
-   *
-   * `previewMode` tiene precedencia: ver su nota arriba.
    */
   onConfirmRows?: (rows: ReviewRow[]) => Promise<ConfirmResult>
 }
 
-const STEP_ENTER_MS = 280
-const STEP_EXIT_MS = 200
-const CONFIRM_FADE_MS = 220
+// Las tres duraciones salen del vocabulario de navegación: entrar/salir de
+// una vista es un push/pop de stack, y el fade del confirm es una salida de
+// modal. Nada de números sueltos (`guard:motion-tokens`).
+const ENTER_MS = motionDurations.enterStack
+const EXIT_MS = motionDurations.exitStack
+const CONFIRM_FADE_MS = motionDurations.exitModal
 const EASE_IOS = Easing.bezier(0.32, 0.72, 0, 1)
 
 /**
- * `stepIndex` lives on an extended index space:
- *   [0, totalRows)        → per-movement editing
- *   totalRows             → summary / confirm step
+ * Vista actual. Reemplaza al `stepIndex` lineal `[0..totalRows]` del wizard
+ * anterior, donde el conjunto (la lista) vivía DETRÁS de los N pasos y sólo
+ * se llegaba recorriéndolos con una compuerta de validación en cada uno.
  *
- * Going past the last movement enters summary; tapping "Volver a editar"
- * from the summary drops back into the last movement step.
+ *   - `receipt` → un solo movimiento: se acepta de un tap (dirección C).
+ *   - `list`    → la bandeja, raíz cuando hay 2+ (dirección A).
+ *   - `edit`    → el detalle de UNA fila, siempre bajo demanda.
+ *
+ * La raíz la decide la cantidad de filas, no el historial de navegación: se
+ * vuelve siempre al mismo lugar del que se salió.
  */
+type SheetView =
+  | { kind: 'receipt' }
+  | { kind: 'list' }
+  | { kind: 'edit'; rowId: string }
+
 export function ImportReviewSheet({
   visible,
   initialState,
@@ -97,171 +115,178 @@ export function ImportReviewSheet({
   const mode = useThemeMode().resolvedMode as WizardMode
   const { softInk } = useImportReviewNeo()
   const { t } = useTranslation()
+  const reduced = useReducedMotion()
   const controller = useImportReviewController(initialState ?? undefined)
   const categoriesQuery = useCategories(familyId, 'expense')
-  const categories = categoriesQuery.data ?? []
+  const expensesQuery = useExpenses(familyId)
   const defaultConfirm = useConfirmImport({ familyId, userId })
   const confirm = onConfirmRows ?? defaultConfirm
   const payCycle = usePayCycle(familyId)
   const cycleDays = Math.max(
     1,
     Math.round(
-      (payCycle.cycle.end.getTime() - payCycle.cycle.start.getTime()) /
-        86_400_000,
+      (payCycle.cycle.end.getTime() - payCycle.cycle.start.getTime()) / 86_400_000,
     ),
   )
   const today = formatISO(payCycle.today)
+
   const [busy, setBusy] = useState(false)
   const [fadingOut, setFadingOut] = useState(false)
-  const [stepIndex, setStepIndex] = useState(0)
-  // Bumped each time the user taps the disabled primary CTA. The
-  // current row reads it and flips its `isFlagged` state so unfilled
-  // required fields paint with their `warning` mode. Stored per-row
-  // implicitly via the row's remount-on-step semantics.
+  const [view, setView] = useState<SheetView>({ kind: 'list' })
+  // Filas cuyo insert falló en el intento anterior. La hoja se QUEDA abierta
+  // y las marca, en vez de cerrarse con un toast que decía cuántas fallaron
+  // pero no cuáles, sobre una pantalla que ya no existía.
+  const [failures, setFailures] = useState<ConfirmFailure[]>([])
   const [highlightToken, setHighlightToken] = useState(0)
-  // Slide direction is tracked OUTSIDE state so the next render's
-  // entering/exiting animations can read the right value without
-  // re-rendering twice on every step change.
+  // La dirección del slide vive FUERA del estado para que las animaciones
+  // del próximo render la lean sin provocar un segundo render.
   const directionRef = useRef<'forward' | 'back'>('forward')
+
+  const totalRows = controller.state.rows.length
+  const rootView: SheetView = totalRows === 1 ? { kind: 'receipt' } : { kind: 'list' }
 
   useEffect(() => {
     if (initialState) {
       controller.replaceState(initialState)
-      setStepIndex(0)
+      setView(initialState.rows.length === 1 ? { kind: 'receipt' } : { kind: 'list' })
+      setFailures([])
       directionRef.current = 'forward'
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialState])
 
-  const totalRows = controller.state.rows.length
-  // stepIndex range: [0, totalRows]  — last index is the summary step.
-  const summaryIndex = totalRows
-  const isSummary = stepIndex >= summaryIndex && totalRows > 0
-  const editStep = Math.min(stepIndex, Math.max(0, totalRows - 1))
-  const currentRow = isSummary ? null : controller.state.rows[editStep]
   const invalidIdSet = useMemo(
     () => new Set(controller.invalidIds),
     [controller.invalidIds],
   )
-
-  const statuses: StepStatus[] = useMemo(() => {
-    return controller.state.rows.map((row, idx) => {
-      if (row.kind === 'skip') return 'skipped'
-      if (isSummary) return 'done'
-      if (invalidIdSet.has(row.id)) {
-        return idx === editStep ? 'current' : 'invalid'
-      }
-      if (idx === editStep) return 'current'
-      if (idx < editStep) return 'done'
-      return 'pending'
-    })
-  }, [controller.state.rows, invalidIdSet, editStep, isSummary])
-
-  function goNext() {
-    if (stepIndex >= summaryIndex) return
-    // Caller already checks `canAdvanceCurrent`; this guards alternate
-    // entry points (e.g. gestures, keyboard handlers).
-    if (currentRow && invalidIdSet.has(currentRow.id)) {
-      void triggerHaptic('warning')
-      setHighlightToken((prev) => prev + 1)
-      return
-    }
-    directionRef.current = 'forward'
-    void triggerHaptic('selection')
-    setStepIndex(stepIndex + 1)
-  }
+  const failedIdSet = useMemo(
+    () => new Set(failures.map((f) => f.rowId)),
+    [failures],
+  )
 
   /**
-   * Routed primary-CTA handler. The footer keeps a single onPress; the
-   * sheet decides what each tap means based on current state:
-   *   - on summary: confirm (or jump-to-invalid if confirm blocked)
-   *   - on a movement step with all required fields filled: advance
-   *   - on a movement step with missing fields: bump highlightToken
-   *     so the current row paints its missing inputs with warning.
+   * Categorías rankeadas por uso del hogar. Es la única decisión obligatoria
+   * del flujo y era la peor servida: ~30 tiles en orden de catálogo, con las
+   * 12 curadas —Combustible, Delivery, Cafetería, Farmacia— al final, que son
+   * justo las que matchean un resumen de tarjeta. Memoizado además porque su
+   * identidad viaja al riel: un array nuevo por render derrotaba el `memo` de
+   * cada Tile.
    */
-  function handlePrimaryPress() {
-    if (isSummary) {
-      handleConfirmAttempt()
-      return
-    }
-    if (currentRow && invalidIdSet.has(currentRow.id)) {
-      void triggerHaptic('warning')
-      setHighlightToken((prev) => prev + 1)
-      return
-    }
-    goNext()
-  }
+  const rankedCategories = useMemo(
+    () =>
+      rankCategoriesByUsage(
+        expensesQuery.data ?? [],
+        (categoriesQuery.data ?? []).slice(),
+      ),
+    [expensesQuery.data, categoriesQuery.data],
+  )
 
-  function goPrev() {
-    if (stepIndex <= 0) return
+  const editingRow =
+    view.kind === 'edit'
+      ? (controller.state.rows.find((r) => r.id === view.rowId) ?? null)
+      : null
+  const singleRow = totalRows === 1 ? controller.state.rows[0] : null
+  const focusRow = editingRow ?? singleRow
+
+  const focusMissingFields = focusRow
+    ? controller.missingFieldsFor(focusRow.id)
+    : []
+
+  const origin: 'ocr' | 'apple-pay' =
+    controller.state.rows[0]?.source.origin === 'apple-pay' ? 'apple-pay' : 'ocr'
+
+  const missingCount = controller.invalidIds.length
+
+  // ─────────────────────────── navegación ───────────────────────────
+
+  const goToRoot = useCallback(() => {
     directionRef.current = 'back'
-    void triggerHaptic('selection')
-    setStepIndex(stepIndex - 1)
-  }
+    setView(rootView)
+  }, [rootView.kind]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  function jumpTo(idx: number) {
-    if (idx === stepIndex) return
-    directionRef.current = idx > stepIndex ? 'forward' : 'back'
-    setStepIndex(idx)
-  }
+  /**
+   * Abre una fila. Si está incompleta, MARCA sus campos faltantes al entrar:
+   * antes el salto automático al primer inválido aterrizaba en un formulario
+   * que se veía perfectamente normal (el `highlightToken` no se bumpeaba y el
+   * remount por key reseteaba el flag), justo después de un aviso que decía
+   * "hay un movimiento sin completar".
+   */
+  const openRow = useCallback(
+    (rowId: string, flagMissing = false) => {
+      directionRef.current = 'forward'
+      if (flagMissing) setHighlightToken((prev) => prev + 1)
+      setView({ kind: 'edit', rowId })
+    },
+    [],
+  )
 
-  function handleSkipToggle() {
-    if (!currentRow) return
-    if (currentRow.kind === 'skip') {
-      controller.unskipRow(currentRow.id)
+  const nextPendingId = useMemo(() => {
+    if (view.kind !== 'edit') return null
+    return controller.invalidIds.find((id) => id !== view.rowId) ?? null
+  }, [controller.invalidIds, view])
+
+  const handleNextPending = useCallback(() => {
+    if (nextPendingId) openRow(nextPendingId, true)
+  }, [nextPendingId, openRow])
+
+  const handleToggleSkip = useCallback(() => {
+    if (!focusRow) return
+    if (focusRow.kind === 'skip') {
+      controller.unskipRow(focusRow.id)
       return
     }
     void triggerHaptic('warning')
-    controller.skipRow(currentRow.id)
-    // Auto-advance past a skipped row — the user said "this one is
-    // noise" so we move on. If we were already on the last movement,
-    // we jump straight into the summary so the wizard keeps moving
-    // forward — never feels stuck.
-    if (stepIndex < summaryIndex) {
-      directionRef.current = 'forward'
-      setStepIndex(stepIndex + 1)
-    }
-  }
+    controller.skipRow(focusRow.id)
+    // NO auto-avanza. El auto-avance de antes hacía que la acción fuera
+    // instantánea y su reversa exigiera adivinar que había que tocar
+    // "Anterior": el usuario perdía de vista lo que acababa de descartar.
+    // Acá el estado queda a la vista con su botón de deshacer al lado.
+  }, [focusRow, controller])
 
-  function handleConfirmAttempt() {
+  // ─────────────────────────── confirmar ───────────────────────────
+
+  const handlePrimary = useCallback(() => {
+    if (view.kind === 'edit') {
+      // El CTA de la edición vuelve a la raíz. Si la fila quedó incompleta,
+      // marca lo que falta en vez de dejar salir en silencio.
+      if (focusRow && invalidIdSet.has(focusRow.id)) {
+        void triggerHaptic('warning')
+        setHighlightToken((prev) => prev + 1)
+        return
+      }
+      void triggerHaptic('selection')
+      goToRoot()
+      return
+    }
+
     if (!controller.canConfirm) {
-      // All-skipped (nothing invalid, nothing to load): NOT an error. The
-      // user deliberately skipped everything (e.g. the capture was already
-      // loaded). The old path lied with "something's incomplete" and left
-      // them trapped on an inert CTA with no jump target. Just close.
-      //
-      // Este atajo se saltea `handleConfirm()` entero, así que es el ÚNICO
-      // lugar donde el que monta se entera de lo que pasó: por eso el cierre
-      // viaja con las filas finales. Sin ellas el host de Apple Pay no podía
-      // limpiar nada y las capturas salteadas se re-ofrecían para siempre.
+      // Nada para cargar y nada roto: el usuario decidió no cargar nada.
+      // No es un error — se cierra con lo que decidió.
       if (controller.invalidIds.length === 0) {
         onClose(controller.state.rows)
         return
       }
-      // Jump to the first invalid step so the user lands exactly where
-      // the form needs fixing. Cheaper than scrolling through a list of
-      // dots looking for the red one.
-      const firstInvalidId = controller.invalidIds[0]
-      if (firstInvalidId) {
-        const idx = controller.state.rows.findIndex(
-          (r) => r.id === firstInvalidId,
-        )
-        if (idx >= 0) jumpTo(idx)
-      }
       void triggerHaptic('warning')
-      toast.error(t('gastos:import.toast.incomplete'))
+      // En el RECIBO, si lo único que falta es la categoría, el riel ya está
+      // en pantalla: mandar al usuario a un formulario cuando el control que
+      // necesita está a la vista sería peor que no hacer nada. Sólo se navega
+      // cuando falta algo que el recibo no puede editar (la descripción).
+      const onlyCategoryMissing =
+        focusMissingFields.length === 1 &&
+        focusMissingFields[0] === t('gastos:import.field.category')
+      if (totalRows === 1 && onlyCategoryMissing) return
+
+      const firstInvalidId = controller.firstInvalidId
+      if (firstInvalidId) openRow(firstInvalidId, true)
       return
     }
     void handleConfirm()
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, focusRow, invalidIdSet, controller, goToRoot, openRow, onClose])
 
   async function handleConfirm() {
     setBusy(true)
     try {
-      // Preview mode: fake the confirm result so we can drive the exit
-      // animation + confetti + toast without touching the DB. The
-      // breakdown comes from the controller so the toast wording still
-      // reflects what the user actually saw.
       const result = previewMode
         ? {
             insertedExpenses: controller.submittableBreakdown.expenses,
@@ -272,16 +297,29 @@ export function ImportReviewSheet({
         : await confirm(controller.state.rows)
       const total = result.insertedExpenses + result.insertedIncomes
 
-      // The climax of the whole flow ("I loaded your movements") was mute —
-      // every other step buzzes ('selection'/'warning') but the payoff
-      // didn't. Reward the successful commit (partial failure stays on the
-      // 'warning' tone the error toast already implies).
-      if (total > 0 && result.failed.length === 0) {
-        void triggerHaptic('success')
+      // REPARACIÓN: si algo falló, la hoja NO se cierra. Se queda con las
+      // filas caídas marcadas para que el usuario reintente sólo esas.
+      // Cerrar con un toast que decía "2 no se pudieron cargar" dejaba al
+      // usuario sin saber CUÁLES, con el trabajo de edición inalcanzable y
+      // con la única salida de reimportar y duplicar lo que sí entró.
+      if (result.failed.length > 0) {
+        setFailures(result.failed)
+        // Lo que SÍ entró se saca del set para no re-insertarlo al
+        // reintentar: es exactamente el mecanismo que evitaba el duplicado.
+        const failedIds = new Set(result.failed.map((f) => f.rowId))
+        const remaining = controller.state.rows.filter(
+          (r) => failedIds.has(r.id) || r.kind === 'skip',
+        )
+        controller.replaceState({ ...controller.state, rows: remaining })
+        setView(remaining.length === 1 ? { kind: 'receipt' } : { kind: 'list' })
+        void triggerHaptic('warning')
+        return
       }
 
-      // Cinematic fade-out: the form fades up before the modal dismisses
-      // so the user sees the rows leave instead of a hard cut.
+      if (total > 0) void triggerHaptic('success')
+
+      // Fade cinematográfico: el cuerpo se va hacia arriba antes de que el
+      // modal se descarte, así el usuario ve salir las filas.
       setFadingOut(true)
       await new Promise<void>((resolve) =>
         setTimeout(resolve, CONFIRM_FADE_MS + 80),
@@ -296,49 +334,22 @@ export function ImportReviewSheet({
           parts.push(t('gastos:import.summary.incomesCount', { count: result.insertedIncomes }))
         }
         const joined = parts.join(t('gastos:import.summary.and'))
-        const baseMsg = previewMode
-          ? t('gastos:import.toast.previewLoaded', { parts: joined })
-          : t('gastos:import.toast.loaded', { parts: joined })
-        if (result.failed.length > 0) {
-          const firstReason = result.failed[0]?.reason ?? ''
-          const reasonSuffix = firstReason
-            ? t('gastos:import.toast.reasonSuffix', { reason: firstReason.slice(0, 120) })
-            : ''
-          toast.error(
-            t('gastos:import.toast.partialFailure', {
-              baseMsg,
-              count: result.failed.length,
-              reasonSuffix,
-            }),
-            { durationMs: 9000 },
-          )
-        } else {
-          toast.success(baseMsg)
-        }
-      } else if (result.failed.length > 0) {
-        // Mostrar la PRIMERA razón real — "(N errores)" a secas dejaba
-        // al usuario (y a nosotros) sin nada accionable. Device report
-        // 2026-06-12: import falló completo y la causa era invisible.
-        const firstReason = result.failed[0]?.reason ?? ''
-        const reasonSuffix = firstReason
-          ? t('gastos:import.toast.reasonSuffix', { reason: firstReason.slice(0, 120) })
-          : ''
-        toast.error(
-          t('gastos:import.toast.allFailed', {
-            count: result.failed.length,
-            reasonSuffix,
-          }),
-          { durationMs: 9000 },
+        // El toast lleva la PLATA, no sólo el conteo: nueve pasos de revisión
+        // terminaban en "Cargué 8 gastos", menos información que cargar uno
+        // a mano.
+        const withTotal = `${joined} · ${formatMoney(controller.submittableTotal)}`
+        toast.success(
+          previewMode
+            ? t('gastos:import.toast.previewLoaded', { parts: withTotal })
+            : t('gastos:import.toast.loaded', { parts: withTotal }),
         )
       }
       onClose(controller.state.rows)
 
-      // Confetti fires AFTER `onClose()` because the host is mounted at
-      // the app shell (behind the ModalCard's native Modal). If we fire
-      // it while the sheet is still on screen, the burst paints behind
-      // the modal. Threshold ≥3 catches real bulk imports without
-      // celebrating a one-off.
-      if (total >= 3 && result.failed.length === 0) {
+      // El confetti va DESPUÉS de `onClose()` porque su host está montado en
+      // el shell de la app (detrás del <Modal> nativo del ModalCard). Si sale
+      // con la hoja en pantalla, la explosión se pinta atrás.
+      if (total >= 3) {
         setTimeout(() => {
           confetti.celebrate({ durationMs: 2200, origin: 'top' })
         }, 260)
@@ -349,138 +360,215 @@ export function ImportReviewSheet({
     }
   }
 
-  // Stable key per step so the entering/exiting transition fires on
-  // every navigation. Bakes in row.id (or "summary") so unrelated
-  // re-renders never trigger an unwanted slide animation.
-  const stepKey = isSummary
-    ? 'summary'
-    : currentRow
-      ? `${editStep}-${currentRow.id}`
-      : `step-${editStep}`
+  /**
+   * "Ahora no": cierra dejando pendiente lo que el usuario no decidió. NO
+   * destruye. Lo único que se descarta son las filas que él marcó "no cargar"
+   * — el host de Apple Pay lee eso de las filas finales.
+   */
+  const handleNotNow = useCallback(() => {
+    onClose(controller.state.rows)
+  }, [onClose, controller.state.rows])
 
-  const headerLabel = isSummary
-    ? totalRows
-    : editStep + 1
+  const handlePatch = useCallback(
+    (patch: Partial<ReviewRow>) => {
+      if (!focusRow) return
+      controller.patchRow(focusRow.id, patch)
+    },
+    [focusRow, controller],
+  )
+  const handleSetKind = useCallback(
+    (kind: ReviewRow['kind']) => {
+      if (!focusRow) return
+      controller.setRowKind(focusRow.id, kind)
+    },
+    [focusRow, controller],
+  )
+  const handleUnskip = useCallback(() => {
+    if (!focusRow) return
+    controller.unskipRow(focusRow.id)
+  }, [focusRow, controller])
+  const handleSelectCategoryOnReceipt = useCallback(
+    (categoryId: string) => {
+      if (!singleRow) return
+      controller.patchRow(singleRow.id, { categoryId })
+    },
+    [singleRow, controller],
+  )
 
-  const currentMissingFields = currentRow
-    ? controller.missingFieldsFor(currentRow.id)
-    : []
+  // ─────────────────────────── render ───────────────────────────
 
-  const wizardFooter =
+  const viewKey =
+    view.kind === 'edit' ? `edit-${view.rowId}` : view.kind
+
+  const positionInList = useMemo(() => {
+    if (view.kind !== 'edit' || totalRows <= 1) return undefined
+    const index = controller.state.rows.findIndex((r) => r.id === view.rowId)
+    return index >= 0 ? { index: index + 1, total: totalRows } : undefined
+  }, [view, controller.state.rows, totalRows])
+
+  const footer =
     totalRows > 0 ? (
       <ImportReviewFooter
-        stepIndex={stepIndex}
-        totalSteps={totalRows}
-        isSummary={isSummary}
+        view={view.kind === 'edit' ? 'edit' : totalRows === 1 ? 'receipt' : 'list'}
         expensesCount={controller.submittableBreakdown.expenses}
         incomesCount={controller.submittableBreakdown.incomes}
+        submittableTotal={controller.submittableTotal}
         canConfirm={controller.canConfirm}
-        canAdvanceCurrent={currentMissingFields.length === 0}
-        missingFields={currentMissingFields}
-        isCurrentSkipped={currentRow?.kind === 'skip'}
+        missingFields={focusMissingFields}
+        missingCount={missingCount}
+        isCurrentSkipped={focusRow?.kind === 'skip'}
+        hasNextPending={nextPendingId !== null}
+        canGoBack={totalRows > 1}
+        hasFailures={failures.length > 0}
         busy={busy}
-        onPrev={goPrev}
-        onPrimary={handlePrimaryPress}
-        onSkip={handleSkipToggle}
+        onPrimary={handlePrimary}
+        onBack={goToRoot}
+        onEdit={() => {
+          if (singleRow) openRow(singleRow.id)
+        }}
+        onResolveMissing={() => {
+          if (controller.firstInvalidId) openRow(controller.firstInvalidId, true)
+        }}
+        onNotNow={handleNotNow}
+        onToggleSkip={handleToggleSkip}
+        onNextPending={handleNextPending}
       />
     ) : undefined
+
+  const entering = reduced
+    ? undefined
+    : directionRef.current === 'forward'
+      ? FadeInRight.duration(ENTER_MS).easing(EASE_IOS)
+      : FadeInLeft.duration(ENTER_MS).easing(EASE_IOS)
+
+  const exiting = reduced
+    ? undefined
+    : fadingOut
+      ? FadeOutUp.duration(CONFIRM_FADE_MS).easing(EASE_IOS)
+      : directionRef.current === 'forward'
+        ? FadeOutLeft.duration(EXIT_MS).easing(EASE_IOS)
+        : FadeOutRight.duration(EXIT_MS).easing(EASE_IOS)
 
   // El provider envuelve a la hoja ENTERA, no solo a sus children: el footer
   // viaja como prop de `ModalCard` y se renderiza adentro de SU árbol, así que
   // un provider puesto sobre los children lo dejaría afuera del contexto.
-  // Con esto los compartidos skin-aware que monta el paso (`AmountCard`,
-  // `CategoryHorizontalRail`, `TileRail`) resuelven a su rama del rediseño.
   return (
     <WizardSkinProvider mode={mode}>
-    <ModalCard
-      skin="neo"
-      visible={visible}
-      // Descartar la hoja (backdrop / botón de cerrar) también es un cierre
-      // del usuario: viaja con las filas finales, así lo que haya salteado a
-      // mano se respeta aunque nunca haya llegado al resumen.
-      onClose={busy ? () => {} : () => onClose(controller.state.rows)}
-      title=""
-      subtitle=""
-      footer={wizardFooter}
-    >
-      {totalRows === 0 ? (
-        <ImportReviewEmpty />
-      ) : (
-        <View style={styles.wrapper}>
-          <ImportReviewHeader
-            stepIndex={headerLabel}
-            total={totalRows}
-            imageUri={controller.state.imageUri}
-            mode={isSummary ? 'summary' : 'edit'}
-          />
-          <ImportReviewStepIndicator statuses={statuses} />
+      <ModalCard
+        skin="neo"
+        visible={visible}
+        // Descartar la hoja (backdrop / swipe) también es un cierre del
+        // usuario: viaja con las filas finales, así lo que haya marcado "no
+        // cargar" se respeta aunque nunca haya confirmado.
+        onClose={busy ? () => {} : () => onClose(controller.state.rows)}
+        title=""
+        subtitle=""
+        footer={footer}
+      >
+        {totalRows === 0 ? (
+          <ImportReviewEmpty />
+        ) : (
+          <View style={styles.wrapper}>
+            {failures.length > 0 ? (
+              <RepairBanner failures={failures} />
+            ) : null}
 
-          <View style={styles.stepHost}>
-            <Animated.View
-              key={stepKey}
-              entering={
-                directionRef.current === 'forward'
-                  ? FadeInRight.duration(STEP_ENTER_MS).easing(EASE_IOS)
-                  : FadeInLeft.duration(STEP_ENTER_MS).easing(EASE_IOS)
-              }
-              exiting={
-                fadingOut
-                  ? FadeOutUp.duration(CONFIRM_FADE_MS).easing(EASE_IOS)
-                  : directionRef.current === 'forward'
-                    ? FadeOutLeft.duration(STEP_EXIT_MS).easing(EASE_IOS)
-                    : FadeOutRight.duration(STEP_EXIT_MS).easing(EASE_IOS)
-              }
-            >
-              {isSummary ? (
-                <ImportReviewSummary
-                  rows={controller.state.rows}
-                  categories={categories}
-                  expensesCount={controller.submittableBreakdown.expenses}
-                  incomesCount={controller.submittableBreakdown.incomes}
-                  skippedCount={controller.skippedCount}
-                  onJumpTo={(rowId) => {
-                    const idx = controller.state.rows.findIndex(
-                      (r) => r.id === rowId,
-                    )
-                    if (idx >= 0) jumpTo(idx)
-                  }}
-                />
-              ) : currentRow ? (
-                <ImportReviewRow
-                  row={currentRow}
-                  categories={categories}
-                  cycleStart={payCycle.cycle.start}
-                  cycleDays={cycleDays}
-                  today={today}
-                  missingFields={currentMissingFields}
-                  highlightToken={highlightToken}
-                  onSetKind={(kind) =>
-                    controller.setRowKind(currentRow.id, kind)
-                  }
-                  onPatch={(patch) =>
-                    controller.patchRow(currentRow.id, patch)
-                  }
-                  onUnskip={() => controller.unskipRow(currentRow.id)}
-                />
-              ) : null}
-            </Animated.View>
+            <View style={styles.host}>
+              <Animated.View key={viewKey} entering={entering} exiting={exiting}>
+                {view.kind === 'edit' && editingRow ? (
+                  <>
+                    <ImportReviewHeader
+                      row={editingRow}
+                      position={positionInList}
+                      incomplete={invalidIdSet.has(editingRow.id)}
+                      imageUri={controller.state.imageUri}
+                      onBack={totalRows > 1 ? goToRoot : undefined}
+                    />
+                    <ImportReviewRow
+                      row={editingRow}
+                      categories={rankedCategories}
+                      cycleStart={payCycle.cycle.start}
+                      cycleDays={cycleDays}
+                      today={today}
+                      missingFields={focusMissingFields}
+                      highlightToken={highlightToken}
+                      onSetKind={handleSetKind}
+                      onPatch={handlePatch}
+                      onUnskip={handleUnskip}
+                    />
+                  </>
+                ) : totalRows === 1 && singleRow ? (
+                  <ImportReviewReceipt
+                    row={singleRow}
+                    categories={rankedCategories}
+                    missingFields={focusMissingFields}
+                    onSelectCategory={handleSelectCategoryOnReceipt}
+                  />
+                ) : (
+                  <ImportReviewList
+                    rows={controller.state.rows}
+                    categories={rankedCategories}
+                    invalidIds={invalidIdSet}
+                    failedIds={failedIdSet}
+                    submittableTotal={controller.submittableTotal}
+                    parsedTotal={controller.parsedTotal}
+                    skippedCount={controller.skippedCount}
+                    imageUri={controller.state.imageUri}
+                    origin={origin}
+                    onOpenRow={openRow}
+                  />
+                )}
+              </Animated.View>
+            </View>
+
+            {controller.state.unmatched > 0 && view.kind !== 'edit' ? (
+              <Text style={[styles.unmatched, { color: softInk }]}>
+                {t('gastos:import.unmatched', { count: controller.state.unmatched })}
+              </Text>
+            ) : null}
           </View>
-
-          {controller.state.unmatched > 0 && !isSummary ? (
-            <Text style={[styles.unmatched, { color: softInk }]}>
-              {t('gastos:import.unmatched', { count: controller.state.unmatched })}
-            </Text>
-          ) : null}
-        </View>
-      )}
-    </ModalCard>
+        )}
+      </ModalCard>
     </WizardSkinProvider>
+  )
+}
+
+/**
+ * Cabecera de reparación. `ConfirmFailure` ya traía el `rowId`, la
+ * descripción y el motivo, y no se rendía en ningún lado: el usuario sólo
+ * veía un conteo en un toast.
+ */
+function RepairBanner({ failures }: { failures: readonly ConfirmFailure[] }) {
+  const { neo, ink } = useImportReviewNeo()
+  const { t } = useTranslation()
+  const reduced = useReducedMotion()
+  const firstReason = failures[0]?.reason ?? ''
+  return (
+    <Animated.View
+      entering={reduced ? undefined : FadeIn.duration(motionDurations.standard)}
+      style={[styles.repair, { backgroundColor: neo.well, boxShadow: neo.shadows.insetSm }]}
+    >
+      <MaterialIcons name="error-outline" size={18} color={ink.danger} />
+      <View style={styles.repairText}>
+        <Text style={[styles.repairTitle, { color: neo.text }]}>
+          {t('gastos:import.repair.title', { count: failures.length })}
+        </Text>
+        <Text style={[styles.repairBody, { color: neo.textMuted }]}>
+          {t('gastos:import.repair.body')}
+        </Text>
+        {firstReason !== '' ? (
+          <Text style={[styles.repairBody, { color: neo.textMuted }]} numberOfLines={2}>
+            {t('gastos:import.repair.reason', { reason: firstReason.slice(0, 120) })}
+          </Text>
+        ) : null}
+      </View>
+    </Animated.View>
   )
 }
 
 const styles = StyleSheet.create({
   wrapper: { gap: 8, paddingBottom: 4 },
-  stepHost: { marginTop: 0 },
+  host: { marginTop: 0 },
   // El `fontFamily` viaja con el peso: cada peso de Nunito es un face
   // estático propio, así que sin él el 700 se renderiza como regular.
   unmatched: {
@@ -489,5 +577,25 @@ const styles = StyleSheet.create({
     fontFamily: nunitoFamily('700'),
     textAlign: 'center',
     marginTop: 6,
+  },
+  repair: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 8,
+  },
+  repairText: { flex: 1, gap: 3 },
+  repairTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.2,
+  },
+  repairBody: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
 })

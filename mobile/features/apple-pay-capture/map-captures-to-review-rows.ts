@@ -13,8 +13,6 @@ export interface CaptureMapContext {
   /** Hoy en YYYY-MM-DD local. */
   today: string
   history: readonly MerchantHistoryEntry[]
-  /** Copy i18n para cuando Apple Pay no entrega comercio. */
-  noDescriptionLabel: string
 }
 
 // Un tap NFC nunca es un ingreso; el campo existe sólo porque `ReviewRow`
@@ -68,14 +66,25 @@ function mapOne(
   // decida en vez de que la app la registre como consumo.
   const kind: ReviewRowKind = parsed?.isRefund === true ? 'skip' : 'expense'
 
+  const suggestedCategoryId = hasMerchant
+    ? resolveCategoryFromTokens(history, merchant)
+    : null
+
   return {
     id: capture.id,
     kind,
     amount,
-    description: hasMerchant ? merchant : ctx.noDescriptionLabel,
+    // VACÍA cuando Atajos no entrega comercio — mismo criterio que el
+    // camino OCR: un placeholder como VALOR pasaba la validación y se
+    // insertaba un gasto llamado "(sin descripción)".
+    description: merchant,
     date,
     notes: null,
-    categoryId: hasMerchant ? resolveCategoryFromTokens(history, merchant) : null,
+    categoryId: suggestedCategoryId,
+    // La sugerencia se CONFIESA: el chip "sugerida" del riel es lo que
+    // convierte un dato adivinado en un dato auditable. Sin esto, un chip
+    // seleccionado es indistinguible de una elección propia y nadie lo revisa.
+    categorySuggested: suggestedCategoryId !== null,
     incomeKind: DEFAULT_INCOME_KIND,
     warnings,
     source: { origin: 'apple-pay', capture },

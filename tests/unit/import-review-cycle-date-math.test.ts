@@ -19,6 +19,32 @@ describe('formatISO', () => {
 })
 
 describe('buildCycleDays', () => {
+  // Bug: una captura vieja (o un pago de Apple Pay de un ciclo anterior)
+  // caía fuera de la ventana: ningún día quedaba seleccionado y no había
+  // forma de cambiar la fecha desde la UI.
+  it('extiende la ventana hacia atrás para incluir una fecha anterior al ciclo', () => {
+    const start = new Date(2026, 4, 10) // 10 may 2026
+    const result = buildCycleDays(start, 10, '2026-05-15', '2026-05-06')
+    expect(result[0].iso).toBe('2026-05-06')
+    expect(result.at(-1)?.iso).toBe('2026-05-19')
+    expect(result.map((d) => d.iso)).toContain('2026-05-06')
+    // Sin huecos: 4 días extra + los 10 del ciclo.
+    expect(result).toHaveLength(14)
+  })
+
+  it('no toca la ventana cuando la fecha ya cae adentro', () => {
+    const start = new Date(2026, 4, 10)
+    const inside = buildCycleDays(start, 10, '2026-05-15', '2026-05-12')
+    const plain = buildCycleDays(start, 10, '2026-05-15')
+    expect(inside).toEqual(plain)
+  })
+
+  it('ignora una fecha posterior al ciclo (un gasto futuro no existe)', () => {
+    const start = new Date(2026, 4, 10)
+    const after = buildCycleDays(start, 10, '2026-05-15', '2026-06-30')
+    expect(after).toEqual(buildCycleDays(start, 10, '2026-05-15'))
+  })
+
   it('returns one entry per day across a 31-day cycle', () => {
     const start = new Date(2026, 4, 1) // May 1, 2026 local
     const result = buildCycleDays(start, 31, '2026-05-15')

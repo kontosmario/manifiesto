@@ -39,6 +39,7 @@ export function buildPreviewReviewState(): ReviewState {
   ): ReviewRow => ({
     notes: null,
     categoryId: null,
+    categorySuggested: false,
     incomeKind: 'other',
     warnings: [],
     source: {
@@ -171,6 +172,7 @@ export function buildRealInsertTestState(): ReviewState {
     ...base.rows[0],
     notes: null,
     categoryId: null,
+    categorySuggested: false,
     incomeKind: 'other',
     warnings: [],
     ...overrides,
@@ -184,6 +186,52 @@ export function buildRealInsertTestState(): ReviewState {
       row({ id: 'real-test-03', kind: 'expense', amount: 333, description: '[TEST] Gasto tres', date: todayIso }),
       row({ id: 'real-test-04', kind: 'expense', amount: 444, description: '[TEST] Gasto cuatro', date: todayIso }),
       row({ id: 'real-test-05', kind: 'income', amount: 555, description: '[TEST] Ingreso uno', date: todayIso, incomeKind: 'other' }),
+    ],
+  }
+}
+
+/**
+ * Mock de UNA captura de Apple Pay, para iterar el RECIBO — la otra raíz del
+ * flujo, que la bandeja de 10 filas no ejercita nunca.
+ *
+ * Trae categoría SUGERIDA a propósito: el chip "sugerida" y la línea que
+ * explica el motivo sólo aparecen en ese estado, y son la pieza que convierte
+ * un dato adivinado en un dato auditable.
+ *
+ * `categoryId` apunta a un id que probablemente no exista en la familia del
+ * preview; el recibo cae a "—" en ese caso y el flujo se ve igual. Lo que
+ * importa acá es la forma, no el nombre de la categoría.
+ */
+export function buildReceiptPreviewState(): ReviewState {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  const todayIso = `${y}-${m}-${d}`
+  return {
+    unmatched: 0,
+    rows: [
+      {
+        id: 'receipt-preview-01',
+        kind: 'expense',
+        amount: 4500,
+        description: 'STARBUCKS',
+        date: todayIso,
+        notes: null,
+        categoryId: 'preview-cafe',
+        categorySuggested: true,
+        incomeKind: 'other',
+        warnings: [],
+        source: {
+          origin: 'apple-pay',
+          capture: {
+            id: 'receipt-preview-01',
+            merchantRaw: 'STARBUCKS',
+            amountRaw: '$4.500,00',
+            capturedAt: now.toISOString(),
+          },
+        },
+      },
     ],
   }
 }

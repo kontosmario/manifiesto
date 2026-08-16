@@ -54,15 +54,25 @@ export function CycleDateSlider({
   const { t } = useTranslation()
   const scrollRef = useRef<ScrollView>(null)
 
+  // `value` entra como cuarta pieza: la ventana se ensancha hacia atrás
+  // hasta el día de la fila. Sin esto, una captura vieja —o un pago de Apple
+  // Pay de un ciclo anterior— caía fuera del riel: `selectedIndex` daba -1,
+  // no quedaba ningún tile marcado y no había forma de cambiar la fecha.
   const days = useMemo(
-    () => buildCycleDays(cycleStart, cycleDays, today),
-    [cycleStart, cycleDays, today],
+    () => buildCycleDays(cycleStart, cycleDays, today, value),
+    [cycleStart, cycleDays, today, value],
   )
 
   const selectedIndex = useMemo(
     () => days.findIndex((d) => d.iso === value),
     [days, value],
   )
+
+  const selectedDayText = useMemo(() => {
+    const selected = days[selectedIndex]
+    if (!selected) return ''
+    return t('gastos:import.dateSlider.dayA11y', { day: selected.day })
+  }, [days, selectedIndex, t])
 
   // Center the strip on the selected day. We only auto-scroll when the
   // selection changes externally (e.g., row patched) — the user's own
@@ -87,11 +97,16 @@ export function CycleDateSlider({
       ]}
       accessibilityRole="adjustable"
       accessibilityLabel={t('gastos:import.dateSlider.a11yLabel')}
+      accessibilityValue={{ text: selectedDayText }}
     >
       <ScrollView
         ref={scrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
+        // Con el teclado abierto el default ('never') se comía el primer tap:
+        // el gesto sólo bajaba el teclado y el usuario tenía que tocar dos
+        // veces para cambiar la fecha. Mismo valor que el riel hermano.
+        keyboardShouldPersistTaps="handled"
         // Snap keeps the strip visually tidy when the user lets go after
         // a free swipe, but we DON'T fire selection on momentum-end. The
         // user told us that auto-selecting on swipe felt wrong — swipe

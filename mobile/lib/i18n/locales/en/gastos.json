@@ -492,7 +492,8 @@
       "noDate": "No clear date. We assumed today.",
       "valueZero": "Amount is 0. Edit before confirming.",
       "futureDate": "The date was in the future. We set it to today — review it.",
-      "refund": "This is a refund, not an expense."
+      "refund": "This is a refund, not an expense.",
+      "amountTooHigh": "That amount is huge. Check it before logging."
     },
     "relativeDate": {
       "today": "today",
@@ -515,7 +516,15 @@
       "backToEdit": "Back to editing",
       "previous": "Previous",
       "restore": "Restore",
-      "skipThis": "Skip this"
+      "skipThis": "Skip this",
+      "edit": "Edit",
+      "notNow": "Not now",
+      "notNowHint": "It stays pending and we'll show it again.",
+      "dontLoad": "Don't log this one",
+      "loadThis": "Log this one after all",
+      "backToList": "Done · back to the list",
+      "nextPending": "Next pending",
+      "confirmTotal": "Log {{parts}} · {{amount}}"
     },
     "summary": {
       "expensesCount_one": "{{count}} expense",
@@ -540,7 +549,8 @@
       "descriptionPlaceholder": "e.g. Supermarket",
       "date": "Date",
       "category": "Category",
-      "incomeType": "Income type"
+      "incomeType": "Income type",
+      "categorySuggested": "suggested"
     },
     "dateSlider": {
       "a11yLabel": "Movement date",
@@ -561,6 +571,60 @@
     "empty": {
       "title": "I didn't see expenses in that screenshot.",
       "body": "Try another image."
+    },
+    "origin": {
+      "captureEyebrow": "From your screenshot",
+      "captureNote": "I read this from your screenshot. Check the amount if it doesn't match.",
+      "applePayEyebrow": "Apple Pay · {{time}}",
+      "applePayNote": "We captured it from your contactless payment.",
+      "applePayFirstTime": "This is your first purchase here.",
+      "applePayPendingEyebrow_one": "Apple Pay · {{count}} pending payment",
+      "applePayPendingEyebrow_other": "Apple Pay · {{count}} pending payments"
+    },
+    "list": {
+      "title_one": "I read {{count}} movement",
+      "title_other": "I read {{count}} movements",
+      "applePayTitle_one": "You have {{count}} payment to log",
+      "applePayTitle_other": "{{count}} payments piled up",
+      "totalLabel": "Total to log",
+      "ofParsed": "of {{amount}} read",
+      "readyChip_one": "{{count}} ready",
+      "readyChip_other": "{{count}} ready",
+      "missingChip_one": "{{count}} incomplete",
+      "missingChip_other": "{{count}} incomplete",
+      "skippedChip_one": "{{count}} not logging",
+      "skippedChip_other": "{{count}} not logging",
+      "failedChip_one": "{{count}} failed",
+      "failedChip_other": "{{count}} failed",
+      "rowMissing": "tap to complete",
+      "rowSkipped": "won't be logged",
+      "rowFailed": "couldn't be logged",
+      "rowSuggested": "suggested",
+      "resolveCta_one": "Complete the missing one",
+      "resolveCta_other": "Complete the {{count}} missing ones",
+      "emptyAfterSkip": "Nothing left to log."
+    },
+    "receipt": {
+      "paidLabel": "You paid",
+      "receivedLabel": "You received",
+      "dateLabel": "Date",
+      "categoryLabel": "Category",
+      "suggestedChip": "suggested",
+      "suggestedWhy": "We picked this category because that's how you filed {{merchant}} last time.",
+      "onlyMissing": "Only this is missing",
+      "pickCategory": "Pick a category to log it",
+      "pickFromMostUsed": "The ones you use most · swipe for all",
+      "confirmExpense": "Log expense",
+      "confirmIncome": "Log income",
+      "missingDescription": "Add a description to log it"
+    },
+    "repair": {
+      "title_one": "{{count}} movement couldn't be logged",
+      "title_other": "{{count}} movements couldn't be logged",
+      "body": "The rest was saved. You can retry just these.",
+      "reason": "Reason: {{reason}}",
+      "retry": "Retry",
+      "giveUp": "Leave it"
     }
   },
   "shareImport": {

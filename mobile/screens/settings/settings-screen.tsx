@@ -36,6 +36,7 @@ import { RequireReauthSheet } from '@/components/auth/require-reauth-sheet'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import {
   buildPreviewReviewState,
+  buildReceiptPreviewState,
   buildRealInsertTestState,
 } from '@/features/import-review/preview-mock-state'
 import type { ReviewState } from '@/features/import-review/types'
@@ -1764,7 +1765,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     onPress={handleResetIntroSeen}
                   />
                   <SettingsRow
-                    helper="Abre el wizard de revisión con 5 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
+                    helper="Abre la BANDEJA con 10 movimientos de muestra para iterar la UI sin esperar un build. Nada se guarda."
                     icon="preview"
                     label={t('settings:dev.importPreviewLabel')}
                     onPress={() => {
@@ -1772,7 +1773,15 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                     }}
                   />
                   <SettingsRow
-                    helper="Diagnóstico: mismo wizard pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Bórralas después desde Gastos."
+                    helper="Abre el RECIBO: una sola captura de Apple Pay con categoría sugerida, que se registra de un tap. La otra raíz del flujo. Nada se guarda."
+                    icon="contactless"
+                    label="Vista previa: recibo de Apple Pay"
+                    onPress={() => {
+                      setImportPreviewState(buildReceiptPreviewState())
+                    }}
+                  />
+                  <SettingsRow
+                    helper="Diagnóstico: mismo flujo pero el confirm INSERTA de verdad (5 filas [TEST], montos 111-555). Bórralas después desde Gastos."
                     icon="bug-report"
                     isLast
                     label="Test import: carga REAL con mocks"

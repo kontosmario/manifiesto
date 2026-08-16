@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   Keyboard,
   Pressable,
@@ -21,13 +21,13 @@ import Animated, {
 } from 'react-native-reanimated'
 import { MaterialIcons } from '@expo/vector-icons'
 import i18n from '@/lib/i18n'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion/tokens'
 import { AmountCard } from '@/components/home/amount-card'
 import {
   CategoryHorizontalRail,
   TileRail,
   type RailTile,
-  railTileWidth,
   RAIL_TILE_HEIGHT,
 } from '@/components/home/category-horizontal-rail'
 import { CATEGORY_ICONS } from '@/components/category/category-icon-registry'
@@ -42,12 +42,15 @@ import { cssGradient, neoRadii } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { parsePrice, serializePrice } from '@/utils/money'
 import { formatWeekdayDayMonth } from '@/utils/date-format'
+import { displayDescription, warningLabel } from '@/features/import-review/format'
 import type { Category } from '@/features/categories/use-categories'
 import type {
   IncomeKind,
   ReviewRow,
   ReviewRowKind,
 } from '@/features/import-review/types'
+import { isAmountOverCap } from '@/features/import-review/review-validation'
+import { modalRailTileWidth } from './rail-metrics'
 import { CycleDateSlider } from './cycle-date-slider'
 import { useImportReviewNeo } from './import-review-neo'
 
@@ -123,6 +126,20 @@ export function ImportReviewRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.amount])
 
+  // Handlers ESTABLES para los rieles. Con arrows inline acá, cada render de
+  // la fila le pasaba una prop nueva al riel y su `memo` por Tile quedaba
+  // derrotado: tipear en la descripción re-rendeaba los ~14 tiles animados.
+  // Declarados antes del early return del estado "no cargar" para no romper
+  // el orden de hooks.
+  const handleSelectCategory = useCallback(
+    (id: string) => onPatch({ categoryId: id }),
+    [onPatch],
+  )
+  const handleSelectIncomeKind = useCallback(
+    (k: IncomeKind) => onPatch({ incomeKind: k }),
+    [onPatch],
+  )
+
   if (row.kind === 'skip') {
     return (
       <View
@@ -145,8 +162,16 @@ export function ImportReviewRow({
           </Text>
         </View>
         <Text style={[styles.skipDescription, { color: neo.text }]} numberOfLines={2}>
-          {row.description}
+          {displayDescription(row.description)}
         </Text>
+        {/* El motivo por el que la app la salteó sola. El `return` temprano de
+            este estado se comía el bloque de avisos, así que una fila que el
+            usuario nunca tocó no decía nunca POR QUÉ estaba acá. */}
+        {row.warnings.length > 0 ? (
+          <Text style={[styles.skipReason, { color: softInk }]} numberOfLines={3}>
+            {row.warnings.map(warningLabel).join(' ')}
+          </Text>
+        ) : null}
         <PressScale
           onPress={onUnskip}
           accessibilityLabel={t('gastos:import.row.restoreMovement')}
@@ -186,6 +211,9 @@ export function ImportReviewRow({
   const infoWarnings = row.warnings.filter(
     (w) => w !== 'no-merchant' && w !== 'value-zero',
   )
+  // El tope duro del repositorio. Sin este aviso el usuario veía el CTA
+  // hundido diciendo "falta: monto" sobre un campo que tiene un número.
+  const overCap = isAmountOverCap(row)
 
   return (
     // Las 6+ RiseView de abajo staggereaban (0→360ms) en CADA paso → se sentía
@@ -252,13 +280,14 @@ export function ImportReviewRow({
           <CategorySection
             categories={categories}
             selectedCategoryId={row.categoryId}
-            onSelect={(id) => onPatch({ categoryId: id })}
+            suggested={row.categorySuggested}
+            onSelect={handleSelectCategory}
             warning={flagCategory}
           />
         ) : (
           <IncomeKindSection
             incomeKind={row.incomeKind}
-            onSelect={(k) => onPatch({ incomeKind: k })}
+            onSelect={handleSelectIncomeKind}
           />
         )}
       </RiseView>
@@ -270,9 +299,14 @@ export function ImportReviewRow({
         />
       </RiseView>
 
-      {infoWarnings.length > 0 ? (
+      {infoWarnings.length > 0 || overCap ? (
         <RiseView delay={360}>
           <View style={styles.warnings}>
+            {overCap ? (
+              <Text style={[styles.warning, { color: ink.danger }]}>
+                {t('gastos:import.warning.amountTooHigh')}
+              </Text>
+            ) : null}
             {infoWarnings.map((w) => (
               <Text key={w} style={[styles.warning, { color: ink.warn }]}>
                 {warningLabel(w)}
@@ -316,6 +350,7 @@ function PressScale({
   accessibilityLabel?: string
   accessibilityState?: { selected?: boolean; disabled?: boolean }
 }) {
+  const reduced = useReducedMotion()
   const scale = useSharedValue(1)
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -327,12 +362,17 @@ function PressScale({
       accessibilityState={accessibilityState}
       onPress={onPress}
       onPressIn={() => {
+        // Sin esto, el press-scale corría igual con Movimiento reducido: era
+        // uno de los tres press-scale hechos a mano que ignoraban la
+        // preferencia de Ajustes.
+        if (reduced) return
         scale.value = withTiming(0.96, {
           duration: motionDurations.micro,
           easing: PRESS_EASE,
         })
       }}
       onPressOut={() => {
+        if (reduced) return
         scale.value = withTiming(1, {
           duration: motionDurations.micro,
           easing: PRESS_EASE,
@@ -474,29 +514,41 @@ function NotesWell({
 function CategorySection({
   categories,
   selectedCategoryId,
+  suggested,
   onSelect,
   warning = false,
 }: {
   categories: readonly Category[]
   selectedCategoryId: string | null
+  /** La categoría la resolvió la app: el riel lo confiesa con una píldora. */
+  suggested: boolean
   onSelect: (id: string) => void
   warning?: boolean
 }) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
-  if (categories.length === 0) return null
+  const tileWidth = useMemo(() => modalRailTileWidth(windowWidth), [windowWidth])
+  // El array se pasa TAL CUAL: el `.slice()` que había acá creaba una
+  // referencia nueva en cada render, lo que recomputaba el `useMemo` de
+  // tiles del riel y derrotaba el `memo` de cada Tile. Con la descripción
+  // montada en el mismo árbol, tipear "Farmacia" re-rendeaba los ~14 tiles
+  // (tres `useAnimatedStyle` cada uno) en cada tecla. El riel no muta el
+  // array; el `readonly` del tipo lo garantiza de este lado.
+  const list = categories as Category[]
+  if (list.length === 0) return null
   // Render the rail flat — `warning` only swaps its label color + text
   // ("Elige una categoría") via the rail's own animated style. No
   // wrapper that would change the section's layout height when the
   // warning state toggles. Subtle, smooth, no jump.
   return (
     <CategoryHorizontalRail
-      categories={categories.slice()}
+      categories={list}
       selectedCategoryId={selectedCategoryId ?? ''}
       onSelect={onSelect}
       label={t('gastos:import.row.category')}
+      hint={suggested ? t('gastos:import.row.categorySuggested') : undefined}
       rows={1}
-      tileWidth={railTileWidth(windowWidth)}
+      tileWidth={tileWidth}
       tileHeight={RAIL_TILE_HEIGHT}
       warning={warning}
     />
@@ -512,6 +564,8 @@ function IncomeKindSection({
 }) {
   const { t } = useTranslation()
   const { width: windowWidth } = useWindowDimensions()
+  const tileWidth = useMemo(() => modalRailTileWidth(windowWidth), [windowWidth])
+  const handleSelect = useCallback((id: string) => onSelect(id as IncomeKind), [onSelect])
   // Mismo estilo que el picker de add-ingreso: cápsula con sticker + label,
   // vía TileRail (antes eran pills de texto, estilo viejo).
   const tiles = useMemo<RailTile[]>(
@@ -536,10 +590,10 @@ function IncomeKindSection({
     <TileRail
       tiles={tiles}
       selectedId={incomeKind}
-      onSelect={(id) => onSelect(id as IncomeKind)}
+      onSelect={handleSelect}
       labelText={t('gastos:import.row.incomeType')}
       rows={1}
-      tileWidth={railTileWidth(windowWidth)}
+      tileWidth={tileWidth}
       tileHeight={RAIL_TILE_HEIGHT}
     />
   )
@@ -560,24 +614,6 @@ function formatDayLabel(iso: string): string {
   return formatWeekdayDayMonth(d)
 }
 
-function warningLabel(w: ReviewRow['warnings'][number]): string {
-  switch (w) {
-    case 'foreign-currency':
-      return i18n.t('gastos:import.warning.foreignCurrency')
-    case 'swap-ambiguous':
-      return i18n.t('gastos:import.warning.swapAmbiguous')
-    case 'no-merchant':
-      return i18n.t('gastos:import.warning.noMerchant')
-    case 'no-date':
-      return i18n.t('gastos:import.warning.noDate')
-    case 'value-zero':
-      return i18n.t('gastos:import.warning.valueZero')
-    case 'future-date':
-      return i18n.t('gastos:import.warning.futureDate')
-    case 'refund':
-      return i18n.t('gastos:import.warning.refund')
-  }
-}
 
 // El `fontFamily` viaja con el peso: cada peso de Nunito es un face estático
 // propio, así que sin él el 800/900 se renderiza como regular.
@@ -611,6 +647,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: nunitoFamily('800'),
     letterSpacing: -0.2,
+  },
+  skipReason: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
   },
   restoreBtn: {
     flexDirection: 'row',

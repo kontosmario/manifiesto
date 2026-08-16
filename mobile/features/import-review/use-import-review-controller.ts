@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useReducer } from 'react'
-import i18n from '@/lib/i18n'
 import type { ReviewRow, ReviewRowKind, ReviewState } from './types'
 import { reviewReducer } from './review-reducer'
+import { deriveReviewTotals, missingFieldsForRow } from './review-validation'
 
 const EMPTY_STATE: ReviewState = {
   rows: [],
@@ -23,6 +23,17 @@ export interface ImportReviewController {
   skippedCount: number
   /** Breakdown de submittable: gastos vs ingresos. */
   submittableBreakdown: { expenses: number; incomes: number }
+  /**
+   * Plata que se va a cargar si se confirma ahora (gastos + ingresos, en
+   * valor absoluto). El resumen listaba el monto fila por fila y nunca los
+   * sumaba: el usuario terminaba nueve pasos de revisión sin saber cuánto
+   * movió. Es el número que encabeza la bandeja.
+   */
+  submittableTotal: number
+  /** Plata de TODO lo leído, salteados incluidos — el "de $X leídos". */
+  parsedTotal: number
+  /** Id de la primera fila incompleta en orden de lista, o null. */
+  firstInvalidId: string | null
   /** true cuando hay al menos una row submittable y ninguna invalida. */
   canConfirm: boolean
   /** Invalid IDs entre las submittable: faltan campos requeridos
@@ -65,22 +76,8 @@ export function useImportReviewController(
     dispatch({ type: 'REPLACE', state: next })
   }, [])
 
-  const derived = useMemo(() => {
-    const submittable = state.rows.filter((r) => r.kind !== 'skip')
-    const expenses = submittable.filter((r) => r.kind === 'expense').length
-    const incomes = submittable.filter((r) => r.kind === 'income').length
-    const skipped = state.rows.length - submittable.length
-    const invalidIds = submittable
-      .filter((r) => missingFieldsForRow(r).length > 0)
-      .map((r) => r.id)
-    return {
-      submittableCount: submittable.length,
-      submittableBreakdown: { expenses, incomes },
-      skippedCount: skipped,
-      canConfirm: submittable.length > 0 && invalidIds.length === 0,
-      invalidIds,
-    }
-  }, [state.rows])
+  // Todo lo derivado vive en un módulo puro; el hook sólo lo memoiza.
+  const derived = useMemo(() => deriveReviewTotals(state.rows), [state.rows])
 
   const missingFieldsFor = useCallback(
     (id: string): string[] => {
@@ -102,19 +99,4 @@ export function useImportReviewController(
     missingFieldsFor,
     ...derived,
   }
-}
-
-/**
- * Returns the human-readable names of fields missing from a row's
- * required set. Skipped rows are exempt — they're explicitly opted out
- * of submission. Used both for `invalidIds` computation and for the
- * footer's helper line under a disabled "Siguiente".
- */
-function missingFieldsForRow(row: ReviewRow): string[] {
-  if (row.kind === 'skip') return []
-  const missing: string[] = []
-  if (row.description.trim() === '') missing.push(i18n.t('gastos:import.field.description'))
-  if (row.amount <= 0) missing.push(i18n.t('gastos:import.field.amount'))
-  if (row.kind === 'expense' && !row.categoryId) missing.push(i18n.t('gastos:import.field.category'))
-  return missing
 }

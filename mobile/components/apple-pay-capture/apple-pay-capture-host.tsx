@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { InteractionManager } from 'react-native'
 import { ImportReviewSheet } from '@/components/import-review/import-review-sheet'
 import { useApplePayCaptureEnabled } from '@/features/apple-pay-capture/apple-pay-enabled-store'
@@ -35,7 +34,6 @@ export function ApplePayCaptureHost() {
 }
 
 function ApplePayCaptureBody() {
-  const { t } = useTranslation()
   const { familyId, userId } = useImportWizardContext()
   const [reviewState, setReviewState] = useState<ReviewState | null>(null)
   const [draining, setDraining] = useState<string[]>([])
@@ -61,6 +59,19 @@ function ApplePayCaptureBody() {
       })),
     [expensesQuery.data],
   )
+  // El historial viaja por REF, no por dependencia. Con `history` en las
+  // deps de `handleCaptures`, el gate se re-creaba en cada cambio de
+  // `useExpenses` y su efecto volvía a drenar: cualquier alta de gasto
+  // —propia, de otro miembro por realtime, o la invalidación que dispara
+  // el propio import— re-abría la hoja encima de lo que el usuario
+  // estuviera haciendo. El comentario de `use-apple-pay-capture-gate`
+  // prometía "en la próxima vuelta a foreground" y esto lo cumple.
+  //
+  // Leer `.current` dentro del callback no pierde frescura: se lee en el
+  // momento del drenaje, que es cuando la sugerencia de categoría se
+  // resuelve.
+  const historyRef = useRef(history)
+  historyRef.current = history
 
   const handleCaptures = useCallback(
     (captures: PendingCapture[]) => {
@@ -71,8 +82,7 @@ function ApplePayCaptureBody() {
       recordApplePayCaptures(captures)
       const rows = mapCapturesToReviewRows(captures, {
         today: formatISO(new Date()),
-        history,
-        noDescriptionLabel: t('gastos:import.noDescription'),
+        history: historyRef.current,
       })
       setDraining(captures.map((capture) => capture.id))
       void (async () => {
@@ -84,7 +94,9 @@ function ApplePayCaptureBody() {
         setReviewState({ rows, unmatched: 0 })
       })()
     },
-    [history, t],
+    // Sin dependencias A PROPÓSITO: este callback tiene que ser estable de
+    // por vida (ver `historyRef` arriba). Todo lo que cambia se lee por ref.
+    [],
   )
 
   useApplePayCaptureGate({ familyId, userId, busy, onCaptures: handleCaptures })

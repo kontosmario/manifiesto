@@ -15,10 +15,19 @@ const ctx = {
   history: [
     { description: 'Starbucks', categoryId: 'cafe', createdAt: '2026-08-01T12:00:00Z' },
   ],
-  noDescriptionLabel: 'Sin descripción',
 }
 
 describe('mapCapturesToReviewRows', () => {
+  // Mismo bug que en el camino OCR: el placeholder satisfacía la validación.
+  it('deja la descripción VACÍA cuando Apple Pay no entrega comercio', () => {
+    const rows = mapCapturesToReviewRows(
+      [{ id: 'c0', merchantRaw: '  ', amountRaw: '$1.000', capturedAt: '2026-08-08T10:00:00Z' }],
+      ctx,
+    )
+    expect(rows[0].description).toBe('')
+    expect(rows[0].warnings).toContain('no-merchant')
+  })
+
   it('mapea una captura normal a una fila de gasto lista', () => {
     const rows = mapCapturesToReviewRows(
       [{ id: 'c1', merchantRaw: 'STARBUCKS #12', amountRaw: '$4.500,00', capturedAt: '2026-08-08T10:00:00Z' }],
@@ -67,12 +76,13 @@ describe('mapCapturesToReviewRows', () => {
     expect(rows[0].warnings).toContain('value-zero')
   })
 
-  it('avisa cuando no hay comercio y usa la etiqueta de fallback', () => {
+  it('avisa cuando no hay comercio y deja la descripción vacía', () => {
     const rows = mapCapturesToReviewRows(
-      [{ id: 'c5', merchantRaw: '   ', amountRaw: '$100', capturedAt: '2026-08-08T10:00:00Z' }],
+      [{ id: 'c5', merchantRaw: '', amountRaw: '$1.000', capturedAt: '2026-08-08T10:00:00Z' }],
       ctx,
     )
-    expect(rows[0].description).toBe('Sin descripción')
+    expect(rows[0].description).toBe('')
+    expect(rows[0].categoryId).toBeNull()
     expect(rows[0].warnings).toContain('no-merchant')
   })
 

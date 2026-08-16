@@ -10,6 +10,7 @@ const mkRow = (id: string, overrides: Partial<ReviewRow> = {}): ReviewRow => ({
   date: '2026-06-01',
   notes: null,
   categoryId: 'cat-1',
+  categorySuggested: false,
   incomeKind: 'other',
   warnings: [],
   source: {
@@ -35,6 +36,53 @@ const baseState: ReviewState = {
 }
 
 describe('reviewReducer', () => {
+  // Bug: una captura de Apple Pay con monto negativo nace en `skip` con el
+  // warning `refund` — es plata que ENTRÓ. "Restaurar" la devolvía a
+  // `expense`, o sea registraba la devolución como consumo.
+  it('UNSKIP de una devolución la restaura como INGRESO tipo reintegro', () => {
+    const refund: ReviewRow = mkRow('refund', {
+      kind: 'skip',
+      warnings: ['refund'],
+      categoryId: null,
+      source: {
+        origin: 'apple-pay',
+        capture: {
+          id: 'refund',
+          merchantRaw: 'STARBUCKS',
+          amountRaw: '-$4.500,00',
+          capturedAt: '2026-08-08T10:00:00Z',
+        },
+      },
+    })
+    const next = reviewReducer(
+      { rows: [refund], unmatched: 0 },
+      { type: 'UNSKIP_ROW', id: 'refund' },
+    )
+    expect(next.rows[0].kind).toBe('income')
+    expect(next.rows[0].incomeKind).toBe('refund')
+  })
+
+  it('UNSKIP de un gasto normal de Apple Pay sigue volviendo a expense', () => {
+    const capture: ReviewRow = mkRow('ap', {
+      kind: 'skip',
+      warnings: [],
+      source: {
+        origin: 'apple-pay',
+        capture: {
+          id: 'ap',
+          merchantRaw: 'COTO',
+          amountRaw: '$4.500,00',
+          capturedAt: '2026-08-08T10:00:00Z',
+        },
+      },
+    })
+    const next = reviewReducer(
+      { rows: [capture], unmatched: 0 },
+      { type: 'UNSKIP_ROW', id: 'ap' },
+    )
+    expect(next.rows[0].kind).toBe('expense')
+  })
+
   it('SET_KIND changes a row\'s kind without touching others', () => {
     const next = reviewReducer(baseState, {
       type: 'SET_KIND',

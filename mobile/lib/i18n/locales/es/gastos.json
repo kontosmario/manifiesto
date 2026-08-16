@@ -492,7 +492,8 @@
       "noDate": "Sin fecha clara. Asumimos hoy.",
       "valueZero": "Monto 0. Edita antes de confirmar.",
       "futureDate": "La fecha era futura. La ajustamos a hoy — revisala.",
-      "refund": "Es una devolución, no un gasto."
+      "refund": "Es una devolución, no un gasto.",
+      "amountTooHigh": "El monto es altísimo. Revísalo antes de cargar."
     },
     "relativeDate": {
       "today": "hoy",
@@ -515,7 +516,15 @@
       "backToEdit": "Volver a editar",
       "previous": "Anterior",
       "restore": "Restaurar",
-      "skipThis": "Saltear este"
+      "skipThis": "Saltear este",
+      "edit": "Editar",
+      "notNow": "Ahora no",
+      "notNowHint": "Queda pendiente y te lo volvemos a mostrar.",
+      "dontLoad": "No cargar este",
+      "loadThis": "Sí cargar este",
+      "backToList": "Listo · volver a la lista",
+      "nextPending": "Siguiente pendiente",
+      "confirmTotal": "Cargar {{parts}} · {{amount}}"
     },
     "summary": {
       "expensesCount_one": "{{count}} gasto",
@@ -540,7 +549,8 @@
       "descriptionPlaceholder": "Ej: Supermercado",
       "date": "Fecha",
       "category": "Categoría",
-      "incomeType": "Tipo de ingreso"
+      "incomeType": "Tipo de ingreso",
+      "categorySuggested": "sugerida"
     },
     "dateSlider": {
       "a11yLabel": "Fecha del movimiento",
@@ -561,6 +571,60 @@
     "empty": {
       "title": "No vi gastos en esa captura.",
       "body": "Prueba con otra imagen."
+    },
+    "origin": {
+      "captureEyebrow": "De tu captura",
+      "captureNote": "Esto lo leí de tu captura. Revisa el monto si no coincide.",
+      "applePayEyebrow": "Apple Pay · {{time}}",
+      "applePayNote": "Lo capturamos de tu pago sin contacto.",
+      "applePayFirstTime": "Es la primera vez que compras acá.",
+      "applePayPendingEyebrow_one": "Apple Pay · {{count}} pago pendiente",
+      "applePayPendingEyebrow_other": "Apple Pay · {{count}} pagos pendientes"
+    },
+    "list": {
+      "title_one": "Leí {{count}} movimiento",
+      "title_other": "Leí {{count}} movimientos",
+      "applePayTitle_one": "Tienes {{count}} pago para registrar",
+      "applePayTitle_other": "Se te juntaron {{count}} pagos",
+      "totalLabel": "Total a cargar",
+      "ofParsed": "de {{amount}} leídos",
+      "readyChip_one": "{{count}} listo",
+      "readyChip_other": "{{count}} listos",
+      "missingChip_one": "{{count}} sin completar",
+      "missingChip_other": "{{count}} sin completar",
+      "skippedChip_one": "{{count}} sin cargar",
+      "skippedChip_other": "{{count}} sin cargar",
+      "failedChip_one": "{{count}} falló",
+      "failedChip_other": "{{count}} fallaron",
+      "rowMissing": "toca para completar",
+      "rowSkipped": "no se va a cargar",
+      "rowFailed": "no se pudo cargar",
+      "rowSuggested": "sugerida",
+      "resolveCta_one": "Completa el que falta",
+      "resolveCta_other": "Completa los {{count}} que faltan",
+      "emptyAfterSkip": "No queda nada para cargar."
+    },
+    "receipt": {
+      "paidLabel": "Pagaste",
+      "receivedLabel": "Recibiste",
+      "dateLabel": "Fecha",
+      "categoryLabel": "Categoría",
+      "suggestedChip": "sugerida",
+      "suggestedWhy": "Elegimos esta categoría porque así clasificaste {{merchant}} la última vez.",
+      "onlyMissing": "Solo falta esto",
+      "pickCategory": "Elige una categoría para registrar",
+      "pickFromMostUsed": "Las que más usas · desliza para ver todas",
+      "confirmExpense": "Registrar gasto",
+      "confirmIncome": "Registrar ingreso",
+      "missingDescription": "Completa la descripción para registrar"
+    },
+    "repair": {
+      "title_one": "{{count}} movimiento no se pudo cargar",
+      "title_other": "{{count}} movimientos no se pudieron cargar",
+      "body": "El resto quedó guardado. Puedes reintentar solo estos.",
+      "reason": "Motivo: {{reason}}",
+      "retry": "Reintentar",
+      "giveUp": "Dejarlo así"
     }
   },
   "shareImport": {

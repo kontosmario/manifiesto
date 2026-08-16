@@ -28,6 +28,16 @@ const mkTx = (overrides: Partial<Transaction> = {}): Transaction => ({
 })
 
 describe('mapToReviewRows', () => {
+  // Bug: `"(sin descripción)"` como valor del campo pasaba la validación
+  // (`description.trim() !== ''`) y se insertaba como gasto real con ese
+  // nombre. La fila tiene que nacer VACÍA para que el gate la frene.
+  it('deja la descripción VACÍA cuando el OCR no leyó comercio', () => {
+    resetIds()
+    const rows = mapToReviewRows([mkTx({ merchant: '   ' })], ctx())
+    expect(rows[0].description).toBe('')
+    expect(rows[0].warnings).toContain('no-merchant')
+  })
+
   it('ancla fechas futuras a hoy y marca el warning future-date', () => {
     resetIds()
     // TODAY = 2026-06-02; el OCR devuelve una fecha posterior.
@@ -137,10 +147,12 @@ describe('mapToReviewRows', () => {
     expect(result[0].warnings).toContain('swap-ambiguous')
   })
 
-  it('handles missing merchant with warning and placeholder description', () => {
+  it('handles missing merchant with warning and an EMPTY description', () => {
     const result = mapToReviewRows([mkTx({ merchant: '' })], ctx())
     expect(result[0].warnings).toContain('no-merchant')
-    expect(result[0].description).toBe('(sin descripción)')
+    // Vacía a propósito: un placeholder como VALOR satisfacía la validación
+    // y la fila se insertaba con ese nombre.
+    expect(result[0].description).toBe('')
   })
 
   it('handles missing date by falling back to ctx.today + warning', () => {
