@@ -754,12 +754,6 @@
     "superSavingsMomentum": "Vienes ahorrando bien",
     "superHiddenDrain": "Plata que se te va sin notarlo"
   },
-  "categoryEditor": {
-    "introLabel": "Nombre visible",
-    "introText": "Usa un nombre corto y claro para reconocer la categoría rápido en filtros y formularios.",
-    "nameLabel": "Nombre",
-    "namePlaceholder": "Ej: Transporte"
-  },
   "fixedEditor": {
     "kindLabel": "Tipo",
     "categoryLabel": "Categoría",

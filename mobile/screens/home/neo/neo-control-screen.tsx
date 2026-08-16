@@ -10,6 +10,7 @@ import { RiseView, RiseViewGate } from '@/components/home/animated/rise-view'
 import { ControlV2Anchor } from '@/components/control-v2/control-v2-anchor'
 import { ControlV2EmptyState } from '@/components/control-v2/control-v2-empty-state'
 import { DailyGoalSheet } from '@/components/control-v2/daily-goal-sheet'
+import { DondeAjustarSheet } from '@/components/control-v2/donde-ajustar-sheet'
 import { SavingsGoalQuickEditSheet } from '@/components/control-v2/savings-goal-quick-edit-sheet'
 import { QuickAddSavingsSheet } from '@/components/home/quick-add-savings-sheet'
 import { CreateSavingsGoalWizardSheet } from '@/components/savings-goals/create-savings-goal-wizard-sheet'
@@ -49,6 +50,7 @@ import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import { markControlVisited } from '@/features/insights/control-visit-store'
 import { useAdvisorNotificationSync } from '@/features/insights/use-advisor-notification-sync'
+import type { DondeAjustarMode } from '@/features/insights/donde-ajustar-model'
 import { useControlV2Data } from '@/features/insights/use-control-v2-data'
 import { useLaunchCycleWrapped } from '@/features/wrapped/use-launch-cycle-wrapped'
 import {
@@ -246,6 +248,8 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
     return ageDays > RECOVERY_GRACE_DAYS
   }, [streakQuery.data])
   const [goalSheetVisible, setGoalSheetVisible] = useState(false)
+  // "Dónde ajustar": null = cerrado; el modo decide el encabezado del sheet.
+  const [ajustarSheetMode, setAjustarSheetMode] = useState<DondeAjustarMode | null>(null)
   const handleGoalSubmit = useCallback(
     async ({ bufferMode, bufferPercent }: { bufferMode: 'none' | 'percent'; bufferPercent: number }) => {
       const finance = financeQuery.data
@@ -405,9 +409,12 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
       openAddContribution(Math.max(0, view.sobrantePresupuestadoMes))
       return
     }
+    // "En qué recortar" / "Dónde ajustar" abren el diagnóstico del ciclo.
+    // Antes navegaban al ADMINISTRADOR de categorías: prometían un desglose
+    // del gasto y entregaban un CRUD (pedido del dueño 2026-08-16).
     void triggerHaptic('selection')
-    router.push('/(app)/expense-categories')
-  }, [heroVariant, openAddContribution, view.sobrantePresupuestadoMes, router])
+    setAjustarSheetMode(heroVariant === 'corto' ? 'corto' : 'ajustado')
+  }, [heroVariant, openAddContribution, view.sobrantePresupuestadoMes])
 
   const comparativaVariant = selectComparativaVariant({
     hasPreviousMonth: data.hasPreviousMonth,
@@ -502,8 +509,9 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
         router.push('/(app)/add-expense')
         return
       case 'sinAporte':
+        // "Ver en qué se fue" = el mismo diagnóstico, encabezado de sobrante.
         void triggerHaptic('selection')
-        router.push('/(app)/expense-categories')
+        setAjustarSheetMode('sinSobrante')
         return
     }
   }, [alcanciaVariant, openAddContribution, view.vault, router, reactivateGoal])
@@ -815,6 +823,34 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
               </View>
           </View>
         </RiseViewGate>
+
+        <DondeAjustarSheet
+          visible={ajustarSheetMode !== null}
+          mode={ajustarSheetMode ?? 'corto'}
+          familyId={familyId}
+          restanteMes={view.restanteMes}
+          sobrante={view.sobrantePresupuestadoMes}
+          diasRestantes={view.diasRestantes}
+          promedioDiario={view.promedioDiario}
+          fijosMes={data.fijosMes}
+          ingresoMes={data.ingresoMes}
+          onClose={() => setAjustarSheetMode(null)}
+          onOpenCategory={(categoryId) => {
+            setAjustarSheetMode(null)
+            router.push({
+              pathname: '/(app)/(tabs)/expenses',
+              params: { categoryId },
+            })
+          }}
+          onOpenExpenses={() => {
+            setAjustarSheetMode(null)
+            router.push('/(app)/(tabs)/expenses')
+          }}
+          onOpenFijos={() => {
+            setAjustarSheetMode(null)
+            router.push('/(app)/(tabs)/fixed-expenses')
+          }}
+        />
 
         <DailyGoalSheet
           visible={goalSheetVisible}

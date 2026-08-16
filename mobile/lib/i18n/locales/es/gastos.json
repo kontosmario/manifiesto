@@ -655,35 +655,6 @@
       "all": "Todo"
     }
   },
-  "categoriesScreen": {
-    "title": "Categorias",
-    "subtitle": "Administra el catálogo con la misma experiencia modal de Agregar gasto.",
-    "loadErrorTitle": "No pudimos abrir categorías",
-    "loadErrorDescription": "No pudimos cargar las categorias del hogar.",
-    "catalogEyebrow": "Catalogo",
-    "catalogTitle": "Ordena cómo se clasifica el gasto",
-    "selectedLabel": "Categoría seleccionada",
-    "pickToManage": "Elige una categoría para administrarla",
-    "associatedExpenses_one": "{{count}} gasto asociado",
-    "associatedExpenses_other": "{{count}} gastos asociados",
-    "usedInFilterSuffix": " · usada en el filtro actual",
-    "tapRowHint": "Toca una fila para renombrar o borrar la categoría correcta.",
-    "cannotDeleteWarning": "Esta categoría no se puede borrar porque ya tiene movimientos.",
-    "manageCategoryA11y": "Gestionar categoría {{name}}",
-    "categoryMeta_one": "{{count}} gasto · creada {{date}}",
-    "categoryMeta_other": "{{count}} gastos · creada {{date}}",
-    "filterBadge": "Filtro",
-    "newCategory": "Nueva categoria",
-    "renameSelected": "Renombrar seleccionada",
-    "deleteSelected": "Borrar seleccionada",
-    "deleteAlertTitle": "Borrar categoria",
-    "deleteAlertMessage": "Se va a borrar \"{{name}}\" si no tiene gastos cargados.",
-    "deleteFailed": "No se pudo borrar la categoria.",
-    "createFailed": "No se pudo crear la categoria.",
-    "renameFailed": "No se pudo renombrar la categoria.",
-    "create": "Crear",
-    "renameTitle": "Renombrar categoria"
-  },
   "historyScreen": {
     "loadErrorTitle": "No pudimos cargar el historial",
     "loadErrorDescription": "No pudimos cargar el historial y sus filtros.",
@@ -693,7 +664,6 @@
   "addExpense": {
     "title": "Agregar gasto",
     "formErrorTitle": "No pudimos abrir el formulario",
-    "createCategory": "Crear categoría",
     "wizard": {
       "stepNew": "Nuevo gasto",
       "stepReview": "Revisa el impacto",

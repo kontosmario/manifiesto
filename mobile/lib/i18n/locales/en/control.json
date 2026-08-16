@@ -966,6 +966,27 @@
       "ctaVerEnQueSeFue": "See where it went",
       "ctaRetirar": "Withdraw",
       "ctaNuevaMeta": "New goal"
+    },
+    "ajustar": {
+      "title": "Where to adjust",
+      "subtitle": "Your cycle spending, in numbers",
+      "headlineCorto": "You're {{amount}} short of closing the cycle.",
+      "headlineAjustado": "It's tight: your margin at close is {{amount}}.",
+      "headlineSinSobrante": "Nothing was left over this cycle.",
+      "planConCupo": "To make it, your next {{count}} days need to cost {{amount}} or less.",
+      "planConCupo_one": "To make it, your last day needs to cost {{amount}} or less.",
+      "planSinCupo": "You've used the whole cycle budget: every new expense deepens the red.",
+      "planCierreHoy": "The cycle closes today — review the big expenses before the next one.",
+      "ritmoActual": "You're currently spending {{amount}} per day.",
+      "breakdownEyebrow": "Where it goes · this cycle",
+      "breakdownHint": "Tap a category to see its expenses.",
+      "breakdownEmpty": "Not enough expenses this cycle for a breakdown yet.",
+      "otherRow": "Everything else",
+      "rowShare": "{{pct}}% of spending",
+      "fijosWarning": "Your fixed costs take {{pct}}% of your income.",
+      "fijosCta": "Review fixed costs",
+      "verGastosCta": "See this cycle's expenses",
+      "categoryA11y": "{{name}}, {{amount}}, {{pct}} percent of cycle spending. Tap to see its expenses."
     }
   }
 }

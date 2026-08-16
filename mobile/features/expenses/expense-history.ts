@@ -21,26 +21,3 @@ export function resolveSelectedCategoryId(
 
   return categories.some((category) => category.id === categorySelection) ? categorySelection : ''
 }
-
-export function resolveManagedCategoryId({
-  categories,
-  fallbackCategoryId,
-  managedCategorySelection,
-}: {
-  categories: Category[]
-  fallbackCategoryId?: string | null
-  managedCategorySelection?: string | null
-}): string {
-  if (
-    managedCategorySelection &&
-    categories.some((category) => category.id === managedCategorySelection)
-  ) {
-    return managedCategorySelection
-  }
-
-  if (fallbackCategoryId && categories.some((category) => category.id === fallbackCategoryId)) {
-    return fallbackCategoryId
-  }
-
-  return categories[0]?.id ?? ''
-}

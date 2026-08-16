@@ -99,7 +99,6 @@ Stack:
 - `/(app)/add-income`
 - `/(app)/asistente`
 - `/(app)/coach/[signalId]`
-- `/(app)/expense-categories`
 - `/(app)/household-setup`
 - `/(app)/notifications`
 - `/(app)/onboarding`

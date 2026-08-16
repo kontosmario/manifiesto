@@ -329,15 +329,6 @@ export function AppStackShell() {
             }}
           />
           <Stack.Screen
-            name="expense-categories"
-            options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
-              animation: MODAL_ANIMATION,
-              animationDuration: motionDurations.enterModal,
-              gestureDirection: 'vertical',
-            }}
-          />
-          <Stack.Screen
             name="asistente"
             options={{
               presentation: Platform.OS === 'ios' ? 'modal' : 'card',

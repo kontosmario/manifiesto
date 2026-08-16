@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   ALL_CATEGORIES_KEY,
-  resolveManagedCategoryId,
   resolveSelectedCategoryId,
 } from '@/features/expenses/expense-history'
 
@@ -29,39 +28,4 @@ describe('expense-history selectors', () => {
     expect(resolveSelectedCategoryId(categories, 'missing')).toBe('')
   })
 
-  it('resolves the managed category preferring explicit selection', () => {
-    expect(
-      resolveManagedCategoryId({
-        categories,
-        fallbackCategoryId: 'food',
-        managedCategorySelection: 'transport',
-      }),
-    ).toBe('transport')
-  })
-
-  it('falls back to the filtered category or first available item when needed', () => {
-    expect(
-      resolveManagedCategoryId({
-        categories,
-        fallbackCategoryId: 'food',
-        managedCategorySelection: 'missing',
-      }),
-    ).toBe('food')
-
-    expect(
-      resolveManagedCategoryId({
-        categories,
-        fallbackCategoryId: 'missing',
-        managedCategorySelection: '',
-      }),
-    ).toBe('food')
-
-    expect(
-      resolveManagedCategoryId({
-        categories: [],
-        fallbackCategoryId: 'food',
-        managedCategorySelection: 'transport',
-      }),
-    ).toBe('')
-  })
 })

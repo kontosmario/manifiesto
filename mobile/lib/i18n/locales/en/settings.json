@@ -754,12 +754,6 @@
     "superSavingsMomentum": "You've been saving well",
     "superHiddenDrain": "Money slipping away without you noticing"
   },
-  "categoryEditor": {
-    "introLabel": "Display name",
-    "introText": "Use a short, clear name so you can recognize the category quickly in filters and forms.",
-    "nameLabel": "Name",
-    "namePlaceholder": "e.g. Transport"
-  },
   "fixedEditor": {
     "kindLabel": "Type",
     "categoryLabel": "Category",

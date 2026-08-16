@@ -966,6 +966,27 @@
       "ctaVerEnQueSeFue": "Ver en qué se fue",
       "ctaRetirar": "Retirar",
       "ctaNuevaMeta": "Nueva meta"
+    },
+    "ajustar": {
+      "title": "Dónde ajustar",
+      "subtitle": "Tu gasto del ciclo, en números",
+      "headlineCorto": "Te faltan {{amount}} para cerrar el ciclo.",
+      "headlineAjustado": "Vas justo: tu margen al cierre es {{amount}}.",
+      "headlineSinSobrante": "Este ciclo no sobró nada.",
+      "planConCupo": "Para llegar, tus próximos {{count}} días tienen que costar {{amount}} o menos.",
+      "planConCupo_one": "Para llegar, tu último día tiene que costar {{amount}} o menos.",
+      "planSinCupo": "Ya usaste todo el presupuesto del ciclo: cada gasto nuevo agranda el rojo.",
+      "planCierreHoy": "El ciclo cierra hoy — revisa los gastos grandes antes del próximo.",
+      "ritmoActual": "Hoy vienes gastando {{amount}} por día.",
+      "breakdownEyebrow": "Dónde se va · este ciclo",
+      "breakdownHint": "Toca una categoría para ver sus gastos.",
+      "breakdownEmpty": "Todavía no hay suficientes gastos este ciclo para un desglose.",
+      "otherRow": "Resto",
+      "rowShare": "{{pct}}% del gasto",
+      "fijosWarning": "Tus fijos se llevan el {{pct}}% del ingreso.",
+      "fijosCta": "Revisar fijos",
+      "verGastosCta": "Ver los gastos del ciclo",
+      "categoryA11y": "{{name}}, {{amount}}, {{pct}} por ciento del gasto del ciclo. Toca para ver sus gastos."
     }
   }
 }

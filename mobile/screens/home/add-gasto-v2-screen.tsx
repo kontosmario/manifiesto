@@ -554,11 +554,18 @@ export function AddGastoV2Screen({
               }}
             />
           ) : (
+            // Catálogo vacío sin error: con catálogo global esto es una
+            // anomalía de carga, no un estado real — el CTA reintenta la
+            // query. Antes decía "Crear categoría" y navegaba a la tab
+            // Gastos: dos promesas falsas (la creación de categorías se
+            // retiró del alcance del usuario el 2026-08-16).
             <WizardCta
-              label={t('gastos:addExpense.createCategory')}
-              accessibilityLabel={t('gastos:addExpense.createCategory')}
+              label={t('states:errorState.action')}
+              accessibilityLabel={t('states:errorState.action')}
               ready
-              onPress={() => router.push('/(app)/(tabs)/expenses')}
+              onPress={() => {
+                void categoriesQuery.refetch()
+              }}
             />
           )
         }

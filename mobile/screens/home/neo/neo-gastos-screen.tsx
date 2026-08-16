@@ -1200,6 +1200,24 @@ function NeoGastosContent({
   // cada invocación → sin stale closures.
   const controllerRef = useRef(controller)
   controllerRef.current = controller
+
+  // Deep-link POST-mount: `initialCategoryId` sólo alimenta el useState del
+  // mount, y las tabs se pre-montan al boot (`lazy:false` en app-tabs) — así
+  // que cualquier `router.push` posterior con `params.categoryId` (el sheet
+  // "Dónde ajustar" de Control, o `open-expenses-filtered` del Asistente)
+  // actualizaba el param y NO filtraba nada. Este efecto aplica el filtro
+  // cuando el param llega con la pantalla ya montada, y lo limpia para que
+  // un segundo push con la MISMA categoría vuelva a disparar.
+  useEffect(() => {
+    const categoryId =
+      typeof params.categoryId === 'string' && params.categoryId.length > 0
+        ? params.categoryId
+        : null
+    if (!categoryId) return
+    controllerRef.current.setSelectedCategoryId(categoryId)
+    router.setParams({ categoryId: undefined })
+  }, [params.categoryId, router])
+
   const streakQuery = useStreak(familyId, userId)
   const streakData = streakQuery.data
 

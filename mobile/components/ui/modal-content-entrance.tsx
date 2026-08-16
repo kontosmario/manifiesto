@@ -31,7 +31,7 @@ interface ModalContentEntranceProps {
  * -----
  * Wrap the root JSX of any screen registered as `presentation:
  * 'modal'` in `app-stack-shell.tsx` (add-expense, add-fixed-expense,
- * household-setup, expense-filters, expense-categories, asistente,
+ * household-setup, asistente,
  * coach, onboarding) — apply at the screen's outermost View.
  *
  * Reduced motion is respected automatically via Reanimated's
