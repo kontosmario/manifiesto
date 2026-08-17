@@ -75,6 +75,11 @@ import { HomeDashboardSheets } from '@/components/home/home-dashboard-sheets'
 // comportamiento pedido. Reusarlo además elimina el colapso de las ~11
 // categorías reales a las 3 llaves del kit: van todas con su nombre e ícono.
 import { FijoCategoryGroups } from '@/components/fijos/fijo-category-groups'
+// Vacío de la sección — calco del pozo vacío del feed de Gastos, ver su
+// docblock. Reemplaza a la línea pelada ("No hay fijos para este filtro") que
+// dibujaba `FijoCategoryGroups` sin grupos: esa frase además mentía en los dos
+// casos reales de esta pantalla (no hay filtro que quitar cuando no hay fijos).
+import { FijosListEmptyState } from '@/components/fijos/fijos-list-empty-state'
 // La piel del rediseño para esa lista. El provider es lo ÚNICO que la separa
 // de la que dibuja la pantalla viva: sin él, los mismos componentes resuelven
 // sus tokens de siempre (ver el docblock de fijos-skin.tsx).
@@ -727,6 +732,68 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
 
   const cycleHeaderLabel = buildCycleHeaderLabel(controller.cycleLabel, daysIntoCycle)
 
+  // ── Vacío de "Todos tus fijos" ──────────────────────────────────────────
+  /**
+   * `null` = hay filas que dibujar. Si no, el copy del pozo vacío.
+   *
+   * Son TRES vacíos distintos y decir el mismo texto en los tres sería mentir
+   * en dos de ellos:
+   *
+   *   1. SIN FIJOS en la cuenta (`isEmptyNoFijos`, o sea ni activos ni
+   *      pausados en la DB). Es el único que se resuelve creando algo, así que
+   *      es el único con CTA — el mismo botón y la misma etiqueta que el A6 de
+   *      Avisos, que en este estado está justo arriba.
+   *   2. HAY FIJOS pero ninguno cae en este ciclo (`visibleTabs` vacío → la
+   *      barra de tabs ni se dibuja, ver `FijosTabs`). No falta cargar nada:
+   *      falta que llegue el ciclo de esos fijos. Sin CTA.
+   *   3. La TAB ACTIVA quedó sin ítems mientras otra sí tiene. En régimen dura
+   *      un frame (el efecto del controller redirige a la primera tab visible),
+   *      pero ese frame se ve — y el arreglo es tocar otra tab, no crear un
+   *      fijo. Sin CTA, y un mensaje por tab: "no hay vencidos" y "no hay
+   *      pendientes" no son la misma noticia.
+   */
+  const listEmpty = useMemo(() => {
+    if (controller.groups.length > 0) return null
+    if (isEmptyNoFijos) {
+      return {
+        brotPose: 'wave' as const,
+        // Misma etiqueta que el CTA del hero E6 / Avisos A6: es la misma
+        // acción, no hay razón para nombrarla distinto tres veces.
+        ctaLabel: t('fijos:neo.hero.emptyCtaFirst'),
+        sub: t('fijos:neo.listEmpty.noFijosSub'),
+        title: t('fijos:neo.listEmpty.noFijosTitle'),
+      }
+    }
+    if (controller.visibleTabs.length === 0) {
+      return {
+        sub: t('fijos:neo.listEmpty.noneInCycleSub'),
+        title: t('fijos:neo.listEmpty.noneInCycleTitle'),
+      }
+    }
+    if (controller.tab === 'vencidos') {
+      return {
+        sub: t('fijos:neo.listEmpty.overdueSub'),
+        title: t('fijos:neo.listEmpty.overdueTitle'),
+      }
+    }
+    if (controller.tab === 'pagados') {
+      return {
+        sub: t('fijos:neo.listEmpty.paidSub'),
+        title: t('fijos:neo.listEmpty.paidTitle'),
+      }
+    }
+    return {
+      sub: t('fijos:neo.listEmpty.pendingSub'),
+      title: t('fijos:neo.listEmpty.pendingTitle'),
+    }
+  }, [
+    controller.groups.length,
+    controller.tab,
+    controller.visibleTabs.length,
+    isEmptyNoFijos,
+    t,
+  ])
+
   // ── Handlers ────────────────────────────────────────────────────────────
 
   /** El alta VIEJA existe y funciona. Es también la acción del botón de
@@ -990,6 +1057,16 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
         <Animated.View layout={sectionLayout} style={styles.categoryList}>
           {/* `controller.groups` SÍ está filtrado por el tab activo — igual que
               en la pantalla viva, así que las tabs filtran de verdad. */}
+          {listEmpty ? (
+            <FijosListEmptyState
+              mode={mode}
+              // `animated={false}`: mismo convenio de perf que el resto del
+              // cableado (hero y Avisos también montan sus Brot quietos).
+              animated={false}
+              onPressCta={handleAddFijo}
+              {...listEmpty}
+            />
+          ) : (
           <FijosSkinProvider mode={mode}>
             <FijoCategoryGroups
               groups={controller.groups}
@@ -1006,6 +1083,7 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
               todayDay={summary.todayDay}
             />
           </FijosSkinProvider>
+          )}
         </Animated.View>
       </View>
       </TourTarget>

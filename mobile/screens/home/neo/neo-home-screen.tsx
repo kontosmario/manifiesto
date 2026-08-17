@@ -1790,7 +1790,13 @@ function NeoHomeDashboard({
       </NeoTourStep>
       </RiseView>
 
-      {/* ③ Meta — paso del tour solo con meta activa (como la vieja). */}
+      {/* ③ Meta — paso del tour solo con meta activa (como la vieja).
+          SIN meta el paso `meta` del tour no se registra (el tour lo saltea
+          solo), así que la card vacía se quedaba sin nadie que explicara para
+          qué sirve una meta: título + un renglón que repetía el CTA. Esa
+          explicación ahora la lleva la propia card (`emptyDescription`), que
+          es donde el usuario está mirando — no hace falta un paso nuevo de
+          tour para un estado que además se ve una sola vez. */}
       <RiseView delay={170}>
       <HomeSectionHeader mode={mode} label={t('home:sections.progress')} />
       {goalVM ? (
@@ -1809,6 +1815,7 @@ function NeoHomeDashboard({
           emptyStyle={isNewUser ? 'dashed' : 'raise'}
           emptyTitle={t('home:goal.emptyTitle')}
           emptySub={isNewUser ? t('home:goal.emptyDashedSub') : t('home:goal.emptyRaiseSub')}
+          emptyDescription={t('home:goal.emptyDescription')}
           emptyCtaLabel={isNewUser ? t('home:goal.createGoal') : t('home:goal.createShort')}
           onPressCreate={handleCreateGoal}
         />

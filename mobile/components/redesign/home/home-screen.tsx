@@ -1577,6 +1577,18 @@ export interface HomeGoalCardProps {
    *  t()). `emptySub` cae al literal del estilo activo si no se pasa. */
   emptyTitle?: string
   emptySub?: string
+  /**
+   * Bajada larga del estado sin meta: QUÉ gana el usuario configurando una
+   * meta (fallo del owner 2026-08-16 — "falta mostrar una descripción para
+   * configurar la meta en la vista home"). Va a ANCHO COMPLETO debajo de la
+   * fila, en el mismo lugar que ocupa la barra de progreso cuando la meta
+   * existe: adentro de la fila tendría ~170pt de ancho útil (tile + pill de
+   * CTA se comen el resto) y se partiría en cuatro renglones.
+   *
+   * Opcional: sin ella la card queda EXACTAMENTE como el mockup aprobado, que
+   * es lo que siguen rindiendo las réplicas de Settings → Dev.
+   */
+  emptyDescription?: string
   emptyCtaLabel?: string
   onPress?: () => void
   onPressCreate?: () => void
@@ -1597,6 +1609,7 @@ export function HomeGoalCard({
   emptyCtaStyle,
   emptyTitle = 'Sin meta activa',
   emptySub,
+  emptyDescription,
   emptyCtaLabel,
   onPress,
   onPressCreate,
@@ -1644,15 +1657,24 @@ export function HomeGoalCard({
         <GoalIcon value="metas/objetivo" size={30} />
       </View>
     )
+    // La descripción va DEBAJO de la fila, a ancho completo (ver el docblock
+    // de `emptyDescription`). Sin ella no se emite ningún nodo: la card queda
+    // idéntica al mockup aprobado.
+    const description = emptyDescription ? (
+      <Text style={[styles.goalEmptyDescription, { color: s.goalSub }]}>{emptyDescription}</Text>
+    ) : null
     if (emptyStyle === 'dashed') {
       return (
         <View style={[styles.goalEmptyDashed, { borderColor: s.dashedBorder }]}>
-          {tile}
-          <View style={styles.goalTexts}>
-            <Text style={[styles.goalEmptyDashedTitle, { color: s.goalTitle }]}>{emptyTitle}</Text>
-            <Text style={[styles.goalSub, { color: s.goalSub }]}>{resolvedSub}</Text>
+          <View style={styles.goalEmptyRow}>
+            {tile}
+            <View style={styles.goalTexts}>
+              <Text style={[styles.goalEmptyDashedTitle, { color: s.goalTitle }]}>{emptyTitle}</Text>
+              <Text style={[styles.goalSub, { color: s.goalSub }]}>{resolvedSub}</Text>
+            </View>
+            {cta}
           </View>
-          {cta}
+          {description}
         </View>
       )
     }
@@ -1664,12 +1686,15 @@ export function HomeGoalCard({
           s.cardGradientCss ? { experimental_backgroundImage: s.cardGradientCss } : null,
         ]}
       >
-        {tile}
-        <View style={styles.goalTexts}>
-          <Text style={[styles.goalTitle, { color: s.goalTitle }]}>{emptyTitle}</Text>
-          <Text style={[styles.goalSub, { color: s.goalSub }]}>{resolvedSub}</Text>
+        <View style={styles.goalEmptyRow}>
+          {tile}
+          <View style={styles.goalTexts}>
+            <Text style={[styles.goalTitle, { color: s.goalTitle }]}>{emptyTitle}</Text>
+            <Text style={[styles.goalSub, { color: s.goalSub }]}>{resolvedSub}</Text>
+          </View>
+          {cta}
         </View>
-        {cta}
+        {description}
       </View>
     )
   }
@@ -2340,14 +2365,16 @@ const styles = StyleSheet.create({
   goalBar: { height: 7, borderRadius: 5, marginTop: 11, overflow: 'hidden' },
   goalBarFill: { height: '100%', borderRadius: 5 },
   // ③ sin meta — raise (catálogo §7) y dashed (usuario nuevo :77/:121)
+  //
+  // El `flexDirection/alignItems/gap` de la fila se mudó a `goalEmptyRow`
+  // cuando la card pasó a poder llevar una descripción debajo (columna
+  // afuera, fila adentro). Sin descripción el resultado es pixel por pixel el
+  // mismo: mismos paddings, misma fila, un solo hijo.
   goalEmptyRaise: {
     marginTop: 10,
     borderRadius: 22,
     paddingVertical: 15,
     paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
   },
   goalEmptyDashed: {
     marginTop: 10,
@@ -2356,9 +2383,17 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     paddingVertical: 13,
     paddingHorizontal: 15,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  },
+  goalEmptyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  // Misma familia tipográfica que las bajadas de las cards del Home
+  // (`goalSub`, 11/700) con `lineHeight` explícito: acá el texto SÍ se parte
+  // en dos renglones y sin interlineado quedaban pegados.
+  goalEmptyDescription: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: nunitoFamily('700'),
+    lineHeight: 16,
+    marginTop: 10,
   },
   goalEmptyDashedTitle: { fontSize: 13.5, fontWeight: '900', fontFamily: nunitoFamily('900') },
   goalEmptyTile: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },

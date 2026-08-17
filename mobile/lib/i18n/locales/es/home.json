@@ -416,6 +416,7 @@
     "emptyTitle": "Sin meta activa",
     "emptyRaiseSub": "Define un objetivo de ahorro",
     "emptyDashedSub": "Define un objetivo y el sobrante trabaja para ti",
+    "emptyDescription": "Con una meta activa, aquí ves cuánto llevas juntado y cuánto te falta para llegar, ciclo a ciclo.",
     "createShort": "Crear",
     "createGoal": "Crear meta"
   },

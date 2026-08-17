@@ -1109,9 +1109,17 @@ const AVISOS_URGENT_BADGE_INK = '#FFF7E8'
 // aparece en ninguno de los 2 teléfonos (el canvas de estados es light-only)
 // — se transcribe theme-invariant, mismo criterio que arriba; a validar en
 // el gate visual.
-const AVISOS_EMPTY_CTA_GRADIENT = 'linear-gradient(180deg, #6DBC71, #327E39)'
-const AVISOS_EMPTY_CTA_SHADOW = '0 6px 12px rgba(46,116,52,0.35)'
-const AVISOS_EMPTY_CTA_INK = '#F5F2E1'
+//
+// EXPORTADOS (2026-08-16): el vacío de "Todos tus fijos"
+// (`components/fijos/fijos-list-empty-state.tsx`) usa EL MISMO pill verde. Es
+// el mismo momento del usuario que A6 —"todavía no hay fijos"— y las dos
+// superficies se ven en la misma pantalla, así que el botón tiene que ser
+// literalmente el mismo. Se exportan los 3 literales en vez de re-tipearlos
+// del otro lado: un hex duplicado es un color fuera del sistema esperando a
+// divergir.
+export const AVISOS_EMPTY_CTA_GRADIENT = 'linear-gradient(180deg, #6DBC71, #327E39)'
+export const AVISOS_EMPTY_CTA_SHADOW = '0 6px 12px rgba(46,116,52,0.35)'
+export const AVISOS_EMPTY_CTA_INK = '#F5F2E1'
 
 // Defaults LITERALES por variante — transcritos del canvas "ESTADOS DEL
 // COMPONENTE · AVISOS" (light-only). A1 es el estado "(ACTUAL)": coincide

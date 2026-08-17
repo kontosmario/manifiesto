@@ -416,6 +416,7 @@
     "emptyTitle": "No active goal",
     "emptyRaiseSub": "Set a savings goal",
     "emptyDashedSub": "Set a goal and your leftover works for you",
+    "emptyDescription": "With an active goal, this is where you see how much you've saved and how much is left, cycle by cycle.",
     "createShort": "Create",
     "createGoal": "Create goal"
   },

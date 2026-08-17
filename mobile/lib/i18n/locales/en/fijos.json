@@ -391,6 +391,18 @@
     "screenTitle": "Fixed",
     "availableLabel": "YOU HAVE AVAILABLE",
     "allFijos": "ALL YOUR FIXED EXPENSES",
+    "listEmpty": {
+      "noFijosTitle": "Your fixed list is empty",
+      "noFijosSub": "Once you add the first one you'll see it here, grouped by category and split by status.",
+      "noneInCycleTitle": "Nothing in this cycle",
+      "noneInCycleSub": "Your fixed expenses are due in later cycles. When theirs comes around, they show up here.",
+      "overdueTitle": "No overdue fixed expenses",
+      "overdueSub": "Payments from this cycle that slip past their due date show up here.",
+      "pendingTitle": "No pending fixed expenses",
+      "pendingSub": "Fixed expenses in this cycle that aren't due yet show up here.",
+      "paidTitle": "You haven't marked any yet",
+      "paidSub": "Fixed expenses you confirm as paid in this cycle show up here."
+    },
     "tabs": {
       "overdue": "Overdue",
       "pending": "Pending",

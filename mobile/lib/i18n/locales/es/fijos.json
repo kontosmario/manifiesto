@@ -391,6 +391,18 @@
     "screenTitle": "Fijos",
     "availableLabel": "TE QUEDA DISPONIBLE",
     "allFijos": "TODOS TUS FIJOS",
+    "listEmpty": {
+      "noFijosTitle": "Tu lista de fijos está vacía",
+      "noFijosSub": "Cuando agregues el primero lo vas a ver aquí, agrupado por categoría y separado por estado.",
+      "noneInCycleTitle": "Nada en este ciclo",
+      "noneInCycleSub": "Tus fijos vencen en ciclos posteriores. Cuando llegue el suyo, aparecen aquí.",
+      "overdueTitle": "No hay fijos vencidos",
+      "overdueSub": "Los pagos de este ciclo que se te pasen aparecen aquí.",
+      "pendingTitle": "No hay fijos pendientes",
+      "pendingSub": "Los fijos de este ciclo que todavía no vencen aparecen aquí.",
+      "paidTitle": "Todavía no marcaste ninguno",
+      "paidSub": "Los fijos que confirmes como pagados en este ciclo aparecen aquí."
+    },
     "tabs": {
       "overdue": "Vencidos",
       "pending": "Pendientes",
