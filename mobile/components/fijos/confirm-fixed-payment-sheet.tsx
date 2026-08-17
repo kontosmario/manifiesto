@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Pressable, StyleSheet, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
@@ -116,6 +116,7 @@ export function ConfirmFixedPaymentSheet({
   // queda visible. Mismo patrón que `useSheetNumpad` de los sheets de Ajustes.
   const [numpadOpen, setNumpadOpen] = useState(false)
   const insets = useSafeAreaInsets()
+  const scrollRef = useRef<ScrollView | null>(null)
   useEffect(() => {
     if (!numpadOpen) return
     publishNumpadOpen(ONB_NUMPAD_SHEET_HEIGHT + insets.bottom)
@@ -123,6 +124,23 @@ export function ConfirmFixedPaymentSheet({
       publishNumpadClose()
     }
   }, [numpadOpen, insets.bottom])
+
+  // Revelar el campo al abrir el teclado. Con el numpad puesto el cuerpo de la
+  // hoja se comprime a ~150pt (reserva el alto del teclado), así que el pozo
+  // del monto —que vive debajo del snapshot y del selector— quedaba abajo del
+  // fold: el usuario veía el teclado pero no lo que estaba tipeando.
+  //
+  // Los reintentos son por el mismo motivo que en `useNumpadScrollAvoid`: el
+  // primer frame todavía no midió el alto nuevo, así que un solo `scrollToEnd`
+  // se queda corto. Idempotente — al final el scroll ya está donde tiene que
+  // estar y los reintentos no mueven nada.
+  useEffect(() => {
+    if (!numpadOpen) return
+    const timers = [0, 80, 220].map((delay) =>
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: delay > 0 }), delay),
+    )
+    return () => timers.forEach(clearTimeout)
+  }, [numpadOpen])
 
   // Tintas de estado ya resueltas por tema. `alertInk` sube (aumento, mora),
   // `positiveInk` baja (el fijo salió más barato) y es también la tinta del
@@ -235,6 +253,7 @@ export function ConfirmFixedPaymentSheet({
         />
       }
       onClose={onClose}
+      scrollRef={scrollRef}
       skin="neo"
       subtitle={t('fijos:confirmPayment.subtitle')}
       title={t('fijos:confirmPayment.title')}
@@ -242,7 +261,21 @@ export function ConfirmFixedPaymentSheet({
     >
       <View style={styles.body}>
         {/* Snapshot del último monto + nombre del fijo. Card ELEVADA dentro
-            de la hoja: el neumorfismo la separa por relieve, sin borde. */}
+            de la hoja: el neumorfismo la separa por relieve, sin borde.
+            Con el teclado abierto se COMPACTA a un renglón: la hoja reserva el
+            alto del numpad y el cuerpo cae a ~130pt, así que la card entera
+            (~115pt) se comía sola el espacio del campo. La misma información
+            sigue en pantalla, en una línea. */}
+        {numpadOpen ? (
+          <View style={styles.snapshotCompact}>
+            <Text numberOfLines={1} style={[styles.snapshotCompactName, { color: neo.textMuted }]}>
+              {fixedExpenseName.toUpperCase()}
+            </Text>
+            <Text numberOfLines={1} style={[styles.snapshotCompactValue, { color: neo.text }]}>
+              {previousLabel}
+            </Text>
+          </View>
+        ) : (
         <NeoSurface
           radius={neoRadii.cardSm}
           style={[
@@ -271,6 +304,10 @@ export function ConfirmFixedPaymentSheet({
           </Text>
           {overduePill}
         </NeoSurface>
+        )}
+        {/* La nota de mora NO se pierde al compactar: es la única señal de que
+            el monto puede traer intereses, justo lo que el usuario va a tipear. */}
+        {numpadOpen ? overduePill : null}
 
         {/* Selector de modo. Misma altura para que la transición entre
             options se sienta firme; el activo NO se rellena en negativo —
@@ -314,7 +351,13 @@ export function ConfirmFixedPaymentSheet({
             accessibilityLabel={t('fijos:confirmPayment.changed')}
             accessibilityRole="button"
             accessibilityState={{ selected: mode === 'changed' }}
-            onPress={() => setMode('changed')}
+            onPress={() => {
+              setMode('changed')
+              // Elegir "Cambió" ES la intención de editar: abrir el teclado acá
+              // ahorra el segundo tap sobre el pozo (que además, hasta que el
+              // scroll lo revela, puede no estar a la vista).
+              setNumpadOpen(true)
+            }}
             onPressIn={changedPress.onPressIn}
             onPressOut={changedPress.onPressOut}
             style={styles.modeWrap}
@@ -479,6 +522,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     fontFamily: nunitoFamily('600'),
+  },
+  // Variante de un renglón mientras el numpad está abierto (ver el bloque que
+  // la monta): mismo contenido, sin la caja elevada ni la línea de contexto.
+  snapshotCompact: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  snapshotCompactName: {
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    flexShrink: 1,
+  },
+  snapshotCompactValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: nunitoFamily('800'),
+    letterSpacing: -0.2,
+    fontVariant: ['tabular-nums'],
   },
   overduePill: {
     flexDirection: 'row',

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useState, type PropsWithChildren, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type PropsWithChildren,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import {
   Keyboard,
   Modal,
@@ -71,6 +78,14 @@ interface ModalCardProps extends PropsWithChildren {
    */
   footer?: ReactNode
   /**
+   * Ref al `ScrollView` del cuerpo, para que la hoja huésped pueda revelar un
+   * campo por su cuenta. Lo necesita cualquier sheet que abra el numpad de la
+   * app: al publicar su alto, el cuerpo se comprime a ~150pt y un campo que
+   * vivía más abajo queda debajo del fold, sin forma de saber que hay que
+   * scrollear. Opcional — los sheets que no lo pasan no cambian en nada.
+   */
+  scrollRef?: RefObject<ScrollView | null>
+  /**
    * Piel visual de la hoja. `'classic'` (default) mantiene el material
    * V1 — superficie plana + hairline + radio 24 — para los ~15 sheets
    * de Ajustes, Suscripción, Auth y Logros que todavía no pasaron por
@@ -122,6 +137,7 @@ export function ModalCard({
   onClose,
   inline = false,
   footer,
+  scrollRef,
   skin = 'classic',
   children,
 }: ModalCardProps) {
@@ -379,6 +395,7 @@ export function ModalCard({
             </View>
           ) : null}
           <ScrollView
+            ref={scrollRef}
             style={styles.scroll}
             contentContainerStyle={isNeo ? styles.neoContent : styles.content}
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
