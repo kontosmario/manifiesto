@@ -18,6 +18,10 @@ export * from '@/components/redesign/control/parts/control-tendencia'
 export * from '@/components/redesign/control/parts/control-patron'
 export * from '@/components/redesign/control/parts/control-reparto'
 export * from '@/components/redesign/control/parts/control-alcancia'
+// Estas dos NO vienen del handoff: reponen superficies que el swap de
+// pantalla dejó sin montar (ver el docblock de cada una).
+export * from '@/components/redesign/control/parts/control-ingresos'
+export * from '@/components/redesign/control/parts/control-reserva'
 
 /** Header → hero: `margin-top:16px` (línea 5846 del markup). */
 export const controlHeaderHeroSpacing = { marginTop: 16 } as const
@@ -40,4 +44,10 @@ export const controlRiseDelays = {
   patron: 260,
   reparto: 320,
   meta: 380,
+  // Fuera del handoff (secciones repuestas). Se INTERCALAN sin tocar los
+  // valores transcritos: ingresos entre reparto y meta, reserva después de
+  // meta. La cadencia de la cola baja de 60 a ~30 ms, que sigue dentro del
+  // rango de stagger legible (30–50 ms por ítem).
+  ingresos: 350,
+  reserva: 410,
 } as const

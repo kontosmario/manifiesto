@@ -14,6 +14,12 @@ export type ControlSectionAnchor =
   | 'vsmes'
   | 'patron'
   | 'cobertura'
+  // Secciones repuestas tras el swap a la vista neo. Ambas son
+  // CONDICIONALES (ingresos del ciclo / saldo de reserva), así que un
+  // scroll-to-section hacia ellas puede no encontrar destino — los
+  // consumidores ya toleran una sección sin medir.
+  | 'ingresos'
+  | 'reserva'
 
 export interface ExpensesFilterParams {
   categoryId?: string

@@ -137,11 +137,11 @@
     "metaTitleWithGoal": "Sumar a {{goal}}",
     "metaTitle": "A una meta",
     "metaSubtitleActive": "Aporte al goal activo",
-    "metaSubtitleEmpty": "Primero crea una meta en Home",
+    "metaSubtitleEmpty": "Primero crea una meta en Control",
     "accumulateTitle": "Sumar al mes actual",
     "accumulateSubtitle": "Queda como disponible extra este mes",
     "reserveTitle": "Guardar como reserva",
-    "reserveSubtitle": "Plata aparte, sin destino concreto",
+    "reserveSubtitle": "Plata aparte — después la asignas desde Control",
     "confirm": "Confirmar",
     "decideLater": "Decidir más tarde"
   },

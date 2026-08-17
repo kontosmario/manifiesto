@@ -54,7 +54,15 @@ import type {
   RepartoTextSegment,
   ControlAlcanciaVariant,
   ControlAlcanciaContent,
+  ControlIngresosVariant,
+  ControlIngresosContent,
+  IngresosRow,
+  IngresosTextSegment,
+  ControlReservaVariant,
+  ControlReservaContent,
 } from '@/components/redesign/control/control-screen'
+import { INCOME_KIND_BY_KEY } from '@/features/income/income-kinds'
+import type { IngresosCiclo } from '@/features/insights/use-control-v2-data'
 
 // ---------------------------------------------------------------------------
 // Helpers de formato
@@ -1436,5 +1444,227 @@ export function buildAlcanciaContent(input: {
         primaryCta: { label: t('control:neo.meta.ctaVerEnQueSeFue'), kind: 'ghost' },
         secondaryCta: undefined,
       }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ⑧ INGRESOS — "Entró este ciclo"
+// ---------------------------------------------------------------------------
+
+/** Cuántos movimientos entran en el pozo antes de colapsar en "+N más".
+ *  Mismo tope que traía la card vieja: la lista es un vistazo, no el feed. */
+const INGRESOS_MAX_VISIBLE = 3
+
+/** "2026-06-04" → "4 jun". Ancla la fecha al MEDIODÍA local a propósito:
+ *  `new Date('YYYY-MM-DD')` parsea como UTC y en zonas al oeste de
+ *  Greenwich devuelve el día anterior. Misma trampa que ya documentaba la
+ *  card vieja. */
+function fechaCorta(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-')
+  const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0, 0)
+  if (!Number.isFinite(date.getTime())) return ''
+  return getDateTimeFormat({ day: 'numeric', month: 'short' })
+    .format(date)
+    .replace(/\.$/, '')
+    .replace(/\./g, '')
+}
+
+/** La decisión se toma por el TOTAL, nunca por el largo de la lista. Son dos
+ *  fuentes distintas (el total es una suma server-side, los movimientos otra
+ *  query) y pueden divergir: con el largo mandando, la card llegaba a afirmar
+ *  "todavía no cargaste ningún cobro" sobre un ciclo que SÍ tenía ingresos.
+ *  Un total > 0 con la lista vacía rinde la card sin el pozo — sin filas que
+ *  mostrar, pero sin mentir sobre el estado. */
+export function selectIngresosVariant(input: {
+  total: number
+  incomeMode: 'fixed' | 'dynamic'
+}): ControlIngresosVariant {
+  if (input.total <= 0) return 'vacio'
+  return input.incomeMode === 'dynamic' ? 'variable' : 'extra'
+}
+
+export function buildIngresosContent(input: {
+  variant: ControlIngresosVariant
+  ingresos: IngresosCiclo
+}): Partial<ControlIngresosContent> {
+  const { variant, ingresos } = input
+  const t = i18n.t
+  const { total, movimientos } = ingresos
+
+  if (variant === 'vacio') {
+    return {
+      title: t('control:ingresos.eyebrow'),
+      verdictLabel: t('control:neo.ingresos.vacioPill'),
+      verdictTone: 'faint',
+      headline: [
+        { text: t('control:neo.ingresos.vacioHeadlinePre') },
+        { text: t('control:neo.ingresos.vacioHeadlineWord'), tone: 'ink' },
+        { text: t('control:neo.ingresos.vacioHeadlinePost') },
+      ],
+      rows: [],
+      moreLabel: undefined,
+      placeholderLabel: t('control:neo.ingresos.vacioPlaceholder'),
+      brot: {
+        pose: 'wave',
+        title: t('control:neo.ingresos.vacioBrotTitle'),
+        body: [{ text: t('control:neo.ingresos.vacioBrotBody') }],
+        ctaLabel: t('control:neo.ingresos.vacioCta'),
+      },
+    }
+  }
+
+  const visibles = movimientos.slice(0, INGRESOS_MAX_VISIBLE)
+  const ocultos = movimientos.length - visibles.length
+  const rows: IngresosRow[] = visibles.map((mov) => {
+    const meta = INCOME_KIND_BY_KEY[mov.kind] ?? INCOME_KIND_BY_KEY.other
+    const kindLabel = t(meta.labelKey)
+    const fecha = fechaCorta(mov.fecha)
+    return {
+      id: mov.id,
+      // Emoji del catálogo central, NO sticker: convención del sistema
+      // para ingresos (ver el docblock de `control-ingresos.tsx`).
+      glyph: meta.emoji,
+      title: mov.descripcion?.trim() || kindLabel,
+      sub: fecha ? `${fecha} · ${kindLabel}` : kindLabel,
+      amount: `+${formatMoney(mov.monto)}`,
+    }
+  })
+
+  // El headline NO traduce el total a "+$X/día de cupo", como sí hacía la
+  // card vieja. Ese número dividía por los días TOTALES del ciclo, pero el
+  // motor reparte entre los días RESTANTES en cuanto el ciclo tiene override
+  // — que es justo el estado que deja la CTA "Sumar al ciclo" de la card de
+  // reserva. Dos cifras distintas para la misma plata, en la misma pantalla.
+  // Se declara el total, que es un hecho, y el cupo lo dice el hero.
+  const headline: IngresosTextSegment[] =
+    variant === 'variable'
+      ? [
+          { text: t('control:neo.ingresos.varHeadlinePre') },
+          { text: formatMoney(total), tone: 'green' },
+          { text: t('control:neo.ingresos.varHeadlinePost') },
+        ]
+      : [
+          { text: t('control:neo.ingresos.extraHeadlinePre') },
+          { text: formatMoney(total), tone: 'green' },
+          { text: t('control:neo.ingresos.extraHeadlinePost') },
+        ]
+
+  return {
+    title: t('control:ingresos.eyebrow'),
+    verdictLabel:
+      movimientos.length > 1
+        ? `+${formatMoneyShort(total)} · ${movimientos.length}`
+        : `+${formatMoneyShort(total)}`,
+    verdictTone: 'green',
+    headline,
+    rows,
+    moreLabel: ocultos > 0 ? t('control:ingresos.more', { count: ocultos }) : undefined,
+    // Con total > 0 la card NUNCA muestra el pozo punteado: ese placeholder
+    // dice "todavía no entró nada", y acá sí entró — solo que la lista de
+    // movimientos no llegó.
+    placeholderLabel: undefined,
+    // SIN CTA "a la meta". Sonaba bien pero era falso: aportar a la meta solo
+    // incrementa `savings_goals.current_amount` y NO descuenta del cupo, así
+    // que la misma plata quedaba contada como ahorrada Y como disponible. La
+    // card informa; mover plata a la meta se hace desde la alcancía, que sí
+    // es su lugar.
+    brot:
+      variant === 'variable'
+        ? {
+            pose: 'coach',
+            title: t('control:neo.ingresos.varBrotTitle'),
+            body: [
+              { text: t('control:neo.ingresos.varBrotBodyPre') },
+              { text: t('control:neo.ingresos.varBrotBodyWord'), tone: 'green' },
+              { text: t('control:neo.ingresos.varBrotBodyPost') },
+            ],
+          }
+        : {
+            pose: 'cheer',
+            title: t('control:neo.ingresos.extraBrotTitle'),
+            body: [
+              { text: t('control:neo.ingresos.extraBrotBodyPre') },
+              { text: t('control:neo.ingresos.extraBrotBodyWord'), tone: 'green' },
+              { text: t('control:neo.ingresos.extraBrotBodyPost') },
+            ],
+          },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ⑨ RESERVA — "Reserva acumulada"
+// ---------------------------------------------------------------------------
+
+/** Tres estados, no dos. La distinción importa porque el hogar tiene UNA
+ *  sola meta: ofrecer "crear" con una meta pausada abriría el wizard para
+ *  pisar la que ya existe.
+ *   · sin meta      → la CTA crea la meta y el cableado le aplica la reserva;
+ *   · meta pausada  → la CTA la REACTIVA (no se puede aportar a una inactiva);
+ *   · meta activa   → la CTA abre el sheet de monto. */
+export function selectReservaVariant(input: {
+  goal: Pick<SavingsGoal, 'isActive'> | null
+}): ControlReservaVariant {
+  if (input.goal == null) return 'sinMeta'
+  return input.goal.isActive ? 'conMeta' : 'metaPausada'
+}
+
+export function buildReservaContent(input: {
+  variant: ControlReservaVariant
+  amount: number
+}): Partial<ControlReservaContent> {
+  const { variant, amount } = input
+  const t = i18n.t
+  const money = formatMoney(amount)
+  // Claves LITERALES por rama (nada de `t(\`...${var}\`)`): el guard de i18n
+  // sólo verifica keys estáticas, así que una key armada por template se
+  // rompería en silencio ante un typo.
+  const byVariant =
+    variant === 'conMeta'
+      ? {
+          headlinePost: t('control:neo.reserva.headlineConMeta'),
+          metaCtaLabel: t('control:neo.reserva.ctaAMiMeta'),
+          pose: 'zen' as const,
+          brotTitle: t('control:neo.reserva.brotConMetaTitle'),
+          brotPre: t('control:neo.reserva.brotConMetaPre'),
+          brotPost: t('control:neo.reserva.brotConMetaPost'),
+        }
+      : variant === 'metaPausada'
+        ? {
+            headlinePost: t('control:neo.reserva.headlinePausada'),
+            metaCtaLabel: t('control:neo.reserva.ctaActivarMeta'),
+            pose: 'think' as const,
+            brotTitle: t('control:neo.reserva.brotPausadaTitle'),
+            brotPre: t('control:neo.reserva.brotPausadaPre'),
+            brotPost: t('control:neo.reserva.brotPausadaPost'),
+          }
+        : {
+            headlinePost: t('control:neo.reserva.headlineSinMeta'),
+            metaCtaLabel: t('control:neo.reserva.ctaCrearMeta'),
+            pose: 'think' as const,
+            brotTitle: t('control:neo.reserva.brotSinMetaTitle'),
+            brotPre: t('control:neo.reserva.brotSinMetaPre'),
+            brotPost: t('control:neo.reserva.brotSinMetaPost'),
+          }
+  return {
+    title: t('control:reserve.label'),
+    verdictLabel: t('control:neo.reserva.pill'),
+    headline: [
+      { text: t('control:neo.reserva.headlinePre') },
+      { text: money, tone: 'teal' },
+      { text: byVariant.headlinePost },
+    ],
+    amount: money,
+    amountCaption: t('control:neo.reserva.caption'),
+    metaCtaLabel: byVariant.metaCtaLabel,
+    cicloCtaLabel: t('control:neo.reserva.ctaAlCiclo'),
+    brot: {
+      pose: byVariant.pose,
+      title: byVariant.brotTitle,
+      body: [
+        { text: byVariant.brotPre },
+        { text: t('control:neo.reserva.brotMetaWord'), tone: 'green' },
+        { text: byVariant.brotPost },
+      ],
+    },
   }
 }

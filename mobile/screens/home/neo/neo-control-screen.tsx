@@ -20,8 +20,10 @@ import {
   ControlComparativa,
   ControlHeader,
   ControlHero,
+  ControlIngresos,
   ControlPatron,
   ControlReparto,
+  ControlReserva,
   ControlTendencia,
   SectionLabel,
   controlHeaderHeroSpacing,
@@ -36,16 +38,23 @@ import {
   buildComparativaContent,
   buildHeaderVm,
   buildHeroContent,
+  buildIngresosContent,
   buildPatronContent,
   buildRepartoContent,
+  buildReservaContent,
   buildTendenciaContent,
   selectAlcanciaVariant,
   selectComparativaVariant,
   selectHeroVariant,
+  selectIngresosVariant,
   selectPatronVariant,
   selectRepartoVariant,
+  selectReservaVariant,
   selectTendenciaVariant,
 } from '@/features/insights/neo-control-view-model'
+import { NumericEditSheet } from '@/components/ui/numeric-edit-sheet'
+import { useApplyReserveDecision } from '@/features/month-close/use-apply-reserve'
+import { formatMoney, formatPriceInputValue, parsePrice, serializePrice } from '@/utils/money'
 import type { ControlSectionAnchor } from '@/features/insights/control-action'
 import { ControlAnchorsContext } from '@/features/insights/control-section-anchors'
 import { markControlVisited } from '@/features/insights/control-visit-store'
@@ -120,6 +129,7 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
   const {
     data,
     view,
+    ingresosCiclo,
     signals,
     isLoading: coreLoading,
     noConfig,
@@ -346,6 +356,89 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
       existingId: goal.id,
     })
   }, [goal, upsertGoal])
+
+  // ── Reserva acumulada ───────────────────────────────────────────
+  // Repone la administración que vivía en el ReserveBlock del Control
+  // viejo: con el swap de pantalla `apply_reserve_decision` se quedó SIN
+  // ningún punto de entrada en producción (la plata se veía en Ajustes,
+  // de solo lectura, y no había forma de usarla). El hook y el RPC ya
+  // existían y están testeados — acá solo se los vuelve a cablear.
+  const monthlyReserveAmount =
+    Number(financeQuery.data?.monthly_reserve_amount ?? 0) || 0
+  const reserveMutation = useApplyReserveDecision(familyId, userId)
+  const [reserveSheetMode, setReserveSheetMode] = useState<'cycle' | 'meta' | null>(null)
+  const [reserveDraft, setReserveDraft] = useState('')
+  // Cuánto quería aportar cuando todavía no tenía meta: se aplica sobre la
+  // meta recién creada al volver del wizard.
+  const [pendingReserveAfterCreate, setPendingReserveAfterCreate] = useState<number | null>(null)
+
+  const openReserveSheet = useCallback(
+    (mode: 'cycle' | 'meta') => {
+      void triggerHaptic('selection')
+      setReserveDraft(serializePrice(monthlyReserveAmount))
+      setReserveSheetMode(mode)
+    },
+    [monthlyReserveAmount],
+  )
+
+  const handleReserveMeta = useCallback(() => {
+    if (goal != null && !goal.isActive) {
+      // Meta PAUSADA: el hogar tiene UNA sola meta, así que abrir el wizard
+      // acá crearía una segunda y pisaría la existente. Se reactiva, que es
+      // lo que el bloque viejo solo sugería desde un Alert sin salida. La
+      // reserva se aplica después, con la meta ya activa.
+      reactivateGoal()
+      return
+    }
+    if (!goal) {
+      // Sin meta la CTA CREA la meta y aplica la reserva sola — sin esto el
+      // usuario quedaba sin salida (era justo el caso que dejaba plata
+      // varada para siempre).
+      void triggerHaptic('selection')
+      setPendingReserveAfterCreate(monthlyReserveAmount)
+      setWizardOpen(true)
+      return
+    }
+    openReserveSheet('meta')
+  }, [goal, monthlyReserveAmount, openReserveSheet, reactivateGoal])
+
+  const applyReserve = useCallback(
+    (amount: number, target: 'cycle' | 'meta', metaGoalId?: string) => {
+      reserveMutation.mutate(
+        { amount, target, metaGoalId },
+        {
+          onSuccess: () => {
+            void triggerHaptic('success')
+            setReserveSheetMode(null)
+            setReserveDraft('')
+          },
+          onError: (err) => {
+            void triggerHaptic('error')
+            toast.error(
+              `${t('control:reserve.errorAplicarTitle')} · ${
+                err instanceof Error ? err.message : t('control:reserve.errorRetry')
+              }`,
+            )
+          },
+        },
+      )
+    },
+    [reserveMutation, t],
+  )
+
+  const reserveParsed = useMemo(() => parsePrice(reserveDraft), [reserveDraft])
+  const reserveValid =
+    Number.isFinite(reserveParsed) && reserveParsed > 0 && reserveParsed <= monthlyReserveAmount
+
+  const handleReserveSubmit = useCallback(() => {
+    if (!reserveValid || !reserveSheetMode) return
+    applyReserve(
+      reserveParsed,
+      reserveSheetMode,
+      reserveSheetMode === 'meta' ? goal?.id : undefined,
+    )
+  }, [applyReserve, goal?.id, reserveParsed, reserveSheetMode, reserveValid])
+
   const handleQuickEditSubmit = useCallback(
     (input: { goalAmount: number; targetMonths: number | null }) => {
       if (!goal) return
@@ -491,6 +584,37 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
       }),
     [alcanciaVariant, goal, view.vault, data.monthlyIncome, data.diaActual, data.diasMes],
   )
+
+  const ingresosVariant = selectIngresosVariant({
+    total: ingresosCiclo.total,
+    incomeMode: data.incomeMode,
+  })
+  const ingresosContent = useMemo(
+    () => buildIngresosContent({ variant: ingresosVariant, ingresos: ingresosCiclo }),
+    [ingresosVariant, ingresosCiclo],
+  )
+  /** La card de ingresos se monta cuando hay algo que mostrar, o cuando el
+   *  ingreso es VARIABLE y todavía no cargó ninguno — ahí el vacío es la
+   *  información importante (sin cobros, el resto de Control está mudo).
+   *  Con sueldo fijo y cero extras no hay card: un ciclo sin ingresos extra
+   *  no merece una card vacía (mismo criterio que traía la card vieja). */
+  const showIngresos = ingresosVariant !== 'vacio' || data.incomeMode === 'dynamic'
+
+  /** La ÚNICA CTA de la card de ingresos es la del estado vacío: cargar un
+   *  cobro. La de "a la meta" se retiró — ver el comentario de
+   *  `buildIngresosContent`: aportar no descuenta del cupo, así que prometía
+   *  algo que no pasaba. */
+  const handleIngresosCta = useCallback(() => {
+    void triggerHaptic('selection')
+    router.push('/(app)/add-income')
+  }, [router])
+
+  const reservaVariant = selectReservaVariant({ goal })
+  const reservaContent = useMemo(
+    () => buildReservaContent({ variant: reservaVariant, amount: monthlyReserveAmount }),
+    [reservaVariant, monthlyReserveAmount],
+  )
+
   const handleAlcanciaPrimary = useCallback(() => {
     switch (alcanciaVariant) {
       case 'enMarcha':
@@ -570,6 +694,44 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
    * `isPending: true` para siempre, así que gatear por eso podía dejar el molde
    * pegado. `isLoading` sólo es true con un fetch realmente en vuelo.
    */
+  /**
+   * RESERVA — pegada a la meta a propósito: su acción principal manda la
+   * plata a la alcancía de arriba. Vive en una variable porque se monta en
+   * las DOS ramas del render: un hogar de ingreso variable sin cobros en el
+   * ciclo cae en la rama vacía, y ES justo el caso donde la reserva puede
+   * ser la única plata disponible — dejarla solo en la rama de contenido la
+   * volvía inalcanzable ahí.
+   */
+  const reservaSection =
+    monthlyReserveAmount > 0 ? (
+      <View onLayout={onSectionLayout('reserva')}>
+        <RiseView delay={controlRiseDelays.reserva}>
+          <SectionLabel
+            label={t('control:neo.reserva.section')}
+            spec={s}
+            style={controlSectionSpacing}
+          />
+          <ControlV2Anchor register={false} section="reserva" style={controlLabelCardSpacing}>
+            <ControlReserva
+              {...reservaContent}
+              animated={cardsAnimated}
+              busy={reserveMutation.isPending}
+              mode={mode}
+              onPressCiclo={() => {
+                if (reserveMutation.isPending) return
+                openReserveSheet('cycle')
+              }}
+              onPressMeta={() => {
+                if (reserveMutation.isPending) return
+                handleReserveMeta()
+              }}
+              variant={reservaVariant}
+            />
+          </ControlV2Anchor>
+        </RiseView>
+      </View>
+    ) : null
+
   return (
     <ControlAnchorsContext.Provider value={anchorsController}>
       <Screen
@@ -631,6 +793,7 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
                 />
               </View>
           )}
+          {reservaSection}
         </View>
       ) : (
         <>
@@ -788,6 +951,30 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
                 </RiseView>
               </View>
 
+              {/* INGRESOS — repuesta tras el swap de pantalla. Va después
+                  del reparto (que explica cómo se DIVIDE el ingreso) y
+                  antes de la meta: primero qué entró, después adónde va. */}
+              {showIngresos ? (
+                <View onLayout={onSectionLayout('ingresos')}>
+                  <RiseView delay={controlRiseDelays.ingresos}>
+                    <SectionLabel
+                      label={t('control:neo.ingresos.section')}
+                      spec={s}
+                      style={controlSectionSpacing}
+                    />
+                    <ControlV2Anchor register={false} section="ingresos" style={controlLabelCardSpacing}>
+                      <ControlIngresos
+                        {...ingresosContent}
+                        animated={cardsAnimated}
+                        mode={mode}
+                        onPressCta={handleIngresosCta}
+                        variant={ingresosVariant}
+                      />
+                    </ControlV2Anchor>
+                  </RiseView>
+                </View>
+              ) : null}
+
               <View onLayout={onSectionLayout('alcancia')}>
                 <RiseView delay={controlRiseDelays.meta}>
                   <SectionLabel
@@ -817,6 +1004,8 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
                   </TourTarget>
                 </RiseView>
               </View>
+
+              {reservaSection}
           </View>
         </RiseViewGate>
 
@@ -882,16 +1071,6 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
           />
         ) : null}
 
-        {!hasActiveGoal ? (
-          <CreateSavingsGoalWizardSheet
-            visible={wizardOpen}
-            familyId={familyId}
-            userId={userId}
-            onCreated={() => setWizardOpen(false)}
-            onClose={() => setWizardOpen(false)}
-          />
-        ) : null}
-
         {goal ? (
           <SavingsGoalQuickEditSheet
             visible={quickEditOpen}
@@ -907,6 +1086,72 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
         ) : null}
         </>
       )}
+
+      {/* Overlays de la RESERVA, FUERA del ternario de ramas a propósito.
+          El wizard va SIN gatear por `hasActiveGoal`: `useUpsertSavingsGoal`
+          marca la meta como activa de forma optimista ANTES de que salga el
+          request, así que un gate `!hasActiveGoal` desmonta este sheet en
+          pleno submit — y React Query descarta los callbacks de `mutate()`
+          de un observer que se quedó sin listeners. Con el gate, `onCreated`
+          NUNCA corría: la meta se creaba y la reserva quedaba varada, que es
+          justo el agujero que esto viene a cerrar. `visible` alcanza para
+          gobernarlo (mismo patrón que el bloque viejo, que tampoco gateaba).
+          El sheet de monto sale por la otra razón: la rama vacía también
+          muestra la card de reserva. */}
+        {/* Elegir CUÁNTO de la reserva usar. Mismo sheet y mismas claves de
+            copy que el bloque viejo: la validación tope es `<= reserva`
+            (el RPC además la exige del lado del servidor). */}
+        <NumericEditSheet
+          visible={reserveSheetMode !== null}
+          title={
+            reserveSheetMode === 'cycle'
+              ? t('control:reserve.sheetSumarTitle')
+              : t('control:reserve.sheetAportarTitle')
+          }
+          subtitle={t('control:reserve.sheetSubtitle', {
+            amount: formatMoney(monthlyReserveAmount),
+          })}
+          rawValue={reserveDraft}
+          onChangeRawValue={setReserveDraft}
+          formatDisplay={(raw) => formatPriceInputValue(raw, false)}
+          displayEyebrow={t('control:reserve.sheetEyebrow')}
+          displayPlaceholder={t('control:reserve.sheetSavePlaceholder')}
+          maxIntegerDigits={11}
+          maxDecimalDigits={2}
+          numpadCollapsedByDefault
+          saveLabel={
+            reserveSheetMode === 'cycle'
+              ? t('control:reserve.sheetSaveSumar')
+              : t('control:reserve.sheetSaveAportar')
+          }
+          saveDisabled={!reserveValid}
+          isSaving={reserveMutation.isPending}
+          onSave={handleReserveSubmit}
+          onClose={() => {
+            if (reserveMutation.isPending) return
+            setReserveSheetMode(null)
+          }}
+        />
+
+      <CreateSavingsGoalWizardSheet
+        visible={wizardOpen}
+        familyId={familyId}
+        userId={userId}
+        suggestedInitialAmount={pendingReserveAfterCreate ?? undefined}
+        onCreated={(newGoal) => {
+          setWizardOpen(false)
+          // Si el wizard se abrió desde la reserva, la aplicamos sobre la
+          // meta recién creada: sin esto el usuario tenía que volver a
+          // buscar la card y repetir la acción.
+          const pending = pendingReserveAfterCreate
+          setPendingReserveAfterCreate(null)
+          if (pending !== null && pending > 0) applyReserve(pending, 'meta', newGoal.id)
+        }}
+        onClose={() => {
+          setWizardOpen(false)
+          setPendingReserveAfterCreate(null)
+        }}
+      />
       </Screen>
     </ControlAnchorsContext.Provider>
   )

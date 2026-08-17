@@ -137,11 +137,11 @@
     "metaTitleWithGoal": "Add to {{goal}}",
     "metaTitle": "To a goal",
     "metaSubtitleActive": "Contribute to the active goal",
-    "metaSubtitleEmpty": "First create a goal on Home",
+    "metaSubtitleEmpty": "First create a goal in Control",
     "accumulateTitle": "Add to the current month",
     "accumulateSubtitle": "Stays as extra available this month",
     "reserveTitle": "Save as reserve",
-    "reserveSubtitle": "Money set aside, no specific purpose",
+    "reserveSubtitle": "Money set aside — you'll assign it later from Control",
     "confirm": "Confirm",
     "decideLater": "Decide later"
   },
