@@ -39,25 +39,22 @@ export const HOME_TOUR_STEPS = {
       return i18n.t('states:tour.home.hero')
     },
   },
-  // Two halves of the MonthSummaryCard, highlighted as separate
-  // steps so the user understands each side does its own thing.
-  variables: {
+  // UN SOLO paso para la card de resumen del ciclo. Antes eran dos
+  // (`variables` y `fixed`) montados como TourTarget ANIDADOS sobre la MISMA
+  // card: los dos median el mismo rect, el resaltado no se movia al pasar de
+  // uno a otro y se leia como que el tour se habia colgado. El rediseno
+  // fusiono las dos mitades en una card y el tour ahora lo acompana.
+  cycleSummary: {
     order: 3,
     get text() {
-      return i18n.t('states:tour.home.variables')
-    },
-  },
-  fixed: {
-    order: 4,
-    get text() {
-      return i18n.t('states:tour.home.fixed')
+      return i18n.t('states:tour.home.cycleSummary')
     },
   },
   // Conditional — only registers if MetaCard renders (savings goal
   // configured). When MetaEmptyCard renders instead, this step
   // doesn't register and the tour skips it naturally.
   meta: {
-    order: 5,
+    order: 4,
     get text() {
       return i18n.t('states:tour.home.meta')
     },
@@ -67,21 +64,21 @@ export const HOME_TOUR_STEPS = {
   // actually renders (i.e. there's garden data), otherwise it's
   // skipped naturally.
   streak: {
-    order: 6,
+    order: 5,
     get text() {
       return i18n.t('states:tour.home.streak')
     },
   },
   // Activity feed.
   activity: {
-    order: 7,
+    order: 6,
     get text() {
       return i18n.t('states:tour.home.activity')
     },
   },
   // Last: bottom chrome — FAB long-press hint.
   fab: {
-    order: 8,
+    order: 7,
     get text() {
       return i18n.t('states:tour.home.fab')
     },

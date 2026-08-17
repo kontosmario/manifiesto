@@ -188,17 +188,17 @@ export function HomeDashboard({
   )
   const variablesTourRef = useTourTargetRef(
     HOME_TOUR,
-    HOME_TOUR_STEPS.variables.order,
+    HOME_TOUR_STEPS.cycleSummary.order,
     {
-      text: HOME_TOUR_STEPS.variables.text,
+      text: HOME_TOUR_STEPS.cycleSummary.text,
       highlight: { borderRadius: 20, padding: 4 },
     },
   )
   const fixedTourRef = useTourTargetRef(
     HOME_TOUR,
-    HOME_TOUR_STEPS.fixed.order,
+    HOME_TOUR_STEPS.cycleSummary.order,
     {
-      text: HOME_TOUR_STEPS.fixed.text,
+      text: HOME_TOUR_STEPS.cycleSummary.text,
       highlight: { borderRadius: 20, padding: 4 },
     },
   )

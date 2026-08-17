@@ -28,38 +28,32 @@ export const CONTROL_TOUR_STEPS = {
       return i18n.t('states:tour.control.hoy')
     },
   },
-  alcanza: {
-    order: 1,
-    get text() {
-      return i18n.t('states:tour.control.alcanza')
-    },
-  },
   vsMes: {
-    order: 2,
+    order: 1,
     get text() {
       return i18n.t('states:tour.control.vsMes')
     },
   },
   semana: {
-    order: 3,
+    order: 2,
     get text() {
       return i18n.t('states:tour.control.semana')
     },
   },
   patron: {
-    order: 4,
+    order: 3,
     get text() {
       return i18n.t('states:tour.control.patron')
     },
   },
   cobertura: {
-    order: 5,
+    order: 4,
     get text() {
       return i18n.t('states:tour.control.cobertura')
     },
   },
   alcancia: {
-    order: 6,
+    order: 5,
     get text() {
       return i18n.t('states:tour.control.alcancia')
     },

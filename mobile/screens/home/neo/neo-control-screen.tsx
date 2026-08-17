@@ -659,18 +659,15 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
 
               <View onLayout={onSectionLayout('hoy')}>
                 <RiseView delay={controlRiseDelays.hero}>
+                  {/* UN SOLO paso sobre el hero. Antes 'hoy' y 'alcanza' eran
+                      dos TourTarget ANIDADOS sobre el MISMO ControlHero: el
+                      resaltado no se movia entre pasos y parecia un cuelgue.
+                      El hero ya fusiona las dos ideas, y el copy tambien. */}
                   <TourTarget
                     tour={CONTROL_TOUR}
                     order={CONTROL_TOUR_STEPS.hoy.order}
                     text={CONTROL_TOUR_STEPS.hoy.text}
                   >
-                    <TourTarget
-                      tour={CONTROL_TOUR}
-                      order={CONTROL_TOUR_STEPS.alcanza.order}
-                      text={CONTROL_TOUR_STEPS.alcanza.text}
-                    >
-                      {/* Un solo anchor: `registerOffset` aliasa 'alcanza'
-                          al offset de 'hoy' (hero fusionado). */}
                       <ControlV2Anchor register={false} section="hoy" style={controlHeaderHeroSpacing}>
                         <ControlHero
                           {...heroContent}
@@ -681,7 +678,6 @@ export function NeoControlScreen({ userId, familyId, preview = false }: NeoContr
                           variant={heroVariant}
                         />
                       </ControlV2Anchor>
-                    </TourTarget>
                   </TourTarget>
                 </RiseView>
               </View>

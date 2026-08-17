@@ -563,11 +563,10 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                 acceso rápido en Home (entry point al chat completo).
                 Mantenerlo aquí duplicaba la surface. */}
 
-            <TourTarget
-              tour={CONTROL_TOUR}
-              order={CONTROL_TOUR_STEPS.alcanza.order}
-              text={CONTROL_TOUR_STEPS.alcanza.text}
-            >
+            {/* Sin TourTarget: el paso 'alcanza' se fusiono con 'hoy' (en la
+                pantalla neo los dos envolvian el MISMO hero y el resaltado no
+                se movia). Esta pantalla es la pre-rediseno y no esta montada. */}
+            <View>
               <ControlV2Anchor section="alcanza">
                 <ControlV2AlcanzaCard
                   alcanzaElMes={view.alcanzaElMes}
@@ -587,7 +586,7 @@ export function ControlV2Screen({ familyId, userId }: ControlV2ScreenProps) {
                   incomeMode={data.incomeMode}
                 />
               </ControlV2Anchor>
-            </TourTarget>
+            </View>
 
             {/* Ingresos extra del ciclo — solo cuando existen. La card
                 vive pegada a "alcanza" porque explica POR QUÉ el cupo

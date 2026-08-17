@@ -1751,26 +1751,23 @@ function NeoHomeDashboard({
           son tappables a su detalle (Gastos / Fijos). */}
       <RiseView delay={140}>
       <HomeSectionHeader mode={mode} label={t('home:sections.cycleSummary')} />
+      {/* UN SOLO paso para las dos mitades. Antes eran dos TourTarget ANIDADOS
+          sobre la MISMA card: los dos median el mismo rect, asi que tocar
+          "Siguiente" no movia el resaltado ni un pixel y el tour se leia como
+          colgado. El copy nuevo cuenta las dos mitades. */}
       <NeoTourStep
         preview={preview}
-        order={HOME_TOUR_STEPS.variables.order}
-        text={HOME_TOUR_STEPS.variables.text}
+        order={HOME_TOUR_STEPS.cycleSummary.order}
+        text={HOME_TOUR_STEPS.cycleSummary.text}
         highlight={{ borderRadius: 24, padding: 4 }}
       >
-        <NeoTourStep
-          preview={preview}
-          order={HOME_TOUR_STEPS.fixed.order}
-          text={HOME_TOUR_STEPS.fixed.text}
-          highlight={{ borderRadius: 24, padding: 4 }}
-        >
-          <HomeCycleSummary
-            mode={mode}
-            variables={variablesVM}
-            fijos={fijosVM}
-            onPressVariables={handleViewGastos}
-            onPressFijos={handleViewFijos}
-          />
-        </NeoTourStep>
+        <HomeCycleSummary
+          mode={mode}
+          variables={variablesVM}
+          fijos={fijosVM}
+          onPressVariables={handleViewGastos}
+          onPressFijos={handleViewFijos}
+        />
       </NeoTourStep>
       </RiseView>
 
