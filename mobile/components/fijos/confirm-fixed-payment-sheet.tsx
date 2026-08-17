@@ -1,13 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Text, TextInput } from '@/components/ui/app-text'
+import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MaterialIcons } from '@expo/vector-icons'
 import { ModalCard } from '@/components/ui/modal-card'
 import { NeoButton } from '@/components/ui/neo-button'
 import { NeoSurface } from '@/components/ui/neo-surface'
+import {
+  ONB_NUMPAD_SHEET_HEIGHT,
+  OnbNumpad,
+} from '@/components/redesign/onboarding/onb-numpad'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
+import { publishNumpadClose, publishNumpadOpen } from '@/lib/numpad-visibility'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { withAlpha } from '@/theme/color-utils'
 import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
@@ -99,6 +105,24 @@ export function ConfirmFixedPaymentSheet({
   const [amountText, setAmountText] = useState('')
   const samePress = usePressScale({ pressedScale: 0.97 })
   const changedPress = usePressScale({ pressedScale: 0.97 })
+  const wellPress = usePressScale({ pressedScale: 0.985 })
+
+  // ── Numpad de la app (no el del SO) ────────────────────────────────
+  // El monto de un fijo se carga con el teclado del rediseño en TODAS las
+  // demás superficies (alta de fijo, de gasto y de ingreso); acá había
+  // quedado un TextInput nativo de la tanda anterior. El numpad se monta en
+  // su propio <Modal> anclado abajo, así que taparía la hoja: publicando su
+  // alto por `numpad-visibility`, el ModalCard reserva el espacio y el pozo
+  // queda visible. Mismo patrón que `useSheetNumpad` de los sheets de Ajustes.
+  const [numpadOpen, setNumpadOpen] = useState(false)
+  const insets = useSafeAreaInsets()
+  useEffect(() => {
+    if (!numpadOpen) return
+    publishNumpadOpen(ONB_NUMPAD_SHEET_HEIGHT + insets.bottom)
+    return () => {
+      publishNumpadClose()
+    }
+  }, [numpadOpen, insets.bottom])
 
   // Tintas de estado ya resueltas por tema. `alertInk` sube (aumento, mora),
   // `positiveInk` baja (el fijo salió más barato) y es también la tinta del
@@ -122,12 +146,22 @@ export function ConfirmFixedPaymentSheet({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate on open
     setMode('same')
     setAmountText(String(Math.max(0, Math.round(previousAmount))))
+    // El sheet vive montado entre aperturas: si quedó con el numpad abierto,
+    // reabrirlo lo mostraría sobre un monto que ya se rehidrató.
+    setNumpadOpen(false)
   }, [visible, previousAmount])
 
   const parsedAmount = useMemo(() => {
     const digits = amountText.replace(/[^\d]/g, '')
     return digits === '' ? 0 : parseInt(digits, 10)
   }, [amountText])
+
+  // El numpad trabaja con un ENTERO de pesos; el 0 vuelve al string vacío
+  // para que el placeholder propio siga apareciendo (si guardáramos "0", el
+  // pozo mostraría un cero en tinta plena, indistinguible de un monto).
+  const handleNumpadChange = useCallback((next: number) => {
+    setAmountText(next === 0 ? '' : String(next))
+  }, [])
 
   const delta = parsedAmount - Math.round(previousAmount)
   const deltaPct =
@@ -175,6 +209,31 @@ export function ConfirmFixedPaymentSheet({
 
   return (
     <ModalCard
+      // El CTA va ANCLADO, fuera del scroll: con el numpad abierto la card
+      // reserva ~450pt y el cuerpo se comprime — en el body, "Confirmar pago"
+      // quedaba atrás del scroll justo cuando el usuario termina de tipear.
+      footer={
+        <NeoButton
+          block
+          busy={isProcessing}
+          disabled={mode === 'changed' ? !isChangedValid : !isSameValid}
+          label={t('fijos:confirmPayment.confirm')}
+          onPress={() => {
+            // El numpad se cierra ANTES de confirmar: si su <Modal> sigue
+            // presentado cuando la pantalla huésped cierra el sheet, se apilan
+            // dos dismiss y en iOS la cadena queda colgada.
+            setNumpadOpen(false)
+            if (mode === 'changed') {
+              if (!isChangedValid) return
+              onConfirmChanged(parsedAmount)
+            } else {
+              if (!isSameValid) return
+              onConfirmSame()
+            }
+          }}
+          variant="primary"
+        />
+      }
       onClose={onClose}
       skin="neo"
       subtitle={t('fijos:confirmPayment.subtitle')}
@@ -222,7 +281,12 @@ export function ConfirmFixedPaymentSheet({
             accessibilityLabel={t('fijos:confirmPayment.sameAmount')}
             accessibilityRole="button"
             accessibilityState={{ selected: mode === 'same' }}
-            onPress={() => setMode('same')}
+            onPress={() => {
+              setMode('same')
+              // Volver a "mismo monto" con el numpad puesto dejaba la hoja del
+              // teclado tapando media pantalla sin campo que editar.
+              setNumpadOpen(false)
+            }}
             onPressIn={samePress.onPressIn}
             onPressOut={samePress.onPressOut}
             style={styles.modeWrap}
@@ -295,44 +359,54 @@ export function ConfirmFixedPaymentSheet({
             <Text style={[styles.fieldEyebrow, { color: neo.textMuted }]}>
               {t('fijos:confirmPayment.amountPaid')}
             </Text>
-            <NeoSurface
-              backgroundColor={neo.well}
-              radius={neoRadii.input}
-              style={[
-                styles.amountWell,
-                SUPPORTS_INSET_SHADOW
-                  ? null
-                  : { borderWidth: 1, borderColor: withAlpha(neo.textTertiary, 0.45) },
-              ]}
-              variant="insetLg"
+            {/* El pozo es TAP-TO-EDIT, no un input nativo: abre el numpad del
+                rediseño, igual que el monto en el alta de fijo/gasto/ingreso.
+                Antes montaba un TextInput con `keyboardType="number-pad"`, que
+                levantaba el teclado del SO — la única superficie de dinero del
+                rediseño que se había quedado sin migrar. */}
+            <Pressable
+              accessibilityHint={t('fijos:confirmPayment.amountPaidHint')}
+              accessibilityLabel={t('fijos:confirmPayment.amountPaidA11y')}
+              accessibilityRole="button"
+              onPress={() => setNumpadOpen(true)}
+              onPressIn={wellPress.onPressIn}
+              onPressOut={wellPress.onPressOut}
             >
-              <TextInput
-                accessibilityLabel={t('fijos:confirmPayment.amountPaidA11y')}
-                allowFontScaling
-                inputMode="numeric"
-                keyboardType="number-pad"
-                maxFontSizeMultiplier={1.2}
-                onChangeText={setAmountText}
-                style={[styles.amountInput, { color: neo.text }]}
-                value={amountText}
-              />
-              {/* Placeholder PROPIO, no la prop nativa: en iOS el
-                  `placeholderRect` de UITextField no coincide con el
-                  `textRect` y el "0" se dibuja pegado abajo (el mismo motivo
-                  por el que `TextField` monta su propio overlay). Comparte los
-                  tokens tipográficos del input, así que cae en la misma línea. */}
-              {amountText === '' ? (
-                <Text
-                  pointerEvents="none"
-                  // `textMuted`, no `textTertiary`: el terciario sobre el pozo
-                  // claro da 2.11:1 — ni el 3:1 de texto grande. Mismo
-                  // criterio que el placeholder de `NumericEditSheet`.
-                  style={[styles.amountPlaceholder, { color: neo.textMuted }]}
+              <Animated.View style={wellPress.animatedStyle}>
+                <NeoSurface
+                  backgroundColor={neo.well}
+                  radius={neoRadii.input}
+                  style={[
+                    styles.amountWell,
+                    SUPPORTS_INSET_SHADOW
+                      ? null
+                      : { borderWidth: 1, borderColor: withAlpha(neo.textTertiary, 0.45) },
+                    // Mientras se edita, el pozo se anilla como el resto de los
+                    // campos activos del rediseño: sin cursor nativo, el anillo
+                    // es lo único que dice "esto es lo que estás tipeando".
+                    numpadOpen ? { boxShadow: neo.shadows.ringSelected } : null,
+                  ]}
+                  variant="insetLg"
                 >
-                  0
-                </Text>
-              ) : null}
-            </NeoSurface>
+                  <Text style={[styles.amountInput, { color: neo.text }]}>
+                    {amountText === '' ? ' ' : amountText}
+                  </Text>
+                  {/* Placeholder PROPIO (mismos tokens tipográficos) — se
+                      conserva del input anterior para que el pozo vacío no
+                      quede mudo. */}
+                  {amountText === '' ? (
+                    <Text
+                      pointerEvents="none"
+                      // `textMuted`, no `textTertiary`: el terciario sobre el
+                      // pozo claro da 2.11:1 — ni el 3:1 de texto grande.
+                      style={[styles.amountPlaceholder, { color: neo.textMuted }]}
+                    >
+                      0
+                    </Text>
+                  ) : null}
+                </NeoSurface>
+              </Animated.View>
+            </Pressable>
             {parsedAmount > 0 && delta !== 0 ? (
               <NeoSurface
                 backgroundColor={withAlpha(
@@ -363,23 +437,16 @@ export function ConfirmFixedPaymentSheet({
           </Animated.View>
         ) : null}
 
-        <NeoButton
-          block
-          busy={isProcessing}
-          disabled={mode === 'changed' ? !isChangedValid : !isSameValid}
-          label={t('fijos:confirmPayment.confirm')}
-          onPress={() => {
-            if (mode === 'changed') {
-              if (!isChangedValid) return
-              onConfirmChanged(parsedAmount)
-            } else {
-              if (!isSameValid) return
-              onConfirmSame()
-            }
-          }}
-          variant="primary"
-        />
       </View>
+      {/* Último hermano y fuera del cuerpo: se monta en su propio <Modal>
+          anclado al borde inferior, por encima de la hoja. */}
+      <OnbNumpad
+        mode={theme.mode}
+        onChange={handleNumpadChange}
+        onDone={() => setNumpadOpen(false)}
+        value={parsedAmount}
+        visible={numpadOpen}
+      />
     </ModalCard>
   )
 }

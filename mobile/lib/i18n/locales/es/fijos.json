@@ -281,6 +281,7 @@
     "changed": "Cambió",
     "amountPaid": "Monto pagado",
     "amountPaidA11y": "Monto realmente pagado",
+    "amountPaidHint": "Abre el teclado para editar el monto",
     "confirm": "Confirmar pago"
   },
   "feed": {

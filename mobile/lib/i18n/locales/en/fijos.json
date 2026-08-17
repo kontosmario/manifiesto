@@ -281,6 +281,7 @@
     "changed": "Changed",
     "amountPaid": "Amount paid",
     "amountPaidA11y": "Amount actually paid",
+    "amountPaidHint": "Opens the keypad to edit the amount",
     "confirm": "Confirm payment"
   },
   "feed": {
