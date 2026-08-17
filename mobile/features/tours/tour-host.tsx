@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Animated, {
   cancelAnimation,
   Easing,
@@ -19,6 +21,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import {
+  resolveTooltipPlacement,
+  TOOLTIP_HEIGHT_SEED,
+} from '@/features/tours/tour-tooltip-placement'
 import SvgRaw, { Path } from 'react-native-svg'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { neoTokens } from '@/theme/neo-tokens'
@@ -100,6 +106,11 @@ export function TourHost() {
     stop,
   } = useTour()
   const { width: screenW, height: screenH } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  // Alto REAL del tooltip. Arranca en la semilla y el primer onLayout lo
+  // corrige: el copy del rediseño desbordó el estimado fijo que había antes.
+  const [tooltipH, setTooltipH] = useState(TOOLTIP_HEIGHT_SEED)
+  const [tooltipMaxH, setTooltipMaxH] = useState<number | null>(null)
 
   const visible = activeTour !== null
   const svRectRef = useRef<MeasuredRect | null>(null)
@@ -348,29 +359,27 @@ export function TourHost() {
       // bottom of the screen (activity, FAB) `roomBelow` looked
       // positive on paper while the tooltip was actually being
       // pushed behind the tab bar — invisible to the user.
+      // La geometría vive en un módulo PURO y testeado
+      // (tour-tooltip-placement.ts). Antes se decidía el lado por "qué hueco es
+      // más grande" y se anclaba con un alto FIJO de 220pt: con los copys del
+      // rediseño —y sobre todo con la escala de texto en «Máxima»— el tooltip
+      // terminaba encimado sobre el recuadro que explicaba, o con sus botones
+      // detrás de la tab bar. Ahora se decide con el alto REAL medido y contra
+      // los insets REALES del device.
       const TOOLTIP_GAP = 16
-      const TOOLTIP_HEIGHT_ESTIMATE = 220
-      const STATUS_BAR_RESERVE = 50
-      const TAB_BAR_RESERVE = 110
-      const usableTop = STATUS_BAR_RESERVE
-      const usableBottom = screenH - TAB_BAR_RESERVE
-      const roomAbove = targetY - usableTop
-      const roomBelow = usableBottom - (targetY + targetH)
-      // Prefer the side with more room. Ties go to 'below' (the
-      // natural reading flow) but on Home's lower-half steps
-      // roomAbove always wins decisively.
-      const placement = roomAbove > roomBelow ? 'above' : 'below'
-      tooltipPlacement.value = placement
-      let tooltipTop: number
-      if (placement === 'above') {
-        tooltipTop = targetY - TOOLTIP_GAP - TOOLTIP_HEIGHT_ESTIMATE
-        // Clamp so the tooltip can't slip behind the status bar.
-        tooltipTop = Math.max(usableTop, tooltipTop)
-      } else {
-        tooltipTop = targetY + targetH + TOOLTIP_GAP
-        // Clamp so the tooltip can't slip behind the tab bar.
-        tooltipTop = Math.min(usableBottom - TOOLTIP_HEIGHT_ESTIMATE, tooltipTop)
-      }
+      const TAB_BAR_HEIGHT = 83
+      const resolved = resolveTooltipPlacement({
+        targetY,
+        targetH,
+        screenH,
+        tooltipH,
+        usableTop: insets.top + 8,
+        usableBottom: screenH - Math.max(insets.bottom, 8) - TAB_BAR_HEIGHT,
+        gap: TOOLTIP_GAP,
+      })
+      tooltipPlacement.value = resolved.placement
+      setTooltipMaxH(resolved.maxHeight)
+      const tooltipTop = resolved.top
       tooltipY.value =
         isFirstMeasure || reduced
           ? tooltipTop
@@ -389,6 +398,9 @@ export function TourHost() {
     measureToken,
     reduced,
     screenH,
+    tooltipH,
+    insets.top,
+    insets.bottom,
     defaults,
     cutX,
     cutY,
@@ -571,8 +583,28 @@ export function TourHost() {
         pointerEvents="box-none"
         style={[styles.tooltipWrap, tooltipAnimatedStyle]}
       >
-        <View style={styles.tooltipInner} pointerEvents="auto">
-          <TourTooltip />
+        <View
+          style={[
+            styles.tooltipInner,
+            // Cuando el copy no entra en ninguno de los dos lados, el tooltip
+            // se recorta al hueco y scrollea. Sin esto, con la escala de texto
+            // grande el usuario no llegaba nunca a "Siguiente".
+            tooltipMaxH != null ? { maxHeight: tooltipMaxH } : null,
+          ]}
+          pointerEvents="auto"
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height
+            // Solo se re-mide cuando el tooltip crece por encima del tope
+            // aplicado; si no, el maxHeight y el onLayout se realimentan.
+            if (tooltipMaxH == null && Math.abs(h - tooltipH) > 1) setTooltipH(h)
+          }}
+        >
+          <ScrollView
+            bounces={false}
+            showsVerticalScrollIndicator={tooltipMaxH != null}
+          >
+            <TourTooltip />
+          </ScrollView>
         </View>
       </Animated.View>
     </Modal>
