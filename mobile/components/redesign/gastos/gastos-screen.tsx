@@ -50,7 +50,8 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { decorativeDurations, motionDurations, motionEasings } from '@/lib/motion/tokens'
 import { startPulseLoop } from '@/lib/motion/pulse-loop'
-import { nunitoFamily } from '@/theme/typography'
+import { glowSafeTextShadow } from '@/theme/text-glow'
+import { nunitoFamily, safeLineHeight } from '@/theme/typography'
 
 // Press-feedback (spring `motionSprings.press`, reduced-motion-aware) sobre
 // los Pressables del kit: mismo patrón que home/auth (usePressScale +
@@ -1415,12 +1416,12 @@ export function GastosHero({
               <Text
                 style={[
                   styles.heroTotal,
-                  {
-                    color: s.amountInk,
-                    textShadowColor: s.amountShadowColor,
-                    textShadowOffset: s.amountShadowOffset,
-                    textShadowRadius: s.amountShadowRadius,
-                  },
+                  { color: s.amountInk },
+                  glowSafeTextShadow({
+                    color: s.amountShadowColor,
+                    offset: s.amountShadowOffset,
+                    radius: s.amountShadowRadius,
+                  }),
                 ]}
               >
                 {total}
@@ -1536,12 +1537,12 @@ export function GastosHero({
               reduceMotion={reduceMotion}
               style={[
                 styles.heroTotal,
-                {
-                  color: s.amountInk,
-                  textShadowColor: s.amountShadowColor,
-                  textShadowOffset: s.amountShadowOffset,
-                  textShadowRadius: s.amountShadowRadius,
-                },
+                { color: s.amountInk },
+                glowSafeTextShadow({
+                  color: s.amountShadowColor,
+                  offset: s.amountShadowOffset,
+                  radius: s.amountShadowRadius,
+                }),
               ]}
             />
             {subline ? (
@@ -3373,7 +3374,16 @@ const styles = StyleSheet.create({
   heroWell: { marginTop: 13, borderRadius: GASTOS_RADII.well, paddingTop: 16, paddingHorizontal: 18, paddingBottom: 14 },
   // lineHeight con headroom (~1.16×) sobre el fontSize: en Nunito 900 un
   // lineHeight == fontSize clippea el ascender en RN.
-  heroTotal: { fontSize: 40, fontWeight: '900', fontFamily: nunitoFamily('900'), letterSpacing: -0.8, lineHeight: 46 },
+  // `lineHeight` por el piso seguro del charset numérico (1.2): a 46 (=1.15)
+  // la caja del párrafo queda por debajo del `$` (umbral 1.182) y RN le corta
+  // el asta superior — el mismo recorte que se comía el halo. 48 en vez de 46.
+  heroTotal: {
+    fontSize: 40,
+    fontWeight: '900',
+    fontFamily: nunitoFamily('900'),
+    letterSpacing: -0.8,
+    lineHeight: safeLineHeight(40, 1.15, { numeric: true }),
+  },
   // hero vacío: sub crema dentro del pozo + fila Brot(40)↔CTA crema.
   heroEmptySub: { fontSize: 11.5, fontWeight: '700', fontFamily: nunitoFamily('700'), marginTop: 6, lineHeight: 16 },
   // ─── v2 · pozo con Brot + sublínea (H-2/H-3/H-4) ───

@@ -108,6 +108,7 @@ import { usePressScale } from '@/hooks/use-press-scale'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { cssGradient, neoParticlePresets, neoTokens } from '@/theme/neo-tokens'
 import type { ResolvedThemeMode } from '@/theme/palette'
+import { glowSafeTextShadow } from '@/theme/text-glow'
 import { nunitoFamily, safeLineHeight } from '@/theme/typography'
 
 // Press-feedback del kit: mismo patrón que gastos/home (usePressScale +
@@ -739,12 +740,14 @@ export function CierreSemanaView({
             style={[
               onGreen ? styles.titlePerfecta : styles.title,
               onGreen
-                ? {
-                    color: s.cierreTitleOnGreenInk,
-                    textShadowColor: s.cierreTitleShadowColor,
-                    textShadowOffset: s.cierreTitleShadowOffset,
-                    textShadowRadius: s.cierreTitleShadowRadius,
-                  }
+                ? [
+                    { color: s.cierreTitleOnGreenInk },
+                    glowSafeTextShadow({
+                      color: s.cierreTitleShadowColor,
+                      offset: s.cierreTitleShadowOffset,
+                      radius: s.cierreTitleShadowRadius,
+                    }),
+                  ]
                 : { color: s.cierreTitleInk },
             ]}
           >
