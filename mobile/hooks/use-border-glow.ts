@@ -3,12 +3,12 @@ import {
   cancelAnimation,
   interpolateColor,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 
 // Glow lime (heroAccent) tenue ↔ brillante. Mode-invariante: pensado para
 // superficies forest (heroGradient), idéntico en light y dark.

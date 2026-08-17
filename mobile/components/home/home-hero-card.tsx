@@ -5,12 +5,12 @@ import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useTranslation } from 'react-i18next'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'

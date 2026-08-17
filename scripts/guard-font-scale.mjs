@@ -28,9 +28,9 @@
  *      TODO el sistema se cae en silencio y no hay test que lo cace: vitest
  *      corre en `env node`, sin renderer.
  *   3. Imports crudos de `Text`/`TextInput` de `'react-native'`. Redundante
- *      con ESLint app-wide, PERO el bloque transitorio de `eslint.config.js`
- *      los tiene en `warn` para una lista cerrada de archivos: para esos, el
- *      guard es la única señal dura de que no crezcan.
+ *      con ESLint app-wide (la barrida cerró y el bloque transitorio que la
+ *      acompañaba se borró); se mantiene como defensa en profundidad por si
+ *      la regla de ESLint se relaja en algún scope.
  *      Los `import type` siguen permitidos (tipar refs es legítimo).
  *
  * Cómo se parsea: con el AST de `typescript`, no con un tokenizer propio.
@@ -75,91 +75,6 @@ const scanRoots = ['mobile', 'app'].map((d) => join(root, d))
 const WRAPPER_FILE = join(root, 'mobile/components/ui/app-text.tsx')
 const WRAPPER_REL = 'mobile/components/ui/app-text.tsx'
 
-// ---------------------------------------------------------------------------
-// TRANSITORIO — cola de la barrida de app-text que todavía no aterrizó.
-//
-// Mismo criterio y mismos paths que el bloque transitorio de
-// `eslint.config.js` (el que baja `no-restricted-imports` a `warn`): la
-// barrida migró todo el árbol, pero estos archivos caían encima de un cuerpo
-// de trabajo ajeno en curso (Wrapped, ciclo extendido, fijos) —unos
-// modificados, otros directamente borrados por ese trabajo—, así que su swap
-// no se podía commitear sin llevárselo puesto. Viaja dentro de ese commit.
-//
-// Mientras tanto, en un checkout limpio del branch estos archivos siguen
-// como estaban, y un guard que deja CI en rojo por trabajo en vuelo se
-// termina desactivando. Se reportan como transitorios (no bloquean); todo el
-// RESTO del árbol y cualquier archivo nuevo bloquean.
-//
-// El número es un TOPE, no un permiso: es la cuenta exacta de hallazgos de
-// ese archivo en un checkout limpio de HEAD (mismo patrón que
-// `scripts/motion-tokens-baseline.json`). El hallazgo número tope+1 BLOQUEA,
-// así que un `Animated.Text` nuevo en una pantalla de la lista falla igual
-// que en cualquier otra. Los topes solo bajan.
-//
-// Cómo se cierra: cuando el trabajo ajeno aterrice, borrar las dos listas de
-// acá abajo y el bloque gemelo de `eslint.config.js`, y verificar que
-// `npm run guard:font-scale` y `npm run lint` queden limpios.
-// No agregar archivos nuevos: son listas CERRADAS, no allowlists.
-// Ver docs/superpowers/plans/2026-08-14-font-scale-app.md.
-// ---------------------------------------------------------------------------
-
-/**
- * Imports crudos de Text/TextInput — espejo EXACTO (mismo criterio, mismos
- * paths) del bloque transitorio de eslint.config.js. Si una lista cambia,
- * cambia la otra: son las mismas 26 entradas. El valor es el tope de
- * hallazgos por archivo en un checkout limpio de HEAD.
- */
-const TRANSITIONAL_RAW_IMPORTS = new Map([
-  ['mobile/components/billing/free-period-nudge.tsx', 1],
-  ['mobile/components/home/animated/count-up-text.tsx', 1],
-  ['mobile/components/home/home-dashboard.tsx', 1],
-  ['mobile/components/redesign/control/control-primitives.tsx', 1],
-  ['mobile/components/redesign/control/parts/control-header.tsx', 1],
-  ['mobile/components/redesign/fijos/fijos-screen.tsx', 1],
-  ['mobile/components/redesign/gastos/gastos-screen.tsx', 1],
-  ['mobile/components/redesign/home/home-screen.tsx', 1],
-  ['mobile/components/redesign/jardin/cierre-screen.tsx', 1],
-  ['mobile/components/redesign/jardin/jardin-screen.tsx', 1],
-  ['mobile/components/redesign/jardin/logros-screen.tsx', 1],
-  ['mobile/components/ui/swipe-row.tsx', 1],
-  ['mobile/components/wrapped/cycle-wrapped-modal.tsx', 1],
-  // Está en las DOS listas a propósito: en HEAD importa `Text` crudo (línea 2,
-  // eso lo ve ESLint) y además monta un `Animated.Text` (eso no lo ve nadie
-  // más que este guard).
-  ['mobile/components/wrapped/scenes/closing-scene.tsx', 1],
-  ['mobile/components/wrapped/scenes/cover-scene.tsx', 1],
-  ['mobile/components/wrapped/scenes/cycle-wrapped-cta.tsx', 1],
-  ['mobile/components/wrapped/scenes/leftover-option-card.tsx', 1],
-  ['mobile/components/wrapped/scenes/top-category-scene.tsx', 1],
-  ['mobile/components/wrapped/scenes/top-expense-scene.tsx', 1],
-  ['mobile/components/wrapped/scenes/verdict-scene.tsx', 1],
-  ['mobile/screens/dev/cycle-wrapped-preview-screen.tsx', 1],
-  ['mobile/screens/dev/redesign/redesign-home-preview-screen.tsx', 1],
-  ['mobile/screens/home/neo/neo-fijos-screen.tsx', 1],
-  ['mobile/screens/home/neo/neo-gastos-screen.tsx', 1],
-  // Los 26 archivos traen un hallazgo cada uno salvo éste, que importa `Text`
-  // y `TextInput` crudos (27 imports en total, los mismos que cuenta §6).
-  ['mobile/screens/settings/delete-account-screen.tsx', 2],
-  ['mobile/screens/settings/editions-screen.tsx', 1],
-])
-
-/**
- * `Animated.Text` crudo — los tres sitios que en un checkout limpio del
- * branch todavía no pasaron al wrapper (§5 de docs/sistemas/font-scale.md).
- * ESLint no los ve, así que no tienen bloque gemelo en eslint.config.js.
- */
-const TRANSITIONAL_ANIMATED_TEXT = new Map([
-  ['mobile/components/home/animated/count-up-text.tsx', 1],
-  ['mobile/components/redesign/gastos/gastos-screen.tsx', 1],
-  ['mobile/components/wrapped/scenes/closing-scene.tsx', 1],
-])
-
-/** Qué lista transitoria gatea cada tipo de hallazgo (el resto siempre bloquea). */
-function baselineFor(kind) {
-  if (kind === 'import-crudo') return TRANSITIONAL_RAW_IMPORTS
-  if (kind === 'animated-text-crudo') return TRANSITIONAL_ANIMATED_TEXT
-  return null
-}
 
 const ALLOW_COMMENT = /\/\/\s*@font-scale-allow/
 const ESLINT_DISABLE_IMPORTS = /eslint-disable(-next-line)?[^\n]*no-restricted-imports/
@@ -425,63 +340,14 @@ checkWrapperContract()
 // Salida
 // ---------------------------------------------------------------------------
 
-// Cuenta por (tipo, archivo) para contrastar contra el tope de la lista.
-const currentCounts = new Map()
-for (const v of violations) {
-  const key = `${v.kind} ${v.file}`
-  currentCounts.set(key, (currentCounts.get(key) ?? 0) + 1)
-}
-
-const blocking = []
-const transitional = []
-const regressed = []
-for (const v of violations) {
-  const baseline = baselineFor(v.kind)
-  const cap = baseline?.get(v.file)
-  if (cap === undefined) {
-    blocking.push(v)
-    continue
-  }
-  const current = currentCounts.get(`${v.kind} ${v.file}`) ?? 0
-  if (current > cap) {
-    if (!regressed.some((r) => r.file === v.file && r.kind === v.kind)) {
-      regressed.push({ file: v.file, kind: v.kind, cap, current })
-    }
-    blocking.push(v)
-    continue
-  }
-  transitional.push(v)
-}
-
-const listedFiles = new Set([...TRANSITIONAL_RAW_IMPORTS.keys(), ...TRANSITIONAL_ANIMATED_TEXT.keys()])
+const blocking = violations
 
 if (blocking.length === 0) {
-  if (transitional.length === 0) {
-    console.log('font-scale guard: 0 violations.')
-    if (listedFiles.size > 0) {
-      console.log(
-        `font-scale guard: las listas transitorias (${listedFiles.size} archivos) ya no cazan nada — si el trabajo ajeno aterrizó, borrarlas junto con el bloque gemelo de eslint.config.js.`,
-      )
-    }
-  } else {
-    console.log(
-      `font-scale guard: 0 new violations. ${transitional.length} transitional violation(s) dentro del tope de la lista cerrada de la barrida de app-text (no bloquean).`,
-    )
-  }
+  console.log('font-scale guard: 0 violations.')
   process.exit(0)
 }
 
-console.error(
-  `font-scale guard: ${blocking.length} blocking violation(s) (${transitional.length} transitorias dentro de tope).\n`,
-)
-for (const r of regressed) {
-  console.error(
-    `  ${r.file}  [${r.kind}]  el tope de la lista transitoria es ${r.cap} y hay ${r.current}.`,
-  )
-  console.error(
-    `    Los topes son de la barrida vieja y solo BAJAN: migrá el hallazgo nuevo al wrapper. No subas el número.\n`,
-  )
-}
+console.error(`font-scale guard: ${blocking.length} blocking violation(s).\n`)
 for (const v of blocking) {
   console.error(`  ${v.file}:${v.line}  [${v.kind}]  ${v.detail}`)
   console.error(`    ${v.hint}`)

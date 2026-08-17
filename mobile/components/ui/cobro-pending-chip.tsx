@@ -4,12 +4,12 @@ import { Text } from '@/components/ui/app-text'
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useRouter } from 'expo-router'
 import { useTranslation } from 'react-i18next'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'

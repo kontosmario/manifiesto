@@ -7,10 +7,10 @@ import {
 import Animated, {
   runOnJS,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion'
 
 interface CollapsingRevealProps {

@@ -5,9 +5,9 @@ import Animated, {
   withRepeat,
   withTiming,
   interpolate,
-  useReducedMotion,
   Easing,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { NeoSkeleton, type SkeletonSkin } from '@/components/ui/neo-skeleton'
 import { useLoopAnimation } from '@/hooks/use-loop-animation'
 import { decorativeDurations } from '@/lib/motion'

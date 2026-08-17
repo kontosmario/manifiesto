@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { BreatheDot } from '@/components/home/animated/breathe-dot'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { motionDurations, motionEasings } from '@/lib/motion'

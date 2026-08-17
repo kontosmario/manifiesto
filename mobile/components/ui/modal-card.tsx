@@ -13,11 +13,11 @@ import { Text } from '@/components/ui/app-text'
 import Animated, {
   runOnJS,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import {
   Gesture,
   GestureDetector,

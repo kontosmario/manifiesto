@@ -4,11 +4,11 @@ import { StyleSheet, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import Animated, {
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { BrotMascot } from '@/components/brot/brot-mascot'
 import { BrotParticles } from '@/components/brot/brot-particles'
 import { ModalCard } from '@/components/ui/modal-card'

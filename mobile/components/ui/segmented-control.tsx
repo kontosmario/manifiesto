@@ -6,8 +6,8 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  useReducedMotion,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { SUPPORTS_INSET_SHADOW } from '@/components/wizard/inset-shadow-support'
 import { triggerHaptic } from '@/lib/haptics'
 import { buildElevationStyle } from '@/theme/elevation'

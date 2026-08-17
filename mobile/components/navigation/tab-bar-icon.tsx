@@ -3,10 +3,10 @@ import { StyleSheet, View } from 'react-native'
 import Animated, {
   interpolate,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { MaterialIcons } from '@expo/vector-icons'
 import { AppSymbol } from '@/components/ui/app-symbol'
 import { useAppTheme } from '@/theme/theme-provider'

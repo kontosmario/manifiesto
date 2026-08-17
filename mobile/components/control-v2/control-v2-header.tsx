@@ -8,11 +8,11 @@ import Animated, {
   cancelAnimation,
   interpolate,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { TabSectionHeader } from '@/components/ui/tab-section-header'
 import { CobroPendingHeaderChip } from '@/components/ui/cobro-pending-chip'

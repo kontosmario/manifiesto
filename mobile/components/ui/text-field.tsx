@@ -7,9 +7,9 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  useReducedMotion,
   interpolateColor,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionDurations } from '@/lib/motion'
 import { radii } from '@/theme/palette'
 import { nunitoFamily, typography } from '@/theme/typography'

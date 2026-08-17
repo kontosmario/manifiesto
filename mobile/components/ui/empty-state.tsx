@@ -9,8 +9,8 @@ import Animated, {
   withSpring,
   withDelay,
   withTiming,
-  useReducedMotion,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { AppButton } from '@/components/ui/button'
 import { type EmptyStateKey } from '@/lib/copy/states'
 import { motionDurations, motionSprings, motionStagger } from '@/lib/motion'
