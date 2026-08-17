@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -599,12 +598,7 @@ export function TourHost() {
             if (tooltipMaxH == null && Math.abs(h - tooltipH) > 1) setTooltipH(h)
           }}
         >
-          <ScrollView
-            bounces={false}
-            showsVerticalScrollIndicator={tooltipMaxH != null}
-          >
-            <TourTooltip />
-          </ScrollView>
+          <TourTooltip />
         </View>
       </Animated.View>
     </Modal>

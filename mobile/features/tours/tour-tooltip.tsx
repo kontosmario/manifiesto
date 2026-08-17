@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import { triggerHaptic } from '@/lib/haptics'
 import { cssGradient, neoRadii, neoTokens } from '@/theme/neo-tokens'
@@ -129,7 +129,20 @@ export function TourTooltip() {
           <Text style={[styles.skip, { color: muted }]}>{labels.skip}</Text>
         </Pressable>
       </View>
-      <Text style={[styles.body, { color: foreground }]}>{config.text}</Text>
+      {/* SOLO el texto scrollea. La cabecera (contador + Saltar) y la botonera
+          de abajo quedan FIJAS: cuando el copy es largo —o la escala de texto
+          es grande— el tooltip se recorta contra el hueco disponible, y si los
+          botones vivieran dentro del scroll habria que desplazarse para llegar
+          a "Siguiente". `flexShrink` deja que este bloque ceda alto primero;
+          los otros dos conservan el suyo. */}
+      <ScrollView
+        style={styles.bodyScroll}
+        contentContainerStyle={styles.bodyScrollContent}
+        bounces={false}
+        showsVerticalScrollIndicator
+      >
+        <Text style={[styles.body, { color: foreground }]}>{config.text}</Text>
+      </ScrollView>
       <View style={styles.actions}>
         <Pressable
           accessibilityLabel={labels.previous}
@@ -192,6 +205,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  bodyScroll: { flexShrink: 1, flexGrow: 0 },
+  bodyScrollContent: { flexGrow: 0 },
   counter: {
     fontSize: 12,
     fontWeight: '800',
