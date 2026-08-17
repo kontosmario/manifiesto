@@ -19,10 +19,11 @@ const googlePlugin: PluginEntry | null = GOOGLE_IOS_URL_SCHEME
 const config: ExpoConfig = {
   name: 'Manifiesto',
   slug: 'manifiesto',
-  // 1.2.0: build 13 (1.1.0) ya en el App Store; esta submission suma
-  // features nuevos (coalescing de push, FAB con tap→menú, metas
-  // secuenciales, categorías) → nueva versión de marketing.
-  version: '1.2.0',
+  // 2.0.0: build 14 (1.2.0) ya en el App Store; esta submission es el
+  // rediseño TOTAL de la UI (neumórfico: Home, Gastos, Fijos, Control,
+  // Jardín, Wrapped) + ciclo extendido + import de resumen + escala de
+  // texto propia + i18n ES/EN → salto de versión mayor.
+  version: '2.0.0',
   icon: './assets/brand/ios-icon-light.png',
   orientation: 'portrait',
   scheme: 'manifiesto',
@@ -292,7 +293,17 @@ const config: ExpoConfig = {
     // intent es código nativo). Al pagar con NFC la app guarda la captura en
     // background y avisa con una notificación local; el gasto se confirma en
     // el sheet de revisión, con la categoría sugerida a partir del historial.
-    buildNumber: '15',
+    // (Build 15 fue dev build local verificado en device; nunca se subió a
+    // ASC — se salta igual: la numeración es monotónica y ASC ya rechazó
+    // números repetidos dos veces.)
+    // Build 16 (2026-08-16): v2.0.0 — el salto mayor. Rediseño completo de
+    // UI + ciclo extendido (5 migraciones live) + wrapped "La Edición" +
+    // import de resumen bandeja/recibo + escala de texto propia + i18n
+    // ES/EN. Última tanda pre-release: 4 bugs de Fijos arreglados con
+    // code review (numpad con decimales, snapshots tras guardar, deshacer
+    // por identidad, nombres duplicados) y la barrida final del
+    // import-trap de useReducedMotion con su regla de ESLint.
+    buildNumber: '16',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
