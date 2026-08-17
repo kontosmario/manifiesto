@@ -128,11 +128,20 @@ interface PipedEntry {
 type PipedMap = Record<string, PipedEntry>
 
 let cache: PipedMap = {}
-let hydrated = false
+// Promesa singleton de hidratación: TODAS las corridas esperan la MISMA, así el
+// `cache = ...` de doHydrate ocurre una sola vez ANTES de que cualquier corrida
+// filtre/bumpee. Sin esto, en el arranque (hydrated recién en false) una 2ª
+// corrida veía hydrated=true y seguía con el cache vacío mientras la 1ª todavía
+// leía SecureStore, y el `cache = next` posterior pisaba el bump optimista →
+// la misma señal se pusheaba 2-3× (justo la tormenta de income-missing).
+let hydratePromise: Promise<void> | null = null
 
-async function hydrate(): Promise<void> {
-  if (hydrated) return
-  hydrated = true
+function hydrate(): Promise<void> {
+  if (!hydratePromise) hydratePromise = doHydrate()
+  return hydratePromise
+}
+
+async function doHydrate(): Promise<void> {
   try {
     const raw = await getPersistentValue(STORAGE_KEY)
     if (!raw) return
@@ -163,7 +172,10 @@ async function hydrate(): Promise<void> {
         next[id] = { pushedAt }
       }
     }
-    cache = next
+    // Merge: lo persistido es la base, pero cualquier bump optimista en memoria
+    // (siempre `now`, más nuevo) gana — así hydrate nunca pisa un cooldown recién
+    // puesto. Con la promesa singleton `cache` es {} acá, pero el merge lo blinda.
+    cache = { ...next, ...cache }
   } catch {
     // Corrupt JSON — start fresh.
   }
@@ -234,12 +246,20 @@ export function useAdvisorNotificationSync({
       if (eligible.length === 0) return
 
       const now = Date.now()
-      const nextCache = { ...cache }
+
+      // Cooldown OPTIMISTA: marcamos el cache SINCRÓNICAMENTE (sin await entre
+      // el filter y este bump) ANTES del envío. Como JS es single-thread, una
+      // corrida concurrente (el race que tormentó a income-missing: 3 envíos
+      // en 60s) que llegue después verá el cooldown ya puesto y NO re-enviará.
+      // No hace falta un guard de re-entrada (que además perdía wakeups de
+      // señales nuevas). Persistimos para sobrevivir cierres de sesión; el
+      // server deduplica igual como autoridad. Best-effort: no re-intentamos.
+      for (const task of eligible) cache[task.id] = { pushedAt: now }
+      void persist()
 
       // Anti-spam: si califican >2 señales en la misma corrida, mandamos
       // UNA sola push "Tienes N alertas en Control" en vez de una por señal.
-      // 1-2 → individuales. En ambos casos bumpeamos el cooldown de TODAS
-      // las señales incluidas para no re-pushear.
+      // 1-2 → individuales.
       if (eligible.length > 2) {
         await sendFamilyPush({
           familyId: familyId!,
@@ -251,30 +271,24 @@ export function useAdvisorNotificationSync({
           kind: 'advisor_digest',
           url: '/(app)/(tabs)/control',
         }).catch(() => {
-          // Best-effort; el cooldown se bumpea igual abajo.
+          // Best-effort; el cooldown ya se persistió arriba.
         })
-        for (const task of eligible) nextCache[task.id] = { pushedAt: now }
       } else {
         await Promise.allSettled(
-          eligible.map(async (task) => {
+          eligible.map((task) => {
             const kind = `advisor_${task.id.replace(/[^a-z0-9_-]/gi, '_').toLowerCase()}`
-            await sendFamilyPush({
+            return sendFamilyPush({
               familyId: familyId!,
               title: task.title,
               body: task.body,
               kind,
               url: '/(app)/(tabs)/control',
             }).catch(() => {
-              // Push delivery is best-effort; cache still bumps below
-              // so we don't retry on every render.
+              // Push delivery is best-effort; el cooldown ya se persistió.
             })
-            nextCache[task.id] = { pushedAt: now }
           }),
         )
       }
-
-      cache = nextCache
-      await persist()
     }
 
     void run()
