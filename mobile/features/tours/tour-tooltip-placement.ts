@@ -86,3 +86,56 @@ export function resolveTooltipPlacement(
 
   return { placement, top: clamped, maxHeight }
 }
+
+export interface HighlightHeightInput {
+  /** Y del cutout, con el padding del paso ya aplicado. */
+  targetY: number
+  /** Alto natural del cutout (alto del ancla + padding × 2). */
+  naturalH: number
+  /** Cuánto se PIDE estirar hacia abajo (`highlight.extendBelow`). 0 = nada. */
+  extendBelow: number
+  /** Fondo de la superficie de scroll en coordenadas de ventana, o `null` si
+   *  no hay superficie registrada. */
+  scrollBottom: number | null
+  /** Fondo usable de la pantalla (por encima de la barra de tabs). */
+  usableBottom: number
+  /** Espacio que hay que dejarle al tooltip debajo del recuadro: su alto REAL
+   *  más el aire que lo separa. */
+  tooltipReserve: number
+}
+
+/**
+ * Alto del cutout para los pasos que resaltan una SECCIÓN (encabezado + lo que
+ * sigue) en vez de un elemento suelto.
+ *
+ * Nace del QA del owner (2026-08-17) sobre el paso `list` de Gastos: con
+ * `extendToScrollEnd` el recuadro se estira hasta el fondo del scroll —que en
+ * edge-to-edge pasa POR DEBAJO de la barra de tabs— y terminaba abarcando media
+ * pantalla más la navegación. Acá el estirado es ACOTADO y, sobre todo, nunca
+ * invade el lugar donde el tooltip tiene que aterrizar: si lo hiciera,
+ * `resolveTooltipPlacement` se quedaría sin hueco abajo y mandaría el tooltip
+ * arriba (o lo recortaría), que es exactamente el desorden que se está
+ * arreglando.
+ *
+ * Devuelve SIEMPRE al menos el alto natural: un tope chico nunca puede
+ * encoger el recuadro por debajo del elemento que ancla el paso.
+ */
+export function resolveHighlightHeight(input: HighlightHeightInput): number {
+  const {
+    targetY,
+    naturalH,
+    extendBelow,
+    scrollBottom,
+    usableBottom,
+    tooltipReserve,
+  } = input
+  if (extendBelow <= 0) return naturalH
+  // El fondo pedido, contra los dos topes duros.
+  let bottom = Math.min(
+    targetY + naturalH + extendBelow,
+    usableBottom - tooltipReserve,
+  )
+  // 4pt de aire para que el recuadro no bese el borde del scroll.
+  if (scrollBottom != null) bottom = Math.min(bottom, scrollBottom - 4)
+  return Math.max(naturalH, bottom - targetY)
+}

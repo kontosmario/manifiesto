@@ -1790,36 +1790,35 @@ function NeoHomeDashboard({
       </NeoTourStep>
       </RiseView>
 
-      {/* ③ Meta — paso del tour solo con meta activa (como la vieja).
-          SIN meta el paso `meta` del tour no se registra (el tour lo saltea
-          solo), así que la card vacía se quedaba sin nadie que explicara para
-          qué sirve una meta: título + un renglón que repetía el CTA. Esa
-          explicación ahora la lleva la propia card (`emptyDescription`), que
-          es donde el usuario está mirando — no hace falta un paso nuevo de
-          tour para un estado que además se ve una sola vez. */}
+      {/* ③ Meta — el paso del tour va SIEMPRE, con meta y sin meta (pedido del
+          owner 2026-08-17). Hasta acá el TourTarget envolvía SOLO la rama con
+          meta: a quien todavía no configuró ninguna, el tour le saltaba el paso
+          y nadie le explicaba qué se gana con una — que es justo el usuario que
+          necesita el empujón. Sigue siendo UN paso (Home mantiene sus 8): lo
+          que cambia según el estado es el COPY, con dos keys hermanas
+          (`meta` / `metaEmpty`) que elige la screen. */}
       <RiseView delay={170}>
       <HomeSectionHeader mode={mode} label={t('home:sections.progress')} />
-      {goalVM ? (
-        <NeoTourStep
-          preview={preview}
-          order={HOME_TOUR_STEPS.meta.order}
-          text={HOME_TOUR_STEPS.meta.text}
-          highlight={{ borderRadius: 22, padding: 4 }}
-        >
+      <NeoTourStep
+        preview={preview}
+        order={HOME_TOUR_STEPS.meta.order}
+        text={goalVM ? HOME_TOUR_STEPS.meta.text : t('states:tour.home.metaEmpty')}
+        highlight={{ borderRadius: 22, padding: 4 }}
+      >
+        {goalVM ? (
           <HomeGoalCard mode={mode} goal={goalVM} onPress={handlePressGoal} />
-        </NeoTourStep>
-      ) : (
-        <HomeGoalCard
-          mode={mode}
-          goal={null}
-          emptyStyle={isNewUser ? 'dashed' : 'raise'}
-          emptyTitle={t('home:goal.emptyTitle')}
-          emptySub={isNewUser ? t('home:goal.emptyDashedSub') : t('home:goal.emptyRaiseSub')}
-          emptyDescription={t('home:goal.emptyDescription')}
-          emptyCtaLabel={isNewUser ? t('home:goal.createGoal') : t('home:goal.createShort')}
-          onPressCreate={handleCreateGoal}
-        />
-      )}
+        ) : (
+          <HomeGoalCard
+            mode={mode}
+            goal={null}
+            emptyStyle={isNewUser ? 'dashed' : 'raise'}
+            emptyTitle={t('home:goal.emptyTitle')}
+            emptySub={isNewUser ? t('home:goal.emptyDashedSub') : t('home:goal.emptyRaiseSub')}
+            emptyCtaLabel={isNewUser ? t('home:goal.createGoal') : t('home:goal.createShort')}
+            onPressCreate={handleCreateGoal}
+          />
+        )}
+      </NeoTourStep>
       </RiseView>
 
       {/* ④ Racha — solo con datos del jardín (paso del tour igual). */}

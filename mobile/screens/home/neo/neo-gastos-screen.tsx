@@ -146,6 +146,7 @@ import {
   useRegisterTourScrollView,
   useScreenTour,
   useTour,
+  useTourTargetRef,
   type HighlightStyle,
 } from '@/features/tours'
 import { computeCupoDiario, resolveCupoIncomeBase } from '@/features/gastos/cupo-diario'
@@ -1365,6 +1366,39 @@ function NeoGastosContent({
   // isCurrent gatea TODO lo interactivo (filtro, day-detail, mutaciones, feed
   // paginado): en cerrado no hay movimientos que traer ni mutar.
   const viewingClosed = selectedEdition != null
+
+  // ── Pasos 1 y 2 del tour: el header dejó de ser UN paso ─────────────
+  // Hasta el 2026-08-17 el header entero era un solo paso (`streak`) y el
+  // recuadro se comía el título, el trigger de ciclo y el botón del jardín a
+  // la vez. El owner pidió partirlo: un paso para el DESPLEGABLE (que es por
+  // donde se llega a las ediciones ya cerradas) y otro, aparte, para el
+  // ÍCONO BOTÓN del jardín. Como envolver esos dos elementos en `<TourTarget>`
+  // partiría la fila del header, cada paso apunta a su elemento por REF
+  // (`cycleTriggerRef` / `gardenButtonRef` del kit, mismo patrón que el
+  // `calendarButtonRef` de Fijos).
+  //
+  // `enabled` replica DOS gates que antes venían de dónde se montaba el
+  // `<GastosTourStep>`, y que una ref a nivel de componente no hereda:
+  //   · `!preview` — en la ruta dev la Gastos vieja live ya tiene su registro
+  //     para estos orders y el nuestro se lo clobbearía;
+  //   · `!viewingClosed` — la rama de edición cerrada no registra NINGÚN paso
+  //     ni superficie de scroll (ver su comentario). Sin este gate quedaban
+  //     dos pasos registrados sin nodo donde medir, y un tour de 2 pasos podía
+  //     auto-arrancar ahí y marcarse como visto.
+  const cycleTourRef = useTourTargetRef(GASTOS_TOUR, GASTOS_TOUR_STEPS.cycles.order, {
+    text: GASTOS_TOUR_STEPS.cycles.text,
+    // El trigger es una fila baja (~18pt): radio chico y padding generoso para
+    // que el recuadro no quede pegado al texto.
+    highlight: { borderRadius: GASTOS_RADII.tile, padding: 10 },
+    enabled: !preview && !viewingClosed,
+  })
+  const gardenTourRef = useTourTargetRef(GASTOS_TOUR, GASTOS_TOUR_STEPS.garden.order, {
+    text: GASTOS_TOUR_STEPS.garden.text,
+    // Disco de 44 con el badge de racha asomando en top/right -4: el padding 8
+    // lo mete adentro del recuadro. El pulse viene del paso viejo.
+    highlight: { borderRadius: GASTOS_RADII.brotBtn + 8, padding: 8, pulse: true },
+    enabled: !preview && !viewingClosed,
+  })
 
   const dropdownItems = useMemo<DropdownItemVM[]>(() => {
     const items: DropdownItemVM[] = [
@@ -3156,39 +3190,35 @@ function NeoGastosContent({
   // lo que evita reconciliarlos). Los TourTarget viven DENTRO de cada bloque →
   // su registro/refs no se tocan. Orden visual idéntico.
 
-  // ① header (streak) — el kit no expone ref del botón Brot/jardín (donde vive
-  //    el badge de racha) → el paso resalta el header entero.
+  // ① header — YA NO es un paso del tour: son DOS, y cada uno apunta a su
+  //    elemento por ref (`cycleTourRef` / `gardenTourRef`, ver la nota donde
+  //    se crean). El bloque sigue memoizado igual; lo que se fue es el
+  //    `GastosTourStep` que envolvía el header entero.
   const headerBlock = useMemo(
     () => (
-      <GastosTourStep
-        preview={preview}
-        order={GASTOS_TOUR_STEPS.streak.order}
-        text={GASTOS_TOUR_STEPS.streak.text}
-        highlight={{ borderRadius: GASTOS_RADII.card, padding: 6, pulse: true }}
-      >
-        <GastosHeader
-          mode={mode}
-          cycleLabel={controller.cycleLabel}
-          cycleVariant="current"
-          brotPose={brotPose}
-          badgeCount={badgeCount}
-          // El dot "EN CURSO" corre un withRepeat(-1) sin gate propio: mismo
-          // criterio que las partículas del hero (pausa al salir de la tab, que
-          // con freezeOnBlur:false deja el header montado e invisible).
-          paused={pausedParticles}
-          // Brot del botón del jardín SIN loop Skia: este header vive dentro
-          // del ListHeaderComponent de la SectionList, así que su
-          // PictureRecorder por frame competía con el gesto del feed. Mismo
-          // criterio que el banner VENCIDO y el strip del day-detail — y el
-          // default del kit (`true`) queda intacto para el preview aprobado.
-          animated={false}
-          onPressBrot={handlePressGarden}
-          onToggleDropdown={handleToggleDropdown}
-        />
-      </GastosTourStep>
+      <GastosHeader
+        mode={mode}
+        cycleLabel={controller.cycleLabel}
+        cycleVariant="current"
+        brotPose={brotPose}
+        badgeCount={badgeCount}
+        // El dot "EN CURSO" corre un withRepeat(-1) sin gate propio: mismo
+        // criterio que las partículas del hero (pausa al salir de la tab, que
+        // con freezeOnBlur:false deja el header montado e invisible).
+        paused={pausedParticles}
+        // Brot del botón del jardín SIN loop Skia: este header vive dentro
+        // del ListHeaderComponent de la SectionList, así que su
+        // PictureRecorder por frame competía con el gesto del feed. Mismo
+        // criterio que el banner VENCIDO y el strip del day-detail — y el
+        // default del kit (`true`) queda intacto para el preview aprobado.
+        animated={false}
+        onPressBrot={handlePressGarden}
+        onToggleDropdown={handleToggleDropdown}
+        cycleTriggerRef={cycleTourRef}
+        gardenButtonRef={gardenTourRef}
+      />
     ),
     [
-      preview,
       mode,
       controller.cycleLabel,
       brotPose,
@@ -3196,6 +3226,8 @@ function NeoGastosContent({
       pausedParticles,
       handlePressGarden,
       handleToggleDropdown,
+      cycleTourRef,
+      gardenTourRef,
     ],
   )
 
@@ -3623,16 +3655,25 @@ function NeoGastosContent({
     ],
   )
 
-  // ⑦ encabezado "MOVIMIENTOS" (paso `list`, order 4): con `extendToScrollEnd`
-  //    estira el cutout hasta el fondo del scroll (la lista arranca justo
-  //    debajo) — mismo tratamiento que la vieja.
+  // ⑦ encabezado "MOVIMIENTOS" (paso `list`): ancla del paso, con el cutout
+  //    estirado hacia abajo para que abarque la SECCIÓN (encabezado + las
+  //    filas que entran) y no solo la pill del encabezado.
+  //
+  //    Antes usaba `extendToScrollEnd`, que estira hasta el fondo del scroll:
+  //    con edge-to-edge ese fondo pasa POR DEBAJO de la barra de tabs, así que
+  //    el recuadro se comía media pantalla más la navegación (QA del owner
+  //    2026-08-17: "el step 5 abarca mucho espacio incluso la navegación, solo
+  //    debe resaltar la sección de movimientos"). `extendBelow` pide un tramo
+  //    ACOTADO — el encabezado del día más ~4 filas— y el host lo recorta
+  //    además contra el fondo del scroll y contra el techo del tooltip, así
+  //    que en pantallas chicas se achica solo en vez de invadir nada.
   const sectionHeadBlock = useMemo(
     () => (
       <GastosTourStep
         preview={preview}
         order={GASTOS_TOUR_STEPS.list.order}
         text={GASTOS_TOUR_STEPS.list.text}
-        highlight={{ borderRadius: GASTOS_RADII.row, padding: 6, extendToScrollEnd: true }}
+        highlight={{ borderRadius: GASTOS_RADII.row, padding: 6, extendBelow: 340 }}
       >
         <GastosMovSectionHead
           mode={mode}
@@ -4169,28 +4210,22 @@ function NeoGastosContent({
         onContentSizeChange={handleTourContentSizeChange}
         scrollEventThrottle={16}
       >
-        {/* Paso `streak` (order 1): resalta el header entero (el kit no expone
-            ref del botón Brot/jardín donde vive el badge de racha) — mismo
-            mapeo que el feed. */}
-        <GastosTourStep
-          preview={preview}
-          order={GASTOS_TOUR_STEPS.streak.order}
-          text={GASTOS_TOUR_STEPS.streak.text}
-          highlight={{ borderRadius: GASTOS_RADII.card, padding: 6, pulse: true }}
-        >
-          <GastosHeader
-            mode={mode}
-            cycleLabel={controller.cycleLabel}
-            cycleVariant="current"
-            brotPose={brotPose}
-            badgeCount={badgeCount}
-            paused={pausedParticles}
-            // Mismo criterio que el feed (ver la nota allá).
-            animated={false}
-            onPressBrot={handlePressGarden}
-            onToggleDropdown={handleToggleDropdown}
-          />
-        </GastosTourStep>
+        {/* Pasos `cycles` (order 1) y `garden` (order 2): cada uno apunta a SU
+            elemento por ref, igual que en el feed. */}
+        <GastosHeader
+          mode={mode}
+          cycleLabel={controller.cycleLabel}
+          cycleVariant="current"
+          brotPose={brotPose}
+          badgeCount={badgeCount}
+          paused={pausedParticles}
+          // Mismo criterio que el feed (ver la nota allá).
+          animated={false}
+          onPressBrot={handlePressGarden}
+          onToggleDropdown={handleToggleDropdown}
+          cycleTriggerRef={cycleTourRef}
+          gardenButtonRef={gardenTourRef}
+        />
         {isDropdownOpen ? (
           <CycleDropdown mode={mode} items={dropdownItems} onSelect={handleSelectCycle} />
         ) : null}

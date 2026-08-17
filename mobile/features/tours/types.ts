@@ -38,6 +38,21 @@ export interface HighlightStyle {
    * "bottom" to stretch to and the flag is a no-op).
    */
   extendToScrollEnd?: boolean
+  /**
+   * Versión ACOTADA de `extendToScrollEnd`: estira el borde inferior del
+   * cutout hasta `extendBelow` puntos por debajo del ancla, con dos topes
+   * duros — el fondo de la superficie de scroll y el techo del tooltip (que a
+   * su vez ya está por encima de la barra de tabs).
+   *
+   * Existe porque `extendToScrollEnd` es TODO o NADA: en el paso `list` de
+   * Gastos el recuadro se comía media pantalla y la navegación (QA del owner
+   * 2026-08-17, "solo debe resaltar la sección de movimientos"). Con un tope
+   * el recuadro cubre el encabezado de la sección más las filas que entran, y
+   * deja el aire donde va el tooltip.
+   *
+   * Se ignora si `extendToScrollEnd` está en `true` (esa bandera manda).
+   */
+  extendBelow?: number
 }
 
 /**

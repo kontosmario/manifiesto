@@ -50,9 +50,12 @@ export const HOME_TOUR_STEPS = {
       return i18n.t('states:tour.home.cycleSummary')
     },
   },
-  // Conditional — only registers if MetaCard renders (savings goal
-  // configured). When MetaEmptyCard renders instead, this step
-  // doesn't register and the tour skips it naturally.
+  // Meta de ahorro. Se registra SIEMPRE — con meta configurada y sin ella
+  // (pedido del owner 2026-08-17). Antes era condicional a que rindiera la
+  // card CON meta, así que a quien no tenía ninguna el tour le saltaba el
+  // paso: nadie le explicaba para qué sirve una meta justo a quien todavía
+  // no la tiene. El paso es UNO solo; el copy tiene dos variantes y la elige
+  // la screen: `tour.home.meta` (con meta) y `tour.home.metaEmpty` (sin).
   meta: {
     order: 4,
     get text() {

@@ -287,20 +287,22 @@
     },
     "home": {
       "headerActions": "In the top right you have three quick shortcuts: the financial assistant, your notifications inbox and general settings. Tap any of them to open it.",
-      "familyStrip": "Your household and the days left until your next payday. When you get paid, tap the capsule to confirm it and start a new cycle.",
+      "familyStrip": "Your household and the days left until your next payday. Tap the members capsule to open My home: members, invites, permissions, household money and payday cycle, all in one place. And when you get paid, tap the payday capsule to confirm it and start a new cycle.",
       "hero": "Your main card: what's left available in the cycle and how much you can spend per day to finish well. From here you jump to Control for the closing projection. If you haven't set up your income yet, the shortcut is here.",
       "meta": "Your savings goal as a digital piggy bank: see how much you've saved and add a quick contribution right here. You adjust the target in Settings.",
+      "metaEmpty": "This is where your savings goal lives, and you don't have one yet. Set a target — a trip, a rainy-day fund, whatever it is — and each cycle's leftover stops fading away: you see how much you've saved, how much is left, and you add a contribution with one tap. The button on this card creates it in a minute.",
       "streak": "Your garden week: one dot per day based on whether you logged an expense (or marked a no-spend day). Logging daily grows your garden. Tap to open My garden.",
       "activity": "Your recent movements this cycle, sorted by date. Tap a row to view or edit it, swipe left to delete it, or tap \"See all\" to open the full screen.",
       "fab": "The quick actions button. Tap it to open a menu with everything you can add: expense, import a receipt, mark a no-spend day, income or fixed expense. It's the fastest way to add movements.",
-      "familyStripDynamic": "Your household and the cycle in progress. Your household uses variable income: log income as it comes in and the cycle budget builds itself.",
+      "familyStripDynamic": "Your household and the cycle in progress. Tap the members capsule to open My home: members, invites, permissions, household money and payday cycle, all in one place. Your household uses variable income: log income as it comes in and the cycle budget builds itself.",
       "heroDynamic": "Your main card: what you have left available in the cycle, how much you can spend per day to finish the cycle on track and what you'll close with. If you haven't logged any income yet, here's the shortcut to do it.",
-      "familyStripSolo": "Your current cycle and the days left until your next payday. When you get paid, tap the capsule to confirm it and start a new cycle.",
+      "familyStripSolo": "Your current cycle and the days left until your next payday. Tap \"Your space\" to open My home: that's where you adjust your income, your account's money, the payday cycle and, whenever you feel like it, invite someone else. When you get paid, tap the payday capsule to confirm it and start a new cycle.",
       "cycleSummary": "Your cycle summary, in two halves: Variable is your day to day (groceries, transport, going out) and Fixed is what repeats every cycle (rent, utilities, subscriptions). Tap either half to see its detail."
     },
     "gastos": {
       "hero": "The cycle's summary: how much you've spent, which categories lead and your daily average. One glance and you understand how the cycle is going.",
-      "streak": "Your streak of days logging expenses. Every day you log at least one expense (or mark a no-spend day) adds a day to your garden. The streak unlocks shields and rewards.",
+      "cycles": "The cycle you're looking at. Tap its name to open the list of editions and pick one that already closed: you'll see where that cycle went and what you finished with, without leaving this screen. The first one, tagged \"CURRENT\", brings you back to the live cycle.",
+      "garden": "Your shortcut to My garden. The number on the badge is your streak: every day you log at least one expense (or mark a no-spend day) adds one. Tap Brot to open the garden and watch it grow, with its shields and rewards.",
       "calendar": "The cycle's calendar with your expenses day by day. Each day's color reflects how much you spent. Tap a day to filter the list and see only that date's movements.",
       "filters": "Quick category filters. Tap a chip and the whole cycle filters instantly: the summary above, the calendar and the list — handy to see, for example, how much you have spent on groceries.",
       "list": "Your list of movements this cycle, grouped by day. Swipe a row left to delete it. The list respects the filter and the day selected above."

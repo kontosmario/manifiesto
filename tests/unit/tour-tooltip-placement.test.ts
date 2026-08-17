@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  resolveHighlightHeight,
   resolveTooltipPlacement,
   TOOLTIP_HEIGHT_SEED,
 } from '@/features/tours/tour-tooltip-placement'
@@ -88,5 +89,72 @@ describe('resolveTooltipPlacement — el tooltip nunca tapa lo que explica', () 
     } else {
       expect(r.top).toBeGreaterThanOrEqual(84 + 520)
     }
+  })
+})
+
+/** El mismo iPhone del bloque de arriba: scroll edge-to-edge (el fondo del
+ *  scroll pasa POR DEBAJO de la tab bar) y ancla arriba del todo. */
+const SECTION = {
+  targetY: 78,
+  naturalH: 34,
+  extendBelow: 340,
+  scrollBottom: 844,
+  usableBottom: 844 - 83 - 34,
+  tooltipReserve: 240 + 16,
+}
+const stretch = (o: Partial<Parameters<typeof resolveHighlightHeight>[0]> = {}) =>
+  resolveHighlightHeight({ ...SECTION, ...o })
+
+describe('resolveHighlightHeight — resaltar una sección sin comerse la pantalla', () => {
+  it('sin `extendBelow` el recuadro es exactamente el ancla', () => {
+    expect(stretch({ extendBelow: 0 })).toBe(SECTION.naturalH)
+  })
+
+  it('EL BUG del paso `list`: el recuadro no invade la barra de tabs', () => {
+    const h = stretch()
+    expect(SECTION.targetY + h).toBeLessThanOrEqual(SECTION.usableBottom)
+  })
+
+  it('deja abajo el hueco donde aterriza el tooltip', () => {
+    const h = stretch()
+    const r = resolveTooltipPlacement({
+      ...BASE,
+      targetY: SECTION.targetY,
+      targetH: h,
+      tooltipH: 240,
+    })
+    // Con el tope, el tooltip vuelve a entrar ENTERO y abajo (flujo de
+    // lectura). Con `extendToScrollEnd` acá se recortaba y se iba arriba.
+    expect(r.placement).toBe('below')
+    expect(r.maxHeight).toBeNull()
+    expect(r.top).toBeGreaterThanOrEqual(SECTION.targetY + h)
+  })
+
+  it('el recuadro crece hasta lo pedido cuando hay lugar de sobra', () => {
+    // Pantalla alta y tooltip corto → manda `extendBelow`, no los topes.
+    const h = stretch({
+      extendBelow: 200,
+      scrollBottom: 2000,
+      usableBottom: 1800,
+      tooltipReserve: 100,
+    })
+    expect(h).toBe(SECTION.naturalH + 200)
+  })
+
+  it('en una pantalla chica se achica solo, nunca por debajo del ancla', () => {
+    // iPhone SE con el texto en «Máxima»: no queda nada para estirar.
+    const h = stretch({
+      usableBottom: 667 - 49,
+      tooltipReserve: 298 + 16,
+      scrollBottom: 667,
+      targetY: 61,
+    })
+    expect(h).toBeGreaterThanOrEqual(SECTION.naturalH)
+    expect(61 + h).toBeLessThanOrEqual(667 - 49)
+  })
+
+  it('respeta el fondo del scroll cuando la lista es más corta que la pantalla', () => {
+    const h = stretch({ scrollBottom: 300 })
+    expect(SECTION.targetY + h).toBeLessThanOrEqual(300 - 4)
   })
 })

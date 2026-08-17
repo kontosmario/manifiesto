@@ -8,6 +8,14 @@ interface UseTourTargetRefOptions {
   text: string
   highlight?: HighlightStyle
   tooltip?: TooltipStyle
+  /**
+   * `false` → devuelve la ref pero NO registra el paso. Es el equivalente al
+   * gate `preview` de los `<TourTarget>` de las pantallas neo: en la ruta dev
+   * de preview la pantalla vieja live ya tiene su registro para ese
+   * (tour, order) y montar el nuestro se lo clobbearía (y lo borraría al
+   * desmontar la ruta). Default `true`.
+   */
+  enabled?: boolean
 }
 
 /**
@@ -34,18 +42,20 @@ export function useTourTargetRef(
   order: number,
   options: UseTourTargetRefOptions,
 ): RefObject<View | null> {
+  const { text, highlight, tooltip, enabled = true } = options
   const viewRef = useRef<View | null>(null)
-  const configRef = useRef<StepConfig>(options)
-  configRef.current = options
+  const configRef = useRef<StepConfig>({ text, highlight, tooltip })
+  configRef.current = { text, highlight, tooltip }
 
   const { registerStep, unregisterStep } = useTour()
 
   useEffect(() => {
+    if (!enabled) return
     registerStep({ tour, order, viewRef, configRef })
     return () => {
       unregisterStep(tour, order)
     }
-  }, [tour, order, registerStep, unregisterStep])
+  }, [tour, order, enabled, registerStep, unregisterStep])
 
   return viewRef
 }

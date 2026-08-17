@@ -21,6 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated'
 import {
+  resolveHighlightHeight,
   resolveTooltipPlacement,
   TOOLTIP_HEIGHT_SEED,
 } from '@/features/tours/tour-tooltip-placement'
@@ -55,6 +56,13 @@ import {
  * neón V1 que reemplaza.
  */
 const overlayNeo = neoTokens('dark')
+
+/** Aire entre el recuadro resaltado y el tooltip. */
+const TOOLTIP_GAP = 16
+/** Alto de la barra de tabs. Con edge-to-edge la superficie de scroll pasa POR
+ *  DEBAJO de ella, así que ni el tooltip ni el recuadro pueden usar ese tramo:
+ *  lo que caiga ahí queda tapado por la navegación. */
+const TAB_BAR_HEIGHT = 83
 
 /**
  * Top-level overlay for the guided tour. Mounted once at the
@@ -247,6 +255,13 @@ export function TourHost() {
       // stretched region covers as much content as possible).
       const config = currentStep.configRef.current
       const extendToScrollEnd = Boolean(config?.highlight?.extendToScrollEnd)
+      // Versión acotada del mismo gesto (ver `HighlightStyle.extendBelow`):
+      // también quiere el ancla arriba, porque lo que se resalta es la sección
+      // que EMPIEZA ahí. `extendToScrollEnd` manda si están los dos.
+      const extendBelow = extendToScrollEnd
+        ? 0
+        : Math.max(0, config?.highlight?.extendBelow ?? 0)
+      const stretchesDown = extendToScrollEnd || extendBelow > 0
 
       const entry = getTourScrollEntry(activeTour)
       let svRectForExtend: MeasuredRect | null = null
@@ -286,7 +301,7 @@ export function TourHost() {
           // cutout covers the rest of the viewport. Other steps use
           // the configured `scrollOffsetRatio` (defaults to 30%) which
           // leaves comfortable room for the tooltip above.
-          const offsetRatio = extendToScrollEnd
+          const offsetRatio = stretchesDown
             ? 0.1
             : defaults.scrollOffsetRatio
           const desiredVisibleY = svRect.height * offsetRatio
@@ -330,10 +345,26 @@ export function TourHost() {
       // height. We subtract a small safe margin (4pt) so the cutout
       // doesn't kiss the chrome below.
       const naturalH = stepRect.height + padding * 2
+      // Zona usable de la pantalla — la misma que después decide dónde va el
+      // tooltip. Se calcula ACÁ ARRIBA porque el estirado acotado
+      // (`extendBelow`) tiene que respetarla: un recuadro que se come el hueco
+      // del tooltip lo empuja arriba o lo recorta, que es justo el desorden
+      // que se está arreglando.
+      const usableTop = insets.top + 8
+      const usableBottom = screenH - Math.max(insets.bottom, 8) - TAB_BAR_HEIGHT
       const targetH =
         extendToScrollEnd && svRectForExtend
           ? Math.max(naturalH, svRectForExtend.y + svRectForExtend.height - targetY - 4)
-          : naturalH
+          : resolveHighlightHeight({
+              targetY,
+              naturalH,
+              extendBelow,
+              scrollBottom: svRectForExtend
+                ? svRectForExtend.y + svRectForExtend.height
+                : null,
+              usableBottom,
+              tooltipReserve: tooltipH + TOOLTIP_GAP,
+            })
 
       const isFirstMeasure = cutW.value === 0 && cutH.value === 0
       const spring = (sv: typeof cutX, to: number) => {
@@ -365,15 +396,17 @@ export function TourHost() {
       // terminaba encimado sobre el recuadro que explicaba, o con sus botones
       // detrás de la tab bar. Ahora se decide con el alto REAL medido y contra
       // los insets REALES del device.
-      const TOOLTIP_GAP = 16
-      const TAB_BAR_HEIGHT = 83
+      //
+      // `usableTop` / `usableBottom` se calculan más arriba (el estirado
+      // acotado del recuadro los necesita antes); `TOOLTIP_GAP` y
+      // `TAB_BAR_HEIGHT` son constantes de módulo por el mismo motivo.
       const resolved = resolveTooltipPlacement({
         targetY,
         targetH,
         screenH,
         tooltipH,
-        usableTop: insets.top + 8,
-        usableBottom: screenH - Math.max(insets.bottom, 8) - TAB_BAR_HEIGHT,
+        usableTop,
+        usableBottom,
         gap: TOOLTIP_GAP,
       })
       tooltipPlacement.value = resolved.placement

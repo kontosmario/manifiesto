@@ -287,20 +287,22 @@
     },
     "home": {
       "headerActions": "En la parte superior derecha tienes tres accesos rápidos: el asistente financiero, tu buzón de notificaciones y la configuración general. Toca cualquiera para abrirlo.",
-      "familyStrip": "Tu grupo familiar y los días que faltan para tu próximo cobro. Cuando recibas tu sueldo, toca la cápsula para confirmarlo y arrancar un ciclo nuevo.",
+      "familyStrip": "Tu grupo familiar y los días que faltan para tu próximo cobro. Toca la cápsula de miembros para abrir Mi hogar: integrantes, invitaciones, permisos, dinero del hogar y ciclo de cobro, todo en un mismo lugar. Y cuando recibas tu sueldo, toca la cápsula del cobro para confirmarlo y arrancar un ciclo nuevo.",
       "hero": "Tu tarjeta principal: lo que te queda disponible en el ciclo y cuánto puedes gastar por día para llegar bien al final. Desde acá saltas a Control para ver la proyección de cierre. Si aún no has configurado tu ingreso, aquí encontrarás el atajo.",
       "meta": "Tu meta de ahorro como una alcancía digital: ves cuánto llevas guardado y agregas un aporte rápido desde aquí. El objetivo lo ajustas en Ajustes.",
+      "metaEmpty": "Aquí vive tu meta de ahorro y todavía no tienes ninguna. Al definir un objetivo —un viaje, un fondo para imprevistos, lo que sea— el sobrante de cada ciclo deja de diluirse y pasa a tener destino: ves cuánto llevas juntado, cuánto te falta y sumas un aporte con un toque. El botón de esta tarjeta la crea en un minuto.",
       "streak": "Tu semana del jardín: un punto por día según si registraste un gasto (o marcaste que no gastaste). Registrar a diario hace crecer tu jardín. Toca para abrir Mi jardín.",
       "activity": "Tus movimientos recientes del ciclo, ordenados por fecha. Toca una fila para ver o editar el movimiento, deslízala hacia la izquierda para eliminarla, o toca \"Ver todos\" para abrir la pantalla completa.",
       "fab": "El botón de acciones rápidas. Tócalo para abrir un menú con todo lo que puedes sumar: gasto, importar un comprobante, marcar que no gastaste hoy, ingreso o gasto fijo. Es la forma más rápida de sumar movimientos.",
-      "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo.",
+      "familyStripDynamic": "Tu grupo familiar y el ciclo en curso. Toca la cápsula de miembros para abrir Mi hogar: integrantes, invitaciones, permisos, dinero del hogar y ciclo de cobro, todo en un mismo lugar. Tu hogar usa ingreso variable: registra los ingresos a medida que entran y el presupuesto del ciclo se arma solo.",
       "heroDynamic": "Tu tarjeta principal: lo que te queda disponible en el ciclo, cuánto puedes gastar por día para llegar bien al fin del ciclo y con cuánto vas a cerrar. Si aún no cargaste ingresos, aquí encontrarás el atajo para hacerlo.",
-      "familyStripSolo": "Tu ciclo en curso y los días que faltan para tu próximo cobro. Cuando recibas tu sueldo, toca la cápsula para confirmarlo y arrancar un ciclo nuevo.",
+      "familyStripSolo": "Tu ciclo en curso y los días que faltan para tu próximo cobro. Toca \"Tu espacio\" para abrir Mi hogar: ahí ajustas tu ingreso, el dinero de la cuenta, el ciclo de cobro y, si algún día quieres, invitas a alguien más. Cuando recibas tu sueldo, toca la cápsula del cobro para confirmarlo y arrancar un ciclo nuevo.",
       "cycleSummary": "El resumen del ciclo, en dos mitades: Variables es el día a día (mercado, transporte, salidas) y Fijos es lo que se repite cada ciclo (alquiler, servicios, suscripciones). Toca cada mitad para ver su detalle."
     },
     "gastos": {
       "hero": "El resumen del ciclo: cuánto llevas gastado, qué categorías encabezan y tu promedio diario. Una mirada y entiendes cómo va el ciclo.",
-      "streak": "Tu racha de días registrando gastos. Cada día que cargas al menos un gasto (o marcas que no gastaste) suma un día a tu jardín. La racha desbloquea escudos y recompensas.",
+      "cycles": "El ciclo que estás viendo. Toca su nombre para desplegar la lista de ediciones y abrir una ya cerrada: ves en qué se te fue ese ciclo y con cuánto terminaste, sin salir de aquí. El primero de la lista, marcado \"EN CURSO\", te devuelve al ciclo actual.",
+      "garden": "Tu acceso a Mi jardín. El número del globo es tu racha: cada día que registras al menos un gasto (o marcas que no gastaste) suma uno. Toca a Brot para abrir el jardín y ver cómo crece, con sus escudos y recompensas.",
       "calendar": "El calendario del ciclo con tus gastos día por día. El color de cada día refleja cuánto gastaste. Toca un día para filtrar la lista y ver solo los movimientos de esa fecha.",
       "filters": "Filtros rápidos por categoría. Toca un chip y todo el ciclo se filtra al instante: el resumen de arriba, el calendario y la lista — útil para ver, por ejemplo, cuánto llevas en supermercado.",
       "list": "Tu lista de movimientos del ciclo, agrupados por día. Desliza una fila hacia la izquierda para borrarla. La lista respeta el filtro y el día seleccionado arriba."

@@ -905,16 +905,18 @@ function GastosV2ScreenContent({ familyId, userId }: GastosV2ScreenProps) {
         scrollEventThrottle={16}
       >
         <View style={styles.emptyStateStack}>
-          {/* Keep the streak flame + its tour target so the streak tour
-              step and the flame keep working on the empty screen. */}
+          {/* Keep the streak flame + its tour target so the garden tour
+              step and the flame keep working on the empty screen.
+              (`streak` se renombró a `garden` — ver la nota en
+              `gastos-list-header`.) */}
           <GastosHeader
             familyId={familyId}
             subtitle={t('gastos:header.cycleSubtitle', { cycle: controller.cycleLabel })}
             rightSlot={
               <TourTarget
                 tour={GASTOS_TOUR}
-                order={GASTOS_TOUR_STEPS.streak.order}
-                text={GASTOS_TOUR_STEPS.streak.text}
+                order={GASTOS_TOUR_STEPS.garden.order}
+                text={GASTOS_TOUR_STEPS.garden.text}
                 highlight={{ borderRadius: 20, padding: 6, pulse: true }}
               >
                 <GardenLeafIcon data={streakData} onPress={handlePressStreak} />

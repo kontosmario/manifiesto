@@ -152,8 +152,14 @@ export function GastosListHeader(props: GastosListHeaderProps) {
           rightSlot={
             <TourTarget
               tour={GASTOS_TOUR}
-              order={GASTOS_TOUR_STEPS.streak.order}
-              text={GASTOS_TOUR_STEPS.streak.text}
+              // Antes `streak`. El paso se renombró a `garden` cuando el
+              // header de la Gastos NEO se partió en dos (desplegable de ciclo
+              // + acceso al jardín): acá el target SIEMPRE fue el ícono del
+              // jardín, así que el mapeo es el mismo. Esta pantalla no tiene
+              // desplegable de ciclos → el paso `cycles` no se registra y el
+              // tour lo omite, igual que `filters` en el empty state.
+              order={GASTOS_TOUR_STEPS.garden.order}
+              text={GASTOS_TOUR_STEPS.garden.text}
               // Match the icon's rounded-square geometry (44×44,
               // borderRadius 14) and pad enough to cover the
               // absolutely-positioned count badge that pokes out

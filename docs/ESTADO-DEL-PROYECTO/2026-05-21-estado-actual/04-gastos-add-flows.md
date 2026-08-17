@@ -136,7 +136,7 @@ El botón "Cargar mi primer gasto" llama `onAddFirst` → en el screen, `handleP
 
 El screen registra el `ScrollView` del `<Screen>` scrollable (vía `scrollRef={tourScrollRef}`, `onScroll={onTourScroll}`, `onContentSizeChange={onTourContentSizeChange}`) como superficie de scroll del tour `GASTOS_TOUR`. Como el `SectionList` no se monta en este branch, sin este wiring el tour-host no puede medir el viewport y aborta el posicionado del cutout.
 
-`GastosEmptyState` recibe `renderSection?: (slot: GhostSlot, children) => ReactNode`. El screen pasa un wrapper que envuelve cada preview (`'hero'`, `'calendar'`, `'list'`) en `<TourTarget>` con el step correspondiente de `GASTOS_TOUR_STEPS`. El step `filters` (order 3) no tiene target en el empty screen y el tour-engine lo omite silenciosamente (solo camina targets registrados). El `GastosHeader` con `StreakFlameIcon` y su `TourTarget` (`streak` step) se conserva encima del `<GastosEmptyState>`.
+`GastosEmptyState` recibe `renderSection?: (slot: GhostSlot, children) => ReactNode`. El screen pasa un wrapper que envuelve cada preview (`'hero'`, `'calendar'`, `'list'`) en `<TourTarget>` con el step correspondiente de `GASTOS_TOUR_STEPS`. El step `filters` (order 3) no tiene target en el empty screen y el tour-engine lo omite silenciosamente (solo camina targets registrados). El `GastosHeader` con `StreakFlameIcon` y su `TourTarget` (step `garden`, llamado `streak` hasta el 2026-08-17) se conserva encima del `<GastosEmptyState>`.
 
 ---
 

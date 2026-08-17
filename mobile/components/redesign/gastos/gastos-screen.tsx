@@ -1,5 +1,5 @@
 // @i18n-ignore-file — kit de rediseño bajo gate; copy literal, i18n en el pase posterior.
-import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState, type Ref } from 'react'
 import {
   Pressable,
   ScrollView,
@@ -716,6 +716,14 @@ export interface GastosHeaderProps {
   animated?: boolean
   onToggleDropdown?: () => void
   onPressBrot?: () => void
+  /** Ref del trigger de ciclo ("Ciclo … ▾"), para que el tour pueda apuntarle
+   *  sin que el header tenga que saber del tour. Mismo patrón que el
+   *  `calendarButtonRef` del `FijosHeader`. Va sobre la fila VISIBLE (no sobre
+   *  el Pressable) para que mida igual con y sin `onToggleDropdown`. */
+  cycleTriggerRef?: Ref<View>
+  /** Ídem para el botón-ícono del jardín (Brot + badge de racha). El paso del
+   *  tour resalta el BOTÓN, no el header entero (owner 2026-08-17). */
+  gardenButtonRef?: Ref<View>
 }
 
 export function GastosHeader({
@@ -728,6 +736,8 @@ export function GastosHeader({
   animated = true,
   onToggleDropdown,
   onPressBrot,
+  cycleTriggerRef,
+  gardenButtonRef,
 }: GastosHeaderProps) {
   const s = GASTOS_SPEC[mode]
   const current = cycleVariant === 'current'
@@ -735,7 +745,9 @@ export function GastosHeader({
   const trigInk = current ? s.cycTrigInkCurrent : s.cycTrigInkClosed
 
   const trigger = (
-    <View style={styles.cycTrig}>
+    // `collapsable={false}` — el paso del tour mide este nodo con
+    // measureInWindow y Android colapsa las View sin props propias.
+    <View ref={cycleTriggerRef} collapsable={false} style={styles.cycTrig}>
       <CycleTriggerDot s={s} current={current} paused={paused} />
       <Text style={[styles.cycTrigLabel, { color: trigInk }]}>{cycleLabel}</Text>
       <Text style={[styles.cycCaret, { color: trigInk }]}>▾</Text>
@@ -800,6 +812,7 @@ export function GastosHeader({
           accessibilityLabel="Ir al jardín"
           hitSlop={6}
           onPress={onPressBrot}
+          ref={gardenButtonRef}
           onPressIn={brotPress.onPressIn}
           onPressOut={brotPress.onPressOut}
           style={brotPress.animatedStyle}
