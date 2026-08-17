@@ -315,7 +315,12 @@ const config: ExpoConfig = {
     // botonera siempre alcanzable, pasos gemelos separados y 8 copys), empty
     // state de "Todos tus fijos" y el aro del día en curso del jardín en
     // celeste, como declara su leyenda.
-    buildNumber: '18',
+    // Build 19 (2026-08-17): vuelven al Control la RESERVA acumulada y los
+    // INGRESOS del ciclo. El swap de pantalla a la vista neo (9ae37db7) las
+    // había dejado sin montar, y con la reserva se fue el único punto de
+    // entrada a `apply_reserve_decision` en producción: la plata se veía de
+    // solo lectura en Ajustes y no había forma de usarla.
+    buildNumber: '19',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
