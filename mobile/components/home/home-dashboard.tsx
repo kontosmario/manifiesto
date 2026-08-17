@@ -56,7 +56,10 @@ import {
   type HomeSlot,
 } from '@/features/home/log-home-event'
 import type { FamilyDashboard } from '@/hooks/use-family-dashboard'
-import { useFamilyMembers } from '@/features/family/use-family-members'
+import {
+  activeFamilyMembers,
+  useFamilyMembers,
+} from '@/features/family/use-family-members'
 import { usePressScale } from '@/hooks/use-press-scale'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { triggerHaptic } from '@/lib/haptics'
@@ -240,8 +243,10 @@ export function HomeDashboard({
   // reference por render, rompiendo el `React.memo` de FamilyStrip y
   // HomeActivitySection — los hijos memo'd reciben new array y
   // re-renderean en cada parent render (cycle sheet open, etc.).
+  // La strip habla del hogar ACTUAL, así que descarta a los bloqueados: el
+  // roster crudo los incluye y el conteo quedaba por encima del de Ajustes.
   const familyMembers = useMemo(
-    () => membersQuery.data ?? [],
+    () => activeFamilyMembers(membersQuery.data),
     [membersQuery.data],
   )
   // Actividad del Home = ciclo ACTUAL. Los gastos quedan archivados al cerrar

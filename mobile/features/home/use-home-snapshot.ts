@@ -289,6 +289,11 @@ function toFamilyMemberRows(
       name: m.display_name ?? '',
       color: MEMBER_COLOR_POOL[i % MEMBER_COLOR_POOL.length]!,
       avatarSlug,
+      // El payload trae también a los BLOQUEADOS (el RPC no los filtra). El
+      // rol viaja con la fila para que los consumidores que hablan de "los
+      // miembros" puedan quedarse con los activos (`activeFamilyMembers`)
+      // sin perder el lookup por id de un autor ya bloqueado.
+      role: m.role === 'owner' || m.role === 'blocked' ? m.role : 'member',
     }
   })
 }

@@ -179,7 +179,10 @@ import { CategoryIcon } from '@/components/category/category-icon'
 import { AvatarAnimal } from '@/components/ui/avatar-animal'
 import { Avatar } from '@/components/ui/avatar'
 import { useIsSolo } from '@/features/family/use-is-solo'
-import { useFamilyMembers } from '@/features/family/use-family-members'
+import {
+  activeFamilyMembers,
+  useFamilyMembers,
+} from '@/features/family/use-family-members'
 import {
   useCycleConfirmation,
   useCycleSheetAutoOpen,
@@ -724,6 +727,14 @@ function NeoHomeDashboard({
     () => membersQuery.data ?? [],
     [membersQuery.data],
   )
+  // El roster crudo incluye a los BLOQUEADOS (siguen resolviendo el avatar de
+  // un gasto viejo suyo, ver `familyMembers` más abajo). La píldora de
+  // miembros habla del hogar ACTUAL: si cuenta bloqueados dice "Miembros · 3"
+  // donde Ajustes dice "2 activos · 1 bloqueado".
+  const activeMembers = useMemo(
+    () => activeFamilyMembers(membersQuery.data),
+    [membersQuery.data],
+  )
   // Income acotado a la ventana del ciclo por event_date (el arrastre
   // "Sobrante de X" no flota a ciclos siguientes — regla literal).
   const cycleIncome = useMemo(() => {
@@ -894,6 +905,11 @@ function NeoHomeDashboard({
     trackTap('header_assistant', 'S1', '/(app)/asistente')
     void triggerHaptic('selection')
     router.push('/(app)/asistente')
+  }, [trackTap, router])
+  const handlePressMembers = useCallback(() => {
+    trackTap('family_avatar', 'S2', '/(app)/household')
+    void triggerHaptic('selection')
+    router.push('/(app)/household')
   }, [trackTap, router])
   const handlePressConfigureIncome = useCallback(() => {
     trackTap('hero_setup_cta', 'S3', '/(app)/settings')
@@ -1189,12 +1205,12 @@ function NeoHomeDashboard({
 
   // ── Chips: miembros + sueldo ───────────────────────────────────────
   const membersChip: HomeMembersChipVM | null = useMemo(() => {
-    if (familyMembers.length === 0) return null
+    if (activeMembers.length === 0) return null
     // Avatares REALES: SVG del pack (avatarSlug) o iniciales (fallback).
     // El ring pinta el color del chip para separar el overlap del stack.
     const ring = HOME_SPEC[mode].membersBackground
     return {
-      avatars: familyMembers.slice(0, 2).map((m, index) =>
+      avatars: activeMembers.slice(0, 2).map((m, index) =>
         m.avatarSlug ? (
           <AvatarAnimal
             key={m.id}
@@ -1208,11 +1224,12 @@ function NeoHomeDashboard({
         ),
       ),
       // Solitaria: el chip muestra al propio usuario, sin conteo (pedido
-      // owner). No es tappable: invitar es owner-only y en solo ni siquiera
-      // existe la fila en Ajustes.
-      count: isSolo ? null : familyMembers.length,
+      // owner). Tappable en los dos casos desde 2026-08-17: lleva a "Mi
+      // hogar", que en modo solo también tiene contenido propio (tu ingreso,
+      // tu ciclo, crecer a hogar compartido).
+      count: isSolo ? null : activeMembers.length,
     }
-  }, [isSolo, familyMembers, mode])
+  }, [isSolo, activeMembers, mode])
 
   const confirmedToday = useMemo(() => {
     if (!lastConfirmedAt) return false
@@ -1647,6 +1664,8 @@ function NeoHomeDashboard({
                 ? t('home:familyStrip.soloLabel')
                 : t('home:familyStrip.membersLabel')
             }
+            membersA11yLabel={t('home:familyStrip.openHouseholdA11y')}
+            onPressMembers={handlePressMembers}
             onPressPayday={handlePressPayday}
           />
         )

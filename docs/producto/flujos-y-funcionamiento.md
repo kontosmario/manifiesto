@@ -99,6 +99,7 @@ Stack:
 - `/(app)/add-income`
 - `/(app)/asistente`
 - `/(app)/coach/[signalId]`
+- `/(app)/household` — "Mi hogar": integrantes, permisos y dinero del hogar
 - `/(app)/household-setup`
 - `/(app)/notifications`
 - `/(app)/onboarding`
@@ -107,7 +108,7 @@ Stack:
 - `/(app)/settings/achievements`
 - `/(app)/settings/asistente`
 - `/(app)/settings/editions`
-- `/(app)/settings/family-admin`
+- `/(app)/settings/family-admin` — LEGACY: redirige a `/(app)/household`
 - `/(app)/settings/notifications`
 - `/(app)/settings/plan`
 

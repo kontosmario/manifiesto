@@ -1,4 +1,7 @@
-import { useFamilyMembers } from '@/features/family/use-family-members'
+import {
+  activeFamilyMembers,
+  useFamilyMembers,
+} from '@/features/family/use-family-members'
 import { toInitials } from '@/features/billing/household-initials'
 
 /**
@@ -15,7 +18,8 @@ export function useHouseholdInitials(familyId?: string): {
   count: number
 } {
   const { data } = useFamilyMembers(familyId)
-  const members = data ?? []
+  // Un bloqueado ya no ocupa lugar en el plan: no cuenta ni muestra avatar.
+  const members = activeFamilyMembers(data)
   return {
     initials: members.map((m) => toInitials(m.name)),
     count: members.length,

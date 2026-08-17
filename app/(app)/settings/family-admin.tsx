@@ -1,41 +1,14 @@
 import { Redirect } from 'expo-router'
-import { RequireAuth } from '@/components/guards'
-import { BlockingScreenView } from '@/components/ui/blocking-screen-view'
-import { FamilyAdminScreen } from '@/screens/settings/family-admin-screen'
-import { useIsSolo } from '@/features/family/use-is-solo'
-import { useMyFamilyRole } from '@/features/family/use-my-family-role'
 
-interface GuardedProps {
-  userId: string
-  familyId: string
-}
-
-function OwnerGuarded({ userId, familyId }: GuardedProps) {
-  const roleQuery = useMyFamilyRole(userId, familyId)
-  const isSolo = useIsSolo(userId)
-
-  if (isSolo) {
-    return <Redirect href="/(app)/settings" />
-  }
-
-  if (roleQuery.isLoading) {
-    return <BlockingScreenView message="Verificando permisos..." />
-  }
-
-  // Any non-owner viewer gets bounced back to the main settings screen.
-  if (roleQuery.data !== 'owner') {
-    return <Redirect href="/(app)/settings" />
-  }
-
-  return <FamilyAdminScreen userId={userId} />
-}
-
+/**
+ * Ruta LEGACY. El roster de integrantes y sus acciones se mudaron a "Mi hogar"
+ * (`/(app)/household`) el 2026-08-17, donde además es visible en lectura para
+ * cualquier integrante (antes era owner-only y un miembro rebotaba a Ajustes).
+ *
+ * La ruta sobrevive como redirección para no romper ningún enlace guardado en
+ * el historial de navegación ni referencias externas. Cuando no quede ninguna,
+ * se puede borrar el archivo.
+ */
 export default function FamilyAdminRoute() {
-  return (
-    <RequireAuth>
-      {({ userId, familyId }) => (
-        <OwnerGuarded userId={userId} familyId={familyId} />
-      )}
-    </RequireAuth>
-  )
+  return <Redirect href="/(app)/household" />
 }

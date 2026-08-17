@@ -360,6 +360,15 @@ export function AppStackShell() {
               fullScreenGestureEnabled: false,
             }}
           />
+          {/* "Mi hogar" — mismas options que Ajustes: es una pantalla de
+              gestión que se empuja sobre el stack, no una hoja modal. */}
+          <Stack.Screen
+            name="household"
+            options={{
+              freezeOnBlur: true,
+              fullScreenGestureEnabled: false,
+            }}
+          />
           <Stack.Screen
             name="settings/notifications"
             options={{

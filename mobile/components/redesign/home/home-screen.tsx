@@ -374,6 +374,12 @@ export interface HomeChipsRowProps {
    *  con `count: null` se renderiza solo, así que ahí el caller tiene que
    *  pasar un label que se baste (sin el separador del prefijo). */
   membersLabel?: string
+  /** Ausente = el chip de miembros se rinde inerte (preview del kit). Presente
+   *  = mismo tratamiento accionable que el chip de sueldo. */
+  onPressMembers?: () => void
+  /** Label hablado del chip de miembros — el visible ("Miembros · 3") describe
+   *  el estado, no el destino. */
+  membersA11yLabel?: string
   onPressPayday?: () => void
 }
 
@@ -408,10 +414,13 @@ export function HomeChipsRow({
   members = MOCKUP_MEMBERS,
   payday = MOCKUP_PAYDAY,
   membersLabel = 'Miembros ·',
+  membersA11yLabel,
+  onPressMembers,
   onPressPayday,
 }: HomeChipsRowProps) {
   const s = HOME_SPEC[mode]
   const press = usePressScale({ pressedScale: 0.96 })
+  const membersPress = usePressScale({ pressedScale: 0.96 })
   // Ripple de atención de los chips accionables ("¿Ya cobraste?" / "Confirma
   // tu saldo ›") — indica una acción a tocar (pedido owner: el pulse/breath no
   // gustó). Un anillo peach que irradia hacia afuera (scale 1→1.22 + fade),
@@ -447,6 +456,32 @@ export function HomeChipsRow({
   // estados.dc.html:52-58) → los dos chips ADYACENTES gap 10 a la izquierda.
   const soloSueldo = !members && Boolean(payday)
   const newUserAdjacent = Boolean(members) && payday?.kind === 'configure'
+  const membersChip = members ? (
+    <View
+      style={[
+        styles.membersChip,
+        { backgroundColor: s.membersBackground, boxShadow: s.membersShadow },
+        s.membersGradientCss ? { experimental_backgroundImage: s.membersGradientCss } : null,
+      ]}
+    >
+      <View style={styles.avatarStack}>
+        {members.avatars.slice(0, 2).map((node, i) => (
+          // El círculo ya NO pinta un bg sólido (AvatarAnimal trae el
+          // suyo); es solo el contenedor 26px + ring de separación del
+          // color del chip (membersBackground) para el overlap.
+          <View
+            key={i}
+            style={[styles.avatarCircle, i > 0 ? styles.avatarOverlap : null, { borderColor: s.membersBackground }]}
+          >
+            {node}
+          </View>
+        ))}
+      </View>
+      <Text style={[styles.membersLabel, { color: s.membersInk }]} numberOfLines={1}>
+        {members.count == null ? membersLabel : `${membersLabel} ${members.count}`}
+      </Text>
+    </View>
+  ) : null
   const sueldoChip = payday ? (
     <View style={[styles.sueldoChip, { backgroundColor: s.sueldoBackground, boxShadow: s.sueldoShadow }]}>
       <View
@@ -471,31 +506,26 @@ export function HomeChipsRow({
         newUserAdjacent ? styles.chipRowAdjacent : null,
       ]}
     >
-      {members ? (
-        <View
-          style={[
-            styles.membersChip,
-            { backgroundColor: s.membersBackground, boxShadow: s.membersShadow },
-            s.membersGradientCss ? { experimental_backgroundImage: s.membersGradientCss } : null,
-          ]}
-        >
-          <View style={styles.avatarStack}>
-            {members.avatars.slice(0, 2).map((node, i) => (
-              // El círculo ya NO pinta un bg sólido (AvatarAnimal trae el
-              // suyo); es solo el contenedor 26px + ring de separación del
-              // color del chip (membersBackground) para el overlap.
-              <View
-                key={i}
-                style={[styles.avatarCircle, i > 0 ? styles.avatarOverlap : null, { borderColor: s.membersBackground }]}
-              >
-                {node}
-              </View>
-            ))}
-          </View>
-          <Text style={[styles.membersLabel, { color: s.membersInk }]} numberOfLines={1}>
-            {members.count == null ? membersLabel : `${membersLabel} ${members.count}`}
-          </Text>
-        </View>
+      {membersChip ? (
+        onPressMembers ? (
+          // Mismo tratamiento que el chip de sueldo: AnimatedPressable +
+          // usePressScale + hitSlop. El chip mide 40pt de alto (26 del avatar
+          // + 7×2 de padding), así que el hitSlop de 4 lo lleva a 48 — por
+          // encima del piso de 44.
+          <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityLabel={membersA11yLabel ?? membersLabel}
+            hitSlop={4}
+            onPress={onPressMembers}
+            onPressIn={membersPress.onPressIn}
+            onPressOut={membersPress.onPressOut}
+            style={[styles.membersPressable, membersPress.animatedStyle]}
+          >
+            {membersChip}
+          </AnimatedPressable>
+        ) : (
+          membersChip
+        )
       ) : null}
       {payday && sueldoChip ? (
         <View style={styles.sueldoChipWrap}>
@@ -2142,6 +2172,10 @@ const styles = StyleSheet.create({
     // entra en 375pt: cede este, no el que pide la acción.
     flexShrink: 1,
   },
+  // El `flexShrink` que cede ancho cuando los dos chips no entran vive en el
+  // chip; cuando el chip va envuelto en el Pressable, el hijo flex de la fila
+  // pasa a ser el wrapper — sin esto el wrapper no cede y el chip se sale.
+  membersPressable: { flexShrink: 1 },
   avatarStack: { flexDirection: 'row' },
   // 26px, recorta el nodo al círculo (overflow) y lleva un ring 2px cuyo
   // color pinta el caller (= membersBackground) para separar el overlap.

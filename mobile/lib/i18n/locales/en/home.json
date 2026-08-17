@@ -218,7 +218,8 @@
     "membersAccessibility": "Household members: {{members}}.",
     "none": "none",
     "membersLabel": "Members ·",
-    "soloLabel": "Your space"
+    "soloLabel": "Your space",
+    "openHouseholdA11y": "Open My home"
   },
   "historyToolbar": {
     "openFilters": "Open filters",

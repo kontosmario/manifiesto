@@ -30,8 +30,9 @@ El modelo sigue siendo el mismo (`families`/`family_members`/`family_finance`): 
 |---|---|
 | **Onboarding** (`step-family.tsx`) | Step 3 ofrece "Yo solo" / "Con mi familia o pareja". "Yo solo" → `bootstrap_family()` + `set_family_kind('solo')`, sin paso crear/unirse. Card de confirmación con copy neutral. |
 | **Home** (`family-strip.tsx` / `home-dashboard.tsx` / `home-screen.tsx`) | `FamilyStrip` con `showMembers={!isSolo}`: oculta avatares y "Miembros · N", **conserva el PaydayPill** (confirmación de cobro). |
-| **Settings** (`settings-screen.tsx`) | Oculta el grupo "Familia" (invitar/gestionar/salir). Hero "Tu cuenta personal" sin pill de dueño. Grupo "Hogar" → "Tu cuenta"; "Mi aporte mensual" → "Ingreso mensual". Config financiera intacta. |
-| **family-admin** (`app/(app)/settings/family-admin.tsx`) | Redirige a `/settings` (un soltero no tiene gestión de miembros). |
+| **Settings** (`settings-screen.tsx`) | Hero "Tu cuenta personal" sin pill de dueño. La fila puente "Mi hogar" cambia su helper; el grupo "Reiniciar mi cuenta" sólo existe en modo solo. |
+| **Mi hogar** (`screens/household/household-screen.tsx`) | Sin roster ni acciones destructivas del hogar: hero "Tu espacio", grupo "Crecer" con "Compartir con mi familia o pareja", y el dinero/ciclo de la cuenta. "Mi aporte mensual" → "Ingreso mensual". |
+| **family-admin** (`app/(app)/settings/family-admin.tsx`) | Ruta LEGACY: redirige a `/(app)/household` (el roster se mudó ahí el 2026-08-17 y ya no es owner-only en lectura). |
 
 ## Cómo se elige
 
@@ -39,13 +40,13 @@ Solo se setea en el onboarding (elección explícita "Yo solo"). No hay UPDATE d
 
 ## Conversión de tipo de cuenta
 
-Cambiar el tipo desde Settings, en ambos sentidos (diseño aprobado — ver [spec-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/spec-conversion-cuenta-v1.md)):
+Cambiar el tipo desde **Mi hogar**, en ambos sentidos (diseño aprobado — ver [spec-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/spec-conversion-cuenta-v1.md)):
 
-- **Soltero → Familia:** flip a `shared` vía `set_family_kind('shared')`; aparecen los settings de familia. No destructivo.
-- **Familia (owner) → Soltero:** RPC `convert_family_to_solo()` (hook `useConvertToSolo`) — quita a los demás miembros (que vuelven a onboardear, con `onboarding_completed_at` reseteado), invalida invites pendientes y deja la familia en `kind='solo'`. Los gastos/config quedan con el owner. Destructivo → confirmación fuerte. UI: Settings → grupo "Familia" → fila "Pasar a cuenta individual".
+- **Soltero → Familia:** flip a `shared` vía `set_family_kind('shared')`; aparecen las secciones de hogar compartido. No destructivo. UI: Mi hogar → grupo "Crecer" → "Compartir con mi familia o pareja".
+- **Familia (owner) → Soltero:** RPC `convert_family_to_solo()` (hook `useConvertToSolo`) — quita a los demás miembros (que vuelven a onboardear, con `onboarding_completed_at` reseteado), invalida invites pendientes y deja la familia en `kind='solo'`. Los gastos/config quedan con el owner. Destructivo → confirmación fuerte. UI: Mi hogar → grupo "Acciones delicadas" → fila "Pasar a cuenta individual".
 - **Miembro no-dueño → Soltero:** flujo existente "Salir del hogar" (`leave_current_family`) → re-onboarding → elige "Yo solo".
 
-> Estado: ✅ **implementado (2026-05-22)**. RPCs `convert_family_to_solo` + `set_family_kind`; hooks `useConvertToSolo`/`useConvertToFamily`; UI en `settings-screen.tsx` (grupo "Tipo de cuenta" para solteros, fila "Pasar a cuenta individual" para owners). Plan: [plan-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/plan-conversion-cuenta-v1.md).
+> Estado: ✅ **implementado (2026-05-22)**. RPCs `convert_family_to_solo` + `set_family_kind`; hooks `useConvertToSolo`/`useConvertToFamily`; UI en `screens/household/household-screen.tsx` desde el 2026-08-17 (antes vivía en el grupo "Tipo de cuenta" de `settings-screen.tsx`). Plan: [plan-conversion-cuenta-v1.md](../auditorias/expansion-multisegmento-2026-05-22/plan-conversion-cuenta-v1.md).
 
 ## Limitaciones (v1)
 

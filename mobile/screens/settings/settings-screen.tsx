@@ -24,7 +24,6 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import {
   SettingsGroup,
   SettingsRow,
-  SettingsSwitchRow,
 } from '@/components/settings/settings-grouped-list'
 import {
   SettingsHeroCard,
@@ -40,15 +39,8 @@ import {
   buildRealInsertTestState,
 } from '@/features/import-review/preview-mock-state'
 import type { ReviewState } from '@/features/import-review/types'
-import { ShareInviteSheet } from '@/components/settings/sheets/share-invite-sheet'
 import { EditAvatarSheet } from '@/components/settings/sheets/edit-avatar-sheet'
-import { EditBufferSheet } from '@/components/settings/sheets/edit-buffer-sheet'
 import { EditDisplayNameSheet } from '@/components/settings/sheets/edit-display-name-sheet'
-import { EditMyContributionSheet } from '@/components/settings/sheets/edit-my-contribution-sheet'
-import { EditCycleConfigSheet } from '@/components/settings/sheets/edit-cycle-config-sheet'
-import { IncomeModeConfirmSheet } from '@/components/settings/sheets/income-mode-confirm-sheet'
-import { EditSavingsPercentSheet } from '@/components/settings/sheets/edit-savings-percent-sheet'
-import { ConversionSettingsSheet } from '@/components/settings/sheets/conversion-settings-sheet'
 import { MaterialIcons } from '@expo/vector-icons'
 import { buildInitialBiometricState } from '@/features/auth/auth-biometric-state'
 import { logoutSession } from '@/features/auth/logout'
@@ -57,21 +49,10 @@ import { useIsSuperAdmin } from '@/features/admin/use-super-admin'
 import { useProtectionPrompt } from '@/features/auth/use-protection-prompt'
 import { useRequireReauth } from '@/features/auth/use-require-reauth'
 import { useMotionPreferenceControls } from '@/features/preferences/motion-preference-provider'
-import {
-  useConvertToFamily,
-  useConvertToSolo,
-  useLeaveCurrentFamily,
-  useUpdateMyIncomeContribution,
-} from '@/features/family/use-family-actions'
+import { useLeaveCurrentFamily } from '@/features/family/use-family-actions'
 import { useFamilyMemberStats } from '@/features/family/use-family-admin'
-import { useFamilyMembersDetail } from '@/features/family/use-family-members-detail'
 import { useIsSolo } from '@/features/family/use-is-solo'
 import { useMyFamilyRole } from '@/features/family/use-my-family-role'
-import {
-  buildFamilyFinanceInput,
-  type FamilyFinanceInputSnapshot,
-} from '@/features/finance/family-finance.model'
-import { useUpsertFamilyFinance } from '@/features/finance/use-family-finance'
 import {
   useMyProfile,
   useUpdateAvatarAnimal,
@@ -116,8 +97,6 @@ import { nunitoFamily, typography } from '@/theme/typography'
 import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { useEntitlement } from '@/features/billing/use-entitlement'
-import { financeToCycleConfig, type FinanceCycleConfig } from '@/utils/finance-cycle-config'
-import { formatCycleSummary } from '@/utils/format-cycle-label'
 import { requestAppRating } from '@/features/settings/rate-app'
 import { APP_STORE_REVIEW_URL } from '@/lib/legal-urls'
 
@@ -157,16 +136,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   // personal ya venció (al salir caería a bloqueado). Spec §6.6.
   const entitlementQuery = useEntitlement(userId)
   const memberStatsQuery = useFamilyMemberStats()
-  // Active members = role !== 'blocked'. We use the RPC which gives
-  // blocked_at status; fall back to 0 while loading. We only need this
-  // count to decide whether the owner sees the informative row in
-  // place of "Salir de la familia".
-  const otherActiveMembers = useMemo(() => {
-    const rows = memberStatsQuery.data ?? []
-    return rows.filter(
-      (m) => m.userId !== userId && m.role !== 'blocked' && m.blockedAt === null,
-    ).length
-  }, [memberStatsQuery.data, userId])
   const totalMembers = (memberStatsQuery.data ?? []).length
   // useLatestSavingsGoal (no useSavingsGoal): incluye inactivas. Así
   // el subtitle refleja el estado real ("Desactivada · titulo") cuando
@@ -177,79 +146,13 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   const updateAvatarMutation = useUpdateAvatarAnimal(userId, familyId)
   const leaveFamilyMutation = useLeaveCurrentFamily(userId)
   const leaveFamilyReauth = useRequireReauth()
-  const convertToSolo = useConvertToSolo(userId)
-  const convertToFamily = useConvertToFamily(userId)
   const enablePushMutation = useEnablePushNotifications()
   const hasPushSubscriptionQuery = useHasPushSubscription(familyId, userId)
-  const upsertFamilyFinanceMutation = useUpsertFamilyFinance(familyId, userId)
-  const familyMembersDetailQuery = useFamilyMembersDetail(familyId)
-  const updateMyContributionMutation = useUpdateMyIncomeContribution(userId, familyId)
   const tourResets = useResetTourSeen()
-  const myContribution = useMemo(() => {
-    const me = (familyMembersDetailQuery.data ?? []).find(
-      (m) => m.userId === userId,
-    )
-    return me?.monthlyIncomeContribution ?? 0
-  }, [familyMembersDetailQuery.data, userId])
-
-  const financeSnapshot = useMemo<FamilyFinanceInputSnapshot>(
-    () => ({
-      dailyBudgetBufferMode: dashboard.dailyBudgetBufferMode,
-      dailyBudgetBufferValue: dashboard.dailyBudgetBufferValue,
-      dailyBudgetCheckinHour: dashboard.dailyBudgetCheckinHour,
-      dailyBudgetNudgesEnabled: dashboard.dailyBudgetNudgesEnabled,
-      lastSalaryConfirmedAt:
-        dashboard.familyFinanceQuery.data?.last_salary_confirmed_at ?? null,
-      monthlyIncome: dashboard.monthlyIncome,
-      salaryPaymentDay: dashboard.salaryPaymentDay,
-      savingsGoal: dashboard.savingsGoal,
-      savingsGoalPercent: dashboard.familyFinanceQuery.data?.savings_goal_percent ?? 20,
-      usdExchangeRate: dashboard.usdExchangeRate,
-      localCurrency: dashboard.familyFinanceQuery.data?.local_currency,
-      usdRateEnabled: dashboard.familyFinanceQuery.data?.usd_rate_enabled ?? false,
-      currentCycleStartingBalance:
-        dashboard.familyFinanceQuery.data?.current_cycle_starting_balance ?? null,
-      currentCycleAnchor:
-        dashboard.familyFinanceQuery.data?.current_cycle_anchor ?? null,
-      incomeMode: dashboard.incomeMode,
-      // Cycle config: leer del query — NO hardcodear monthly. Cualquier
-      // save vía `saveFinanceSnapshot` (USD rate, ahorro, etc.) hubiera
-      // reseteado la config del ciclo si quedaban estos hardcodeados.
-      cycleType: dashboard.familyFinanceQuery.data?.cycle_type ?? 'monthly',
-      cycleAnchorDate: dashboard.familyFinanceQuery.data?.cycle_anchor_date ?? null,
-      cycleLengthDays: dashboard.familyFinanceQuery.data?.cycle_length_days ?? null,
-    }),
-    [
-      dashboard.dailyBudgetBufferMode,
-      dashboard.dailyBudgetBufferValue,
-      dashboard.dailyBudgetCheckinHour,
-      dashboard.dailyBudgetNudgesEnabled,
-      dashboard.familyFinanceQuery.data?.last_salary_confirmed_at,
-      dashboard.familyFinanceQuery.data?.savings_goal_percent,
-      dashboard.familyFinanceQuery.data?.current_cycle_starting_balance,
-      dashboard.familyFinanceQuery.data?.current_cycle_anchor,
-      dashboard.familyFinanceQuery.data?.cycle_type,
-      dashboard.familyFinanceQuery.data?.cycle_anchor_date,
-      dashboard.familyFinanceQuery.data?.cycle_length_days,
-      dashboard.monthlyIncome,
-      dashboard.salaryPaymentDay,
-      dashboard.savingsGoal,
-      dashboard.usdExchangeRate,
-      dashboard.familyFinanceQuery.data?.local_currency,
-      dashboard.familyFinanceQuery.data?.usd_rate_enabled,
-      dashboard.incomeMode,
-    ],
-  )
 
   // ── Sheet visibility state ────────────────────────────────────
   const [nameSheetOpen, setNameSheetOpen] = useState(false)
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
-  const [incomeSheetOpen, setIncomeSheetOpen] = useState(false)
-  const [cycleConfigSheetOpen, setCycleConfigSheetOpen] = useState(false)
-  const [conversionSheetOpen, setConversionSheetOpen] = useState(false)
-  const [savingsSheetOpen, setSavingsSheetOpen] = useState(false)
-  const [bufferSheetOpen, setBufferSheetOpen] = useState(false)
-  const [destroyFamilySheetOpen, setDestroyFamilySheetOpen] = useState(false)
   const [resetAccountSheetOpen, setResetAccountSheetOpen] = useState(false)
   // Preview state lives here so the dates are regenerated relative to
   // "today" each time the user opens the preview, not snapshotted at
@@ -466,74 +369,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     [showError, updateAvatarMutation, t],
   )
 
-  const saveFinanceSnapshot = useCallback(
-    (next: FamilyFinanceInputSnapshot, onDone: () => void) => {
-      const input = buildFamilyFinanceInput(next)
-      upsertFamilyFinanceMutation.mutate(input, {
-        onSuccess: () => {
-          void triggerHaptic('success')
-          onDone()
-        },
-        onError: (error: unknown) => {
-          void showError(error, t('settings:errors.saveHouseholdMetrics'))
-        },
-      })
-    },
-    [showError, upsertFamilyFinanceMutation, t],
-  )
-
-  const handleSaveMyContribution = useCallback(
-    (value: number) => {
-      updateMyContributionMutation.mutate(value, {
-        onSuccess: () => {
-          void triggerHaptic('success')
-          setIncomeSheetOpen(false)
-        },
-        onError: (error: unknown) => {
-          void showError(error, t('settings:errors.updateContribution'))
-        },
-      })
-    },
-    [showError, updateMyContributionMutation, t],
-  )
-
-  const handleSaveCycleConfig = useCallback(
-    (next: FinanceCycleConfig) => {
-      saveFinanceSnapshot(
-        {
-          ...financeSnapshot,
-          // Persistimos el día de cobro en `salaryPaymentDay` solo cuando
-          // el ciclo es mensual (mantiene compat con el resto de la app).
-          // Para rolling types, el día de cobro lo derivan los consumidores
-          // de `cycle_anchor_date` cuando lo necesitan.
-          salaryPaymentDay:
-            next.cycle_type === 'monthly' ? next.salary_payment_day : financeSnapshot.salaryPaymentDay,
-          cycleType: next.cycle_type,
-          cycleAnchorDate: next.cycle_type === 'monthly' ? null : next.cycle_anchor_date,
-          cycleLengthDays: next.cycle_type === 'monthly' ? null : next.cycle_length_days,
-        },
-        () => setCycleConfigSheetOpen(false),
-      )
-    },
-    [financeSnapshot, saveFinanceSnapshot],
-  )
-
-  const handleSaveCurrency = useCallback(
-    (value: string) => {
-      // No cierra el sheet: el usuario ve el check moverse + la cotización en
-      // uso, y cierra cuando quiere (drag / backdrop).
-      saveFinanceSnapshot({ ...financeSnapshot, localCurrency: value }, () => {})
-    },
-    [financeSnapshot, saveFinanceSnapshot],
-  )
-
-  const handleToggleUsdRate = useCallback(
-    (value: boolean) => {
-      saveFinanceSnapshot({ ...financeSnapshot, usdRateEnabled: value }, () => {})
-    },
-    [financeSnapshot, saveFinanceSnapshot],
-  )
-
   // "Calificar Manifiesto" — modal nativo de rating cuando el sistema
   // lo permite (iOS lo racionea ~3/año), deep link al compositor de
   // reseña como fallback garantizado. Política pura en rate-app.ts.
@@ -550,63 +385,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       }
     })()
   }, [t])
-
-  // Régimen de ingreso (fijo ↔ variable). Cambiarlo altera cómo se
-  // calcula el cupo diario, así que se confirma con un sheet del design
-  // system (IncomeModeConfirmSheet, antes Alert nativo) que lista los
-  // efectos. Al pasar a dinámico se APAGA el ahorro mensual por % (no
-  // tiene base sin sueldo) y se LIMPIA el override del ciclo (un saldo
-  // confirmado bajo el régimen de sueldo compondría como base del cupo
-  // dinámico); al volver a fijo el usuario reconfigura sueldo y ahorro
-  // desde las filas que reaparecen.
-  const isDynamicIncomeMode = dashboard.incomeMode === 'dynamic'
-  const [incomeModeSheet, setIncomeModeSheet] = useState<{
-    open: boolean
-    nextMode: 'fixed' | 'dynamic'
-  }>({ open: false, nextMode: 'dynamic' })
-  const handleToggleDynamicIncome = useCallback((value: boolean) => {
-    setIncomeModeSheet({ open: true, nextMode: value ? 'dynamic' : 'fixed' })
-  }, [])
-  const handleConfirmIncomeMode = useCallback(() => {
-    const { nextMode } = incomeModeSheet
-    saveFinanceSnapshot(
-      nextMode === 'dynamic'
-        ? {
-            ...financeSnapshot,
-            incomeMode: nextMode,
-            savingsGoal: 0,
-            savingsGoalPercent: 0,
-            currentCycleStartingBalance: null,
-            currentCycleAnchor: null,
-          }
-        : { ...financeSnapshot, incomeMode: nextMode },
-      () => setIncomeModeSheet((prev) => ({ ...prev, open: false })),
-    )
-  }, [incomeModeSheet, financeSnapshot, saveFinanceSnapshot])
-
-  const handleSaveSavingsPercent = useCallback(
-    (value: number) => {
-      saveFinanceSnapshot(
-        { ...financeSnapshot, savingsGoalPercent: value },
-        () => setSavingsSheetOpen(false),
-      )
-    },
-    [financeSnapshot, saveFinanceSnapshot],
-  )
-
-  const handleSaveBuffer = useCallback(
-    (mode: 'none' | 'fixed' | 'percent', value: number) => {
-      saveFinanceSnapshot(
-        {
-          ...financeSnapshot,
-          dailyBudgetBufferMode: mode,
-          dailyBudgetBufferValue: value,
-        },
-        () => setBufferSheetOpen(false),
-      )
-    },
-    [financeSnapshot, saveFinanceSnapshot],
-  )
 
   const handlePushActivation = useCallback(() => {
     if (!supportsRemotePushNotifications) {
@@ -626,15 +404,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       },
     )
   }, [enablePushMutation, familyId, hasPushSubscriptionQuery, showError, userId, t])
-
-  // Invite sheet — generates a single-use 8-char code on open
-  // (server-side, with 10/min rate limit) and shows it big with
-  // copy + native share + regenerate actions.
-  const [shareInviteSheetVisible, setShareInviteSheetVisible] = useState(false)
-  const handleOpenShareInvite = useCallback(() => {
-    void triggerHaptic('selection')
-    setShareInviteSheetVisible(true)
-  }, [])
 
   // Ayuda · Tutoriales — re-watch a single tour or all four.
   // Resets the "seen" flag then navigates to the relevant tab so
@@ -662,32 +431,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     // screen will auto-fire its tour.
   }, [tourResets])
 
-  // Owner-with-members destructive flow lives in a dedicated sheet so
-  // we can collect a typed-confirmation phrase. Anyone else (member,
-  // or owner-alone) gets a single-tap Alert — there's no shared
-  // family data to destroy beyond their own membership.
-  const isOwnerDestroyFlow = isOwner && otherActiveMembers > 0
-
-  // `runLeaveFamily` ejecuta la mutation. Antes de disparar pedimos un
-  // re-auth (PIN o biometría) — salir de un hogar familiar es
-  // destructivo y queremos que un dispositivo desbloqueado no pueda
-  // hacerlo con un solo tap (Sprint B · B1). El skip-window de 5min
-  // del hook evita doble fricción si el user ya re-autenticó hace poco.
-  const runLeaveFamily = useCallback(async () => {
-    const ok = await leaveFamilyReauth.requireReauth(t('settings:leaveHousehold.title'))
-    if (!ok) return
-    leaveFamilyMutation.mutate(undefined, {
-      onError: (error: unknown) => {
-        void showError(error, t('settings:errors.leaveFamily'))
-      },
-      onSuccess: () => {
-        void triggerHaptic('success')
-        setDestroyFamilySheetOpen(false)
-        router.replace('/(app)/onboarding')
-      },
-    })
-  }, [leaveFamilyMutation, leaveFamilyReauth, router, showError, t])
-
   // Reset de cuenta INDIVIDUAL. Una cuenta solo es internamente una `families`
   // kind='solo' con un único miembro, así que el MISMO RPC leave_current_family
   // ya produce el reset deseado: cae en la rama owner-alone → borra la familia
@@ -714,59 +457,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
     void triggerHaptic('warning')
     setResetAccountSheetOpen(true)
   }, [])
-
-  const handleConfirmLeave = useCallback(() => {
-    if (isOwnerDestroyFlow) {
-      void triggerHaptic('warning')
-      setDestroyFamilySheetOpen(true)
-      return
-    }
-    // Aviso extra: si su acceso viene del hogar y su período libre
-    // personal ya venció, al salir queda sin plan (bloqueo). Lo
-    // comunicamos antes — y de paso implica que re-entrar no reinicia nada.
-    const ent = entitlementQuery.data
-    const willLoseAccess = ent?.source === 'family' && ent.trialDaysLeft === 0
-    const baseMsg = t('settings:leaveHousehold.baseMessage')
-    const message = willLoseAccess
-      ? `${baseMsg}\n\n${t('settings:leaveHousehold.lostAccessNote')}`
-      : baseMsg
-    void (async () => {
-      const confirmed = await neoConfirm(t('settings:leaveHousehold.title'), {
-        confirmLabel: t('settings:leaveHousehold.leave'),
-        message,
-        tone: 'destructive',
-      })
-      if (!confirmed) return
-      await runLeaveFamily()
-    })()
-  }, [isOwnerDestroyFlow, runLeaveFamily, entitlementQuery.data, t])
-
-  const handleConfirmConvertToSolo = useCallback(() => {
-    void (async () => {
-      const confirmed = await neoConfirm(t('settings:convertToSolo.title'), {
-        confirmLabel: t('settings:convertToSolo.confirm'),
-        message: t('settings:convertToSolo.message'),
-        tone: 'destructive',
-      })
-      if (!confirmed) return
-      convertToSolo.mutate(undefined, {
-        onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
-      })
-    })()
-  }, [convertToSolo, showError, t])
-
-  const handleConfirmConvertToFamily = useCallback(() => {
-    void (async () => {
-      const confirmed = await neoConfirm(t('settings:convertToFamily.title'), {
-        confirmLabel: t('settings:convertToFamily.confirm'),
-        message: t('settings:convertToFamily.message'),
-      })
-      if (!confirmed) return
-      convertToFamily.mutate(undefined, {
-        onError: (error) => void showError(error, t('settings:errors.changeAccountType')),
-      })
-    })()
-  }, [convertToFamily, showError, t])
 
   const handleConfirmLogout = useCallback(() => {
     void (async () => {
@@ -865,39 +555,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   )
 
   // ── Values shown on rows ──────────────────────────────────────
-  const myContributionValue =
-    myContribution > 0
-      ? currencyFormatter.format(myContribution)
-      : familyMembersDetailQuery.isLoading
-        ? '…'
-        : t('settings:rowValue.define')
-  const householdTotalSubtitle =
-    financeSnapshot.monthlyIncome > 0
-      ? t('settings:household.total', {
-          amount: currencyFormatter.format(financeSnapshot.monthlyIncome),
-        })
-      : undefined
-  // Conversión a dólares (toggle + moneda). Sin asumir ARS: la moneda puede ser
-  // null (cuenta que todavía no eligió). El rate en uso vive dentro del sheet.
-  const usdRateEnabled = financeSnapshot.usdRateEnabled ?? false
-  const currencyValue = financeSnapshot.localCurrency ?? null
-  const conversionRowValue = !usdRateEnabled
-    ? t('settings:conversion.rowDisabled')
-    : (currencyValue ?? t('settings:conversion.chooseCurrency'))
-  const currentCycleConfig = useMemo<FinanceCycleConfig>(
-    () => financeToCycleConfig(dashboard.familyFinanceQuery.data),
-    [dashboard.familyFinanceQuery.data],
-  )
-  const cycleConfigValue = formatCycleSummary(currentCycleConfig)
-  const savingsPercentValue = `${financeSnapshot.savingsGoalPercent}%`
-  const bufferValueLabel =
-    financeSnapshot.dailyBudgetBufferMode === 'none'
-      ? t('settings:buffer.none')
-      : financeSnapshot.dailyBudgetBufferMode === 'percent'
-        ? t('settings:buffer.percentDaily', { value: financeSnapshot.dailyBudgetBufferValue })
-        : t('settings:buffer.perDay', {
-            amount: currencyFormatter.format(financeSnapshot.dailyBudgetBufferValue),
-          })
   const savingsGoalSubtitle = savingsGoalQuery.data
     ? savingsGoalQuery.data.isActive
       ? `${goalEmojiText(savingsGoalQuery.data.emoji)} ${savingsGoalQuery.data.title} · ${formatMoneyShort(savingsGoalQuery.data.currentAmount)} / ${formatMoneyShort(savingsGoalQuery.data.goalAmount)}`.replace(/\s{2,}/g, ' ').trim()
@@ -1115,80 +772,23 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 2. HOGAR */}
+            {/* 2. MI HOGAR — fila PUENTE. El dinero del hogar (aporte, ciclo,
+                % de ahorro, colchón diario, cotización), el roster de
+                integrantes y las acciones destructivas del hogar viven desde
+                el 2026-08-17 en la sección "Mi hogar" (`/(app)/household`).
+                Acá queda sólo la puerta de entrada. */}
             <RiseView delay={140}>
-              <SettingsGroup
-                footer={
-                  isOwner
-                    ? undefined
-                    : t('settings:household.ownerOnlyFooter')
-                }
-                title={isSolo ? t('settings:household.titleSolo') : t('settings:household.title')}
-              >
-                {/* En modo INGRESO DINÁMICO no hay sueldo fijo: se ocultan
-                    las filas de sueldo/contribución, día de cobro y % de
-                    ahorro (no tienen base). Los ingresos se cargan desde
-                    Home → Agregar ingreso. */}
-                {!isDynamicIncomeMode ? (
-                  <SettingsRow
-                    helper={isSolo ? undefined : householdTotalSubtitle}
-                    icon="attach-money"
-                    label={isSolo ? t('settings:household.monthlyIncome') : t('settings:household.myContribution')}
-                    onPress={() => setIncomeSheetOpen(true)}
-                    value={myContributionValue}
-                  />
-                ) : null}
-                <SettingsSwitchRow
-                  disabled={!isOwner}
+              <SettingsGroup title={t('settings:myHome.bridgeGroupTitle')}>
+                <SettingsRow
                   helper={
-                    isDynamicIncomeMode
-                      ? t('settings:household.incomeModeHelperOn')
-                      : t('settings:household.incomeModeHelper')
+                    isSolo
+                      ? t('settings:myHome.bridgeHelperSolo')
+                      : t('settings:myHome.bridgeHelper')
                   }
-                  icon="auto-graph"
-                  label={t('settings:household.incomeModeLabel')}
-                  onValueChange={handleToggleDynamicIncome}
-                  value={isDynamicIncomeMode}
-                />
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
-                  icon="autorenew"
-                  label={
-                    isDynamicIncomeMode
-                      ? t('settings:household.cycleLabelDynamic')
-                      : t('settings:household.payCycle')
-                  }
-                  onPress={() => setCycleConfigSheetOpen(true)}
-                  value={cycleConfigValue}
-                />
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
-                  helper={t('settings:household.usdRateHelper')}
-                  icon="currency-exchange"
-                  label={t('settings:household.usdRate')}
-                  onPress={() => setConversionSheetOpen(true)}
-                  value={conversionRowValue}
-                />
-                {!isDynamicIncomeMode ? (
-                  <SettingsRow
-                    disabled={!isOwner}
-                    disabledHint={DISABLED_HINT}
-                    icon="savings"
-                    label={t('settings:household.savingsPercent')}
-                    onPress={() => setSavingsSheetOpen(true)}
-                    value={savingsPercentValue}
-                  />
-                ) : null}
-                <SettingsRow
-                  disabled={!isOwner}
-                  disabledHint={DISABLED_HINT}
-                  icon="shield"
+                  icon="home"
                   isLast
-                  label={t('settings:household.dailyBuffer')}
-                  onPress={() => setBufferSheetOpen(true)}
-                  value={bufferValueLabel}
+                  label={t('settings:myHome.bridgeLabel')}
+                  onPress={() => router.push('/(app)/household')}
                 />
               </SettingsGroup>
             </RiseView>
@@ -1537,99 +1137,27 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
               </SettingsGroup>
             </RiseView>
 
-            {/* 13. FAMILIA + TIPO DE CUENTA + REINICIAR — acciones del
-                hogar (incluyendo las destructivas). El ternario isSolo
-                queda ATÓMICO. Delays internos relativos: bloque base 420,
-                bloques secundarios 440 (mantienen el +20 de stagger). */}
-            {!isSolo ? (
-            <>
-            <RiseView delay={420}>
-              <SettingsGroup title={t('settings:family.groupTitle')}>
-                {/* Invitar + gestionar miembros = solo el dueño. Un miembro
-                    no-dueño solo ve "Salir del hogar" (el backend
-                    create_family_invite también es owner-only — sin bypass). */}
-                {isOwner ? (
-                  <SettingsRow
-                    icon="person-add"
-                    label={t('settings:family.invite')}
-                    helper={t('settings:family.inviteHelper')}
-                    onPress={handleOpenShareInvite}
-                  />
-                ) : null}
-                {isOwner ? (
-                  <SettingsRow
-                    icon="group"
-                    label={t('settings:family.manageMembers')}
-                    onPress={() => router.push('/settings/family-admin' as never)}
-                  />
-                ) : null}
-                <SettingsRow
-                  destructive
-                  helper={
-                    isOwnerDestroyFlow
-                      ? t('settings:family.ownerLeaveHelper')
-                      : undefined
-                  }
-                  icon={isOwnerDestroyFlow ? 'delete-forever' : 'logout'}
-                  isLast
-                  label={isOwnerDestroyFlow ? t('settings:family.deleteHousehold') : t('settings:family.leaveHousehold')}
-                  onPress={handleConfirmLeave}
-                />
-                {/*
-                  Why a single row for both flows: the previous
-                  read-only "Tienes miembros en tu hogar" placeholder
-                  left owners with no path forward — they had to
-                  guess that "Gestionar miembros" → transfer was the
-                  only escape. We now show one destructive row whose
-                  copy + helper adapts to ownership, and the actual
-                  destructive 2-step confirmation lives in the sheet.
-                */}
-              </SettingsGroup>
-            </RiseView>
-            {isOwner ? (
+            {/* 13. REINICIAR MI CUENTA — sólo en modo solo. Es una acción de
+                CUENTA (borra todo y vuelve al onboarding), no del hogar, así
+                que se queda acá. Todo lo que era del hogar —invitar, gestionar
+                integrantes, salir/eliminar, pasar a individual o a compartido—
+                se mudó a "Mi hogar". */}
+            {isSolo ? (
               <RiseView delay={440}>
-                <SettingsGroup title={t('settings:accountType.groupTitle')}>
+                <SettingsGroup
+                  footer={t('settings:resetAccount.footer')}
+                  title={t('settings:resetAccount.groupTitle')}
+                >
                   <SettingsRow
                     destructive
-                    icon="person-remove"
+                    icon="restart-alt"
                     isLast
-                    label={t('settings:accountType.toSolo')}
-                    helper={t('settings:accountType.toSoloHelper')}
-                    onPress={handleConfirmConvertToSolo}
+                    label={t('settings:resetAccount.rowLabel')}
+                    onPress={handleConfirmResetAccount}
                   />
                 </SettingsGroup>
               </RiseView>
             ) : null}
-            </>
-            ) : (
-              <>
-                <RiseView delay={420}>
-                  <SettingsGroup title={t('settings:accountType.groupTitle')}>
-                    <SettingsRow
-                      icon="group-add"
-                      isLast
-                      label={t('settings:accountType.toFamily')}
-                      helper={t('settings:accountType.toFamilyHelper')}
-                      onPress={handleConfirmConvertToFamily}
-                    />
-                  </SettingsGroup>
-                </RiseView>
-                <RiseView delay={440}>
-                  <SettingsGroup
-                    footer={t('settings:resetAccount.footer')}
-                    title={t('settings:resetAccount.groupTitle')}
-                  >
-                    <SettingsRow
-                      destructive
-                      icon="restart-alt"
-                      isLast
-                      label={t('settings:resetAccount.rowLabel')}
-                      onPress={handleConfirmResetAccount}
-                    />
-                  </SettingsGroup>
-                </RiseView>
-              </>
-            )}
 
             {/* 14. SUPER ADMIN — solo kontosmario@gmail.com. */}
             {isSuperAdmin ? (
@@ -1831,11 +1359,10 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
       </View>
       </RiseViewGate>
 
-      {/* ── Sheets ────────────────────────────────────────────── */}
-      <ShareInviteSheet
-        visible={shareInviteSheetVisible}
-        onClose={() => setShareInviteSheetVisible(false)}
-      />
+      {/* ── Sheets ──────────────────────────────────────────────
+          Los del hogar (invitación, aporte, ciclo, régimen de ingreso,
+          conversión, % de ahorro, colchón, eliminar hogar) se mudaron con sus
+          filas a `screens/household/household-screen`. */}
       <EditDisplayNameSheet
         currentName={displayName}
         isSaving={updateDisplayNameMutation.isPending}
@@ -1849,65 +1376,6 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
         onClose={() => setAvatarSheetOpen(false)}
         onSave={saveAvatar}
         visible={avatarSheetOpen}
-      />
-      <EditMyContributionSheet
-        currentValue={myContribution}
-        householdTotal={financeSnapshot.monthlyIncome}
-        isSaving={updateMyContributionMutation.isPending}
-        isSolo={isSolo}
-        onClose={() => setIncomeSheetOpen(false)}
-        onSave={handleSaveMyContribution}
-        visible={incomeSheetOpen}
-      />
-      <EditCycleConfigSheet
-        copyVariant={isDynamicIncomeMode ? 'cycle' : 'salary'}
-        currentConfig={currentCycleConfig}
-        isSaving={upsertFamilyFinanceMutation.isPending}
-        onClose={() => setCycleConfigSheetOpen(false)}
-        onSave={handleSaveCycleConfig}
-        visible={cycleConfigSheetOpen}
-      />
-      <IncomeModeConfirmSheet
-        visible={incomeModeSheet.open}
-        nextMode={incomeModeSheet.nextMode}
-        isSaving={upsertFamilyFinanceMutation.isPending}
-        onConfirm={handleConfirmIncomeMode}
-        onClose={() => setIncomeModeSheet((prev) => ({ ...prev, open: false }))}
-      />
-      <ConversionSettingsSheet
-        currency={currencyValue}
-        enabled={usdRateEnabled}
-        isSaving={upsertFamilyFinanceMutation.isPending}
-        onClose={() => setConversionSheetOpen(false)}
-        onSelectCurrency={handleSaveCurrency}
-        onToggle={handleToggleUsdRate}
-        visible={conversionSheetOpen}
-      />
-      <EditSavingsPercentSheet
-        currentValue={financeSnapshot.savingsGoalPercent}
-        isSaving={upsertFamilyFinanceMutation.isPending}
-        monthlyIncome={financeSnapshot.monthlyIncome}
-        onClose={() => setSavingsSheetOpen(false)}
-        onSave={handleSaveSavingsPercent}
-        visible={savingsSheetOpen}
-      />
-      <EditBufferSheet
-        currentMode={financeSnapshot.dailyBudgetBufferMode}
-        currentValue={financeSnapshot.dailyBudgetBufferValue}
-        isSaving={upsertFamilyFinanceMutation.isPending}
-        onClose={() => setBufferSheetOpen(false)}
-        onSave={handleSaveBuffer}
-        visible={bufferSheetOpen}
-      />
-      <DestroyFamilyConfirmSheet
-        isSubmitting={leaveFamilyMutation.isPending}
-        onCancel={() => {
-          if (leaveFamilyMutation.isPending) return
-          setDestroyFamilySheetOpen(false)
-        }}
-        onConfirm={() => void runLeaveFamily()}
-        otherActiveMembers={otherActiveMembers}
-        visible={destroyFamilySheetOpen}
       />
       <DestroyFamilyConfirmSheet
         isSubmitting={leaveFamilyMutation.isPending}
