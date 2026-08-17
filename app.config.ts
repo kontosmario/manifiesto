@@ -309,7 +309,13 @@ const config: ExpoConfig = {
     // y los metadatos de un App Intent no pueden nombrar a Apple. Es una
     // validación de servidor —llega por mail después del upload—, así que el
     // número queda quemado igual.
-    buildNumber: '17',
+    // Build 18 (2026-08-17): lote post-QA del 17. Aviso cuando alguien deja el
+    // hogar (la migración ya está viva en prod), sección "Mi hogar", alta de
+    // gasto en UNA pantalla, tours (geometría del tooltip medida de verdad,
+    // botonera siempre alcanzable, pasos gemelos separados y 8 copys), empty
+    // state de "Todos tus fijos" y el aro del día en curso del jardín en
+    // celeste, como declara su leyenda.
+    buildNumber: '18',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
