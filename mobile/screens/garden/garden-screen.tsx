@@ -220,7 +220,16 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
     if (!Number.isFinite(hero.openingDailyBudget) || hero.openingDailyBudget <= 0) {
       return 'water'
     }
-    return hero.spentToday > hero.openingDailyBudget ? 'amber' : 'green'
+    // El día EN CURSO nunca va en verde, aunque estés holgado dentro del cupo:
+    // `ringGreen` es el color del día COMPLETO (y el relleno de todo día pasado
+    // plantado), así que un hoy verde se leía como un día ya terminado y la
+    // leyenda —que declara celeste para "crecimiento de hoy"— quedaba
+    // contradiciendo a la pantalla. Reportado por el owner en device
+    // (2026-08-17).
+    //
+    // El ámbar SÍ se conserva: no es "el color de hoy", es una ADVERTENCIA de
+    // que te pasaste del cupo, y esa señal no la cubre ningún otro elemento.
+    return hero.spentToday > hero.openingDailyBudget ? 'amber' : 'water'
   }, [homeMetrics.hero])
 
   const { data } = useGarden(familyId, userId, now, tone)
@@ -589,11 +598,23 @@ export function GardenScreen({ familyId, userId }: GardenScreenProps) {
   const focusA11yLabel = useMemo<string | undefined>(() => {
     const chipText = crecimientoVm?.focus.chipText
     if (chipText === undefined) return undefined
-    if (tone === 'water') return chipText
+    // El estado del cupo se dice SIEMPRE que haya cupo contra el cual medir, y
+    // se calcula acá y no a partir de `tone`: desde que el día en curso pinta
+    // celeste (ver el memo de `tone`), atarlo al color se habría comido la
+    // línea "Dentro de tu cupo de hoy" justo en el caso feliz — y para quien
+    // no ve el aro, este texto ES el estado.
+    const hero = homeMetrics.hero
+    const hayCupo =
+      hero.incomeConfigured &&
+      Number.isFinite(hero.openingDailyBudget) &&
+      hero.openingDailyBudget > 0
+    if (!hayCupo) return chipText
     return `${chipText}. ${t(
-      tone === 'amber' ? 'garden:crecimiento.toneAmber' : 'garden:crecimiento.toneGreen',
+      hero.spentToday > hero.openingDailyBudget
+        ? 'garden:crecimiento.toneAmber'
+        : 'garden:crecimiento.toneGreen',
     )}`
-  }, [crecimientoVm?.focus.chipText, tone, t])
+  }, [crecimientoVm?.focus.chipText, homeMetrics.hero, t])
 
   const semanaVm = useMemo<SemanaPasadaVM | null>(() => {
     // Sin semana cerrada (la PRIMERA semana del jardín) la card no existe:
