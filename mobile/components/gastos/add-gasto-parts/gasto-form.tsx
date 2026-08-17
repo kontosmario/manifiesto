@@ -114,16 +114,18 @@ export function GastoForm(props: GastoFormProps) {
           la cascada de montaje —la pantalla abre con el numpad cerrado— y
           entra/sale con el mismo fade que el resto de los bloques
           condicionales del alta. */}
-      {isNumpadVisible ? (
-        <Animated.View entering={STEP_ENTER} exiting={STEP_EXIT} layout={STEP_LAYOUT}>
-          <SuggestedAmountStrip
-            amounts={suggestedAmounts}
-            currentAmount={amount}
-            onAdd={onAddQuickAmount}
-            onClear={onClearAmount}
-          />
-        </Animated.View>
-      ) : null}
+      {/* SIEMPRE visibles. Se probó colapsarlos a "sólo con el numpad abierto"
+          para ahorrar alto, pero son un atajo de carga que el usuario ya tenía
+          incorporado y esconderlos lo obligaba a abrir el teclado para algo que
+          antes era un tap: pedido del owner de recuperarlos (2026-08-17). */}
+      <Animated.View entering={STEP_ENTER} exiting={STEP_EXIT} layout={STEP_LAYOUT}>
+        <SuggestedAmountStrip
+          amounts={suggestedAmounts}
+          currentAmount={amount}
+          onAdd={onAddQuickAmount}
+          onClear={onClearAmount}
+        />
+      </Animated.View>
 
       <RiseView delay={70}>
         {/* Scroll horizontal en dos filas: con el catálogo de variables

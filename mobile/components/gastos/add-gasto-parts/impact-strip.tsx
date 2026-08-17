@@ -24,6 +24,7 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import { useTranslation } from 'react-i18next'
 import { MaterialIcons } from '@expo/vector-icons'
+import { BrotMascot, type BrotPose } from '@/components/brot/brot-mascot'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { HealthBadge } from '@/components/wizard/parts/health-badge'
 import { useWizardSkin } from '@/components/wizard/wizard-skin'
@@ -231,6 +232,11 @@ export const ImpactStrip = memo(function ImpactStrip({
       ? theme.colors.danger
       : theme.colors.primary
 
+  // Misma regla de pose que la hoja de detalle (impact-detail-sheet): si las
+  // dos superficies eligen distinto, Brot se contradice a sí mismo al abrir el
+  // detalle. Si cambia una, cambia la otra.
+  const brotPose: BrotPose = impact.exceeds ? 'worried' : zone === 'media' ? 'zen' : 'cheer'
+
   return (
     <Pressable
       onPress={onOpenDetail}
@@ -293,6 +299,13 @@ export const ImpactStrip = memo(function ImpactStrip({
             healthy: t('gastos:addExpense.wizard.step2.healthBadge.healthy'),
           }}
         />
+        {/* Brot en la tira (pedido del owner 2026-08-17): al confirmar un gasto
+            es el momento donde la marca tiene que estar presente, y quedaba
+            sólo en la hoja de detalle, que la mayoría no abre. Va en la MISMA
+            fila que el monto y la badge para no sumar alto a la columna, y sin
+            sombra: la card ya trae su relieve. Decorativo → sin rol de a11y,
+            el veredicto ya lo dicen la badge y el texto. */}
+        <BrotMascot pose={brotPose} size={40} shadow={false} />
       </View>
 
       <CupoGauge

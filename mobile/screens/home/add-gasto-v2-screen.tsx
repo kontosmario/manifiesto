@@ -624,16 +624,14 @@ export function AddGastoV2Screen({
               pending={pending}
               onPress={onPrimaryCta}
             />
-            {/* Fila auxiliar del kit: la misma línea para "qué te falta", para
-                "el guardado falló" y —en el camino feliz, que es el 95% de las
-                aperturas— para el eslogan de hábito que traía la pantalla
-                vieja. La precedencia, el alto reservado y las medidas viven en
-                el componente compartido con el alta de ingreso (ver su
-                docblock): acá sólo se dice QUÉ tiene para decir cada rama. */}
+            {/* Fila auxiliar del kit: la misma línea para "qué te falta" y
+                para "el guardado falló". SIN `tagline`: en el camino feliz el
+                eslogan de hábito ("...estás creando un hábito") era ruido bajo
+                el botón — pedido del owner 2026-08-17. El componente reserva el
+                alto igual, así que el CTA no salta cuando aparece un error. */}
             <WizardFooterHelper
               error={submitError}
               missingLabels={missingLabels}
-              tagline={t('home:addExpenseDashboard.habitTagline')}
             />
           </View>
         }
