@@ -16,8 +16,15 @@ import Foundation
 @available(iOS 16.0, *)
 struct ManifiestoLogExpenseIntent: AppIntent {
   static var title: LocalizedStringResource = "Registrar gasto"
+  // ⚠️ NI EL TÍTULO NI LA DESCRIPCIÓN PUEDEN DECIR "Apple" (ni "Apple Pay").
+  // App Store Connect rechaza el binario en el procesamiento con
+  // `ITMS-90626: Invalid Siri Support — App Intent description cannot contain
+  // 'apple'`. Nos mordió con el build 16 de la 2.0.0 (2026-08-17): el binario
+  // subió, compiló y firmó bien, y el rechazo llegó por mail DESPUÉS. La
+  // validación es de servidor, así que ningún check local la caza — por eso
+  // hay un test de regresión (tests/unit/plugin-sources-reach-build.test.ts).
   static var description = IntentDescription(
-    "Guarda un pago de Apple Pay para confirmarlo en Manifiesto."
+    "Guarda un pago para confirmarlo en Manifiesto."
   )
   // No abre la app: corre en background al pagar.
   static var openAppWhenRun: Bool = false

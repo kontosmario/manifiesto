@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest'
 
 const root = process.cwd()
 
+const read = (relPath: string) => readFileSync(resolve(root, relPath), 'utf8')
+
 /**
  * Patrones de exclusión de `.gitignore` IGNORANDO las negaciones (`!…`).
  *
@@ -57,6 +59,51 @@ function pluginSourceFiles(): string[] {
  * implementaciones de ignore que podan directorios nunca descienden a
  * re-incluirlo.
  */
+/**
+ * REGRESIÓN (build 2.0.0 #16, 2026-08-17): App Store Connect rechazó el binario
+ * DESPUÉS de subirlo, por mail, con
+ *   `ITMS-90626: Invalid Siri Support — App Intent description
+ *    'Guarda un pago de Apple Pay…' cannot contain 'apple'`
+ *
+ * La validación corre en los servidores de Apple, así que ni el build, ni la
+ * firma, ni el submit la cazan: el ciclo completo (~20 min) se pierde y hay que
+ * quemar un buildNumber. Este test la adelanta a los tests unitarios.
+ */
+describe('los metadatos del App Intent no usan palabras que Apple prohíbe', () => {
+  const swift = read('plugins/apple-pay-intent/ManifiestoLogExpenseIntent.swift')
+
+  /**
+   * TODOS los strings literales del archivo, descartando comentarios (ahí SÍ
+   * se puede —y conviene— nombrar la regla).
+   *
+   * A propósito NO se filtra por la línea que dice `description`/`title`: el
+   * literal suele vivir en la línea SIGUIENTE a `IntentDescription(`, y una
+   * primera versión de este test que miraba línea por línea pasaba en verde
+   * con el string que Apple ya había rechazado. Este archivo solo contiene
+   * metadatos del intent, así que revisarlos todos es lo correcto.
+   */
+  const userFacingStrings = swift
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('//'))
+    .flatMap((l) => [...l.matchAll(/"([^"]*)"/g)].map((m) => m[1]))
+    .filter((s) => s.trim() !== '')
+
+  it('encuentra los strings user-facing del intent', () => {
+    expect(userFacingStrings.length).toBeGreaterThan(0)
+  })
+
+  // 'apple' es la que nos rechazó; las otras dos son marcas de Apple que la
+  // misma validación rechaza en metadatos de App Intents.
+  for (const forbidden of ['apple', 'siri', 'iphone']) {
+    it(`ninguno contiene "${forbidden}"`, () => {
+      const offenders = userFacingStrings.filter((s) =>
+        s.toLowerCase().includes(forbidden),
+      )
+      expect(offenders).toEqual([])
+    })
+  }
+})
+
 describe('los archivos que copian los config plugins llegan al build de EAS', () => {
   const files = pluginSourceFiles()
 

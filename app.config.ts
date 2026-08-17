@@ -303,7 +303,13 @@ const config: ExpoConfig = {
     // code review (numpad con decimales, snapshots tras guardar, deshacer
     // por identidad, nombres duplicados) y la barrida final del
     // import-trap de useReducedMotion con su regla de ESLint.
-    buildNumber: '16',
+    // Build 17 (2026-08-17): re-submit de la 2.0.0. El 16 subió y compiló bien
+    // pero App Store Connect lo rechazó en el procesamiento con ITMS-90626
+    // (Invalid Siri Support): la descripción del App Intent decía "Apple Pay",
+    // y los metadatos de un App Intent no pueden nombrar a Apple. Es una
+    // validación de servidor —llega por mail después del upload—, así que el
+    // número queda quemado igual.
+    buildNumber: '17',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
