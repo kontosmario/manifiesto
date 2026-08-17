@@ -4,3 +4,10 @@
 // Familiar (2026-07-08): los días recuperados son del hogar → key por familia.
 export const gardenRecoveredQueryKey = (familyId: string | undefined) =>
   ['garden_recovered_days', familyId] as const
+
+// Actividad del jardín — key PROPIA, nunca la de `useExpenses`: esa filtra
+// archivados (y en frío viene capeada a 120 filas por el snapshot), y con eso
+// el cierre de ciclo borraba semanas enteras del jardín. Ver
+// `garden-activity-repository.ts`.
+export const gardenActivityQueryKey = (familyId: string | undefined) =>
+  ['garden_activity', familyId] as const

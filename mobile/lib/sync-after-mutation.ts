@@ -14,7 +14,10 @@ import {
   streakQueryKey,
   markedDaysQueryKey,
 } from '@/features/streaks/streak-query-keys'
-import { gardenRecoveredQueryKey } from '@/features/garden/garden-query-keys'
+import {
+  gardenActivityQueryKey,
+  gardenRecoveredQueryKey,
+} from '@/features/garden/garden-query-keys'
 import { achievementsEarnedQueryKey } from '@/features/achievements/use-achievements'
 import { monthlyEditionsQueryKey } from '@/features/wrapped/monthly-editions-query-keys'
 // Keys re-declaradas inline para evitar transitive imports pesados
@@ -109,6 +112,10 @@ export async function syncAllAfterMutation(
     // escudo), así que refrescamos el set de días recuperados para que el
     // brote 'recuperado' aparezca de inmediato.
     keys.push(gardenRecoveredQueryKey(familyId))
+    // La actividad del jardín vive en su propia key (no filtra archivados),
+    // así que la invalidación de `expenses` no la alcanzaba: sin esto, plantar
+    // un gasto no encendía el brote hasta que venciera su staleTime.
+    keys.push(gardenActivityQueryKey(familyId))
   }
 
   // ── Fixed cluster

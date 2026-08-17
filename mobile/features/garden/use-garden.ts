@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { useExpenses } from '@/features/expenses/use-expenses'
 import { useStreak } from '@/features/streaks/use-streak'
 import { useMyProfile } from '@/features/profile/use-profile'
 import { useFamily } from '@/features/family/use-family'
+import { useGardenActivity } from './use-garden-activity'
 import { gardenRecoveredQueryKey } from './garden-query-keys'
 import {
   ADELANTO_MAX,
@@ -111,7 +111,10 @@ export function useGarden(
   tone: RingTone = 'water',
 ): { data: GardenData | null; isLoading: boolean } {
   const streak = useStreak(familyId, userId)
-  const expensesQuery = useExpenses(familyId)
+  // Fuente PROPIA, ajena al ciclo: `useExpenses` filtra archivados y el cierre
+  // de ciclo archiva todo el período, así que colgarse de ahí borraba semanas
+  // enteras del jardín. Ver `garden-activity-repository.ts`.
+  const expensesQuery = useGardenActivity(familyId)
   const profileQuery = useMyProfile(userId)
   const familyQuery = useFamily(userId)
   const recoveredQuery = useQuery<string[]>({

@@ -2,7 +2,11 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
-import { useExpenses } from '@/features/expenses/use-expenses'
+// Fuente PROPIA de actividad, ajena al ciclo: `useExpenses` filtra archivados
+// y el cierre de ciclo archiva todo el período, así que la tira semanal
+// derivada de ahí borraba días ya registrados. Ver
+// `garden-activity-repository.ts`.
+import { useGardenActivity } from '@/features/garden/use-garden-activity'
 import { isoDay, resolveDeviceTimezone } from '@/features/garden/garden-model'
 
 // ─────────────────────────────────────────────────────────────
@@ -224,7 +228,7 @@ export function useStreak(familyId: string | undefined, userId: string | undefin
   isLoading: boolean
   error: unknown
 } {
-  const expensesQuery = useExpenses(familyId)
+  const expensesQuery = useGardenActivity(familyId)
   const streakRowQuery = useQuery<FamilyStreakRow | null>({
     queryKey: streakQueryKey(familyId),
     enabled: Boolean(familyId && userId),
