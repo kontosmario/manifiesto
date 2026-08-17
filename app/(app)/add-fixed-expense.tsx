@@ -35,10 +35,11 @@ export default function AddFixedExpenseRoute() {
   return (
     <ModalContentEntrance style={{ flex: 1 }}>
       <RequireAuth>
-        {({ familyId }) => (
+        {({ familyId, userId }) => (
           <FijosSkinProvider mode={mode}>
             <AddFijoV2Screen
               familyId={familyId}
+              userId={userId}
               fixedExpenseId={fixedExpenseId}
               prefillAmount={prefillAmount}
               prefillDescription={prefillDescription}

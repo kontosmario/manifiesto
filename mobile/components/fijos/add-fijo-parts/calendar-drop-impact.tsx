@@ -17,13 +17,13 @@ import Animated, {
   cancelAnimation,
   interpolateColor,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { motionSprings } from '@/lib/motion'
 import { CategoryIcon } from '@/components/category/category-icon'
 import { hexAlpha } from '@/features/fixed-expenses/add-fijo-helpers'

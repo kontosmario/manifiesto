@@ -88,9 +88,9 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
     return m
   }, [categoriesQuery.data])
 
-  const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
-  const revertPaymentMutation = useRevertFixedExpensePayment(familyId)
-  const deleteMutation = useDeleteFixedExpense(familyId)
+  const recordPaymentMutation = useRecordFixedExpensePayment(familyId, userId)
+  const revertPaymentMutation = useRevertFixedExpensePayment(familyId, userId)
+  const deleteMutation = useDeleteFixedExpense(familyId, userId)
   const queryClient = useQueryClient()
   // React Query cached — same source feeding the Control screen.
   const { signals: advisorSignals } = useControlV2Data(familyId)
@@ -147,6 +147,13 @@ export function FijosV2Screen({ familyId, userId }: FijosV2ScreenProps) {
    *
    * Si solo hay optimistic rows (el refetch no terminó), retorna null.
    * El caller debería mostrar un error o ignorar.
+   *
+   * ⚠️ VERSIÓN VIEJA CON BUG CONOCIDO (pantalla huérfana, no montada):
+   * escanea TODOS los caches sin acotar por familia ni por ventana de
+   * ciclo — con gcTime 24h puede elegir un pago del ciclo ANTERIOR. La
+   * versión canónica vive en neo-fijos-screen.tsx y usa
+   * `pickLatestRevertablePaymentId` + snapshot de conocidos al toast.
+   * Si esta pantalla volviera a montarse, portar ESO primero.
    */
   const findLatestRealPaymentId = useCallback(
     (fixedExpenseId: string): string | null => {

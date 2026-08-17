@@ -12,11 +12,11 @@ import Animated, {
   LinearTransition,
   interpolateColor,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { CountUpText } from '@/components/home/animated/count-up-text'
 import { BrotMascot } from '@/components/brot/brot-mascot'

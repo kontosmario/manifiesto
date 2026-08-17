@@ -218,6 +218,7 @@
     "step1": {
       "nameLabel": "NOMBRE",
       "namePlaceholder": "Ej: Alquiler, Netflix, Cuota iPhone",
+      "nameDuplicateError": "Ya tienes un fijo con ese nombre",
       "frequencyLabel": "FRECUENCIA",
       "installmentSummary": "{{count}} cuotas de {{amount}} · Total {{total}}",
       "howManyInstallments": "¿CUÁNTAS CUOTAS?",

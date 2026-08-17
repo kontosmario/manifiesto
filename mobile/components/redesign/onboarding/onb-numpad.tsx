@@ -311,6 +311,15 @@ function BackspaceKey({ mode, onPress }: { mode: OnbMode; onPress: () => void })
  * el safe-area, como el mockup). La hoja entra deslizando hacia arriba y
  * sale deslizando hacia abajo; el Modal se mantiene montado durante la
  * salida (translateY por shared value → nada de snap al cerrar).
+ *
+ * `value` es la BASE ENTERA de edición y la fija cada consumidor — el
+ * teclado no sabe de decimales. Hay DOS políticas sancionadas para un
+ * monto guardado con decimales; elegí una, no inventes una tercera:
+ *   · `Math.trunc(amount)` (add-gasto / add-ingreso): edita desde la
+ *     parte entera del prefill OCR — el trunc es load-bearing ahí.
+ *   · `numpadBaseAmount(amount)` (fijos): un decimal guardado arranca
+ *     de 0 — tipear REEMPLAZA y, sin tocar el teclado, el decimal se
+ *     conserva intacto (importa porque edita montos ya persistidos).
  */
 export function OnbNumpad({
   mode,
@@ -360,6 +369,11 @@ export function OnbNumpad({
   }
 
   const popDigit = () => {
+    // Sin dígitos que borrar no hay nada que emitir. Re-emitir 0 sobre una
+    // base 0 no era inocuo: en la edición de fijos la base entera de un
+    // monto decimal ES 0, y ese onChange(0) pisaba el monto intacto con $0
+    // en un solo backspace.
+    if (value === 0) return
     void triggerHaptic('light')
     onChange(Math.floor(value / 10))
   }

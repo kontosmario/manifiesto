@@ -10,11 +10,12 @@
  * lee solo quien lo usa, y el valor es estable por `mode`.
  *
  * ── Por qué el default es `classic` ─────────────────────────────────────
- * `fijos-v2-screen.tsx` (la pantalla VIVA, en producción) monta los mismos
- * componentes y NO envuelve nada, así que `useFijosSkin()` le devuelve
- * `{ kind: 'classic' }` y cada componente cae a su rama de siempre. La
- * invariante "la viva no cambia" no depende de acordarse de nada: no hay
- * camino por el que cambie.
+ * Cualquier consumidor que no envuelva con el provider (hoy: add-gasto y
+ * add-ingreso, que comparten `AmountCard` y los rails) cae a su rama de
+ * siempre vía `{ kind: 'classic' }`. Nota histórica: `fijos-v2-screen.tsx`
+ * fue la pantalla viva hasta el swap del 2026-07-31; hoy la viva es
+ * `neo/neo-fijos-screen.tsx` y la vieja quedó huérfana como referencia —
+ * NO volver a montarla (conserva bugs ya arreglados en la neo).
  *
  * ── Por qué la variante `classic` está VACÍA ────────────────────────────
  * A propósito no transcribe los valores viejos a tokens. Si los transcribiera,

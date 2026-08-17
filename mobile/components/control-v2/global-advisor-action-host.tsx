@@ -26,6 +26,11 @@ import {
   useUpdateFixedExpense,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import { useFixedExpenseCategories } from '@/features/categories/use-categories'
+import {
+  findDuplicateFijoName,
+  normalizeFijoName,
+  selectDuplicateCandidates,
+} from '@/features/fixed-expenses/add-fijo-helpers'
 import { logAdvisorInteraction } from '@/features/insights/log-advisor-interaction'
 import { logAdvisorValue } from '@/features/insights/log-advisor-value'
 import { triggerHaptic } from '@/lib/haptics'
@@ -419,7 +424,10 @@ export function GlobalAdvisorActionHost({
   )
 
   // ─── Fixed expense edit ───────────────────────────────────────
-  const updateFixedMutation = useUpdateFixedExpense(familyId)
+  // `userId` por lo mismo que useUpsertSavingsGoal más arriba: sin él,
+  // syncAllAfterMutation no invalida homeSnapshot/controlSnapshot y el
+  // Home muestra el monto viejo del fijo tras aceptar la quick-edit.
+  const updateFixedMutation = useUpdateFixedExpense(familyId, userId)
   const fixedEditRequest =
     pending?.type === 'fixed-expense-edit' ? pending : null
   const handleSubmitFixedEdit = useCallback(
@@ -427,6 +435,25 @@ export function GlobalAdvisorActionHost({
       if (!fixedEditRequest || !targetFixedExpense) return
       const safeAmount = Math.max(0, Math.round(input.amount))
       if (safeAmount <= 0) return
+      // Mismo gate de nombre duplicado que el wizard (la unique de DB es
+      // exact-match: no ataja variantes de mayúsculas/tildes). Conservar
+      // el nombre original nunca bloquea — colisiones legacy pre-validador
+      // no pueden trabar la edición del monto.
+      const keepsName =
+        normalizeFijoName(input.name) ===
+        normalizeFijoName(targetFixedExpense.name)
+      if (
+        !keepsName &&
+        findDuplicateFijoName(
+          input.name,
+          selectDuplicateCandidates(fixedExpensesQuery.data ?? []),
+          targetFixedExpense.id,
+        )
+      ) {
+        void triggerHaptic('warning')
+        toast.error(t('fijos:wizard.step1.nameDuplicateError'))
+        return
+      }
       void triggerHaptic('selection')
       // Preserve every field the editor screen would have preserved,
       // overwriting only what the quick sheet exposes (name + amount).
@@ -480,11 +507,18 @@ export function GlobalAdvisorActionHost({
         },
       )
     },
-    [fixedEditRequest, targetFixedExpense, updateFixedMutation, familyId, t],
+    [
+      fixedEditRequest,
+      targetFixedExpense,
+      updateFixedMutation,
+      fixedExpensesQuery.data,
+      familyId,
+      t,
+    ],
   )
 
   // ─── Fixed expense add ────────────────────────────────────────
-  const createFixedMutation = useCreateFixedExpense(familyId)
+  const createFixedMutation = useCreateFixedExpense(familyId, userId)
   const fixedAddRequest =
     pending?.type === 'fixed-expense-add' ? pending : null
   const handleSubmitFixedAdd = useCallback(
@@ -492,6 +526,19 @@ export function GlobalAdvisorActionHost({
       if (!fixedAddRequest) return
       const safeAmount = Math.max(0, Math.round(input.amount))
       if (safeAmount <= 0) return
+      // Mismo gate de duplicados que el wizard: sin esto el quick-add del
+      // Asistente creaba un segundo 'Netflix' contra un 'netflix' existente
+      // (la unique de DB es exact-match) y el comprometido contaba doble.
+      if (
+        findDuplicateFijoName(
+          input.name,
+          selectDuplicateCandidates(fixedExpensesQuery.data ?? []),
+        )
+      ) {
+        void triggerHaptic('warning')
+        toast.error(t('fijos:wizard.step1.nameDuplicateError'))
+        return
+      }
       const today = new Date()
       const isoDate = today.toISOString().slice(0, 10)
       void triggerHaptic('selection')
@@ -537,7 +584,7 @@ export function GlobalAdvisorActionHost({
         },
       )
     },
-    [fixedAddRequest, createFixedMutation, familyId, t],
+    [fixedAddRequest, createFixedMutation, fixedExpensesQuery.data, familyId, t],
   )
 
   // Top-level host yields rendering to a nested instance when one

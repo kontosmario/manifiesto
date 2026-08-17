@@ -3,10 +3,11 @@
  * REALES, con TODOS sus componentes montados: header, hero (E1-E8), Avisos
  * (A1-A6) y la sección "Todos tus fijos" (tabs + categorías + filas).
  *
- * Vive SOLO en la ruta dev `app/(app)/settings/dev/neo-fijos.tsx`; NO
- * reemplaza a `mobile/screens/home/fijos-v2-screen.tsx`. El swap de ruta es
- * posterior y está gateado por la aprobación visual del owner
- * (`REDESIGN_APPROVAL['fijos'] === 'pendiente'`).
+ * Desde el swap del 2026-07-31 esta ES la pantalla viva: la monta la ruta
+ * `app/(app)/(tabs)/fixed-expenses.tsx` (la ruta dev se borró en el swap).
+ * `mobile/screens/home/fijos-v2-screen.tsx` quedó huérfana como referencia
+ * — NO volver a montarla: conserva bugs ya arreglados acá (p.ej. el
+ * Deshacer sin acotar por ciclo).
  *
  * Spec: .superpowers/sdd/2026-07-29-fijos-cableado/wiring-spec.md
  * Decisiones: .superpowers/sdd/2026-07-29-fijos-cableado/controller-decisions.md
@@ -93,7 +94,11 @@ import { Screen } from '@/components/ui/screen'
 import { useCommitmentExpenses } from '@/features/expenses/use-expenses'
 import type { FijoItem } from '@/features/fijos/fijos-aggregates.model'
 import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
-import { isOptimisticPaymentId } from '@/features/fixed-expenses/fixed-expense-payment.model'
+import {
+  collectRevertablePaymentIds,
+  isOptimisticPaymentId,
+  pickLatestRevertablePaymentId,
+} from '@/features/fixed-expenses/fixed-expense-payment.model'
 import {
   useDeleteFixedExpense,
   useRecordFixedExpensePayment,
@@ -563,29 +568,35 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
    * Payment id REAL más reciente de un fijo, leído del cache de RQ. Lo necesita
    * el "Deshacer" del toast: el `record` optimista todavía no tiene id de
    * servidor, y mandar un `optimistic-…` a la RPC devuelve 22P02.
+   *
+   * Acotado a los caches de ESTA familia, y la ventana del ciclo vigente la
+   * impone `pickLatestRevertablePaymentId`: con gcTime 24h conviven caches de
+   * ventanas anteriores, y sin el filtro el "real más reciente" podía ser un
+   * pago del ciclo PASADO mientras el recién registrado seguía optimista — el
+   * Deshacer revertía el pago equivocado. Sin candidato en ventana → null y
+   * el toast avisa que todavía sincroniza.
    */
-  const findLatestRealPaymentId = useCallback(
-    (fixedExpenseId: string): string | null => {
+  const buildPaymentScanParams = useCallback(
+    (fixedExpenseId: string) => {
       const caches = queryClient.getQueriesData<
         Array<{ id: string; fixedExpenseId: string; paidAt: string }>
-      >({ queryKey: ['fixed-expense-payments'] })
-      let latest: { id: string; paidAt: string } | null = null
-      for (const [, list] of caches) {
-        if (!Array.isArray(list)) continue
-        for (const payment of list) {
-          if (payment.fixedExpenseId !== fixedExpenseId) continue
-          if (isOptimisticPaymentId(payment.id)) continue
-          if (
-            !latest ||
-            new Date(payment.paidAt).getTime() > new Date(latest.paidAt).getTime()
-          ) {
-            latest = { id: payment.id, paidAt: payment.paidAt }
-          }
-        }
+      >({ queryKey: ['fixed-expense-payments', familyId] })
+      return {
+        paymentLists: caches.map(([, list]) => list),
+        fixedExpenseId,
+        windowStartIso: payCycle.cycle.start.toISOString(),
+        windowEndIso: payCycle.cycle.end.toISOString(),
       }
-      return latest?.id ?? null
     },
-    [queryClient],
+    [queryClient, familyId, payCycle.cycle.start, payCycle.cycle.end],
+  )
+  const findLatestRealPaymentId = useCallback(
+    (fixedExpenseId: string, excludeIds: readonly string[]): string | null =>
+      pickLatestRevertablePaymentId({
+        ...buildPaymentScanParams(fixedExpenseId),
+        excludeIds,
+      }),
+    [buildPaymentScanParams],
   )
 
   const handleRevertPaid = useCallback(
@@ -593,7 +604,7 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
       // `paidPaymentId` ya viene null cuando el payment es `optimistic-…`; el
       // componente de la lista solo dispara con un id real, pero la guarda
       // queda porque mandar un optimista a la RPC da 22P02.
-      if (!paymentId || paymentId.startsWith('optimistic-')) {
+      if (!paymentId || isOptimisticPaymentId(paymentId)) {
         toast.error(t('fijos:neo.toast.paymentSyncing'))
         return
       }
@@ -622,11 +633,19 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
    */
   const showPaySuccessToast = useCallback(
     (fixedExpenseId: string, fijoName: string) => {
+      // Snapshot de los pagos reales que YA existían al mostrarse el toast:
+      // el Deshacer solo puede elegir un pago NUEVO. Identidad en vez de
+      // relojes — en un catch-up de dos cuotas del mismo ciclo, el real de
+      // la primera ya está en cache cuando sale el toast de la segunda, y
+      // sin este snapshot el Deshacer la revertía a ella.
+      const knownIds = collectRevertablePaymentIds(
+        buildPaymentScanParams(fixedExpenseId),
+      )
       toast.success(t('fijos:toast.paymentRecorded', { name: fijoName }), {
         actionLabel: t('fijos:toast.undo'),
         durationMs: 5000,
         onAction: () => {
-          const paymentId = findLatestRealPaymentId(fixedExpenseId)
+          const paymentId = findLatestRealPaymentId(fixedExpenseId, knownIds)
           if (!paymentId) {
             toast.error(t('fijos:toast.undoNotReadyYet'))
             return
@@ -635,7 +654,7 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
         },
       })
     },
-    [findLatestRealPaymentId, handleRevertPaid, t],
+    [buildPaymentScanParams, findLatestRealPaymentId, handleRevertPaid, t],
   )
 
   const runRecord = useCallback(

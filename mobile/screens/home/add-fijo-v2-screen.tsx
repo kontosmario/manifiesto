@@ -44,7 +44,12 @@ import {
   useUpdateFixedExpense,
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
-import { buildNextDueOn, rebaseNextDueOn } from '@/features/fixed-expenses/add-fijo-helpers'
+import {
+  buildNextDueOn,
+  numpadBaseAmount,
+  rebaseNextDueOn,
+  selectDuplicateCandidates,
+} from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
 import { usePressScale } from '@/hooks/use-press-scale'
 // Del hook de la app, NUNCA de 'react-native-reanimated': el de la
@@ -62,6 +67,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 interface AddFijoV2ScreenProps {
   familyId: string
+  /** Va a las mutations (create/update/record-payment): sin él,
+   *  `syncAllAfterMutation` no invalida las queries ancladas a usuario
+   *  (homeSnapshot/controlSnapshot) y el Home queda stale tras guardar. */
+  userId: string
   /** When set, the screen renders en "edit" mode — loads the existing
    *  fijo, pre-fills the form, submits via useUpdateFixedExpense. */
   fixedExpenseId?: string
@@ -86,6 +95,7 @@ interface AddFijoV2ScreenProps {
  */
 export function AddFijoV2Screen({
   familyId,
+  userId,
   fixedExpenseId,
   prefillAmount,
   prefillDescription,
@@ -116,6 +126,16 @@ export function AddFijoV2Screen({
         : null,
     [existingFixedExpensesQuery.data, fixedExpenseId],
   )
+  // Memoizado por la misma razón que `categories`: `?? []` crea un array
+  // nuevo por render y de él cuelga el gate de nombre duplicado del form.
+  // `selectDuplicateCandidates` acota a fijos persistidos y VISIBLES: sin
+  // el filtro, la fila optimista del propio alta en vuelo se matcheaba a sí
+  // misma, y un fijo completed/archived (invisible en toda la UI) bloqueaba
+  // el alta sin causa visible.
+  const existingFijos = useMemo(
+    () => selectDuplicateCandidates(existingFixedExpensesQuery.data ?? []),
+    [existingFixedExpensesQuery.data],
+  )
   // En edit mode, "prevTotal" excluye este item así el impact math
   // refleja el delta entre el old amount y el new one.
   const prevTotal = useMemo(
@@ -125,12 +145,15 @@ export function AddFijoV2Screen({
         .reduce((s, i) => s + Number(i.amount ?? 0), 0),
     [existingFixedExpensesQuery.data, fixedExpenseId],
   )
-  const createMutation = useCreateFixedExpense(familyId)
-  const updateMutation = useUpdateFixedExpense(familyId)
+  // `userId` en las tres: el listado ya lo pasaba y el alta no — el
+  // `syncAllAfterMutation` corría con userId undefined y las keys ancladas
+  // a usuario (homeSnapshot/controlSnapshot) quedaban sin invalidar.
+  const createMutation = useCreateFixedExpense(familyId, userId)
+  const updateMutation = useUpdateFixedExpense(familyId, userId)
   // Para el toggle "Ya pagué la cuota más reciente" en el wizard de
   // creación: encadenamos `recordFixedExpensePayment` al toggle activo
   // (RPC inserta el payment row + avanza next_due_on al mes siguiente).
-  const recordPaymentMutation = useRecordFixedExpensePayment(familyId)
+  const recordPaymentMutation = useRecordFixedExpensePayment(familyId, userId)
   const pending =
     (isEditing ? updateMutation.isPending : createMutation.isPending) ||
     recordPaymentMutation.isPending
@@ -151,6 +174,7 @@ export function AddFijoV2Screen({
     prefillAmount,
     prefillDescription,
     editingFijo,
+    existingFijos,
     isCategoryIdValid,
   })
 
@@ -403,6 +427,7 @@ export function AddFijoV2Screen({
             flagAmount={form.flagAmount}
             flagCategory={form.flagCategory}
             flagFrequency={form.flagFrequency}
+            nameDuplicate={form.isNameDuplicate}
           />
         ) : (
           <Step2Summary
@@ -568,14 +593,17 @@ export function AddFijoV2Screen({
         inferior. Su modelo es un ENTERO de pesos (`value*10 + dígito`), no el
         string crudo del form, así que se traduce en el borde: `form.amount` ya
         viene parseado y `serializePrice` lo devuelve al formato del form.
-        Los montos de fijos son enteros, así que no se pierde nada por el
-        camino — la tecla de coma del propio numpad es inerte por lo mismo.
+        OJO: los montos de fijos NO son todos enteros (numeric(12,2) en prod,
+        cargados con la coma del numpad classic). `numpadBaseAmount` protege la
+        edición: sobre un monto con decimales el append arranca de cero
+        (tipear REEMPLAZA), y si el user no toca el numpad el decimal queda
+        intacto — antes cada tecla lo corrompía (1500.5 + "3" → 15008).
       */}
       {neo ? (
         <OnbNumpad
           mode={theme.mode}
           visible={form.isNumpadVisible}
-          value={form.amount}
+          value={numpadBaseAmount(form.amount)}
           onChange={(next) => form.setRawAmount(serializePrice(next))}
           onDone={() => form.setIsNumpadVisible(false)}
         />

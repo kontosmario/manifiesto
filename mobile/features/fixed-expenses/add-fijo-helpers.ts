@@ -2,6 +2,7 @@
 // `add-fijo-v2-screen.tsx` para que la screen pueda concentrarse en
 // orquestación. Cero side effects: todo puro.
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
+import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
 
 // `cuotas` (UI choice) mappea a `frequency='monthly' + kind='installment'`
 // en el backend. El resto mappea 1:1 con la columna `frequency`.
@@ -74,6 +75,79 @@ export function buildNextDueOn(day: number): string {
   const safeDay = Math.min(day, daysInMonth)
   const due = new Date(Date.UTC(year, month, safeDay))
   return due.toISOString().slice(0, 10)
+}
+
+/**
+ * Base sobre la que el `OnbNumpad` appendea dígitos (`value*10 + dígito`).
+ * Ese modelo es entero: con un monto con decimales (existen en prod —
+ * numeric(12,2) cargados con la coma del numpad classic) cada tecla lo
+ * corrompía (sobre 1500.5, tipear "3" daba 15008). Un monto que el numpad
+ * no puede representar arranca de cero: tipear REEMPLAZA en vez de
+ * appendear, y sin tocar el numpad el decimal se conserva intacto.
+ */
+export function numpadBaseAmount(amount: number): number {
+  return Number.isInteger(amount) ? amount : 0
+}
+
+/**
+ * Normaliza un nombre de fijo para comparar duplicados: trim + minúsculas
+ * + sin tildes ni diéresis. "Teléfono", " telefono " y "TELEFONO" cuentan
+ * como el mismo nombre — si la comparación fuera literal, el validador se
+ * esquivaría sin querer con una mayúscula o un espacio.
+ *
+ * Se pliegan SOLO el acento agudo (U+0301) y la diéresis (U+0308): la ñ
+ * es letra propia del castellano, no una n con tilde — descartar todos
+ * los combining marks igualaba "Peña" con "Pena" y bloqueaba nombres
+ * legítimamente distintos. El NFC final re-compone la ñ que el NFD abrió.
+ * Exportado: el form lo usa para detectar "conservó el nombre original"
+ * al editar (colisiones legacy pre-validador no pueden trabar la edición).
+ */
+export function normalizeFijoName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0301\u0308]/g, '')
+    .normalize('NFC')
+}
+
+/**
+ * Duplicado de nombre contra los fijos existentes de la familia. El alta
+ * aceptaba "Alquiler" dos veces sin aviso ni bloqueo; el gate del wizard
+ * (`canContinue`) bloquea el avance cuando esto devuelve un match y el
+ * paso 1 muestra el error inline. `excludeId` es el fijo en edición:
+ * guardar sin renombrar no puede bloquearse contra sí mismo.
+ */
+export function findDuplicateFijoName(
+  name: string,
+  existing: ReadonlyArray<{ id: string; name: string }>,
+  excludeId?: string,
+): { id: string; name: string } | null {
+  const target = normalizeFijoName(name)
+  if (target.length === 0) return null
+  for (const fijo of existing) {
+    if (excludeId && fijo.id === excludeId) continue
+    if (normalizeFijoName(fijo.name) === target) return fijo
+  }
+  return null
+}
+
+/**
+ * Subconjunto de fijos contra el que tiene sentido validar duplicados:
+ * persistidos (las filas optimistas `temp-` del alta en vuelo se
+ * matchearían a sí mismas durante el round-trip de creación) y VISIBLES
+ * en la UI (`active`/`paused` — el mismo filtro de `summarizeFijos`).
+ * Un fijo `completed`/`archived` no aparece en ninguna lista: bloquear
+ * el alta por su nombre sería un dead-end sin causa visible ni override.
+ */
+export function selectDuplicateCandidates<
+  T extends { id: string; name: string; status: string },
+>(fijos: ReadonlyArray<T>): T[] {
+  return fijos.filter(
+    (f) =>
+      isPersistedFixedExpenseId(f.id) &&
+      (f.status === 'active' || f.status === 'paused'),
+  )
 }
 
 /**

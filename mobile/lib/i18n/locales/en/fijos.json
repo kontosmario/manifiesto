@@ -218,6 +218,7 @@
     "step1": {
       "nameLabel": "NAME",
       "namePlaceholder": "E.g. Rent, Netflix, iPhone installment",
+      "nameDuplicateError": "You already have a fixed expense with that name",
       "frequencyLabel": "FREQUENCY",
       "installmentSummary": "{{count}} installments of {{amount}} · Total {{total}}",
       "howManyInstallments": "HOW MANY INSTALLMENTS?",

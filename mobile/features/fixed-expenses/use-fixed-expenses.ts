@@ -128,8 +128,16 @@ function patchFixedFromInput(
 }
 
 // ── Mutations ───────────────────────────────────────────────────────
+//
+// `userId` es REQUERIDO en todos los hooks de mutación: alimenta
+// `syncAllAfterMutation`, que sin él saltea EN SILENCIO las keys ancladas
+// a usuario (homeSnapshot/controlSnapshot) y deja el Home stale tras
+// guardar. Con el parámetro opcional el mismo bug se coló dos veces por
+// dos call sites distintos (wizard 2026-08-16 y advisor host); requerido,
+// tsc fuerza al próximo caller. Todos los callers vivos lo tienen en
+// scope vía RequireAuth.
 
-export function useCreateFixedExpense(familyId?: string, userId?: string) {
+export function useCreateFixedExpense(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{ mutate: (input: UpsertFixedExpenseInput) => void } | null>(null)
 
@@ -203,7 +211,7 @@ export function useCreateFixedExpense(familyId?: string, userId?: string) {
   return result
 }
 
-export function useUpdateFixedExpense(familyId?: string, userId?: string) {
+export function useUpdateFixedExpense(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{ mutate: (input: UpdateFixedExpenseInput) => void } | null>(null)
 
@@ -288,7 +296,7 @@ export function useUpdateFixedExpense(familyId?: string, userId?: string) {
   return result
 }
 
-export function useUpdateFixedExpenseStatus(familyId?: string, userId?: string) {
+export function useUpdateFixedExpenseStatus(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{
     mutate: (input: { fixedExpenseId: string; status: FixedExpenseStatus }) => void
@@ -359,7 +367,7 @@ export interface RecordFixedExpensePaymentVars {
   amountOverride?: number
 }
 
-export function useRecordFixedExpensePayment(familyId?: string, userId?: string) {
+export function useRecordFixedExpensePayment(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{
     mutate: (input: RecordFixedExpensePaymentVars) => void
@@ -540,7 +548,7 @@ export function useRecordFixedExpensePayment(familyId?: string, userId?: string)
  * refetch reconcilia next_due_on / last_paid_at / installments_paid
  * con los valores reales post-rollback.
  */
-export function useRevertFixedExpensePayment(familyId?: string, userId?: string) {
+export function useRevertFixedExpensePayment(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{ mutate: (paymentId: string) => void } | null>(null)
 
@@ -606,7 +614,7 @@ export function useRevertFixedExpensePayment(familyId?: string, userId?: string)
   return result
 }
 
-export function useDeleteFixedExpense(familyId?: string, userId?: string) {
+export function useDeleteFixedExpense(familyId: string | undefined, userId: string) {
   const queryClient = useQueryClient()
   const ref = useRef<{ mutate: (input: string) => void } | null>(null)
 

@@ -14,7 +14,11 @@ import { Keyboard } from 'react-native'
 import { parsePrice, serializePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
-import type { FreqChoice } from './add-fijo-helpers'
+import {
+  findDuplicateFijoName,
+  normalizeFijoName,
+  type FreqChoice,
+} from './add-fijo-helpers'
 
 /**
  * Largo mínimo del nombre, ya trimmeado. Con 1 carácter el gate pasaba y se
@@ -34,6 +38,14 @@ interface UseAddFijoFormArgs {
   /** El fijo a editar — al hidratarse, se popula el form con sus
    *  valores. `null` cuando estamos en modo create. */
   editingFijo: FixedExpense | null
+  /**
+   * Fijos existentes de la familia, para el gate de nombre duplicado. El
+   * alta aceptaba "Alquiler" dos veces sin aviso; ahora `canContinue`
+   * bloquea y el paso 1 muestra el error inline. La comparación normaliza
+   * mayúsculas/espacios/tildes y excluye al propio `fixedExpenseId` en
+   * edición (guardar sin renombrar no se bloquea a sí mismo).
+   */
+  existingFijos: ReadonlyArray<{ id: string; name: string }>
   /**
    * Si un `categoryId` EXISTE entre las categorías cargadas. Lo resuelve la
    * screen, que es la que tiene la query.
@@ -77,6 +89,10 @@ export interface AddFijoFormState {
   // ── Derived ───────────────────────────────────────────────────
   isInstallment: boolean
   totalCuotas: number
+  /** El nombre tipeado ya existe en otro fijo de la familia. Cue VIVO
+   *  (no espera el tap del CTA): el error inline del paso 1 se muestra
+   *  apenas se detecta, y `canContinue` bloquea el avance. */
+  isNameDuplicate: boolean
   canContinue: boolean
   canSubmit: boolean
   // ── Missing-fields highlight ─────────────────────────────────
@@ -99,6 +115,7 @@ export function useAddFijoForm({
   prefillAmount,
   prefillDescription,
   editingFijo,
+  existingFijos,
   isCategoryIdValid,
 }: UseAddFijoFormArgs): AddFijoFormState {
   // Seed del prefill (Asistente "undetected-sub") solo en modo create.
@@ -161,37 +178,44 @@ export function useAddFijoForm({
   const totalCuotas = isInstallment ? amount * cuotaTot : 0
 
   // ── Gates ────────────────────────────────────────────────────────────
-  //
-  // Cada condición corresponde 1:1 con una entrada de `missingFieldsStep1`:
-  // si divergen, el CTA queda bloqueado sin que ningún campo se pinte y el
-  // usuario no tiene forma de saber qué falta. Al tocar una, tocar la otra.
   const isNameValid = name.trim().length >= MIN_NAME_LENGTH
+  // Nombre repetido contra los fijos existentes visibles (normalizado;
+  // excluye al propio en edición). Si el nombre quedó IGUAL al original del
+  // fijo editado, no hay duplicado que reportar: dos fijos legacy con el
+  // mismo nombre (pre-validador) no pueden trabar la edición de campos
+  // ajenos al nombre. N chico (fijos de una familia) → sin memo.
+  const keepsOriginalName =
+    editingFijo != null &&
+    normalizeFijoName(name) === normalizeFijoName(editingFijo.name)
+  const isNameDuplicate =
+    !keepsOriginalName &&
+    findDuplicateFijoName(name, existingFijos, fixedExpenseId) !== null
   // Con `cuotas`, la cantidad es parte de la definición del fijo: sin ella el
   // payload va con `installmentsTotal` inválido.
   const isCuotasValid = !isInstallment || (Number.isInteger(cuotaTot) && cuotaTot > 0)
   const isDayValid = day != null && Number.isInteger(day) && day >= MIN_DAY && day <= MAX_DAY
   const isCategoryValid = categoryId !== null && isCategoryIdValid(categoryId)
 
-  const canContinue =
-    amount > 0 &&
-    isCategoryValid &&
-    isNameValid &&
-    freqChoice !== null &&
-    isCuotasValid
-  // Step-2 gate: day must be picked before el user puede confirmar.
-  // Step 1 no depende del day (elegido en step 2 al lado del calendar
-  // preview).
-  const canSubmit = canContinue && isDayValid
-
-  // Missing-fields del step 1 — feedea el warning glide.
+  // Missing-fields del step 1 — feedea el warning glide y es LA fuente del
+  // gate: `canContinue` se DERIVA de esta lista (regla 3 de
+  // docs/sistemas/form-validation-pattern.md — una sola fuente de verdad).
+  // Con dos contabilidades separadas, una condición agregada solo al gate
+  // dejaba el CTA bloqueado sin que ningún campo se pintara.
   const missingFieldsStep1 = useMemo<string[]>(() => {
     const missing: string[] = []
-    if (!isNameValid) missing.push('nombre')
+    // Duplicado también pinta 'nombre' (además del error inline vivo).
+    if (!isNameValid || isNameDuplicate) missing.push('nombre')
     if (amount <= 0) missing.push('monto')
     if (!isCategoryValid) missing.push('categoría')
     if (freqChoice === null || !isCuotasValid) missing.push('frecuencia')
     return missing
-  }, [isNameValid, amount, isCategoryValid, freqChoice, isCuotasValid])
+  }, [isNameValid, isNameDuplicate, amount, isCategoryValid, freqChoice, isCuotasValid])
+
+  const canContinue = missingFieldsStep1.length === 0
+  // Step-2 gate: day must be picked before el user puede confirmar.
+  // Step 1 no depende del day (elegido en step 2 al lado del calendar
+  // preview).
+  const canSubmit = canContinue && isDayValid
   // El aviso es POR PASO. Con un token global, alguien que tocaba el CTA
   // bloqueado en el paso 1 llegaba al paso 2 con el calendario ya marcado en
   // rojo antes de haber hecho nada ahí: el cue dejaba de significar "esto te
@@ -257,6 +281,7 @@ export function useAddFijoForm({
     setIsNameFocused,
     isInstallment,
     totalCuotas,
+    isNameDuplicate,
     canContinue,
     canSubmit,
     flagName,

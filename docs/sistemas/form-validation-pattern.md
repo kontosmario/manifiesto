@@ -51,6 +51,12 @@ const missingFields = useMemo<string[]>(() => {
 
 Naming: castellano con minúscula (`'monto'`, `'descripción'`, `'categoría'`, `'tipo de ingreso'`, `'frecuencia'`, `'nombre'`, `'fecha de pago'`, `'día del mes'`). El helper `formatMissingFields()` los junta en lenguaje natural ("Completá monto y categoría para continuar.").
 
+Una entrada de la lista no significa solo "campo vacío": también cubre **campo completo pero inválido**. Desde 2026-08-16, `'nombre'` en add-fijo entra tanto por nombre corto como por **nombre duplicado** (colisión normalizada — mayúsculas/espacios/tildes, la ñ es letra propia — contra los fijos visibles de la familia, vía `findDuplicateFijoName` + `selectDuplicateCandidates` de `add-fijo-helpers.ts`).
+
+### 2b. Cue vivo para errores de colisión (variante del patrón)
+
+El warning glide clásico espera el tap del CTA (regla 6). Para un error que el usuario no puede deducir mirando el form —el nombre duplicado colisiona contra data que no está en pantalla— el cue es **inline y VIVO**: un texto de error bajo el campo que aparece apenas se detecta la colisión, sin esperar el CTA (`nameDuplicateError` en `Step1Form`). En la piel neo ese texto es EL cue (el pozo no tiene borde y el glide es no-op). Al editar, conservar el nombre original nunca dispara el error (colisiones legacy pre-validador no traban la edición). El mismo gate protege el quick-add/quick-edit del Asistente (`global-advisor-action-host.tsx`), que no monta este form.
+
 ### 3. `canSubmit = missingFields.length === 0`
 
 Una sola fuente de verdad. No tener `canSubmit` derivado de chequeos separados (ej. `hasValidAmount && Boolean(category)`) porque agregar un required field nuevo no actualiza el flag pero sí entra a `missingFields`, generando skew entre el gate del CTA y la lista que enumera el usuario.
@@ -264,5 +270,5 @@ Si todo es uniforme, está rolloutable a un form nuevo en menos de 30 minutos.
 | Import review wizard (cada step) | descripción, monto, categoría (si gasto) | Plus jump-to-invalid en confirm attempt |
 | Add expense | monto, descripción, categoría | — |
 | Add income | monto, descripción, tipo de ingreso | Kind tiles con warning border |
-| Add fijo (step 1) | nombre, monto, categoría, frecuencia | FreqTile con warning border |
+| Add fijo (step 1) | nombre, monto, categoría, frecuencia | FreqTile con warning border. `'nombre'` también entra por duplicado (§2b: error inline vivo) |
 | Add fijo (step 2) | día del mes | Copy-driven CTA: "Elige el día del mes" — sin lista explícita porque hay un solo input |

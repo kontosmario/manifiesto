@@ -12,10 +12,10 @@ import Animated, {
   LinearTransition,
   interpolateColor,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated'
+import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { FIJOS_SHADOW_BLEED, useFijosSkin } from '@/components/fijos/fijos-skin'
 import { RiseView } from '@/components/home/animated/rise-view'
 import { AmountCard } from '@/components/home/amount-card'
@@ -68,6 +68,10 @@ export interface Step1FormProps {
   flagAmount: boolean
   flagCategory: boolean
   flagFrequency: boolean
+  /** Cue VIVO de nombre repetido: no espera el tap del CTA — el error
+   *  inline aparece apenas el nombre colisiona con un fijo existente
+   *  (`canContinue` ya está bloqueado desde el form). */
+  nameDuplicate: boolean
 }
 
 export function Step1Form(props: Step1FormProps) {
@@ -101,6 +105,7 @@ export function Step1Form(props: Step1FormProps) {
     flagAmount,
     flagCategory,
     flagFrequency,
+    nameDuplicate,
   } = props
 
   return (
@@ -129,8 +134,23 @@ export function Step1Form(props: Step1FormProps) {
             isFocused={isNameFocused}
             onFocus={onNameFocus}
             onBlur={onNameBlur}
-            warning={flagName}
+            warning={flagName || nameDuplicate}
           />
+          {nameDuplicate ? (
+            // En neo el pozo no tiene borde (el glide de warning es no-op),
+            // así que este texto es EL cue del duplicado — por eso vive
+            // acá y no detrás de flagMissing: se muestra apenas colisiona.
+            <Text
+              accessibilityLiveRegion="polite"
+              style={[
+                styles.nameDuplicateError,
+                { color: theme.colors.warning },
+                neo ? { fontWeight: '700', fontFamily: neo.font('700') } : null,
+              ]}
+            >
+              {t('fijos:wizard.step1.nameDuplicateError')}
+            </Text>
+          ) : null}
         </Field>
       </Stagger>
 
@@ -438,6 +458,13 @@ function Stagger({
 
 const styles = StyleSheet.create({
   formStack: { gap: 12 },
+  nameDuplicateError: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: nunitoFamily('600'),
+    marginTop: 6,
+    paddingHorizontal: 4,
+  },
   cuotaInlineHint: {
     fontSize: 12,
     fontWeight: '600',
