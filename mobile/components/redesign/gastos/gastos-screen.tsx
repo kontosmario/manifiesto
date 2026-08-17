@@ -8,7 +8,7 @@ import {
   type StyleProp,
   type TextStyle,
 } from 'react-native'
-import { AnimatedText, Text } from '@/components/ui/app-text'
+import { Text } from '@/components/ui/app-text'
 import Animated, {
   Easing,
   cancelAnimation,
@@ -1077,7 +1077,16 @@ function useSwapFade<T>(value: T, signature: string, reduceMotion: boolean) {
 
 /** `useSwapFade` envuelto sobre un <Text>: el string viejo se funde, el nuevo
  *  entra. No usa el count-up del proyecto a propósito — ver la nota en
- *  `GastosHero`. */
+ *  `GastosHero`.
+ *
+ *  DOS CAPAS a propósito (no volver a un solo AnimatedText): el estilo del
+ *  caller trae material decorativo (el monto del hero lleva `textShadow` —
+ *  en dark, un glow verde de radio 26), y material sobre el MISMO nodo que
+ *  Reanimated anima se pinta como un RECTÁNGULO fantasma fuera de su forma
+ *  (QA del owner en device, dark, 2026-08-17 — mismo mecanismo ya visto con
+ *  `cssGradient` sobre nodo animado en el wrapped). La Animated.View de
+ *  afuera SOLO anima la opacidad; el <Text> de adentro es estático y su
+ *  sombra se dibuja por glifo, como corresponde. */
 function SwapText({
   value,
   style,
@@ -1096,9 +1105,11 @@ function SwapText({
   // divorciado del renderizado. El <Text> ya expone sus children al lector, que
   // es exactamente lo que se ve en pantalla en todo momento.
   return (
-    <AnimatedText numberOfLines={numberOfLines} style={[style, swap.style]}>
-      {swap.shown}
-    </AnimatedText>
+    <Animated.View style={swap.style}>
+      <Text numberOfLines={numberOfLines} style={style}>
+        {swap.shown}
+      </Text>
+    </Animated.View>
   )
 }
 
