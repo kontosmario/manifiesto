@@ -28,7 +28,7 @@ import type { SceneRenderArgs } from './types'
  * 01 Portada — sello editorial en la noche (HTML:41–65).
  * Tag "CIERRE DE CICLO" · sello raised 206/162 con logo + "EDICIÓN Nº N"
  * + rango · título · chip inset del ciclo · Brot `wave` con burbuja.
- * El CTA ("Abrir la edición ›") vive en el pie del orquestador.
+ * El CTA ("Explorar la edición ›") vive en el pie del orquestador.
  */
 export function PortadaScene({
   payload,

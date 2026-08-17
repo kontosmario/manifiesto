@@ -255,8 +255,8 @@
     "title": "Notifications",
     "pendingCount_one": "{{count}} pending",
     "pendingCount_other": "{{count}} pending",
-    "markAllAccessibility": "Mark all as read",
-    "markAll": "Mark all",
+    "markAllAccessibility": "Clear all notifications",
+    "markAll": "Clear all",
     "loadError": "We couldn't load notifications.",
     "calmTitle": "All calm",
     "calmBody": "No pending alerts.\nBrot lets you know when there's something for your home.",
@@ -265,7 +265,7 @@
   "notificationsHook": {
     "deleteError": "The notification couldn't be deleted.",
     "retry": "Retry",
-    "clearAllError": "The notifications couldn't be cleared."
+    "clearAllError": "We couldn't clear your notifications."
   },
   "notificationFeed": {
     "swipeHint": "Swipe to mark as read",
@@ -274,7 +274,7 @@
     "loadError": "We couldn't load notifications",
     "emptyTitle": "All caught up",
     "emptySubtitle": "You have no pending notifications.",
-    "markRead": "Mark read"
+    "markRead": "Dismiss"
   },
   "notifTime": {
     "noDate": "No date",

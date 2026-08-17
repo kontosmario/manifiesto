@@ -255,8 +255,8 @@
     "title": "Notificaciones",
     "pendingCount_one": "{{count}} pendiente",
     "pendingCount_other": "{{count}} pendientes",
-    "markAllAccessibility": "Marcar todas como leídas",
-    "markAll": "Marcar todas",
+    "markAllAccessibility": "Limpiar todas las notificaciones",
+    "markAll": "Limpiar todas",
     "loadError": "No pudimos cargar las notificaciones.",
     "calmTitle": "Todo en calma",
     "calmBody": "No tienes avisos pendientes.\nBrot te avisa cuando haya algo del hogar.",
@@ -265,7 +265,7 @@
   "notificationsHook": {
     "deleteError": "No se pudo eliminar la notificación.",
     "retry": "Reintentar",
-    "clearAllError": "No se pudieron borrar las notificaciones."
+    "clearAllError": "No pudimos limpiar las notificaciones."
   },
   "notificationFeed": {
     "swipeHint": "Desliza para marcar como leída",
@@ -274,7 +274,7 @@
     "loadError": "No pudimos cargar las notificaciones",
     "emptyTitle": "Todo al día",
     "emptySubtitle": "No tienes notificaciones pendientes.",
-    "markRead": "Marcar leída"
+    "markRead": "Quitar"
   },
   "notifTime": {
     "noDate": "Sin fecha",

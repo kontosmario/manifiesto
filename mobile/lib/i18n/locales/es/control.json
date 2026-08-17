@@ -577,7 +577,7 @@
       "portadaTitulo": "Tu ciclo se cerró.",
       "chipRango": "{{rango}} · {{dias}} DÍAS · {{movs}} MOV",
       "burbujaPortada": "Te preparé la edición de este ciclo. ¿La abrimos juntos?",
-      "ctaPortada": "Abrir la edición ›",
+      "ctaPortada": "Explorar la edición ›",
       "tagNumeros": "EDICIÓN Nº {{n}} · LOS NÚMEROS",
       "tagNumerosSinN": "LOS NÚMEROS",
       "numerosTitulo": "Un mes escrito\na mano.",
