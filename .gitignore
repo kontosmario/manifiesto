@@ -27,12 +27,19 @@ dist-ssr
 !.env.localdb.example
 .expo
 .expo-shared
-android
-ios
-# El patrón `ios` de arriba no está anclado: matchea CUALQUIER carpeta con
-# ese nombre, no sólo la del prebuild en la raíz. Los módulos Expo locales
-# versionan su Swift en `modules/<módulo>/ios/`, así que se los re-incluye.
-!modules/*/ios/
+# ANCLADOS a la raíz a propósito (`/android`, `/ios` y no `android`, `ios`).
+# Sin la barra inicial el patrón matchea CUALQUIER carpeta con ese nombre a
+# cualquier profundidad, y los módulos Expo locales versionan su Swift en
+# `modules/<módulo>/ios/`. Eso se tapaba con una negación (`!modules/*/ios/`)
+# que git SÍ respeta —los archivos quedaban trackeados y `git check-ignore`
+# decía "no ignorado"— pero que el empaquetador de EAS NO: al armar el tarball
+# del build podaba el directorio padre y los .swift nunca llegaban al sandbox.
+# Resultado: `expo prebuild` local pasaba y el build de EAS moría con ENOENT en
+# `with-apple-pay-intent.cjs` (2026-08-17, build 2.0.0). Con los patrones
+# anclados ningún directorio padre queda excluido y las dos herramientas
+# coinciden. NO sacar las barras.
+/android
+/ios
 *.local
 
 # Editor directories and files

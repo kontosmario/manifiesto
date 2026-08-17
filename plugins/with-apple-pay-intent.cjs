@@ -155,3 +155,9 @@ const withApplePayIntent = (config) => {
 
 module.exports = withApplePayIntent
 module.exports.default = withApplePayIntent
+// Exportado para que el test de regresión verifique que estas rutas llegan al
+// sandbox del build de EAS. No basta con que estén trackeadas: si un ancestro
+// matchea un patrón de .gitignore, el empaquetador poda el directorio y el
+// prebuild muere con ENOENT (pasó con `modules/*/ios/` el 2026-08-17).
+// Ver tests/unit/plugin-sources-reach-build.test.ts.
+module.exports.SOURCES = SOURCES
