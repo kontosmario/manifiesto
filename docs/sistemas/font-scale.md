@@ -411,20 +411,20 @@ recortarse.
    sacando el flag: el flag es lo que impide que la fila se parta o que el
    monto desborde. Inventario verificado con
    `grep -rn '^\s*adjustsFontSizeToFit' mobile app` — **17 sitios**, de los
-   cuales **13 declaran `minimumFontScale`** (los otros 4 caen en el piso
+   cuales **12 declaran `minimumFontScale`** (los otros 5 caen en el piso
    default de RN):
 
    | Sitio | `minimumFontScale` | Qué se mira |
    |---|---|---|
    | `components/control-v2/control-v2-vsmes-card.tsx:502` | 0.8 | valor de la barra |
    | `components/control-v2/daily-goal-sheet.tsx:252` | 0.7 | monto del hero (`AnimatedText`) |
-   | `components/gastos/add-gasto-parts/step2-summary.tsx:406` | 0.7 | importe del resumen |
    | `components/gastos/add-income-parts/step2-summary.tsx:166` | 0.7 | importe del resumen |
    | `components/home/amount-card.tsx:270` | — | monto de la card |
    | `components/home/category-horizontal-rail.tsx:542` | 0.6 | label del tile (**pineado**, ver abajo) |
    | `components/home/control-signal-tile.tsx:75` | 0.7 | valor de la señal |
    | `components/home/greeting-header.tsx:49` | 0.72 | nombre del saludo |
    | `components/home/quick-add-savings-sheet.tsx:275` | 0.7 | monto del aporte |
+   | `components/import-review/import-review-receipt.tsx:133` | — | monto del recibo |
    | `components/redesign/home/home-screen.tsx:309` | 0.72 | nombre del saludo (neo) (**crudo**, ver abajo) |
    | `components/savings-goals/wizard-steps/step-4-summary.tsx:64` | — | monto de la meta |
    | `components/savings-goals/wizard-steps/wizard-value-well.tsx:88` | — | valor del pozo |

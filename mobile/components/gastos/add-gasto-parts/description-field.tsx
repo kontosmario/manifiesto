@@ -182,7 +182,18 @@ export function DescriptionField({
         ) : null}
       </Animated.View>
 
-      {suggestions.length > 0 ? (
+      {/* Los chips COLAPSAN con el foco (2026-08-17): son affordance de tipeo,
+          y con el alta en una sola pantalla esos ~56pt en reposo empujaban la
+          tira de impacto fuera del fold en un teléfono chico.
+
+          El `keyboardShouldPersistTaps="handled"` del ScrollView de los chips
+          —y el del `Screen` que los contiene— es LOAD-BEARING acá: sin él, el
+          tap que elige una sugerencia desenfocaría el pozo primero, los chips
+          se desmontarían en ese mismo gesto y el press nunca llegaría. Con
+          `handled` el toque va al chip y el foco no se pierde hasta que el
+          handler lo suelta (`Keyboard.dismiss()` en la screen, que es un
+          commit deliberado). */}
+      {isFocused && suggestions.length > 0 ? (
         <QuickTextChips
           options={suggestions}
           onSelect={onSelectSuggestion}

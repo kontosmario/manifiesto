@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   evaluateAddExpenseGates,
-  missingFieldsForStep,
   parseAddExpenseAmount,
   type AddExpenseField,
 } from '@/features/expenses/use-add-expense-form'
@@ -38,10 +37,9 @@ describe('parseAddExpenseAmount', () => {
 })
 
 describe('evaluateAddExpenseGates — formulario completo', () => {
-  it('deja continuar y confirmar con monto, categoría válida y descripción', () => {
+  it('deja confirmar con monto, categoría válida y descripción', () => {
     const g = gates({})
     expect(g.missingFields).toEqual([])
-    expect(g.canContinue).toBe(true)
     expect(g.canSubmit).toBe(true)
     expect(g.amount).toBe(1500)
   })
@@ -51,20 +49,19 @@ describe('evaluateAddExpenseGates — cada campo faltante por separado', () => {
   it('marca sólo `amount` cuando falta el monto', () => {
     const g = gates({ rawPrice: '' })
     expect(g.missingFields).toEqual<AddExpenseField[]>(['amount'])
-    expect(g.canContinue).toBe(false)
     expect(g.canSubmit).toBe(false)
   })
 
   it('marca sólo `category` cuando no hay categoría elegida', () => {
     const g = gates({ categoryId: '' })
     expect(g.missingFields).toEqual<AddExpenseField[]>(['category'])
-    expect(g.canContinue).toBe(false)
+    expect(g.canSubmit).toBe(false)
   })
 
   it('marca sólo `description` cuando la descripción está vacía', () => {
     const g = gates({ description: '' })
     expect(g.missingFields).toEqual<AddExpenseField[]>(['description'])
-    expect(g.canContinue).toBe(false)
+    expect(g.canSubmit).toBe(false)
   })
 
   it('cuenta como vacía una descripción de puros espacios', () => {
@@ -89,7 +86,7 @@ describe('evaluateAddExpenseGates — monto inválido', () => {
   it('bloquea con monto no parseable (NaN)', () => {
     const g = gates({ rawPrice: 'no soy un número' })
     expect(g.amount).toBe(0)
-    expect(g.canContinue).toBe(false)
+    expect(g.canSubmit).toBe(false)
   })
 })
 
@@ -101,7 +98,7 @@ describe('evaluateAddExpenseGates — categoría inválida', () => {
     const g = gates({ categoryId: 'borrada-por-otro-miembro' })
     expect(g.isCategoryValid).toBe(false)
     expect(g.missingFields).toEqual<AddExpenseField[]>(['category'])
-    expect(g.canContinue).toBe(false)
+    expect(g.canSubmit).toBe(false)
   })
 
   it('bloquea mientras la query de categorías todavía no hidrató', () => {
@@ -111,23 +108,48 @@ describe('evaluateAddExpenseGates — categoría inválida', () => {
       description: 'Café',
       isCategoryIdValid: () => false,
     })
-    expect(g.canContinue).toBe(false)
+    expect(g.canSubmit).toBe(false)
   })
 })
 
-describe('missingFieldsForStep', () => {
-  const all: AddExpenseField[] = ['amount', 'category', 'description']
+/**
+ * El alta se fusionó en UNA pantalla el 2026-08-17 (antes: wizard de 2 pasos).
+ *
+ * Los tests que afirmaban el reparto por paso (`missingFieldsForStep`) se
+ * reemplazaron por estos: aquella función existía para responder "¿qué le falta
+ * al paso 2?" —cuya respuesta era SIEMPRE `[]`, porque nota y fecha eran
+ * opcional y de sólo lectura— y con ella se derivaba un `canSubmit` que en la
+ * práctica valía lo mismo que `canContinue`. Lo que queda por verificar no es
+ * el reparto sino la invariante que lo reemplaza: UN gate, derivado de
+ * `missingFields` (regla 3 de `docs/sistemas/form-validation-pattern.md`).
+ */
+describe('evaluateAddExpenseGates — un solo gate, derivado de missingFields', () => {
+  const CASES: Array<Partial<{ rawPrice: string; categoryId: string; description: string }>> = [
+    {},
+    { rawPrice: '' },
+    { categoryId: '' },
+    { description: '' },
+    { rawPrice: '', categoryId: '' },
+    { rawPrice: '', categoryId: '', description: '' },
+  ]
 
-  it('devuelve los tres requeridos en el paso 1', () => {
-    expect(missingFieldsForStep(all, 1)).toEqual(all)
+  it('`canSubmit` es exactamente `missingFields.length === 0` en toda combinación', () => {
+    // Si esto se rompe, el CTA y la línea que enumera los faltantes están
+    // contando cosas distintas: el botón queda habilitado sin que ningún campo
+    // se pinte, o atenuado sin nada que completar.
+    for (const c of CASES) {
+      const g = gates(c)
+      expect(g.canSubmit).toBe(g.missingFields.length === 0)
+    }
   })
 
-  it('no devuelve ninguno en el paso 2 (notas y fecha son opcionales)', () => {
-    expect(missingFieldsForStep(all, 2)).toEqual([])
-  })
-
-  it('respeta el subconjunto que le pasan', () => {
-    expect(missingFieldsForStep(['category'], 1)).toEqual(['category'])
+  it('cada condición del gate corresponde 1:1 con una entrada de la lista', () => {
+    for (const c of CASES) {
+      const g = gates(c)
+      expect(g.missingFields.includes('amount')).toBe(!g.hasValidAmount)
+      expect(g.missingFields.includes('category')).toBe(!g.isCategoryValid)
+      expect(g.missingFields.includes('description')).toBe(!g.isDescriptionValid)
+    }
   })
 })
 

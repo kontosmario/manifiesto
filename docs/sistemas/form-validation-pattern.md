@@ -61,6 +61,8 @@ El warning glide clásico espera el tap del CTA (regla 6). Para un error que el 
 
 Una sola fuente de verdad. No tener `canSubmit` derivado de chequeos separados (ej. `hasValidAmount && Boolean(category)`) porque agregar un required field nuevo no actualiza el flag pero sí entra a `missingFields`, generando skew entre el gate del CTA y la lista que enumera el usuario.
 
+**Un form multi-paso tiene UN gate por paso, no un gate ceremonial de más.** Un paso que no agrega ningún requerido no necesita su propio gate: en add-expense, `canSubmit` se evaluaba `canContinue && missingFieldsForStep(missing, 2).length === 0` y el segundo término era constantemente `[]` porque nota y fecha eran opcional y de sólo lectura. Dos gates que siempre valen lo mismo son dos gates que pueden separarse en silencio, y sobre todo son la señal de que el paso extra no está pidiendo nada — el 2026-08-17 el alta de gasto se fusionó en una sola pantalla y quedó con el gate único de esta regla (`evaluateAddExpenseGates` en [`use-add-expense-form.ts`](../../mobile/features/expenses/use-add-expense-form.ts)). Add-income y add-fijo siguen en dos pasos porque el suyo SÍ tiene requeridos propios (tipo de ingreso / día del mes).
+
 ### 4. Primary CTA: `lookDisabled` ≠ `disabled`
 
 El CTA tiene dos estados de "no operativo":
@@ -268,7 +270,7 @@ Si todo es uniforme, está rolloutable a un form nuevo en menos de 30 minutos.
 | Form | Required fields | Notas |
 |---|---|---|
 | Import review wizard (cada step) | descripción, monto, categoría (si gasto) | Plus jump-to-invalid en confirm attempt |
-| Add expense | monto, descripción, categoría | — |
+| Add expense | monto, descripción, categoría | Pantalla ÚNICA desde 2026-08-17 (era wizard de 2 pasos). Un solo gate — ver §3 |
 | Add income | monto, descripción, tipo de ingreso | Kind tiles con warning border |
 | Add fijo (step 1) | nombre, monto, categoría, frecuencia | FreqTile con warning border. `'nombre'` también entra por duplicado (§2b: error inline vivo) |
 | Add fijo (step 2) | día del mes | Copy-driven CTA: "Elige el día del mes" — sin lista explícita porque hay un solo input |

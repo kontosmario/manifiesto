@@ -1,17 +1,33 @@
 /**
- * Máquina de estados del wizard "agregar gasto" (2 pasos). Es el espejo de
- * `use-add-fijo-form` para el flujo de gastos variables: SOLO state + gates.
+ * Estado del alta "agregar gasto". SOLO state + gates: es el modelo de una
+ * pantalla ÚNICA, no de un wizard.
+ *
+ * Por qué ya no hay pasos (2026-08-17)
+ * ------------------------------------
+ * El alta era un wizard de 2 pasos y el segundo no agregaba NINGÚN requisito:
+ * `canSubmit` se evaluaba idéntico a `canContinue` porque los campos del paso 2
+ * (nota y fecha) eran opcionales o de sólo lectura. O sea que el paso existía
+ * para mostrar el impacto, y cobraba un tap de CTA por hacerlo. El impacto pasó
+ * a una tira compacta EN VIVO arriba del CTA, y con eso el segundo paso —y su
+ * máquina de estados— se quedaron sin razón de ser.
+ *
+ * Lo que se fue con él: `AddExpenseStep`, `missingFieldsForStep`, `canContinue`,
+ * `goNext`/`goBack` y el registro de "qué pasos ya recibieron un tap del CTA".
+ * Queda UN gate (`canSubmit`) derivado de `missingFields`, que es la regla 3 de
+ * `docs/sistemas/form-validation-pattern.md`: una sola fuente de verdad, para
+ * que agregar mañana un campo requerido no pueda dejar el CTA y la línea que
+ * enumera los faltantes contando cosas distintas.
  *
  * Qué NO hace (a propósito):
  *  · No trae categorías ni gastos, no muta nada, no toca haptics ni teclado.
  *    Los datos y la mutación siguen viviendo en `use-add-expense-controller`
  *    (categorías rankeadas, sugerencias, `createExpenseMutation`); este hook
- *    es el que decide QUÉ falta y CUÁNDO se puede avanzar. Duplicarle la
+ *    es el que decide QUÉ falta y CUÁNDO se puede confirmar. Duplicarle la
  *    query o la mutation sería partir la lógica de negocio en dos.
- *  · No importa nada de `react-native`: la parte derivable (`evaluateAddExpenseGates`,
- *    `missingFieldsForStep`) tiene que poder correr en vitest env node, que no
- *    tiene renderer de React — por eso los gates son funciones puras exportadas
- *    y el hook es una cáscara delgada sobre ellas.
+ *  · No importa nada de `react-native`: la parte derivable
+ *    (`evaluateAddExpenseGates`) tiene que poder correr en vitest env node, que
+ *    no tiene renderer de React — por eso los gates son funciones puras
+ *    exportadas y el hook es una cáscara delgada sobre ellas.
  *
  * Los campos faltantes se identifican por el ENUM `AddExpenseField`, NUNCA por
  * el string localizado. El controller viejo empujaba `i18n.t('gastos:import.field.amount')`
@@ -23,25 +39,10 @@
 import { useCallback, useMemo, useState } from 'react'
 import { parsePrice, serializePrice } from '@/utils/money'
 
-export type AddExpenseStep = 1 | 2
-
-/** Campos REQUERIDOS del wizard. El orden es el de aparición en el paso 1
+/** Campos REQUERIDOS del alta. El orden es el de aparición en la columna
  *  (monto → categoría → descripción): la línea "Completá …" lee en el mismo
  *  orden en que el usuario recorre el formulario. */
 export type AddExpenseField = 'amount' | 'category' | 'description'
-
-/**
- * A qué paso pertenece cada campo requerido. El paso 2 no tiene ninguno
- * (notas y fecha son opcionales), pero la tabla existe igual: es lo que hace
- * que el resaltado sea POR PASO y no global — sin esto, tocar el CTA
- * bloqueado en el paso 1 dejaba el paso 2 pintado de advertencia antes de que
- * el usuario hiciera nada ahí.
- */
-const FIELD_STEP: Record<AddExpenseField, AddExpenseStep> = {
-  amount: 1,
-  category: 1,
-  description: 1,
-}
 
 export interface AddExpenseGatesInput {
   rawPrice: string
@@ -66,9 +67,9 @@ export interface AddExpenseGates {
   hasValidAmount: boolean
   isCategoryValid: boolean
   isDescriptionValid: boolean
-  /** TODOS los faltantes, sin importar el paso. */
+  /** Todos los requeridos que faltan. */
   missingFields: readonly AddExpenseField[]
-  canContinue: boolean
+  /** ÚNICO gate del alta, derivado de `missingFields`. */
   canSubmit: boolean
 }
 
@@ -83,7 +84,7 @@ export function parseAddExpenseAmount(rawPrice: string): number {
 }
 
 /**
- * Gates del wizard. Cada condición corresponde 1:1 con una entrada de
+ * Gates del alta. Cada condición corresponde 1:1 con una entrada de
  * `missingFields`: si divergen, el CTA queda atenuado sin que ningún campo se
  * pinte y el usuario no tiene forma de saber qué falta. Al tocar una, tocar
  * la otra.
@@ -99,30 +100,17 @@ export function evaluateAddExpenseGates(input: AddExpenseGatesInput): AddExpense
   if (!isCategoryValid) missingFields.push('category')
   if (!isDescriptionValid) missingFields.push('description')
 
-  const canContinue = missingFields.length === 0
-  // El paso 2 (notas + fecha) no agrega requisitos propios, así que confirmar
-  // pide exactamente lo mismo que avanzar. Se deja explícito —y derivado de
-  // `missingFieldsForStep`— para que agregar mañana un campo obligatorio al
-  // paso 2 no requiera acordarse de tocar este gate.
-  const canSubmit = canContinue && missingFieldsForStep(missingFields, 2).length === 0
-
   return {
     amount,
     hasValidAmount,
     isCategoryValid,
     isDescriptionValid,
     missingFields,
-    canContinue,
-    canSubmit,
+    // Regla 3 del patrón de validación: UNA sola fuente de verdad. No se
+    // deriva de un `&&` de condiciones sueltas, que es lo que hace que un
+    // campo requerido nuevo entre en la lista y no en el gate.
+    canSubmit: missingFields.length === 0,
   }
-}
-
-/** Filtra los faltantes que pertenecen a un paso. */
-export function missingFieldsForStep(
-  missingFields: readonly AddExpenseField[],
-  step: AddExpenseStep,
-): readonly AddExpenseField[] {
-  return missingFields.filter((f) => FIELD_STEP[f] === step)
 }
 
 interface UseAddExpenseFormArgs {
@@ -138,15 +126,6 @@ interface UseAddExpenseFormArgs {
 }
 
 export interface AddExpenseFormState {
-  step: AddExpenseStep
-  /** `true` si avanzó al paso 2; `false` si marcó los faltantes y se quedó.
-   *  El CTA nunca va `disabled` (ver `WizardCta`), así que el tap SIEMPRE
-   *  llega acá: el "no" tiene que producir el resaltado, no silencio. */
-  goNext: () => boolean
-  /** `true` si retrocedió; `false` si ya estaba en el paso 1 (⇒ cerrar el
-   *  alta). Mismo contrato que `useAddIncomeForm.goBack`, así las dos
-   *  pantallas resuelven "atrás" con la misma línea. */
-  goBack: () => boolean
   rawPrice: string
   setRawPrice: (v: string) => void
   amount: number
@@ -159,17 +138,17 @@ export interface AddExpenseFormState {
   forDate: Date | null
   setForDate: (v: Date | null) => void
   // ── Derived ──────────────────────────────────────────────────────
-  canContinue: boolean
+  /** ÚNICO gate: `missingFields.length === 0`. El CTA nunca va `disabled`
+   *  (ver `WizardCta`), así que el tap SIEMPRE llega a la screen: el "no"
+   *  tiene que producir el resaltado, no silencio. */
   canSubmit: boolean
   /** Todos los faltantes (para la línea "Completá monto y categoría…"). */
   missingFields: readonly AddExpenseField[]
-  /** Los faltantes del paso ACTUAL. */
-  stepMissingFields: readonly AddExpenseField[]
-  /** Los del paso actual, sólo si el usuario ya tocó el CTA en ESE paso. */
+  /** Los faltantes, sólo si el usuario ya tocó el CTA atenuado. */
   flaggedFields: readonly AddExpenseField[]
   isFieldFlagged: (field: AddExpenseField) => boolean
-  /** Marca los faltantes del paso actual (CTA atenuado tocado). El háptico de
-   *  advertencia lo dispara la screen: este modelo no importa react-native. */
+  /** Marca los faltantes (CTA atenuado tocado). El háptico de advertencia lo
+   *  dispara la screen: este modelo no importa react-native. */
   flagMissing: () => void
   // ── Affordances ──────────────────────────────────────────────────
   addQuickAmount: (delta: number) => void
@@ -178,9 +157,7 @@ export interface AddExpenseFormState {
   reset: () => void
 }
 
-const NO_FLAGS: Record<AddExpenseStep, boolean> = { 1: false, 2: false }
-
-/** Constante compartida: devolver `[]` literal cuando el paso no está marcado
+/** Constante compartida: devolver `[]` literal cuando todavía no se marcó nada
  *  rompía la identidad de `flaggedFields` en cada render y con ella la del
  *  objeto del form. */
 const NO_FIELDS: readonly AddExpenseField[] = []
@@ -191,7 +168,6 @@ export function useAddExpenseForm({
   prefillDescription,
   initialForDate = null,
 }: UseAddExpenseFormArgs): AddExpenseFormState {
-  const [step, setStep] = useState<AddExpenseStep>(1)
   const [rawPrice, setRawPrice] = useState(
     prefillAmount != null && prefillAmount > 0 ? serializePrice(prefillAmount) : '',
   )
@@ -205,15 +181,14 @@ export function useAddExpenseForm({
   const [notes, setNotes] = useState('')
   const [forDate, setForDate] = useState<Date | null>(initialForDate)
   /**
-   * Qué pasos ya recibieron un tap del CTA con datos faltantes.
+   * Si el usuario ya tocó el CTA con datos faltantes.
    *
-   * Es un registro POR PASO y vive acá arriba, no en la vista del paso: el
-   * `useRef(highlightToken)` que usaba `add-expense-dashboard` se
-   * re-inicializaba con cada montaje, así que volver del paso 2 al 1 (la vista
-   * del paso 1 se remonta) reseteaba la referencia y el resaltado desaparecía
-   * justo cuando el usuario venía a completar lo que faltaba.
+   * Vive acá arriba y no en la vista: el `useRef(highlightToken)` que usaba
+   * `add-expense-dashboard` se re-inicializaba con cada montaje, así que
+   * cualquier remontaje del cuerpo reseteaba la referencia y el resaltado
+   * desaparecía justo cuando el usuario venía a completar lo que faltaba.
    */
-  const [flaggedSteps, setFlaggedSteps] = useState<Record<AddExpenseStep, boolean>>(NO_FLAGS)
+  const [isFlagged, setIsFlagged] = useState(false)
 
   // Memoizado, y por eso `isCategoryIdValid` TIENE que llegar estable desde el
   // caller (la screen lo cuelga de `useCallback([categories])`). No es por
@@ -223,37 +198,18 @@ export function useAddExpenseForm({
     () => evaluateAddExpenseGates({ rawPrice, categoryId, description, isCategoryIdValid }),
     [rawPrice, categoryId, description, isCategoryIdValid],
   )
-  const { amount, missingFields, canContinue, canSubmit } = gates
+  const { amount, missingFields, canSubmit } = gates
 
-  const stepMissingFields = useMemo(
-    () => missingFieldsForStep(missingFields, step),
-    [missingFields, step],
-  )
   const flaggedFields = useMemo(
-    () => (flaggedSteps[step] ? stepMissingFields : NO_FIELDS),
-    [flaggedSteps, step, stepMissingFields],
+    () => (isFlagged ? missingFields : NO_FIELDS),
+    [isFlagged, missingFields],
   )
 
+  // `setState` con el MISMO valor no re-rendea (React corta por Object.is), así
+  // que tocar el CTA atenuado dos veces seguidas no cuesta un render.
   const flagMissing = useCallback(() => {
-    setFlaggedSteps((prev) => (prev[step] ? prev : { ...prev, [step]: true }))
-  }, [step])
-
-  const goNext = useCallback(() => {
-    if (!canContinue) {
-      setFlaggedSteps((prev) => (prev[1] ? prev : { ...prev, 1: true }))
-      return false
-    }
-    setStep(2)
-    return true
-  }, [canContinue])
-
-  // Devuelve si HUBO retroceso: en el paso 1 "atrás" significa cerrar el alta,
-  // y esa decisión es de la screen. Espeja a `useAddIncomeForm`.
-  const goBack = useCallback(() => {
-    if (step === 1) return false
-    setStep(1)
-    return true
-  }, [step])
+    setIsFlagged(true)
+  }, [])
 
   const addQuickAmount = useCallback(
     (delta: number) => {
@@ -266,13 +222,12 @@ export function useAddExpenseForm({
   }, [])
 
   const reset = useCallback(() => {
-    setStep(1)
     setRawPrice('')
     setCategoryId('')
     setDescription('')
     setNotes('')
     setForDate(initialForDate)
-    setFlaggedSteps(NO_FLAGS)
+    setIsFlagged(false)
   }, [initialForDate])
 
   const isFieldFlagged = useCallback(
@@ -288,9 +243,6 @@ export function useAddExpenseForm({
   // inestables.
   return useMemo(
     () => ({
-      step,
-      goNext,
-      goBack,
       rawPrice,
       setRawPrice,
       amount,
@@ -302,10 +254,8 @@ export function useAddExpenseForm({
       setNotes,
       forDate,
       setForDate,
-      canContinue,
       canSubmit,
       missingFields,
-      stepMissingFields,
       flaggedFields,
       isFieldFlagged,
       flagMissing,
@@ -314,19 +264,14 @@ export function useAddExpenseForm({
       reset,
     }),
     [
-      step,
-      goNext,
-      goBack,
       rawPrice,
       amount,
       categoryId,
       description,
       notes,
       forDate,
-      canContinue,
       canSubmit,
       missingFields,
-      stepMissingFields,
       flaggedFields,
       isFieldFlagged,
       flagMissing,

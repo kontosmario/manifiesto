@@ -1,17 +1,32 @@
-// Wizard de agregar gasto (2 pasos). Hermano de `add-fijo-v2-screen.tsx`:
-// misma cáscara, mismo header, mismos CTAs, mismo escalonado.
+// Alta de gasto — UNA sola pantalla (2026-08-17).
 //
-//  · Paso 1 (`<Step1Form>`)    → monto + atajos + categoría + descripción.
-//  · Paso 2 (`<Step2Summary>`) → resumen + impacto en el cupo de hoy + los
-//                                opcionales (nota y fecha).
+// Era un wizard de 2 pasos y el segundo no pedía nada: `canSubmit` evaluaba
+// idéntico a `canContinue` porque nota y fecha eran opcional y de sólo lectura.
+// O sea que cobraba un tap de CTA por mostrar el impacto, y el impacto ahora
+// vive EN VIVO arriba del botón que lo confirma. El recorrido pasó de ~1460pt y
+// dos taps de CTA a una columna de ~700pt en reposo y un tap.
+//
+//  · `<GastoForm>`    → monto + atajos + categoría + descripción + nota.
+//  · `<ImpactStrip>`  → la tira de "te queda hoy", pegada arriba del CTA.
+//  · `<ImpactDetailSheet>` → el desglose opcional (columnas, delta, Brot).
 //
 // Reparto de responsabilidades:
-//  · `useAddExpenseForm`       → TODO el estado del alta y los gates.
+//  · `useAddExpenseForm`       → TODO el estado del alta y el gate ÚNICO.
 //  · `useAddExpenseController` → datos (categorías, ranking, sugerencias) y la
 //                                mutación. No tiene estado de formulario.
-//  · `computeAddExpenseImpact` → la cuenta del paso 2, pura.
-// Esta pantalla es el orquestador: cablea los tres, encadena el submit y
-// reparte props a los pasos.
+//  · `computeAddExpenseImpact` → la cuenta de la tira, pura.
+// Esta pantalla es el orquestador: cablea los tres y encadena el submit.
+//
+// NOTA sobre las keys de i18n: siguen bajo `wizard.step1.*` / `wizard.step2.*`.
+// Son identificadores heredados de la época de dos pasos y NO se renombraron a
+// propósito: `edit-gasto-sheet.tsx` y `for-date-label.ts` comparten varias de
+// ellas, así que la limpieza cosmética arrastraría dos superficies aprobadas
+// que este cambio no toca.
+//
+// Los hermanos de FIJO (`add-fijo-v2-screen`) y de INGRESO
+// (`add-income-v2-screen`) siguen siendo wizards de 2 pasos y montan el mismo
+// kit (`components/wizard/`) sin cambios: acá no se tocó ninguna pieza
+// compartida, sólo se dejó de montar `<WizardDots>`.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Keyboard,
@@ -24,8 +39,9 @@ import { useTranslation } from 'react-i18next'
 import Animated from 'react-native-reanimated'
 import { useRouter } from 'expo-router'
 import { BackdatePill } from '@/components/gastos/add-gasto-parts/backdate-pill'
-import { Step1Form } from '@/components/gastos/add-gasto-parts/step1-form'
-import { Step2Summary } from '@/components/gastos/add-gasto-parts/step2-summary'
+import { GastoForm } from '@/components/gastos/add-gasto-parts/gasto-form'
+import { ImpactDetailSheet } from '@/components/gastos/add-gasto-parts/impact-detail-sheet'
+import { ImpactStrip } from '@/components/gastos/add-gasto-parts/impact-strip'
 import { railTileWidth, RAIL_TILE_HEIGHT } from '@/components/home/category-horizontal-rail'
 import {
   OnbNumpad,
@@ -36,7 +52,7 @@ import { RiseView } from '@/components/home/animated/rise-view'
 import { WizardCta } from '@/components/wizard/wizard-cta'
 import { WizardShell } from '@/components/wizard/wizard-shell'
 import { WizardFooterHelper } from '@/components/wizard/parts/footer-helper'
-import { WizardDots, WizardHeader } from '@/components/wizard/parts/step-header'
+import { WizardHeader } from '@/components/wizard/parts/step-header'
 import { STEP_LAYOUT } from '@/components/wizard/step-motion'
 import { computeAddExpenseImpact } from '@/features/expenses/add-expense-impact'
 import {
@@ -108,7 +124,7 @@ export function AddGastoV2Screen({
   // `useVariableExpenseCategories`.
   const { categories, categoriesQuery } = useVariableExpenseCategories(familyId)
   // Va como función y no como booleano a propósito: espejar el `categoryId`
-  // del hook para validarlo metía un render de lag en el que `canContinue`
+  // del hook para validarlo metía un render de lag en el que `canSubmit`
   // parpadeaba a false justo después de elegir la categoría.
   const isCategoryIdValid = useCallback(
     (id: string) => categories.some((c) => c.id === id),
@@ -127,7 +143,7 @@ export function AddGastoV2Screen({
     selectedCategoryId: form.categoryId,
   })
   // Señales del asesor: salen de la query cacheada de Control, así que el
-  // banner del paso 1 no agrega red.
+  // banner no agrega red.
   const { signals: advisorSignals } = useControlV2Data(familyId)
 
   // El cupo diario y el "hay ingreso configurado" salen del hero del Home —
@@ -179,7 +195,7 @@ export function AddGastoV2Screen({
    * Para HOY el "antes" sale del hero, no de la lista de esta pantalla.
    *
    * Cada superficie lo derivaba por su cuenta —el hero desde el snapshot del
-   * dashboard, el paso 2 sumando `controller.expenses` filtradas por día— y
+   * dashboard, el impacto sumando `controller.expenses` filtradas por día— y
    * las dos listas no son la misma: la del controller es el feed paginado de
    * Gastos. Bastaba que difirieran en una fila para que el impacto no
    * coincidiera con la card de la Home, que es exactamente lo que reportó el
@@ -200,18 +216,19 @@ export function AddGastoV2Screen({
       )
     }
     // Único caso que queda: día destino FUERA del ciclo vigente. Ahí el gasto
-    // no toca el cupo de hoy, el monto entra en 0 y el bloque comparativo ni
-    // se muestra (`impactApplies`), así que no hay "antes" que afirmar.
+    // no toca el cupo de hoy, el monto entra en 0 y la tira muestra el aviso de
+    // "fuera del ciclo" en vez de una comparación, así que no hay "antes" que
+    // afirmar.
     return 0
   }, [form.forDate, forDayQuery.data, targetDayIso, hero.spentToday])
 
-  // El paso 2 no puede afirmar nada hasta que estén el ciclo Y el total del día
+  // La tira no puede afirmar nada hasta que estén el ciclo Y el total del día
   // destino: con las queries frías el cupo vale 0, `incomeConfigured` sale
-  // false y la card ofrecía el setup de ingreso a un hogar que tiene sueldo
+  // false y se le ofrecía el setup de ingreso a un hogar que tiene sueldo
   // cargado hace meses. Mismo gate que el alta de ingreso (`isReady`).
   // `isError` además de `isLoading`: en react-query v5 `isLoading` es
   // `isPending && isFetching`, así que con la query FALLADA vale false y el
-  // paso 2 se daba por listo con `data === undefined` — o sea "antes = $0",
+  // impacto se daba por listo con `data === undefined` — o sea "antes = $0",
   // cupo entero libre, para un día en el que sí se había gastado.
   const isImpactReady =
     isCycleReady && !forDayQuery.isLoading && !forDayQuery.isError
@@ -222,7 +239,7 @@ export function AddGastoV2Screen({
    * `useCreateExpense` es OPTIMISTA: en el mismo tick del confirmar la fila ya
    * entra en la lista, y de ahí sale `hero.spentToday`. Como esta pantalla
    * sigue montada mientras la mutación viaja (el `handleClose()` recién corre
-   * al resolver), el paso 2 recalculaba con un "antes" que YA tenía el gasto
+   * al resolver), la tira recalculaba con un "antes" que YA tenía el gasto
    * adentro y encima le volvía a restar `amount`: el impacto mostraba el gasto
    * DOS VECES y la perilla daba un segundo salto. Reportado por el owner.
    *
@@ -252,13 +269,13 @@ export function AddGastoV2Screen({
         // `dailyBudget`, que en la rama override YA venía con el gasto de hoy
         // descontado. La base ahora es la APERTURA del día, que justamente le
         // devuelve ese descuento para poder mostrarlo como "gastado": si acá
-        // se pasara 0, el "antes" saldría inflado por todo lo del día y el
-        // paso 2 volvería a contradecir a la card — el mismo síntoma, del otro
+        // se pasara 0, el "antes" saldría inflado por todo lo del día y la
+        // tira volvería a contradecir a la card — el mismo síntoma, del otro
         // lado. Con la apertura como base, las dos ramas se cuentan igual.
         spentToday: impactSpentToday,
         // Fuera del ciclo vigente el gasto no mueve el cupo de hoy: con 0 las
-        // dos columnas quedan iguales, que es la verdad (el bloque entero se
-        // oculta, ver `impactApplies` del paso 2).
+        // dos columnas quedan iguales, que es la verdad (la tira muestra el
+        // aviso, ver `impactApplies`).
         amount: affectsCurrentCycle ? form.amount : 0,
         incomeConfigured: hero.incomeConfigured,
       }),
@@ -271,7 +288,6 @@ export function AddGastoV2Screen({
     ],
   )
 
-  const selectedCategory = controller.selectedCategory ?? undefined
   const categoryNameById = useMemo(
     () => new Map(controller.rankedCategories.map((c) => [c.id, c.name])),
     [controller.rankedCategories],
@@ -296,17 +312,7 @@ export function AddGastoV2Screen({
   const submitError =
     lastSubmitError && lastSubmitError.formKey === formKey ? lastSubmitError.message : null
 
-  // Pedido de "marcá lo que falta" diferido hasta aterrizar en el paso 1 (ver
-  // `onPrimaryCtaStep2`). Va en un REF, no en estado: es un mensaje de un
-  // handler al efecto, no algo que se rendee — con estado, apagarlo desde el
-  // efecto es un setState en cascada.
-  const flagOnLandingRef = useRef(false)
-
   // ── Teclado numérico ────────────────────────────────────────────────
-  // Se monta UNA vez, a nivel del orquestador y fuera de los pasos: montado
-  // dentro del paso 1, volver del paso 2 lo remontaba y perdía el estado
-  // (visible / offset de la hoja). Al avanzar se cierra explícitamente, así
-  // la hoja no queda flotando sobre el resumen.
   const [isNumpadVisible, setNumpadVisible] = useState(false)
 
   // Keyboard-avoidance del numpad: la hoja mide 420 + safe area y se apoya
@@ -318,7 +324,7 @@ export function AddGastoV2Screen({
   const { onScroll: onAvoidScroll, extraBottomPad } = useNumpadScrollAvoid({
     scrollRef,
     targetRef: amountRef,
-    open: isNumpadVisible && form.step === 1,
+    open: isNumpadVisible,
   })
 
   const handleOpenNumpad = useCallback(() => {
@@ -347,6 +353,7 @@ export function AddGastoV2Screen({
     setDescription,
     addQuickAmount,
     clearAmount,
+    flagMissing,
   } = form
 
   const handleNumpadChange = useCallback(
@@ -393,26 +400,18 @@ export function AddGastoV2Screen({
     else router.replace('/(app)/(tabs)/expenses')
   }, [router])
 
-  // Cerrar la hoja con swipe-down desde el paso 2 cierra el alta ENTERA: el
-  // gesto lo maneja el modal de la ruta, que desmonta esta pantalla con su
-  // estado de paso adentro. No hay nada que interceptar — y no debe haberlo:
-  // volver al paso 1 con un swipe hacia abajo sería un gesto que dice "salir"
-  // y hace otra cosa.
-  const onHeaderBack = useCallback(() => {
-    // `goBack()` devuelve false en el paso 1 ⇒ ahí "atrás" es cerrar el alta.
-    if (!form.goBack()) handleClose()
-  }, [form, handleClose])
-
-  const onPrimaryCtaStep1 = useCallback(() => {
+  // ── Hoja de detalle del impacto ────────────────────────────────────
+  const [isDetailVisible, setDetailVisible] = useState(false)
+  const handleOpenDetail = useCallback(() => {
+    // El numpad se apoya sobre el piso y la hoja sube desde ahí: dejarlo
+    // abierto las apila y el `numpadOffset` que lee `ModalCard` le empuja el
+    // contenido 420pt hacia arriba.
     setNumpadVisible(false)
     Keyboard.dismiss()
-    if (form.goNext()) {
-      // Feedback al avanzar al impacto — antes el salto de paso era mudo.
-      void triggerHaptic('selection')
-      return
-    }
-    void triggerHaptic('warning')
-  }, [form])
+    void triggerHaptic('selection')
+    setDetailVisible(true)
+  }, [])
+  const handleCloseDetail = useCallback(() => setDetailVisible(false), [])
 
   // Doble submit: `pending` tarda un render en encenderse, así que dos taps
   // seguidos entraban los dos antes de que el botón se bloqueara. El ref corta
@@ -468,10 +467,10 @@ export function AddGastoV2Screen({
               0,
             ).toISOString()
           : undefined,
-        // El reintento de este flujo es el CTA del paso 2, no el toast del
+        // El reintento de este flujo es el CTA de la pantalla, no el toast del
         // hook: aquel reintenta por un camino que NO pasa por
         // `isSubmittingRef` ni cierra la hoja, así que un retry exitoso desde
-        // el toast dejaba al usuario en el paso 2 diciendo que falló y un
+        // el toast dejaba al usuario mirando un alta que decía que falló y un
         // "Confirmar" más entraba el gasto DOS veces.
         skipRetryToast: true,
       })
@@ -503,30 +502,28 @@ export function AddGastoV2Screen({
     hero.openingDailyBudget,
   ])
 
-  const onPrimaryCtaStep2 = useCallback(() => {
+  /**
+   * ÚNICO CTA de la pantalla.
+   *
+   * El gate no cambió de semántica al fusionar los pasos: `canSubmit` ya era
+   * idéntico a `canContinue` (el paso 2 no agregaba requisitos), sólo que
+   * ahora es UN solo valor derivado de `missingFields` en vez de dos que
+   * podían separarse. El botón nunca va `disabled`: con datos faltantes se
+   * atenúa, el tap igual llega y lo que produce es el resaltado de los campos.
+   */
+  const onPrimaryCta = useCallback(() => {
     if (pending || isSubmittingRef.current) return
+    // El numpad tapa el piso de la pantalla: con él abierto los campos
+    // marcados quedarían fuera de vista justo cuando se los acaba de marcar.
+    setNumpadVisible(false)
+    Keyboard.dismiss()
     if (!form.canSubmit) {
-      // Llegar acá sin poder confirmar significa que un campo del paso 1 dejó
-      // de ser válido con la hoja abierta (típico: otro miembro borró la
-      // categoría elegida). Se vuelve al paso 1, que es donde se arregla, y se
-      // pide marcarlo: `flagMissing` marca el paso ACTUAL y los tres campos
-      // mapean al 1, así que llamarlo ANTES de navegar no pintaría nada. El
-      // efecto de abajo lo dispara ya aterrizado.
       void triggerHaptic('warning')
-      flagOnLandingRef.current = true
-      form.goBack()
+      flagMissing()
       return
     }
     void handleConfirm()
-  }, [pending, form, handleConfirm])
-
-  // Rebote del paso 2 al 1: sin esto el usuario aterrizaba sin ningún campo
-  // marcado y con el CTA diciendo "Completá los datos" sin nombrar cuáles.
-  useEffect(() => {
-    if (!flagOnLandingRef.current || form.step !== 1) return
-    flagOnLandingRef.current = false
-    form.flagMissing()
-  }, [form])
+  }, [pending, form.canSubmit, flagMissing, handleConfirm])
 
   // ── Estados de carga del catálogo ──────────────────────────────────
   const categoriesLoadError = categoriesQuery.error
@@ -534,40 +531,29 @@ export function AddGastoV2Screen({
   const hasNoCategories = !categoriesQuery.isLoading && categories.length === 0
 
   if (shouldShowErrorState || hasNoCategories) {
-    // MISMA cáscara que el wizard, no el `Screen` estándar: estos dos caminos
+    // MISMA cáscara que el alta, no el `Screen` estándar: estos dos caminos
     // viven adentro de la misma hoja modal donde un segundo antes había un
-    // wizard neumórfico, y con el header de la app sobre `canvas` se leían como
-    // una pantalla de otra época. La acción va al footer (el único lugar donde
-    // el rediseño pone un CTA), así que los estados se montan SIN su botón
-    // propio para no duplicarlo.
+    // formulario neumórfico, y con el header de la app sobre `canvas` se leían
+    // como una pantalla de otra época. La acción va al footer (el único lugar
+    // donde el rediseño pone un CTA), así que los estados se montan SIN su
+    // botón propio para no duplicarlo.
+    //
+    // Las dos ramas comparten CTA: con catálogo global un catálogo vacío sin
+    // error es una anomalía de carga, no un estado real. Antes decía "Crear
+    // categoría" y navegaba a la tab Gastos: dos promesas falsas (la creación
+    // de categorías se retiró del alcance del usuario el 2026-08-16).
     return (
       <WizardShell
         step={1}
         footer={
-          shouldShowErrorState ? (
-            <WizardCta
-              label={t('states:errorState.action')}
-              accessibilityLabel={t('states:errorState.action')}
-              ready
-              onPress={() => {
-                void categoriesQuery.refetch()
-              }}
-            />
-          ) : (
-            // Catálogo vacío sin error: con catálogo global esto es una
-            // anomalía de carga, no un estado real — el CTA reintenta la
-            // query. Antes decía "Crear categoría" y navegaba a la tab
-            // Gastos: dos promesas falsas (la creación de categorías se
-            // retiró del alcance del usuario el 2026-08-16).
-            <WizardCta
-              label={t('states:errorState.action')}
-              accessibilityLabel={t('states:errorState.action')}
-              ready
-              onPress={() => {
-                void categoriesQuery.refetch()
-              }}
-            />
-          )
+          <WizardCta
+            label={t('states:errorState.action')}
+            accessibilityLabel={t('states:errorState.action')}
+            ready
+            onPress={() => {
+              void categoriesQuery.refetch()
+            }}
+          />
         }
       >
         <WizardHeader
@@ -596,111 +582,105 @@ export function AddGastoV2Screen({
   const missingLabels = form.flaggedFields.map((f) => t(FIELD_LABEL_KEY[f]))
 
   return (
-    <WizardShell
-      step={form.step}
-      scrollRef={scrollRef}
-      onScroll={onAvoidScroll}
-      extraBottomPad={extraBottomPad}
-      footerPaddingTop={form.step === 1 ? 14 : 10}
-      footer={
-        <View style={styles.footerStack}>
-          {form.step === 1 ? (
-            <WizardCta
-              label={
-                form.canContinue
-                  ? t('gastos:addExpense.wizard.cta.seeImpact')
-                  : t('gastos:addExpense.wizard.cta.completeData')
-              }
-              accessibilityLabel={
-                form.canContinue
-                  ? t('gastos:addExpense.wizard.cta.seeImpactA11y')
-                  : t('gastos:addExpense.wizard.cta.completeDataA11y')
-              }
-              ready={form.canContinue}
-              onPress={onPrimaryCtaStep1}
+    <>
+      <WizardShell
+        // Constante: la cáscara la usa para devolver el scroll arriba al
+        // cambiar de paso, y acá no hay pasos.
+        step={1}
+        scrollRef={scrollRef}
+        onScroll={onAvoidScroll}
+        extraBottomPad={extraBottomPad}
+        footer={
+          <View style={styles.footerStack}>
+            {/* La tira vive en el FOOTER y no al final de la columna: es el
+                contexto de la decisión que el botón de abajo ejecuta, y desde
+                acá ninguna cantidad de scroll puede separarlos. */}
+            <ImpactStrip
+              impact={impact}
+              incomeConfigured={hero.incomeConfigured}
+              isReady={isImpactReady}
+              impactApplies={affectsCurrentCycle}
+              // Además de apagar el impacto, la tira tiene que DECIR por qué:
+              // el aviso necesita saber si la fecha cayó en el ciclo anterior o
+              // en el siguiente. Misma clasificación que `affectsCurrentCycle`.
+              placement={placement}
+              onOpenDetail={handleOpenDetail}
             />
-          ) : (
             <WizardCta
               variant="confirm"
               label={
                 pending
                   ? t('gastos:addExpense.wizard.cta.saving')
-                  : t('gastos:addExpense.wizard.cta.confirm')
+                  : form.canSubmit
+                    ? t('gastos:addExpense.wizard.cta.confirm')
+                    : t('gastos:addExpense.wizard.cta.completeData')
               }
-              accessibilityLabel={t('gastos:addExpense.wizard.cta.confirmA11y')}
+              accessibilityLabel={
+                form.canSubmit
+                  ? t('gastos:addExpense.wizard.cta.confirmA11y')
+                  : t('gastos:addExpense.wizard.cta.completeDataA11y')
+              }
               ready={form.canSubmit}
               pending={pending}
-              onPress={onPrimaryCtaStep2}
+              onPress={onPrimaryCta}
             />
-          )}
-          {/* Fila auxiliar del kit: la misma línea para "qué te falta", para
-              "el guardado falló" y —en el camino feliz, que es el 95% de las
-              aperturas— para el eslogan de hábito que traía la pantalla vieja.
-              La precedencia, el alto reservado y las medidas viven en el
-              componente compartido con el alta de ingreso (ver su docblock):
-              acá sólo se dice QUÉ tiene para decir cada rama. El eslogan es
-              del paso 1 nada más — en el 2 el usuario ya está confirmando. */}
-          <WizardFooterHelper
-            error={submitError}
-            missingLabels={missingLabels}
-            tagline={form.step === 1 ? t('home:addExpenseDashboard.habitTagline') : null}
+            {/* Fila auxiliar del kit: la misma línea para "qué te falta", para
+                "el guardado falló" y —en el camino feliz, que es el 95% de las
+                aperturas— para el eslogan de hábito que traía la pantalla
+                vieja. La precedencia, el alto reservado y las medidas viven en
+                el componente compartido con el alta de ingreso (ver su
+                docblock): acá sólo se dice QUÉ tiene para decir cada rama. */}
+            <WizardFooterHelper
+              error={submitError}
+              missingLabels={missingLabels}
+              tagline={t('home:addExpenseDashboard.habitTagline')}
+            />
+          </View>
+        }
+        keyboard={
+          /*
+            Teclado del rediseño (el del onboarding): teclas extruidas, "Listo"
+            arriba y hoja al ras del borde inferior. Su modelo es un ENTERO de
+            pesos (`value*10 + dígito`), no el string crudo del form, así que se
+            traduce en el borde. El `trunc` es load-bearing: un prefill con
+            decimales (OCR) entraría como 1500,5 y el primer dígito lo
+            convertiría en 15005 — se edita desde la parte entera.
+          */
+          <OnbNumpad
+            mode={theme.isDark ? 'dark' : 'light'}
+            visible={isNumpadVisible}
+            value={Math.trunc(form.amount)}
+            onChange={handleNumpadChange}
+            onDone={handleNumpadDone}
           />
-        </View>
-      }
-      keyboard={
-        /*
-          Teclado del rediseño (el del onboarding): teclas extruidas, "Listo"
-          arriba y hoja al ras del borde inferior. Su modelo es un ENTERO de
-          pesos (`value*10 + dígito`), no el string crudo del form, así que se
-          traduce en el borde. El `trunc` es load-bearing: un prefill con
-          decimales (OCR) entraría como 1500,5 y el primer dígito lo
-          convertiría en 15005 — se edita desde la parte entera.
-        */
-        <OnbNumpad
-          mode={theme.isDark ? 'dark' : 'light'}
-          visible={isNumpadVisible}
-          value={Math.trunc(form.amount)}
-          onChange={handleNumpadChange}
-          onDone={handleNumpadDone}
-        />
-      }
-    >
-      <Animated.View layout={STEP_LAYOUT}>
-        <WizardHeader
-          title={
-            form.step === 1
-              ? t('gastos:addExpense.wizard.stepNew')
-              : t('gastos:addExpense.wizard.stepReview')
-          }
-          onBack={onHeaderBack}
-          backAccessibilityLabel={
-            form.step === 2
-              ? t('gastos:addExpense.wizard.backToPrevious')
-              : t('gastos:addExpense.wizard.close')
-          }
-        />
-      </Animated.View>
-
-      <Animated.View layout={STEP_LAYOUT}>
-        <WizardDots step={form.step} total={2} />
-      </Animated.View>
-
-      {/* La píldora vive ACÁ, fuera de los pasos: si el usuario está cargando
-          un gasto de otro día, esa condición tiene que seguir a la vista en el
-          resumen, que es donde confirma. Entra con la cascada (`RiseView`) y
-          acompaña el cambio de paso (`layout`) como el header y los dots: sin
-          eso era el único elemento de la columna que aparecía pintado en el
-          frame 0 y después saltaba mientras sus vecinos interpolaban. */}
-      {form.forDate ? (
+        }
+      >
+        {/* SIN `<WizardDots>`: con un solo paso, dos tramos de progreso no
+            codifican nada. El kit sigue exportándolos para fijos e ingreso,
+            que siguen siendo de dos pasos. */}
         <Animated.View layout={STEP_LAYOUT}>
-          <RiseView>
-            <BackdatePill date={form.forDate} />
-          </RiseView>
+          <WizardHeader
+            title={t('gastos:addExpense.wizard.stepNew')}
+            onBack={handleClose}
+            backAccessibilityLabel={t('gastos:addExpense.wizard.close')}
+          />
         </Animated.View>
-      ) : null}
 
-      {form.step === 1 ? (
-        <Step1Form
+        {/* La píldora vive ACÁ, fuera del formulario: si el usuario está
+            cargando un gasto de otro día, esa condición tiene que estar a la
+            vista donde confirma. Entra con la cascada (`RiseView`) y acompaña
+            los cambios de alto de la columna (`layout`) como el header: sin
+            eso era el único elemento que aparecía pintado en el frame 0 y
+            después saltaba mientras sus vecinos interpolaban. */}
+        {form.forDate ? (
+          <Animated.View layout={STEP_LAYOUT}>
+            <RiseView>
+              <BackdatePill date={form.forDate} />
+            </RiseView>
+          </Animated.View>
+        ) : null}
+
+        <GastoForm
           amount={form.amount}
           amountRef={amountRef}
           onPressAmount={handleOpenNumpad}
@@ -717,34 +697,27 @@ export function AddGastoV2Screen({
           onChangeDescription={form.setDescription}
           descriptionSuggestions={controller.quickDescriptionSuggestions}
           onSelectDescriptionSuggestion={handleSelectSuggestion}
+          notes={form.notes}
+          onChangeNotes={form.setNotes}
           advisorSignals={advisorSignals}
           categoryNameById={categoryNameById}
           flagAmount={form.isFieldFlagged('amount')}
           flagCategory={form.isFieldFlagged('category')}
           flagDescription={form.isFieldFlagged('description')}
         />
-      ) : (
-        <Step2Summary
-          description={form.description.trim()}
-          amount={form.amount}
-          selectedCategory={selectedCategory}
-          impact={impact}
-          incomeConfigured={hero.incomeConfigured}
-          isReady={isImpactReady}
-          impactApplies={affectsCurrentCycle}
-          // Además de apagar el impacto, el paso 2 tiene que DECIR por qué: el
-          // aviso necesita saber si la fecha cayó en el ciclo anterior o en el
-          // siguiente. Misma clasificación que consume `affectsCurrentCycle`.
-          placement={placement}
-          notes={form.notes}
-          onChangeNotes={form.setNotes}
-          forDate={form.forDate}
-        />
-      )}
-    </WizardShell>
+      </WizardShell>
+
+      {/* Hermana de la cáscara, no hija: `ModalCard` monta un `<Modal>` nativo
+          y adentro del ScrollView del wizard quedaría atada a su scroll. */}
+      <ImpactDetailSheet
+        visible={isDetailVisible}
+        onClose={handleCloseDetail}
+        impact={impact}
+      />
+    </>
   )
 }
 
 const styles = StyleSheet.create({
-  footerStack: { gap: 8 },
+  footerStack: { gap: 10 },
 })
