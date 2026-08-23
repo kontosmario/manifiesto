@@ -17,6 +17,7 @@ import {
 import { markBiometricSetupShown } from '@/features/auth/biometric-setup-flag'
 import {
   getBiometricLoginState,
+  resolveBiometricSensor,
   type BiometricLoginState,
 } from '@/lib/biometric-auth'
 import { triggerHaptic } from '@/lib/haptics'
@@ -77,19 +78,18 @@ export function NeoBiometricSetupScreen() {
  * (lib/biometric-auth.ts): facial primero, después huella;
  * iris/desconocido caen en 'generic'.
  */
-async function resolveBiometricSensor(): Promise<BiometricSensor> {
+async function resolveBiometricSensorFromDevice(): Promise<BiometricSensor> {
   try {
     const types = await LocalAuthentication.supportedAuthenticationTypesAsync()
-    if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-      return 'face'
-    }
-    if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-      return 'fingerprint'
-    }
+    // Precedencia compartida con lib/biometric-auth (auditoría
+    // 2026-08-21): en Android la huella gana aunque el hardware también
+    // reporte face-unlock — acá la versión local priorizaba facial y un
+    // S9+ mostraba cara en el setup mientras el usuario activaba huella.
+    return resolveBiometricSensor(types)
   } catch {
     // Probe fallido → ícono genérico (el label ya degradó por su lado).
+    return 'generic'
   }
-  return 'generic'
 }
 
 function NeoBiometricSetupBody({
@@ -113,7 +113,7 @@ function NeoBiometricSetupBody({
 
   useEffect(() => {
     let cancelled = false
-    void Promise.all([getBiometricLoginState(), resolveBiometricSensor()]).then(
+    void Promise.all([getBiometricLoginState(), resolveBiometricSensorFromDevice()]).then(
       ([state, sensorType]) => {
         if (cancelled) return
         setSensor(sensorType)

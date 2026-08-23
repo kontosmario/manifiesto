@@ -27,6 +27,8 @@ import {
   AuthStatusBar,
 } from './auth-kit'
 import { AUTH_SPEC, type AuthMode } from './auth-spec'
+import { FaceIdIcon, FingerprintIcon } from './auth-icons'
+import type { BiometricSensor } from './auth-4c-faceid'
 
 /**
  * Login · vistas `returning` / `face-id` / `secondary-only` — Turno 4,
@@ -122,6 +124,7 @@ export function AuthLoginVistas({
   email = EMAIL_DEMO,
   avatar = AVATAR_DEMO,
   biometricLabel = 'Face ID',
+  sensor = 'face',
   scanning = false,
   submitting = false,
   serverError = null,
@@ -151,6 +154,13 @@ export function AuthLoginVistas({
   avatar?: AvatarSlug
   /** Label del sensor real ("Face ID", "huella digital", …) para el CTA. */
   biometricLabel?: string
+  /**
+   * Sensor principal del device (auditoría 2026-08-21): elige el glifo
+   * del bloque biométrico — huella en Android con lector (aunque el
+   * hardware también reporte face-unlock débil), cara en Face ID.
+   * Default 'face' = el render histórico de la vista.
+   */
+  sensor?: BiometricSensor
   /** Prompt biométrico en vuelo (label "Reconociendo" + CTA busy). */
   scanning?: boolean
   /** Login con contraseña en vuelo (returning): CTA busy. */
@@ -409,6 +419,18 @@ export function AuthLoginVistas({
             {/* CTA + salidas pegados al hero (mismo grupo): el spacer de
                 arriba del título y el de antes del divisor centran el
                 conjunto completo. */}
+            {/* Glifo del sensor REAL sobre el CTA (pedido owner
+                2026-08-21): en un Android solo-huella el bloque decía
+                "Entrar con huella digital" sin ningún ícono — y peor,
+                el naming histórico de la vista ('face-id') sugería cara.
+                Mismo par de glifos que la réplica 4c (auth-icons). */}
+            <View style={styles.sensorIconWrap}>
+              {sensor === 'fingerprint' ? (
+                <FingerprintIcon color={s.faceIcon} size={44} />
+              ) : (
+                <FaceIdIcon color={s.faceIcon} size={44} />
+              )}
+            </View>
             <View style={styles.faceCtaWrap}>
               {/* Swap de label idle↔escaneando, literal del flujo real
                   (ctaLabel, login-screen.tsx:483): "Entrar con {{label}}"
@@ -670,7 +692,10 @@ const styles = StyleSheet.create({
   },
   // face-id — pila de 4c: CTA a 34 del hero, link accent 15/900 a 24 y
   // muted 14/800 a 18 (auth-4c-faceid.tsx).
-  faceCtaWrap: { marginTop: 34 },
+  faceCtaWrap: { marginTop: 18 },
+  // 34 era el respiro total del bloque face-id; con el glifo arriba se
+  // reparte 16 (hero→ícono) + 18 (ícono→CTA) para conservar el ritmo.
+  sensorIconWrap: { alignItems: 'center', marginTop: 16 },
   usePasswordLink: {
     fontSize: 15,
     fontWeight: '900',

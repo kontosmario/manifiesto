@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
+import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import { MaterialIcons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
@@ -115,11 +115,18 @@ export function PermissionPrimeSheet({
   type,
   onAllow,
   onDismiss,
-  biometricLabel = 'Face ID',
+  biometricLabel: biometricLabelProp,
 }: PermissionPrimeSheetProps) {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
   const { t } = useTranslation()
+
+  // Default por plataforma (auditoría 2026-08-21): el viejo `= 'Face ID'`
+  // aparecía en Androids solo-huella cuando el caller no pasaba label.
+  // Los 3 callers actuales SÍ lo pasan — esto es la red para el próximo.
+  const biometricLabel =
+    biometricLabelProp ??
+    (Platform.OS === 'ios' ? 'Face ID' : t('auth:biometric.methods.fingerprint'))
 
   const copy = useMemo(
     () => copyFor(type, biometricLabel, t),

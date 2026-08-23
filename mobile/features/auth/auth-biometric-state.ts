@@ -10,5 +10,9 @@ export function buildInitialBiometricState(): BiometricLoginState {
       Platform.OS === 'ios'
         ? 'Face ID / Touch ID'
         : i18n.t('auth:reauthSheet.biometricLabelFallback'),
+    // Hasta que el probe real resuelva: en Android el sensor dominante
+    // es la huella (el probe lo confirma o corrige enseguida); iOS
+    // arranca genérico porque Face ID/Touch ID dependen del modelo.
+    sensor: Platform.OS === 'android' ? 'fingerprint' : 'generic',
   }
 }

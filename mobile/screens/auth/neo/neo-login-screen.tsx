@@ -357,7 +357,10 @@ export function NeoLoginScreen() {
   // submit no pueden divergir — el hero mostraba el cacheado y el submit
   // salía con el email tipeado de un intento anterior).
   const heroEmail = email || lastUser?.email || t('auth:login.savedAccountFallback')
-  const biometricLabel = biometricState.label || 'Face ID'
+  // El estado siempre trae label (el builder inicial ya resuelve por
+  // plataforma) — el viejo `|| 'Face ID'` ponía "Face ID" en Androids
+  // solo-huella durante el primer frame.
+  const biometricLabel = biometricState.label
 
   const vistasView: AuthLoginVista | null =
     actionView === 'face-id'
@@ -385,6 +388,7 @@ export function NeoLoginScreen() {
               email={heroEmail}
               avatar={lastUserAvatarSlug ?? undefined}
               biometricLabel={biometricLabel}
+              sensor={biometricState.sensor}
               scanning={status === 'scanning'}
               submitting={isBusy}
               serverError={serverError}

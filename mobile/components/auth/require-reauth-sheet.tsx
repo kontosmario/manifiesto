@@ -286,7 +286,12 @@ export function RequireReauthSheet({
         <View style={styles.biometricBlock}>
           <MaterialIcons
             color={ink.accent}
-            name="fingerprint"
+            // Glifo por sensor REAL (auditoría 2026-08-21): estaba
+            // clavado en huella, así que un iPhone con Face ID veía una
+            // huella acá — el bug espejo del login. 'face' existe en
+            // MaterialIcons; el fallback sigue siendo huella (sensor
+            // dominante fuera de Face ID).
+            name={biometricState?.sensor === 'face' ? 'face' : 'fingerprint'}
             size={48}
             style={{ alignSelf: 'center' }}
           />

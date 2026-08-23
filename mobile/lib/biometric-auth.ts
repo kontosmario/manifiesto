@@ -58,6 +58,8 @@ export interface BiometricLoginState {
   hasSavedCredentials: boolean
   isAvailable: boolean
   label: string
+  /** Sensor principal del device — la UI elige el ícono con esto. */
+  sensor: BiometricSensorKind
 }
 
 const credentialStoreOptions: SecureStore.SecureStoreOptions = {
@@ -88,20 +90,52 @@ function getDefaultBiometricLabel() {
     : i18n.t('auth:reauthSheet.biometricLabelFallback')
 }
 
+/**
+ * Sensor "principal" del device, para elegir ícono y label. Mismo union
+ * que `BiometricSensor` del kit (auth-4c-faceid) a propósito — la UI lo
+ * consume tal cual.
+ *
+ * PRECEDENCIA POR PLATAFORMA (auditoría 2026-08-21): Android reporta los
+ * tipos que el HARDWARE soporta, no cuál biometría está ENROLADA
+ * (expo-local-authentication no lo expone). Un device con face-unlock
+ * débil + lector de huella (S9+, media Samsung/Xiaomi) reporta AMBOS —
+ * y la biometría enrolada dominante en Android es la huella, que además
+ * es la que BiometricPrompt lidera. Ahí la huella tiene precedencia:
+ * mostrar una cara en esos teléfonos era el bug. En iOS los sensores
+ * son excluyentes por modelo (Face ID o Touch ID, nunca ambos), así que
+ * el orden facial-primero se conserva y nada cambia.
+ */
+export type BiometricSensorKind = 'face' | 'fingerprint' | 'generic'
+
+export function resolveBiometricSensor(
+  types: LocalAuthentication.AuthenticationType[],
+): BiometricSensorKind {
+  const hasFace = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)
+  const hasFingerprint = types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)
+  if (Platform.OS === 'android') {
+    if (hasFingerprint) return 'fingerprint'
+    if (hasFace) return 'face'
+    return 'generic'
+  }
+  if (hasFace) return 'face'
+  if (hasFingerprint) return 'fingerprint'
+  return 'generic'
+}
+
 function resolveBiometricLabel(types: LocalAuthentication.AuthenticationType[]) {
-  if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-    return Platform.OS === 'ios' ? 'Face ID' : i18n.t('auth:biometric.methods.facialRecognition')
+  // El label sigue al sensor (misma precedencia) — divergir acá pondría
+  // "Reconocimiento facial" al lado de un ícono de huella.
+  switch (resolveBiometricSensor(types)) {
+    case 'face':
+      return Platform.OS === 'ios' ? 'Face ID' : i18n.t('auth:biometric.methods.facialRecognition')
+    case 'fingerprint':
+      return Platform.OS === 'ios' ? 'Touch ID' : i18n.t('auth:biometric.methods.fingerprint')
+    default:
+      if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+        return i18n.t('auth:biometric.methods.iris')
+      }
+      return getDefaultBiometricLabel()
   }
-
-  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-    return Platform.OS === 'ios' ? 'Touch ID' : i18n.t('auth:biometric.methods.fingerprint')
-  }
-
-  if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
-    return i18n.t('auth:biometric.methods.iris')
-  }
-
-  return getDefaultBiometricLabel()
 }
 
 async function readBiometricMetadata() {
@@ -131,6 +165,7 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
       hasSavedCredentials: false,
       isAvailable: false,
       label: getDefaultBiometricLabel(),
+      sensor: 'generic',
     }
   }
 
@@ -188,6 +223,7 @@ export async function getBiometricLoginState(): Promise<BiometricLoginState> {
     hasSavedCredentials: Boolean(savedMetadata),
     isAvailable: isSecureStoreAvailable && hasHardware && isEnrolled,
     label: resolveBiometricLabel(supportedTypes),
+    sensor: resolveBiometricSensor(supportedTypes),
   }
 }
 
