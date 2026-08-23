@@ -11,6 +11,7 @@
  * URL de Privacy declarada en App Store Connect abra una página válida.
  */
 
+import { Platform } from 'react-native'
 import i18n from '@/lib/i18n'
 
 export const PRIVACY_POLICY_URL = 'https://manifiestoapp.com/privacy/'
@@ -30,6 +31,25 @@ export const APP_STORE_URL = `https://apps.apple.com/app/id${APP_STORE_ID}`
  * puede no mostrarse. El deep link SIEMPRE abre algo.
  */
 export const APP_STORE_REVIEW_URL = `${APP_STORE_URL}?action=write-review`
+
+/** Nombre de la tienda de la plataforma, para interpolar en copy. */
+export const STORE_NAME = Platform.OS === 'android' ? 'Google Play' : 'App Store'
+
+/** Application id de Android (mismo `android.package` de app.config.ts). */
+export const PLAY_PACKAGE = 'com.manifiesto.mobile'
+
+/** Ficha del producto en Google Play. */
+export const PLAY_STORE_URL = `https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`
+
+/**
+ * URL de reseña resuelta por plataforma. Play no tiene deep link al
+ * compositor de reseña (el equivalente al `action=write-review` de
+ * Apple no existe): el fallback Android es la ficha, donde vive el
+ * bloque de calificación. El prompt nativo (In-App Review) sigue
+ * siendo el camino primario en ambas plataformas.
+ */
+export const STORE_REVIEW_URL =
+  Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_REVIEW_URL
 
 /**
  * Construye el `mailto:` con subject + body pre-poblados para

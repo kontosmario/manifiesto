@@ -994,9 +994,9 @@
   },
   "rate": {
     "rowLabel": "Calificar Manifiesto",
-    "helper": "Si la app te está sirviendo, tu reseña en App Store nos ayuda muchísimo.",
-    "errorTitle": "No pudimos abrir App Store",
-    "errorBody": "Intenta de nuevo en un rato, o busca Manifiesto en App Store para dejar tu reseña."
+    "helper": "Si la app te está sirviendo, tu reseña en {{store}} nos ayuda muchísimo.",
+    "errorTitle": "No pudimos abrir {{store}}",
+    "errorBody": "Intenta de nuevo en un rato, o busca Manifiesto en {{store}} para dejar tu reseña."
   },
   "applePay": {
     "groupTitle": "Gastos",

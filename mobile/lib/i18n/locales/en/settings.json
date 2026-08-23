@@ -994,9 +994,9 @@
   },
   "rate": {
     "rowLabel": "Rate Manifiesto",
-    "helper": "If the app is helping you, your App Store review helps us a lot.",
-    "errorTitle": "Couldn't open the App Store",
-    "errorBody": "Try again in a bit, or search for Manifiesto on the App Store to leave your review."
+    "helper": "If the app is helping you, your {{store}} review helps us a lot.",
+    "errorTitle": "Couldn't open {{store}}",
+    "errorBody": "Try again in a bit, or search for Manifiesto on {{store}} to leave your review."
   },
   "applePay": {
     "groupTitle": "Expenses",

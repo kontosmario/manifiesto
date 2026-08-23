@@ -98,7 +98,7 @@ import { getErrorMessage } from '@/utils/error-message'
 import { currencyFormatter, formatMoneyShort } from '@/utils/money'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { requestAppRating } from '@/features/settings/rate-app'
-import { APP_STORE_REVIEW_URL } from '@/lib/legal-urls'
+import { STORE_NAME, STORE_REVIEW_URL } from '@/lib/legal-urls'
 
 interface SettingsScreenProps {
   userId: string
@@ -370,18 +370,19 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
   )
 
   // "Calificar Manifiesto" — modal nativo de rating cuando el sistema
-  // lo permite (iOS lo racionea ~3/año), deep link al compositor de
-  // reseña como fallback garantizado. Política pura en rate-app.ts.
+  // lo permite (iOS lo racionea ~3/año; Play también), deep link a la
+  // tienda de la plataforma como fallback garantizado. Política pura
+  // en rate-app.ts.
   const handleRateApp = useCallback(() => {
     void (async () => {
       try {
         await requestAppRating({
           isAvailable: () => StoreReview.isAvailableAsync(),
           requestReview: () => StoreReview.requestReview(),
-          openReviewUrl: () => Linking.openURL(APP_STORE_REVIEW_URL),
+          openReviewUrl: () => Linking.openURL(STORE_REVIEW_URL),
         })
       } catch {
-        toast.error(t('settings:rate.errorBody'))
+        toast.error(t('settings:rate.errorBody', { store: STORE_NAME }))
       }
     })()
   }, [t])
@@ -1128,7 +1129,7 @@ export function SettingsScreen({ userId, familyId }: SettingsScreenProps) {
                   onPress={() => router.push('/(app)/settings/about')}
                 />
                 <SettingsRow
-                  helper={t('settings:rate.helper')}
+                  helper={t('settings:rate.helper', { store: STORE_NAME })}
                   icon="star-outline"
                   isLast
                   label={t('settings:rate.rowLabel')}

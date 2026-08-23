@@ -343,6 +343,10 @@ const config: ExpoConfig = {
     // entrada a `apply_reserve_decision` en producción: la plata se veía de
     // solo lectura en Ajustes y no había forma de usarla.
     buildNumber: '19',
+    // expo-store-review usa este campo como último fallback del link a la
+    // ficha (y Play exige el par de abajo); el deep link de reseña propio
+    // vive en mobile/lib/legal-urls.ts.
+    appStoreUrl: 'https://apps.apple.com/app/id6776033487',
     // iOS 18+ tri-variant icons. The fern source SVG is rendered
     // into three 1024×1024 PNGs by `scripts/generate-ios-app-icons.mjs`
     // and dropped into `Images.xcassets/AppIcon.appiconset/`. The
@@ -394,6 +398,9 @@ const config: ExpoConfig = {
     // que quedó en android/app/build.gradle es un artefacto local viejo:
     // /android está gitignoreado y el prebuild lo regenera desde acá.
     versionCode: 19,
+    // Ficha de Play — la usa expo-store-review como fallback del In-App
+    // Review (sin este campo, en Android loguea un warning y no abre nada).
+    playStoreUrl: 'https://play.google.com/store/apps/details?id=com.manifiesto.mobile',
     // Sprint P · Audit #9 P-4 (2026-06-10): explicit deny-list to prevent
     // upstream plugins / merged manifests from silently shipping extra
     // permissions. RECORD_AUDIO would otherwise reappear if any future

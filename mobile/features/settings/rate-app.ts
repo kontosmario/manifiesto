@@ -15,7 +15,7 @@ export interface RateAppIo {
   isAvailable: () => Promise<boolean>
   /** `StoreReview.requestReview()` — modal nativo con branding encima. */
   requestReview: () => Promise<void>
-  /** `Linking.openURL(APP_STORE_REVIEW_URL)` — fallback garantizado. */
+  /** `Linking.openURL(STORE_REVIEW_URL)` — fallback garantizado por plataforma. */
   openReviewUrl: () => Promise<unknown>
 }
 
