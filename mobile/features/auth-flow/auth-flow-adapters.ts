@@ -1,3 +1,4 @@
+import { InteractionManager } from 'react-native'
 // Adapters REALES del driver. Reúnen el IO que antes vivía repartido
 // en AppEntryGate / UnlockScreen / login controllers. El slow-path de
 // restauración de sesión preserva la decisión documentada: NO borrar
@@ -64,6 +65,19 @@ export const realAuthFlowAdapters: AuthFlowAdapters = {
   },
 
   async promptBiometric() {
+    // El prompt espera a que las transiciones de UI asienten
+    // (InteractionManager, el patrón documentado del modal-chain de iOS:
+    // ver feedback_ios_modal_chain_dismiss). Si authenticateAsync se
+    // dispara mientras un sheet/modal se está descartando — exactamente lo
+    // que pasa cuando el relock (`replace('/')`) agarra a la app adentro
+    // de una hoja — iOS puede NO presentar el prompt y la promise queda
+    // colgada sin resolver: la máquina se queda en `locked` para siempre y
+    // el splash congelado (incidente 2026-08-23, "se reinició en la
+    // pantalla del FaceID y tuve que reiniciar la app"). En un arranque
+    // limpio esto es un no-op (no hay interacciones pendientes).
+    await new Promise<void>((resolve) => {
+      InteractionManager.runAfterInteractions(() => resolve())
+    })
     authFlowLog('adapter', 'promptBiometric → mostrando prompt')
     const result = await authenticateBiometricAccess({
       promptMessage: i18n.t('auth:biometric.unlockPrompt'),

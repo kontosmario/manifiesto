@@ -10,9 +10,21 @@ import { getPersistentValue, setPersistentValue } from '@/lib/persistent-kv'
 import { canUseNativePushNotifications } from '@/lib/runtime-environment'
 import i18n from '@/lib/i18n'
 import { formatLocalDateKey } from '@/utils/pay-cycle'
+import {
+  buildThresholdNudgeKey,
+  LEGACY_CHECKIN_DATA_KEY,
+  THRESHOLD_NOTIFICATION_KEY,
+} from '@/hooks/daily-budget-nudge-keys'
 
-const CHECKIN_NOTIFICATION_KEY = 'daily-budget-checkin'
-const THRESHOLD_NOTIFICATION_KEY = 'daily-budget-threshold'
+const CHECKIN_NOTIFICATION_KEY = LEGACY_CHECKIN_DATA_KEY
+
+/**
+ * Guardia SÍNCRONA de sesión contra el race del dedup asíncrono: entre el
+ * `getPersistentValue` y el `setPersistentValue` hay ventana de await, y el
+ * efecto re-corre con cada cambio de data — dos corridas concurrentes leían
+ * "no notifiqué" y agendaban las dos. Módulo-level para sobrevivir remounts.
+ */
+const thresholdNudgeInFlight = new Set<string>()
 
 export function useDailyBudgetNudges() {
   const sessionQuery = useAuthSession()
@@ -117,13 +129,28 @@ export function useDailyBudgetNudges() {
         ),
       )
 
-      const thresholdKey = `${THRESHOLD_NOTIFICATION_KEY}:${familyId}:${formatLocalDateKey(dashboard.todayDate)}`
-      const hasThresholdLog = (await getPersistentValue(thresholdKey)) === '1'
+      const thresholdKey = buildThresholdNudgeKey(familyId, formatLocalDateKey(dashboard.todayDate))
+      // La guardia síncrona va ANTES de cualquier await: si otra corrida ya
+      // está procesando (o procesó) esta clave, acá se corta. El KV solo
+      // aporta la persistencia entre lanzamientos.
+      if (thresholdNudgeInFlight.has(thresholdKey)) return
       const hour = now.getHours()
       const hasCrossedThreshold =
         summary.openingBudget > 0 && summary.todaySpent >= summary.openingBudget * 0.7
+      if (!hasCrossedThreshold || hour >= 18 || isCancelled) return
+      thresholdNudgeInFlight.add(thresholdKey)
+      const hasThresholdLog = (await getPersistentValue(thresholdKey)) === '1'
+      if (hasThresholdLog) return
+      // Corrida cancelada (las deps cambiaron mientras esperábamos el KV):
+      // DEVOLVER la reserva, o ninguna corrida futura podría agendar — el
+      // efecto se re-corre con cada refetch y siempre cancelaría a la
+      // anterior con la clave ya tomada.
+      if (isCancelled) {
+        thresholdNudgeInFlight.delete(thresholdKey)
+        return
+      }
 
-      if (!hasThresholdLog && hasCrossedThreshold && hour < 18 && !isCancelled) {
+      {
         await Notifications.scheduleNotificationAsync({
           content: {
             title: i18n.t('home:dailyBudgetNudge.closeDayTitle'),

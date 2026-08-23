@@ -4,6 +4,27 @@ function isWeb(): boolean {
   return typeof document !== 'undefined'
 }
 
+/**
+ * expo-secure-store valida las claves contra /^[\w.-]+$/ y TIRA con
+ * cualquier otra ("Invalid key provided to SecureStore") — en lectura Y
+ * escritura. Los catch de abajo existen para fallas transitorias del
+ * Keychain, pero también se tragaban ese error de programación: una clave
+ * con ':' convertía la preferencia en una feature muerta y silenciosa
+ * (tema/idioma/animaciones nunca persistieron; y el dedup del nudge
+ * "Cierra tu día" tampoco — spam en prod 2026-08-23). Este warning de dev
+ * hace ruido para que la clase entera de bug muera acá.
+ */
+function warnInvalidKeyInDev(key: string, op: string, error: unknown): void {
+  if (__DEV__) {
+    console.warn(
+      `[persistent-kv] ${op} falló para la clave "${key}" — si el error es ` +
+        '"Invalid key", la clave tiene caracteres fuera de [A-Za-z0-9._-] ' +
+        '(los ":" no van) y este valor NUNCA va a persistir en native.',
+      error,
+    )
+  }
+}
+
 export async function getPersistentValue(key: string): Promise<string | null> {
   if (isWeb()) {
     return globalThis.localStorage?.getItem(key) ?? null
@@ -16,7 +37,8 @@ export async function getPersistentValue(key: string): Promise<string | null> {
     }
 
     return await SecureStore.getItemAsync(key)
-  } catch {
+  } catch (error) {
+    warnInvalidKeyInDev(key, 'get', error)
     return null
   }
 }
@@ -40,7 +62,8 @@ export async function setPersistentValue(key: string, value: string): Promise<vo
     await SecureStore.setItemAsync(key, value, {
       keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     })
-  } catch {
+  } catch (error) {
+    warnInvalidKeyInDev(key, 'set', error)
     return
   }
 }
@@ -65,7 +88,8 @@ export async function deletePersistentValue(key: string): Promise<void> {
     }
 
     await SecureStore.deleteItemAsync(key)
-  } catch {
+  } catch (error) {
+    warnInvalidKeyInDev(key, 'delete', error)
     return
   }
 }

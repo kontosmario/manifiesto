@@ -13,7 +13,12 @@ const SAFE_PUSH_ROUTES = [
   '/(app)/(tabs)/home',
   '/(app)/(tabs)/expenses',
   '/(app)/(tabs)/fixed-expenses',
-  '/(app)/(tabs)/control',
+  // OJO: '/(app)/(tabs)/control' NO va acá. La tab se renombró a `insights`
+  // en el rediseño y esa ruta ya no existe; tenerla en el allowlist hacía
+  // que los payloads server legacy (cycle_close, assistant_dormant, racha
+  // del jardín) pasaran DIRECTO y expo-router pusheara una ruta muerta →
+  // pantalla en blanco (no hay +not-found). Incidente 2026-08-23. El alias
+  // de abajo la remapea.
   '/(app)/(tabs)/insights',
   '/(app)/notifications',
   '/(app)/settings',
@@ -57,7 +62,8 @@ export function normalizeAppRoute(rawPath?: string | null): string {
       return '/(app)/notifications'
     case '/control':
     case 'control':
-      return '/(app)/(tabs)/control'
+    case '/(app)/(tabs)/control':
+      return '/(app)/(tabs)/insights'
     case '/insights':
     case 'insights':
       return '/(app)/(tabs)/insights'
