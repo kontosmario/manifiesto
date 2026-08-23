@@ -137,7 +137,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 ---
 
 ## 7. Post-launch (no bloquea)
-- Analytics / conversion tracking.
+- Analytics / conversion tracking. **2026-08-23:** SDK de Meta integrado (atribución de app ads + SKAdNetwork, ATT al arrancar) — ver `docs/operaciones/meta-sdk-atribucion.md`. Pendiente owner: label de App Privacy en ASC.
 - Perf baseline FPS (Instruments en device — desbloqueado con TestFlight).
 - Observability (P4) — decisión owner.
 - Monitorear el webhook ASSN v2 + tasa de validate-purchase en prod.

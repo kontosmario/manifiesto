@@ -17,6 +17,16 @@ const googlePlugin: PluginEntry | null = GOOGLE_IOS_URL_SCHEME
     ]
   : null
 
+// Meta (Facebook) SDK — atribución de app ads + SKAdNetwork (2026-08-23).
+// El App ID y el client token NO son secretos: Meta los diseña para ir
+// embebidos en el binario (Info.plist / strings.xml). La app secret no
+// existe en el cliente. Runbook: docs/operaciones/meta-sdk-atribucion.md.
+const META_APP_ID = '1962126855190791'
+const META_CLIENT_TOKEN = 'b86605aa790f6930f49d9ff55730785c'
+// Texto del prompt de App Tracking Transparency (NSUserTrackingUsageDescription).
+const TRACKING_USAGE_DESCRIPTION =
+  'Usamos este permiso para medir el rendimiento de nuestros anuncios y mejorar Manifiesto.'
+
 const config: ExpoConfig = {
   name: 'Manifiesto',
   slug: 'manifiesto',
@@ -233,6 +243,43 @@ const config: ExpoConfig = {
     // En iOS no hay contraparte (ver el spec
     // 2026-08-14-font-scale-app-design.md, sección 6).
     './plugins/with-fixed-font-scale.cjs',
+    // Meta (Facebook) SDK (2026-08-23): atribución de campañas de app ads +
+    // SKAdNetwork. NO hay login con Facebook: sólo medición (el SDK loguea
+    // solo fb_mobile_activate_app). El plugin escribe en el Info.plist
+    // FacebookAppID / ClientToken / DisplayName, el URL scheme fb<appID>,
+    // LSApplicationQueriesSchemes y los dos SKAdNetworkItems de Meta
+    // (dedupeando contra ios.infoPlist, que los declara explícitos abajo);
+    // en Android, los meta-data com.facebook.sdk.* + FacebookActivity.
+    // El init en runtime (ATT → initializeSDK → ATE) vive en
+    // mobile/features/attribution/meta-sdk.ts.
+    //
+    // isAutoInitEnabled: el default del plugin es false, que en Android
+    // escribe com.facebook.sdk.AutoInitEnabled=false y apaga el
+    // FacebookInitProvider — el SDK arrancaría recién con el initializeSDK
+    // de JS, con la Activity ya resumida, y el activate del arranque se
+    // perdería. En iOS el SDK ≥ 9 ignora la clave: ahí el init nativo lo
+    // hace with-meta-sdk-app-delegate.cjs. Requiere build nativa.
+    [
+      'react-native-fbsdk-next',
+      {
+        appID: META_APP_ID,
+        clientToken: META_CLIENT_TOKEN,
+        displayName: 'Manifiesto',
+        scheme: `fb${META_APP_ID}`,
+        autoLogAppEventsEnabled: true,
+        advertiserIDCollectionEnabled: true,
+        isAutoInitEnabled: true,
+      },
+    ],
+    // App Tracking Transparency: el prompt lo pide meta-sdk.ts al arrancar,
+    // con la app ya en foreground. El plugin escribe
+    // NSUserTrackingUsageDescription (mismo texto que ios.infoPlist, la
+    // fuente) y en Android el permiso com.google.android.gms.permission.AD_ID
+    // que Play exige para leer el advertising ID.
+    ['expo-tracking-transparency', { userTrackingPermission: TRACKING_USAGE_DESCRIPTION }],
+    // Init NATIVO del SDK de Meta en el AppDelegate (iOS). Sin esto el
+    // activate del arranque en frío no se loguea — ver el plugin.
+    './plugins/with-meta-sdk-app-delegate.cjs',
   ],
   experiments: {
     typedRoutes: true,
@@ -381,6 +428,28 @@ const config: ExpoConfig = {
     infoPlist: {
       NSMicrophoneUsageDescription: undefined,
       NSCameraUsageDescription: undefined,
+      // ATT (2026-08-23): texto del prompt del sistema. Respaldado por
+      // requestTrackingPermissionsAsync() en meta-sdk.ts.
+      NSUserTrackingUsageDescription: TRACKING_USAGE_DESCRIPTION,
+      // SKAdNetwork — los dos IDs de Meta, verificados contra
+      // https://developers.facebook.com/docs/SKAdNetwork el 2026-08-23. El
+      // plugin de react-native-fbsdk-next inyecta los mismos dos (dedupea
+      // contra esta lista); quedan acá como fuente de verdad explícita.
+      SKAdNetworkItems: [
+        { SKAdNetworkIdentifier: 'v9wttpbfk9.skadnetwork' },
+        { SKAdNetworkIdentifier: 'n38lu8286q.skadnetwork' },
+      ],
+    },
+    // Privacy manifest (2026-08-23): con el SDK de Meta la app PIDE ATT y
+    // comparte el IDFA para atribución de anuncios — "tracking" según la
+    // definición de Apple. Antes el manifest salía con NSPrivacyTracking=
+    // false (default de prebuild); pedir ATT declarando que no se trackea
+    // es la inconsistencia que App Review rechaza. Los dominios de tracking
+    // los declara el propio manifest de FBSDKCoreKit (el que se conecta es
+    // el SDK, no la app). El label de App Privacy en ASC se actualiza a
+    // mano — ver docs/operaciones/meta-sdk-atribucion.md.
+    privacyManifests: {
+      NSPrivacyTracking: true,
     },
   },
   android: {

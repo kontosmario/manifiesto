@@ -116,7 +116,7 @@ Flujo **managed/prebuild**: `ios/` y `android/` están gitignored; EAS hace `exp
 
 - Version `1.0.0` (`app.config.ts:22`), buildNumber `7` (`:190`), `appVersionSource: local`.
 - Export compliance, privacy manifests, iconos 1024², runtimeVersion `sdkVersion`, capabilities (Apple Sign-in, Associated Domains, App Groups, Push) — todo OK.
-- Sin `expo-tracking-transparency` ni SDKs de tracking → ATT N/A, coherente con `NSPrivacyTracking=false`.
+- ~~Sin `expo-tracking-transparency` ni SDKs de tracking → ATT N/A, coherente con `NSPrivacyTracking=false`.~~ **Cambió el 2026-08-23:** entra el SDK de Meta (`react-native-fbsdk-next`) para atribución de app ads + SKAdNetwork. La app PIDE ATT al arrancar (`expo-tracking-transparency`) y el privacy manifest sale con `NSPrivacyTracking=true`. **Label de App Privacy en ASC actualizado el 2026-08-23** (ID del dispositivo, Interacción con el producto e Historial de compras → Publicidad de terceros + Análisis, vinculados, "usados para rastrearte" = Sí; se publica al instante, sin versión nueva). Runbook: `docs/operaciones/meta-sdk-atribucion.md`.
 
 ### 3.2 IAP / Compliance — ✅ código listo; bloqueantes = owner-actions en ASC
 Todo el código de billing, los disclosures 3.1.2, el restore visible en ambas vistas, el deep-link de gestión y el backend de validación (`validate-purchase` con firma ES256 + webhook ASSN v2 idempotente) están en estado de submit. **No hay cambios de código necesarios para pasar review.** Los bloqueantes son #3 (suscripción a review), #4 (privacy label), #5 (DSA) — todos en ASC.

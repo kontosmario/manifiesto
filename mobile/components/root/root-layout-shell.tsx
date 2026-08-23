@@ -30,6 +30,7 @@ import { AppProviders } from '@/providers/app-providers'
 import { recordInteraction } from '@/features/auth/inactivity-tracker'
 import { configureAuthFlow, dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
 import { applyLowTierRefreshRate } from '@/lib/preferred-refresh-rate'
+import { initMetaSDK } from '@/features/attribution/meta-sdk'
 import { realAuthFlowAdapters } from '@/features/auth-flow/auth-flow-adapters'
 import { getOverlayMode, type BridgeErrorKind } from '@/features/auth-flow/auth-flow-machine'
 import {
@@ -93,6 +94,10 @@ export function RootLayoutShell() {
     // forzados a 90/120Hz que ese hardware no puede alimentar. No-op en
     // iOS y en hardware capaz (ver mobile/lib/preferred-refresh-rate).
     applyLowTierRefreshRate()
+    // SDK de Meta (2026-08-23): ATT → initializeSDK → ATE, una sola vez por
+    // runtime (memoizado adentro), después del primer render del root.
+    // Fire-and-forget: no bloquea el arranque ni propaga errores.
+    void initMetaSDK()
   }, [])
 
   // Registro del entrance para el gate del min-hold (el soar jamás
