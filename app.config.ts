@@ -196,7 +196,17 @@ const config: ExpoConfig = {
         // piso en 29 hace que TODAS las sombras rindan sin código
         // condicional. Costo: se dejan fuera Android 7–9 (cola
         // decreciente; app pre-launch, sin base instalada afectada).
-        android: { minSdkVersion: 29 },
+        //
+        // R8 + shrinkResources (2026-08-20): el template de RN los trae
+        // apagados; encendidos achican el APK y mejoran el arranque en
+        // release. Las libs de RN/Expo traen sus consumer proguard
+        // rules. Verificado en device (moto g20) tras el primer build
+        // con los flags.
+        android: {
+          minSdkVersion: 29,
+          enableMinifyInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
       },
     ],
     // Sprint E · C3 (red team finding 2026-06-10): the Expo default
@@ -378,6 +388,12 @@ const config: ExpoConfig = {
     ...(process.env.GOOGLE_SERVICES_JSON || existsSync('./google-services.json')
       ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json' }
       : {}),
+    // Contraparte Android del buildNumber de iOS (appVersionSource: local →
+    // bump manual por release, monotónico para Play). Arranca espejando el
+    // build de iOS para tener UN número mental por release. El versionCode 1
+    // que quedó en android/app/build.gradle es un artefacto local viejo:
+    // /android está gitignoreado y el prebuild lo regenera desde acá.
+    versionCode: 19,
     // Sprint P · Audit #9 P-4 (2026-06-10): explicit deny-list to prevent
     // upstream plugins / merged manifests from silently shipping extra
     // permissions. RECORD_AUDIO would otherwise reappear if any future
