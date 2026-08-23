@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * Piel de la lista de fijos — `classic` (la de siempre) o `neo` (rediseño).
  *
@@ -40,8 +41,8 @@ export type FijoSkinStatus = 'paid' | 'overdue' | 'pending' | 'future'
 // no son los que el handoff dibuja para tiles y chips. Los de acá salen de
 // contar ocurrencias en los dos .dc.html: 5/5/12 aparece 22× (tiles, pills,
 // tabs) e inset 3/3/7 aparece 43× (chips y badges de conteo).
-const TILE_RAISE_L = '5px 5px 12px rgba(151,160,136,0.42), -5px -5px 12px rgba(255,255,255,0.92)'
-const TILE_RAISE_D = '5px 5px 12px rgba(0,0,0,0.5), -4px -4px 11px rgba(101,152,113,0.11)'
+const TILE_RAISE_L = applyPaintTier('5px 5px 12px rgba(151,160,136,0.42), -5px -5px 12px rgba(255,255,255,0.92)')
+const TILE_RAISE_D = applyPaintTier('5px 5px 12px rgba(0,0,0,0.5), -4px -4px 11px rgba(101,152,113,0.11)')
 
 /**
  * Cuánto se extiende la sombra de un tile más allá de su caja: offset 5 +
@@ -62,17 +63,17 @@ export const FIJOS_SHADOW_BLEED = 17
 // del mismo ancho, el borde izquierdo quedaba sin definición y las filas se
 // leían "pegadas" al padre (fallo del owner). Subir SOLO la luz mantiene la
 // dirección del foco (arriba-izquierda) y el peso de la sombra oscura.
-const ROW_RAISE_L = '5px 5px 12px rgba(151,160,136,0.42), -5px -5px 12px rgba(255,255,255,0.98)'
-const ROW_RAISE_D = '5px 5px 12px rgba(0,0,0,0.5), -5px -5px 12px rgba(101,152,113,0.2)'
-const CHIP_INSET_L = 'inset 3px 3px 7px rgba(151,160,136,0.38), inset -3px -3px 7px rgba(255,255,255,0.92)'
-const CHIP_INSET_D = 'inset 3px 3px 7px rgba(0,0,0,0.48), inset -3px -3px 7px rgba(101,152,113,0.1)'
+const ROW_RAISE_L = applyPaintTier('5px 5px 12px rgba(151,160,136,0.42), -5px -5px 12px rgba(255,255,255,0.98)')
+const ROW_RAISE_D = applyPaintTier('5px 5px 12px rgba(0,0,0,0.5), -5px -5px 12px rgba(101,152,113,0.2)')
+const CHIP_INSET_L = applyPaintTier('inset 3px 3px 7px rgba(151,160,136,0.38), inset -3px -3px 7px rgba(255,255,255,0.92)')
+const CHIP_INSET_D = applyPaintTier('inset 3px 3px 7px rgba(0,0,0,0.48), inset -3px -3px 7px rgba(101,152,113,0.1)')
 
 // La sombra de card en CLARO se alinea a Home y Gastos (`0.42`), no al 0.40
 // que trae el handoff de Fijos y que FIJOS_SPEC transcribió fiel. Es una
 // discrepancia entre handoffs, no del porteo: en OSCURO los tres sistemas ya
 // son idénticos byte a byte. Decisión del owner (2026-07-30): manda la
 // consistencia del sistema.
-const CARD_RAISE_L = '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)'
+const CARD_RAISE_L = applyPaintTier('8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)')
 
 // Bloque "SE LLEVA AL AÑO" — las 4 variantes del handoff, literales. El fondo
 // NO es el mismo tinte que los chips: es más saturado en claro (0.6/0.7) y más
@@ -92,12 +93,12 @@ const STATS_BLOCK = {
 // El campo de nombre y la card de monto son POZOS (inset), no cards elevadas:
 // comunican "acá se escribe". Los tiles de categoría, al revés, están
 // elevados, y el SELECCIONADO se hunde con un anillo verde.
-const ADD_WELL_L = 'inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)'
-const ADD_WELL_D = 'inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.1)'
-const ADD_TILE_L = '4px 4px 9px rgba(151,160,136,0.32), -4px -4px 9px rgba(255,255,255,0.8)'
-const ADD_TILE_D = '4px 4px 9px rgba(0,0,0,0.45), -3px -3px 8px rgba(101,152,113,0.1)'
-const ADD_TILE_SEL_L = 'inset 2px 2px 6px rgba(90,110,70,0.2)'
-const ADD_TILE_SEL_D = 'inset 2px 2px 6px rgba(0,0,0,0.4)'
+const ADD_WELL_L = applyPaintTier('inset 4px 4px 9px rgba(151,160,136,0.4), inset -4px -4px 9px rgba(255,255,255,0.95)')
+const ADD_WELL_D = applyPaintTier('inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,152,113,0.1)')
+const ADD_TILE_L = applyPaintTier('4px 4px 9px rgba(151,160,136,0.32), -4px -4px 9px rgba(255,255,255,0.8)')
+const ADD_TILE_D = applyPaintTier('4px 4px 9px rgba(0,0,0,0.45), -3px -3px 8px rgba(101,152,113,0.1)')
+const ADD_TILE_SEL_L = applyPaintTier('inset 2px 2px 6px rgba(90,110,70,0.2)')
+const ADD_TILE_SEL_D = applyPaintTier('inset 2px 2px 6px rgba(0,0,0,0.4)')
 
 // ── Paso 2 del alta ──────────────────────────────────────────────────────
 // Las dos cards del paso 2 usan el escalón CHICO de profundidad (5/5/12), no
@@ -109,8 +110,8 @@ const ADD_TILE_SEL_D = 'inset 2px 2px 6px rgba(0,0,0,0.4)'
 // CHIP_INSET_L. Es 2 centésimas de diferencia y es literal del handoff: los
 // dos insets conviven en la misma pantalla (el 0.38 es el de las celdas del
 // calendario y el del toggle). No unificarlos en un token.
-const GAUGE_INSET_L = 'inset 3px 3px 7px rgba(151,160,136,0.4), inset -3px -3px 7px rgba(255,255,255,0.92)'
-const GAUGE_INSET_D = 'inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.1)'
+const GAUGE_INSET_L = applyPaintTier('inset 3px 3px 7px rgba(151,160,136,0.4), inset -3px -3px 7px rgba(255,255,255,0.92)')
+const GAUGE_INSET_D = applyPaintTier('inset 3px 3px 7px rgba(0,0,0,0.5), inset -3px -3px 7px rgba(101,152,113,0.1)')
 
 const STEP2 = {
   light: {

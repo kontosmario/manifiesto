@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * SPEC compartido del flujo de onboarding del rediseño (Turno 5).
  * Valores LITERALES del design doc — extraídos del par 5a/5ao
@@ -49,7 +50,7 @@ export interface OnbSpec {
 
 const PARTICLES = ['#C9F3C6', '#FBD9BC', '#EFF6E2'] as const
 
-export const ONB_SPEC: Record<OnbMode, OnbSpec> = {
+const ONB_SPEC_RAW: Record<OnbMode, OnbSpec> = {
   light: {
     bg: '#DCDFCD',
     text: '#24382A',
@@ -130,7 +131,7 @@ export interface OnbSurfaces {
   chipSelectedShadow: string
 }
 
-export const ONB_SURFACES: Record<OnbMode, OnbSurfaces> = {
+const ONB_SURFACES_RAW: Record<OnbMode, OnbSurfaces> = {
   light: {
     cardGradientCss: 'linear-gradient(145deg, #F3F4E9, #E4E6D8)',
     cardShadow: '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)',
@@ -161,3 +162,8 @@ export const ONB_SURFACES: Record<OnbMode, OnbSurfaces> = {
 
 /** Cantidad de pasos de la barra de progreso del flujo (markup 5a: 5). */
 export const ONB_PROGRESS_SEGMENTS = 5
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const ONB_SPEC = applyPaintTier(ONB_SPEC_RAW)
+export const ONB_SURFACES = applyPaintTier(ONB_SURFACES_RAW)

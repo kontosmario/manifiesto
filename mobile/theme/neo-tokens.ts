@@ -1,5 +1,6 @@
 import type { ViewStyle } from 'react-native'
 import type { ResolvedThemeMode } from './palette'
+import { applyPaintTier, FLAT_PAINT_TIER, FLAT_TIER_SOLID_FILLS } from './paint-tier'
 
 /**
  * Rediseño 2026-07 — tokens neumórficos. Fuente canónica:
@@ -23,6 +24,11 @@ import type { ResolvedThemeMode } from './palette'
  * soportado (la prop se ignora y queda el fill sólido).
  */
 export function cssGradient(css: string, fallbackColor: string): ViewStyle {
+  // Fase 2 del tier de gama baja (hoy apagada — ver paint-tier.ts): en
+  // hardware viejo el fill sólido de fallback reemplaza al shader.
+  if (FLAT_PAINT_TIER && FLAT_TIER_SOLID_FILLS) {
+    return { backgroundColor: fallbackColor }
+  }
   return { experimental_backgroundImage: css, backgroundColor: fallbackColor }
 }
 
@@ -140,7 +146,11 @@ export interface NeoTokens {
   shadows: NeoShadows
 }
 
-const lightShadows: NeoShadows = {
+// Las dos tablas de sombras pasan por el tier de pintura al cargar el
+// módulo: en gama baja (`FLAT_PAINT_TIER`) cada receta queda aplanada a
+// una key shadow + capas blur-0; en hardware capaz son estos literales
+// tal cual (identidad, sin costo).
+const lightShadows: NeoShadows = applyPaintTier({
   hero:         '12px 12px 26px rgba(124,138,110,0.55), -8px -8px 20px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)',
   raisedXl:     '10px 10px 22px rgba(124,138,110,0.5), -8px -8px 18px rgba(255,255,255,0.85), inset 0 1px 0 rgba(255,255,255,0.25)',
   raisedLg:     '8px 8px 18px rgba(151,160,136,0.42), -8px -8px 18px rgba(255,255,255,0.92)',
@@ -152,9 +162,9 @@ const lightShadows: NeoShadows = {
   ringSelected: 'inset 3px 3px 7px rgba(90,110,70,0.2), inset -3px -3px 7px rgba(255,255,255,0.85), 0 0 0 2.5px #2E7C39',
   cta:          '0 12px 24px rgba(46,116,52,0.4), inset 0 2px 3px rgba(255,255,255,0.3)',
   sheet:        '0 -20px 50px rgba(20,30,18,0.35)',
-}
+})
 
-const darkShadows: NeoShadows = {
+const darkShadows: NeoShadows = applyPaintTier({
   hero:         '12px 12px 26px rgba(0,0,0,0.6), -8px -8px 20px rgba(101,152,113,0.12), inset 0 1px 0 rgba(164,227,166,0.12)',
   raisedXl:     '10px 10px 22px rgba(0,0,0,0.6), -8px -8px 18px rgba(101,152,113,0.12), inset 0 1px 0 rgba(164,227,166,0.12)',
   raisedLg:     '8px 8px 18px rgba(0,0,0,0.5), -8px -8px 18px rgba(101,152,113,0.1)',
@@ -166,7 +176,7 @@ const darkShadows: NeoShadows = {
   ringSelected: 'inset 3px 3px 7px rgba(0,0,0,0.4), 0 0 0 2.5px #A4E3A6',
   cta:          '0 12px 24px rgba(0,0,0,0.45), 0 0 26px rgba(140,225,150,0.3), inset 0 2px 3px rgba(255,255,255,0.3)',
   sheet:        '0 -20px 50px rgba(0,0,0,0.6)',
-}
+})
 
 const lightNeo: NeoTokens = {
   bg:             '#DCDFCD',

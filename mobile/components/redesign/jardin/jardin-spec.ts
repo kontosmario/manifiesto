@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * Tokens de "Mi jardín" (rediseño 2026-08) — transcripción LITERAL de
  * `design/jardin-2026-08/Jardín Rediseño.dc.html`:
@@ -554,7 +555,7 @@ export interface JardinSpec {
   lockInk: string
 }
 
-export const JARDIN_SPEC: Record<ResolvedThemeMode, JardinSpec> = {
+const JARDIN_SPEC_RAW: Record<ResolvedThemeMode, JardinSpec> = {
   light: {
     // ① Base
     hairline: 'rgba(151,160,136,0.25)',
@@ -1064,3 +1065,7 @@ export function ringGeometry(size: number, stroke: number): { r: number; c: numb
   const r = (size - stroke) / 2 - 1
   return { r, c: 2 * Math.PI * r }
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const JARDIN_SPEC = applyPaintTier(JARDIN_SPEC_RAW)

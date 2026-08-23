@@ -50,6 +50,8 @@ import {
   type SkiaModule,
 } from '@/lib/optional-skia'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { FLAT_PAINT_TIER } from '@/theme/paint-tier'
+import { buildStaticParticleLayout } from '@/components/brot/static-particle-layout'
 
 // ─── API pública ─────────────────────────────────────────────────────
 
@@ -329,7 +331,94 @@ function arePropsEqual(prev: BrotParticlesProps, next: BrotParticlesProps): bool
   )
 }
 
-export const BrotParticles = memo(BrotParticlesImpl, arePropsEqual)
+// Tier de pintura de gama baja (paint-tier.ts): en ese hardware las
+// partículas Skia ya venían CONGELADAS por reduced-motion, pero el
+// canvas igual compone su capa sobre cada superficie en cada frame de
+// scroll. En el tier se reemplazan por el campo ESTÁTICO de Views
+// planas de abajo (decisión owner 2026-08-21: la UI conserva sus
+// partículas en versión literal low-cost — puntito + halo por alfa,
+// sin Skia, sin blur, sin animación: N×2 Views estáticas que se
+// componen una vez y no invalidan nunca). La decisión respeta el
+// override del usuario (Ajustes → Animaciones → "Todas"): con full
+// motion forzado vuelve el campo Skia animado completo — la elección
+// explícita le gana al heurístico de hardware, aunque pague el costo.
+// En hardware capaz se exporta el memo original sin overhead.
+const MemoBrotParticles = memo(BrotParticlesImpl, arePropsEqual)
+
+/** Halo = 2.6× el núcleo, al 16% del alfa — la lectura "glow" sin blur. */
+const LITE_HALO_SCALE = 2.6
+const LITE_HALO_OPACITY = 0.16
+
+function StaticParticleField({
+  colors = DEFAULT_COLORS,
+  count = 14,
+  borderRadius,
+  style,
+}: BrotParticlesProps) {
+  const layout = useMemo(
+    () => buildStaticParticleLayout(count, colors.length),
+    [count, colors.length],
+  )
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        borderRadius != null ? { borderRadius, overflow: 'hidden' } : null,
+        style,
+      ]}
+    >
+      {layout.map((p, i) => {
+        const halo = p.size * LITE_HALO_SCALE
+        const color = colors[p.colorIndex] ?? colors[0]
+        return (
+          <View
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${p.left * 100}%`,
+              top: `${p.top * 100}%`,
+              width: halo,
+              height: halo,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <View
+              style={{
+                position: 'absolute',
+                width: halo,
+                height: halo,
+                borderRadius: halo / 2,
+                backgroundColor: color,
+                opacity: LITE_HALO_OPACITY,
+              }}
+            />
+            <View
+              style={{
+                width: p.size,
+                height: p.size,
+                borderRadius: p.size / 2,
+                backgroundColor: color,
+                opacity: p.opacity,
+              }}
+            />
+          </View>
+        )
+      })}
+    </View>
+  )
+}
+
+function BrotParticlesLowTierGate(props: BrotParticlesProps) {
+  const reducedMotion = useReducedMotion()
+  if (reducedMotion) return <StaticParticleField {...props} />
+  return <MemoBrotParticles {...props} />
+}
+
+export const BrotParticles = FLAT_PAINT_TIER
+  ? BrotParticlesLowTierGate
+  : MemoBrotParticles
 
 const styles = StyleSheet.create({
   overlay: {

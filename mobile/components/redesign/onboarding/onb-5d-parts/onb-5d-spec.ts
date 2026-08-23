@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 import { pastelDark } from '@/theme/neo-tokens'
 import { ONB_SURFACES, type OnbMode } from '../onb-spec'
 
@@ -67,7 +68,7 @@ export interface Onb5dSpec {
   captionAccent: string
 }
 
-export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
+const ONB_5D_SPEC_RAW: Record<OnbMode, Onb5dSpec> = {
   light: {
     sectionLabel: '#54644F',
     cardGradientCss: ONB_SURFACES.light.cardGradientCss,
@@ -168,3 +169,7 @@ export const ONB_5D_SPEC: Record<OnbMode, Onb5dSpec> = {
     captionAccent: '#A4E3A6',
   },
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const ONB_5D_SPEC = applyPaintTier(ONB_5D_SPEC_RAW)

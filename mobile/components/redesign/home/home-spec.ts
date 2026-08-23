@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * Tokens de la HOME FINAL — valores LITERALES de
  * design/home-final-2026-07/home.dc.html ("Home final claro" · "Home final
@@ -230,7 +231,7 @@ export interface HomeSpec {
   homeIndicatorOpacity: number
 }
 
-export const HOME_SPEC: Record<HomeMode, HomeSpec> = {
+const HOME_SPEC_RAW: Record<HomeMode, HomeSpec> = {
   light: {
     bg: '#DCDFCD',
     shellShadow: '0 34px 80px rgba(8,14,8,0.55)',
@@ -553,3 +554,7 @@ export const HOME_MOMENTS: Record<HomeMoment, { emoji: string; greeting: string;
   tarde: { emoji: '🌤️', greeting: 'buenas tardes,', pose: 'idle' },
   noche: { emoji: '🌙', greeting: 'buenas noches,', pose: 'sleep' },
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const HOME_SPEC = applyPaintTier(HOME_SPEC_RAW)

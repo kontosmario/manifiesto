@@ -29,6 +29,7 @@ import { CaptchaBootErrorBanner } from '@/components/root/captcha-boot-error-ban
 import { AppProviders } from '@/providers/app-providers'
 import { recordInteraction } from '@/features/auth/inactivity-tracker'
 import { configureAuthFlow, dispatchAuthFlow } from '@/features/auth-flow/auth-flow-controller'
+import { applyLowTierRefreshRate } from '@/lib/preferred-refresh-rate'
 import { realAuthFlowAdapters } from '@/features/auth-flow/auth-flow-adapters'
 import { getOverlayMode, type BridgeErrorKind } from '@/features/auth-flow/auth-flow-machine'
 import {
@@ -88,6 +89,10 @@ export function RootLayoutShell() {
   // reconfiguran con fakes y restauran al terminar.
   useEffect(() => {
     configureAuthFlow(realAuthFlowAdapters)
+    // Tier de gama baja: prefiere 60Hz para la ventana en paneles
+    // forzados a 90/120Hz que ese hardware no puede alimentar. No-op en
+    // iOS y en hardware capaz (ver mobile/lib/preferred-refresh-rate).
+    applyLowTierRefreshRate()
   }, [])
 
   // Registro del entrance para el gate del min-hold (el soar jamás

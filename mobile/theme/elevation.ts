@@ -1,5 +1,6 @@
 import type { ViewStyle } from 'react-native'
 import type { AppTheme } from '@/theme/palette'
+import { applyPaintTier } from '@/theme/paint-tier'
 
 export type ElevationVariant =
   | 'card'
@@ -12,20 +13,21 @@ export type ElevationVariant =
 /**
  * Builds a cross-platform drop-shadow style using the `boxShadow` CSS-style
  * property (supported in React Native 0.76+ and react-native-web 0.21+,
- * replacing the deprecated `shadow*` props). Android also gets an
- * `elevation` value for its native shadow compositor.
+ * replacing the deprecated `shadow*` props). With minSdk 29 the outset
+ * `boxShadow` renders natively on Android too, so we deliberately do NOT
+ * emit `elevation` alongside it: Android draws both paths independently
+ * and the result was a doubled shadow (native outline shadow + box-shadow
+ * drawable) that iOS never showed.
  */
 function shadowStyle(
   color: string,
   offsetY: number,
   blur: number,
   opacity: number,
-  elevation: number,
 ): ViewStyle {
-  return {
+  return applyPaintTier({
     boxShadow: `0px ${offsetY}px ${blur}px ${withAlpha(color, opacity)}`,
-    elevation,
-  }
+  })
 }
 
 function withAlpha(hex: string, alpha: number): string {
@@ -46,23 +48,22 @@ export function buildElevationStyle(
 ): ViewStyle {
   switch (variant) {
     case 'cardElevated':
-      return shadowStyle('#000000', 16, 24, theme.isDark ? 0.26 : 0.09, 9)
+      return shadowStyle('#000000', 16, 24, theme.isDark ? 0.26 : 0.09)
     case 'panel':
-      return theme.isDark ? {} : shadowStyle('#4E685A', 12, 20, 0.08, 6)
+      return theme.isDark ? {} : shadowStyle('#4E685A', 12, 20, 0.08)
     case 'panelHero':
-      return theme.isDark ? {} : shadowStyle('#5F8A70', 18, 28, 0.12, 10)
+      return theme.isDark ? {} : shadowStyle('#5F8A70', 18, 28, 0.12)
     case 'floatingNav':
       return shadowStyle(
         theme.isDark ? '#000000' : '#526F5F',
         22,
         30,
         theme.isDark ? 0.32 : 0.12,
-        16,
       )
     case 'segmentedActive':
-      return shadowStyle('#000000', 2, 6, 0.08, 1)
+      return shadowStyle('#000000', 2, 6, 0.08)
     default:
-      return shadowStyle('#000000', 10, 16, theme.isDark ? 0.14 : 0.04, 3)
+      return shadowStyle('#000000', 10, 16, theme.isDark ? 0.14 : 0.04)
   }
 }
 

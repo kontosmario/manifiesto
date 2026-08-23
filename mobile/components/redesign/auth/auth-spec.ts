@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * SPEC compartido del flujo de autenticación del rediseño (Turno 4).
  * Valores LITERALES del design doc — extraídos de los pares
@@ -119,7 +120,7 @@ export interface AuthSpec {
   fernPalette: 'dark' | 'light'
 }
 
-export const AUTH_SPEC: Record<AuthMode, AuthSpec> = {
+const AUTH_SPEC_RAW: Record<AuthMode, AuthSpec> = {
   light: {
     bg: '#DCDFCD',
     welcomeBg: '#E9EBE0',
@@ -277,3 +278,7 @@ export const AUTH_HOME_INDICATOR_OPACITY: Record<AuthMode, number> = {
   light: 0.75,
   dark: 0.75,
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const AUTH_SPEC = applyPaintTier(AUTH_SPEC_RAW)

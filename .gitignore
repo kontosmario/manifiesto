@@ -40,6 +40,10 @@ dist-ssr
 # coinciden. NO sacar las barras.
 /android
 /ios
+# Output de Gradle de los módulos Expo locales (modules/<módulo>/android/build):
+# .aar, .class y caches de Kotlin que deja el build de Android. Anclado al
+# patrón con el padre explícito para no tocar nada más (ver nota de arriba).
+/modules/*/android/build/
 *.local
 
 # Editor directories and files

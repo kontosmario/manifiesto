@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * Tokens de la vista FIJOS del rediseño — valores LITERALES de
  * design/fijos-2026-07/Fijos Manifiesto.dc.html (teléfono claro + oscuro de
@@ -373,7 +374,7 @@ const INS_D = 'inset 4px 4px 8px rgba(0,0,0,0.5), inset -4px -4px 8px rgba(101,1
 const INS_SOFT_L = 'inset 3px 3px 6px rgba(151,160,136,0.4), inset -3px -3px 6px rgba(255,255,255,0.92)'
 const INS_SOFT_D = 'inset 3px 3px 6px rgba(0,0,0,0.45), inset -3px -3px 6px rgba(101,152,113,0.1)'
 
-export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
+const FIJOS_SPEC_RAW: Record<FijosMode, FijosSpec> = {
   light: {
     bg: '#DCDFCD',
     cardGradientCss: undefined,
@@ -695,3 +696,7 @@ export const FIJOS_SPEC: Record<FijosMode, FijosSpec> = {
     homeIndicatorOpacity: 0.75,
   },
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const FIJOS_SPEC = applyPaintTier(FIJOS_SPEC_RAW)

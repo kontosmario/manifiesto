@@ -1,3 +1,4 @@
+import { applyPaintTier } from '@/theme/paint-tier'
 /**
  * Tokens de la vista GASTOS del rediseño — valores LITERALES de
  * design/gastos-2026-07/gastos.dc.html (estático claro+oscuro, fuente de
@@ -415,7 +416,7 @@ const INS_D = 'inset 4px 4px 9px rgba(0,0,0,0.5), inset -4px -4px 9px rgba(101,1
 const INS_SOFT_L = 'inset 2px 2px 5px rgba(151,160,136,0.3), inset -2px -2px 5px rgba(255,255,255,0.8)'
 const INS_SOFT_D = 'inset 2px 2px 5px rgba(0,0,0,0.45), inset -2px -2px 5px rgba(101,152,113,0.07)'
 
-export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
+const GASTOS_SPEC_RAW: Record<GastosMode, GastosSpec> = {
   light: {
     bg: '#DCDFCD',
     cardGradientCss: undefined,
@@ -843,3 +844,7 @@ export const GASTOS_SPEC: Record<GastosMode, GastosSpec> = {
     outNoteInk: '#F2A87E',
   },
 }
+
+// Tier de pintura de gama baja (paint-tier.ts): en hardware viejo las
+// recetas de sombra salen aplanadas; en hardware capaz es identidad.
+export const GASTOS_SPEC = applyPaintTier(GASTOS_SPEC_RAW)
