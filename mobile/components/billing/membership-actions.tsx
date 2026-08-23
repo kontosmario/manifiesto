@@ -7,6 +7,7 @@ import { BillingLink } from '@/components/billing/billing-neo-kit'
 import { neoTokens } from '@/theme/neo-tokens'
 import { nunitoFamily } from '@/theme/typography'
 import { useThemeTokens } from '@/theme/theme-provider'
+import { MANAGE_SUBSCRIPTIONS_URL } from '@/lib/legal-urls'
 import type { MembershipVariant } from '@/features/billing/membership-state'
 
 /**
@@ -21,11 +22,11 @@ export interface MembershipActionsProps {
   onRestore(): void
 }
 
-// Path compliant: Apple exige que cancelar/gestionar la suscripción se haga
-// por el sistema (App Store), no dentro de la app. Abrimos el deep-link
-// oficial de suscripciones en vez de cualquier flujo propio.
+// Path compliant: las tiendas exigen que cancelar/gestionar la suscripción
+// se haga por el sistema, no dentro de la app. La URL (y por qué hoy es
+// SIEMPRE la de Apple, incluso en Android) vive en legal-urls.ts.
 const openManage = () => {
-  void Linking.openURL('https://apps.apple.com/account/subscriptions')
+  void Linking.openURL(MANAGE_SUBSCRIPTIONS_URL)
 }
 
 export const MembershipActions = memo(function MembershipActions({

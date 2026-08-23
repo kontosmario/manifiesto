@@ -52,6 +52,17 @@ export const STORE_REVIEW_URL =
   Platform.OS === 'android' ? PLAY_STORE_URL : APP_STORE_REVIEW_URL
 
 /**
+ * Gestión/cancelación de la suscripción. HOY siempre Apple, también en
+ * Android: la única vía de compra es StoreKit (no hay Play Billing), así
+ * que toda suscripción existente vive en App Store aunque el usuario haya
+ * iniciado sesión en un Android — mandarlo a la página de suscripciones de
+ * Play mostraría una lista vacía. Cuando exista Play Billing, esta URL debe
+ * resolverse por el ORIGEN de compra del entitlement (qué tienda la
+ * vendió), NO por la plataforma del device.
+ */
+export const MANAGE_SUBSCRIPTIONS_URL = 'https://apps.apple.com/account/subscriptions'
+
+/**
  * Construye el `mailto:` con subject + body pre-poblados para
  * que el usuario llegue al inbox con contexto mínimo de triage
  * (versión + plataforma). user_id se agrega en el caller cuando

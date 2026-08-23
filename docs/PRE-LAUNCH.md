@@ -122,6 +122,7 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 | A2 | SHA256 real en `assetlinks.json` (hoy placeholder, y el package es el bundle de iOS — corregir ambos) | 🔴 pre-Play Store |
 | A3 | Google Play Console setup | 🔴 |
 | A4 | FCM + ícono monocromo de notificación + deploy del fix del batch — runbook completo en `docs/operaciones/push-notifications-android-setup.md` | 🔴 bloqueante de push |
+| A5 | Play Billing (rama `google` + SKUs + validación server + RTDN) + enforcement de entitlement fuera de iOS | 🔴 bloqueante de monetización |
 
 ---
 

@@ -1,4 +1,4 @@
-import { Modal, StyleSheet, View } from 'react-native'
+import { Modal, Platform, StyleSheet, View } from 'react-native'
 import { useAuthSession } from '@/features/auth/use-auth-session'
 import { useEntitlement } from '@/features/billing/use-entitlement'
 import { useMyProfile } from '@/features/profile/use-profile'
@@ -37,12 +37,25 @@ export function SubscriptionGate() {
   const blocked = !isLoading && ent != null && !ent.hasAccess && onboardingDone
   if (!blocked) return null
 
+  // Paridad Android pendiente (auditoría 2026-08-18): el flujo de compra es
+  // StoreKit-only (use-billing pasa solo `request.apple` y validate-purchase
+  // solo verifica JWS de Apple), así que fuera de iOS este gate encerraría
+  // al usuario en un paywall que NO puede pagar. Hasta que exista Play
+  // Billing (SKUs + rama `google` + validación server), el gate solo aplica
+  // en iOS — deliberadamente `!== 'ios'` y no `=== 'android'`: el preview
+  // web tampoco puede comprar. OJO: esto deja Android/web SIN enforcement
+  // de entitlement (no hay chequeo server-side de has_access) — cerrar
+  // antes del launch de Play.
+  if (Platform.OS !== 'ios') return null
+
   return (
     <Modal
       visible
       animationType="fade"
       presentationStyle="fullScreen"
-      // No descartable: en Android el back no cierra el paywall.
+      // No descartable a propósito (onRequestClose es no-op). Con el gate
+      // iOS-only el handler nunca corre —es un prop de Android—, pero el
+      // contrato queda declarado para cuando el gate se extienda.
       onRequestClose={() => {}}
     >
       <View style={[styles.root, { backgroundColor: neoTokens(theme.mode).bg }]}>
