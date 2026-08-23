@@ -26,7 +26,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { triggerHaptic } from '@/lib/haptics'
 import { useIsAnyModalOpen } from '@/lib/modal-visibility'
 import { useNumpadOffset } from '@/lib/numpad-visibility'
-import { neoTokens } from '@/theme/neo-tokens'
+import { neoRadii, neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
 
 /**
@@ -250,7 +250,12 @@ export function Screen({
   // borde redondeado, no la franja del sistema. Anular acá cubre los dos
   // consumidores de una: el padding del contenido y la altura del material
   // difuminado (que con 0 ni se monta).
-  const topInset = presentedAsSheet && Platform.OS === 'ios' ? 0 : insets.top
+  // 2026-08-21: el gate `&& Platform.OS === 'ios'` se fue — las tres altas
+  // (únicos consumidores de `presentedAsSheet`, vía WizardShell/add-fijo)
+  // ahora también se presentan como hoja en Android (`formSheet` en
+  // app-stack-shell): la hoja nativa arranca debajo de la status bar en
+  // ambas plataformas, así que el inset superior sobra igual.
+  const topInset = presentedAsSheet ? 0 : insets.top
   const bottomPadding = baseBottomPadding + numpadOffset + insets.bottom
   // Los insets se SUMAN a lo que pida el caller en vez de pisarlo: el
   // objeto va al final del array de estilos, así que hay que leer sus
@@ -447,7 +452,24 @@ export function Screen({
     // el límite y el inset vive en un solo lugar. La app es
     // portrait-only (app.config.ts), así que no hay insets laterales
     // que consumir.
-    <View style={[styles.safeArea, { backgroundColor: canvas }]}>
+    <View
+      style={[
+        styles.safeArea,
+        { backgroundColor: canvas },
+        // Hoja en Android (formSheet): el redondeo superior lo hacemos
+        // NOSOTROS recortando el root — react-native-screens solo moldea
+        // su propio drawable y cualquier `contentStyle.backgroundColor`
+        // lo pisa con un rectángulo plano (esquinas rectas, reporte owner
+        // 2026-08-21). Radio = neoRadii.sheet, el de todas las hojas.
+        presentedAsSheet && Platform.OS === 'android'
+          ? {
+              borderTopLeftRadius: neoRadii.sheet,
+              borderTopRightRadius: neoRadii.sheet,
+              overflow: 'hidden' as const,
+            }
+          : null,
+      ]}
+    >
       <KeyboardAvoidingView
         behavior={kavBehavior}
         keyboardVerticalOffset={isTabScreen ? 8 : 0}

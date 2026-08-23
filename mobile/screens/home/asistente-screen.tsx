@@ -284,7 +284,23 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
           `presentation:'modal'`, así que el sistema ya redondea y
           proyecta la tarjeta; un radio propio de 32 dejaría ver el
           vacío del presentador en las esquinas. */}
-      <View style={[styles.root, { backgroundColor: neo.sheet }]}>
+      <View
+        style={[
+          styles.root,
+          { backgroundColor: neo.sheet },
+          // Hoja en Android (formSheet): el redondeo superior lo recorta
+          // este root — el contenedor de la ruta va transparente (ver
+          // app-stack-shell) porque react-native-screens no moldea un
+          // fondo de contenido propio. Radio = neoRadii.sheet.
+          Platform.OS === 'android'
+            ? {
+                borderTopLeftRadius: neoRadii.sheet,
+                borderTopRightRadius: neoRadii.sheet,
+                overflow: 'hidden' as const,
+              }
+            : null,
+        ]}
+      >
         <AsesorStarField
           count={18}
           colors={starColors(neo, isDark)}
@@ -294,10 +310,10 @@ export function AsistenteScreen({ familyId, userId }: AsistenteScreenProps) {
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={{
-            // iOS modal already inset by the system; Android card needs
-            // the regular safe area top.
-            paddingTop:
-              Platform.OS === 'ios' ? 6 : insets.top + 6,
+            // 2026-08-21: la ruta es hoja en AMBAS plataformas (iOS modal /
+            // Android formSheet) — la hoja arranca debajo de la status bar,
+            // así que el inset superior sobra también en Android.
+            paddingTop: 6,
             paddingBottom: insets.bottom + 24,
           }}
           showsVerticalScrollIndicator={false}

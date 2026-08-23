@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Platform } from 'react-native'
+import { PixelRatio, Platform } from 'react-native'
 import { Stack } from 'expo-router'
 import { neoTokens } from '@/theme/neo-tokens'
 import { useAppTheme } from '@/theme/theme-provider'
@@ -34,12 +34,16 @@ import { withStackDevLog } from '@/lib/dev/anim-log'
 // Single source of truth for stack/modal animation pacing. Values
 // match the curves prototyped in `docs/transitions-preview.html`.
 //
-// Note: `@react-navigation/native-stack` (which expo-router wraps)
-// only honors `animationDuration` on Android — iOS uses the platform
-// curves baked into UIKit. We still set it for consistency and so
-// Android matches the same pacing as iOS visually. The
-// `'ios_from_right'` animation type pins both platforms to the same
-// horizontal slide instead of the platform default.
+// Note: `animationDuration` is an iOS-ONLY prop in react-native-screens
+// (typed `@platform ios`; Android has no implementation — its transitions
+// come from the anim XMLs baked into the library, duration included).
+// And on iOS it only applies to the custom animator types (`fade`,
+// `slide_from_bottom`, `fade_from_bottom`, `simple_push`) — with
+// `animation: 'default'` UIKit's own curves win. We still set it so the
+// animations that CAN honor it (the auth crossfade) share these tokens,
+// but do NOT expect it to pace Android. The `'ios_from_right'` animation
+// type pins Android to the same horizontal slide shape as iOS, at the
+// library's own duration.
 //
 // ─── Architectural decision (2026-04-30) ─────────────────────────
 // We deliberately stay on `@react-navigation/native-stack` and do
@@ -51,10 +55,13 @@ import { withStackDevLog } from '@/lib/dev/anim-log'
 //      drives every frame from the bridge — measurable jank on
 //      lower-end Android, especially when Reanimated worklets are
 //      already saturating the UI thread (which we use heavily).
-//   2. Native-stack inherits the OS swipe-back gesture for free,
-//      including the predictive back behavior on Android 14+. JS
-//      stack reimplements it with PanResponder — buggier under
-//      RNGH-heavy screens (we have many: Gastos, Fijos, modales).
+//   2. Native-stack inherits the iOS swipe-back gesture for free.
+//      (On Android there is NO stack swipe gesture: react-navigation
+//      forces `gestureEnabled: false` there and drives the hardware
+//      back in JS, and the manifest ships with predictive back
+//      disabled. A JS stack wouldn't add one either without
+//      reimplementing it with PanResponder — buggier under RNGH-heavy
+//      screens, and we have many: Gastos, Fijos, modales.)
 //   3. The remaining UX gap (a parallax fade on the previous screen
 //      during push) is small. The unified `ios_from_right` +
 //      `motionDurations.enterStack` on both platforms already gives
@@ -68,6 +75,16 @@ import { withStackDevLog } from '@/lib/dev/anim-log'
 // points. The trade-off is intentional, not an oversight.
 const STACK_PUSH_ANIMATION =
   Platform.OS === 'ios' ? ('default' as const) : ('ios_from_right' as const)
+// Radio de las hojas `formSheet` de Android. react-native-screens 4.16
+// guarda la prop cruda (ScreenViewManager.setSheetCornerRadius) y al
+// aplicarla la pasa por `PixelUtil.toDIPFromPixel()` (Screen.kt:593) — es
+// decir, la INTERPRETA EN PIXELES: nuestro 34 terminaba en ~19dp y las
+// esquinas se leian rectas (reporte owner 2026-08-21). Pre-compensamos por
+// densidad para que el radio REAL sea neoRadii.sheet (34dp) en cualquier
+// pantalla. TODO: al actualizar react-native-screens, verificar si
+// corrigieron la conversion y quitar el `PixelRatio.get()`.
+const ANDROID_SHEET_CORNER_RADIUS = Math.round(PixelRatio.get() * 34)
+
 const MODAL_ANIMATION =
   Platform.OS === 'ios' ? ('default' as const) : ('slide_from_bottom' as const)
 
@@ -295,28 +312,88 @@ export function AppStackShell() {
           <Stack.Screen
             name="add-expense"
             options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              // Paridad de hoja (pedido owner 2026-08-21): en Android estas
+              // altas iban como 'card' full-screen — llegaban hasta arriba y
+              // sin pildora de arrastre. 'formSheet' las presenta como sheet
+              // NATIVO (BottomSheetBehavior: esquinas, scrim, drag-to-dismiss),
+              // el equivalente real del pageSheet de iOS. Detent unico 1.0 =
+              // detent 0.93 ~= el pageSheet de iOS: la hoja tope abajo de la status
+              // bar dejando ver el borde del padre; radio 34 = neoRadii.sheet.
+              presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
               animation: MODAL_ANIMATION,
               animationDuration: motionDurations.enterModal,
               gestureDirection: 'vertical',
+              ...(Platform.OS === 'android'
+                ? {
+                    sheetAllowedDetents: [0.93],
+                    sheetCornerRadius: ANDROID_SHEET_CORNER_RADIUS,
+                    sheetElevation: 24,
+                    // Fondo del CONTENEDOR transparente: con un color acá RN
+                    // instala un ColorDrawable plano y las esquinas del sheet
+                    // quedan RECTAS (react-native-screens solo moldea su
+                    // MaterialShapeDrawable). El redondeo real lo hace el ROOT
+                    // de cada pantalla (borderTopRadius + overflow hidden).
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }
+                : null),
             }}
           />
           <Stack.Screen
             name="add-fixed-expense"
             options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              // Paridad de hoja (pedido owner 2026-08-21): en Android estas
+              // altas iban como 'card' full-screen — llegaban hasta arriba y
+              // sin pildora de arrastre. 'formSheet' las presenta como sheet
+              // NATIVO (BottomSheetBehavior: esquinas, scrim, drag-to-dismiss),
+              // el equivalente real del pageSheet de iOS. Detent unico 1.0 =
+              // detent 0.93 ~= el pageSheet de iOS: la hoja tope abajo de la status
+              // bar dejando ver el borde del padre; radio 34 = neoRadii.sheet.
+              presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
               animation: MODAL_ANIMATION,
               animationDuration: motionDurations.enterModal,
               gestureDirection: 'vertical',
+              ...(Platform.OS === 'android'
+                ? {
+                    sheetAllowedDetents: [0.93],
+                    sheetCornerRadius: ANDROID_SHEET_CORNER_RADIUS,
+                    sheetElevation: 24,
+                    // Fondo del CONTENEDOR transparente: con un color acá RN
+                    // instala un ColorDrawable plano y las esquinas del sheet
+                    // quedan RECTAS (react-native-screens solo moldea su
+                    // MaterialShapeDrawable). El redondeo real lo hace el ROOT
+                    // de cada pantalla (borderTopRadius + overflow hidden).
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }
+                : null),
             }}
           />
           <Stack.Screen
             name="add-income"
             options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              // Paridad de hoja (pedido owner 2026-08-21): en Android estas
+              // altas iban como 'card' full-screen — llegaban hasta arriba y
+              // sin pildora de arrastre. 'formSheet' las presenta como sheet
+              // NATIVO (BottomSheetBehavior: esquinas, scrim, drag-to-dismiss),
+              // el equivalente real del pageSheet de iOS. Detent unico 1.0 =
+              // detent 0.93 ~= el pageSheet de iOS: la hoja tope abajo de la status
+              // bar dejando ver el borde del padre; radio 34 = neoRadii.sheet.
+              presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
               animation: MODAL_ANIMATION,
               animationDuration: motionDurations.enterModal,
               gestureDirection: 'vertical',
+              ...(Platform.OS === 'android'
+                ? {
+                    sheetAllowedDetents: [0.93],
+                    sheetCornerRadius: ANDROID_SHEET_CORNER_RADIUS,
+                    sheetElevation: 24,
+                    // Fondo del CONTENEDOR transparente: con un color acá RN
+                    // instala un ColorDrawable plano y las esquinas del sheet
+                    // quedan RECTAS (react-native-screens solo moldea su
+                    // MaterialShapeDrawable). El redondeo real lo hace el ROOT
+                    // de cada pantalla (borderTopRadius + overflow hidden).
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }
+                : null),
             }}
           />
           <Stack.Screen
@@ -331,19 +408,51 @@ export function AppStackShell() {
           <Stack.Screen
             name="asistente"
             options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              // Paridad de hoja (2026-08-21, segunda tanda): misma receta
+              // formSheet validada en las tres altas — la pildora que esta
+              // pantalla dibuja a mano vuelve a decir la verdad en Android.
+              presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
               animation: MODAL_ANIMATION,
               animationDuration: motionDurations.enterModal,
               gestureDirection: 'vertical',
+              ...(Platform.OS === 'android'
+                ? {
+                    sheetAllowedDetents: [0.93],
+                    sheetCornerRadius: ANDROID_SHEET_CORNER_RADIUS,
+                    sheetElevation: 24,
+                    // Fondo del CONTENEDOR transparente: con un color acá RN
+                    // instala un ColorDrawable plano y las esquinas del sheet
+                    // quedan RECTAS (react-native-screens solo moldea su
+                    // MaterialShapeDrawable). El redondeo real lo hace el ROOT
+                    // de cada pantalla (borderTopRadius + overflow hidden).
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }
+                : null),
             }}
           />
           <Stack.Screen
             name="coach/[signalId]"
             options={{
-              presentation: Platform.OS === 'ios' ? 'modal' : 'card',
+              // Paridad de hoja (2026-08-21, segunda tanda): misma receta
+              // formSheet validada en las tres altas — la pildora que esta
+              // pantalla dibuja a mano vuelve a decir la verdad en Android.
+              presentation: Platform.OS === 'ios' ? 'modal' : 'formSheet',
               animation: MODAL_ANIMATION,
               animationDuration: motionDurations.enterModal,
               gestureDirection: 'vertical',
+              ...(Platform.OS === 'android'
+                ? {
+                    sheetAllowedDetents: [0.93],
+                    sheetCornerRadius: ANDROID_SHEET_CORNER_RADIUS,
+                    sheetElevation: 24,
+                    // Fondo del CONTENEDOR transparente: con un color acá RN
+                    // instala un ColorDrawable plano y las esquinas del sheet
+                    // quedan RECTAS (react-native-screens solo moldea su
+                    // MaterialShapeDrawable). El redondeo real lo hace el ROOT
+                    // de cada pantalla (borderTopRadius + overflow hidden).
+                    contentStyle: { backgroundColor: 'transparent' },
+                  }
+                : null),
             }}
           />
           <Stack.Screen

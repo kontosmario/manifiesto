@@ -143,11 +143,25 @@ export function CoachModeScreen({
   }
 
   return (
-    // Carcasa de hoja: sólido `neo.sheet`. Sin esquinas superiores
-    // redondeadas ni `shadows.sheet` — es una ruta con
-    // `presentation:'modal'`, el sistema ya redondea y proyecta la
-    // tarjeta y un radio propio dejaría ver el vacío del presentador.
-    <View style={[styles.root, { backgroundColor: neo.sheet }]}>
+    // Carcasa de hoja: sólido `neo.sheet`. En iOS sin esquinas propias
+    // (el pageSheet del sistema ya redondea y un radio propio dejaría ver
+    // el vacío del presentador). En Android (formSheet, 2026-08-21) el
+    // redondeo superior lo recorta ESTE root — el contenedor de la ruta
+    // va transparente (ver app-stack-shell) porque react-native-screens
+    // no moldea un fondo de contenido propio. Radio = neoRadii.sheet.
+    <View
+      style={[
+        styles.root,
+        { backgroundColor: neo.sheet },
+        Platform.OS === 'android'
+          ? {
+              borderTopLeftRadius: neoRadii.sheet,
+              borderTopRightRadius: neoRadii.sheet,
+              overflow: 'hidden' as const,
+            }
+          : null,
+      ]}
+    >
       <AsesorStarField
         count={18}
         colors={starColors(neo, isDark)}
@@ -157,9 +171,9 @@ export function CoachModeScreen({
       <View
         style={[
           styles.grabHandleArea,
-          // iOS modal already inset by the system; Android card needs
-          // the regular safe area top.
-          { paddingTop: Platform.OS === 'ios' ? 8 : insets.top + 8 },
+          // 2026-08-21: la ruta es hoja en AMBAS plataformas (iOS modal /
+          // Android formSheet) — el inset superior sobra también en Android.
+          { paddingTop: 8 },
         ]}
         pointerEvents="none"
       >

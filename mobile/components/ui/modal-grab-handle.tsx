@@ -20,6 +20,11 @@ import { useThemeTokens } from '@/theme/theme-provider'
 export function ModalGrabHandle() {
   const theme = useThemeTokens()
   const neo = neoTokens(theme.mode)
+  // 2026-08-21: el gate iOS-only que vivió acá 3 días se fue — las rutas
+  // que muestran esta píldora (las tres altas, vía Screen/WizardShell) se
+  // presentan ahora como `formSheet` TAMBIÉN en Android, con drag-to-dismiss
+  // nativo real (BottomSheetBehavior). La píldora vuelve a decir la verdad
+  // en ambas plataformas.
   return (
     <View style={styles.area} pointerEvents="none">
       <View style={[styles.handle, { backgroundColor: neo.sheetHandle }]} />
