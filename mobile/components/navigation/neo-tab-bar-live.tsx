@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
+import { Platform, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native'
 import { Text } from '@/components/ui/app-text'
 import Animated, {
   cancelAnimation,
@@ -30,6 +30,16 @@ import { nunitoFamily } from '@/theme/typography'
 import type { NeoTabKey } from '@/components/navigation/neo-tab-bar-route-map'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+
+// Ancho MÁXIMO de la barra flotante = la composición del mockup aprobado:
+// frame de 393dp (design/home-final-2026-07/home.dc.html) − 18dp de inset
+// por lado ⇒ 357dp. En ventanas más anchas (densidad de pantalla "pequeña"
+// del OS, tablets, foldables) el sobrante tiene que irse a los MÁRGENES
+// laterales, nunca a la barra: los dos `navGroup` son `flex: 1` con
+// `space-between`, así que cada dp extra de barra se convierte en hueco
+// entre ítems y desparrama la composición (visto en un moto g20 con
+// "Tamaño de pantalla: pequeño" ⇒ ventana de 484dp de ancho).
+const NAV_MAX_OUTER_WIDTH = 357
 
 /**
  * Barra de navegación del rediseño (spec `home-final`, aprobada 2026-07-21)
@@ -306,6 +316,7 @@ export function NeoTabBarLive({
 }: NeoTabBarLiveProps) {
   const { t } = useTranslation()
   const s = HOME_SPEC[mode]
+  const { width: windowWidth } = useWindowDimensions()
 
   // ── Geometría del surco ──────────────────────────────────────────────
   // Los dos `navGroup` reportan su offset x relativo a `nav`; cada ítem
@@ -438,14 +449,36 @@ export function NeoTabBarLive({
         // (footprint fijo 102 = bottom14+alto88) — despeja la barra neo, cuyo
         // footprint (max(inset,22)+~79 ≈ 101–113) es ≤/≈ el del viejo en todo
         // device. Sin esto (bar in-flow) reservaría ~135px + los 144 del scroll =
-        // gap catastrófico. left/right:0 dejan que `marginHorizontal:18` fije el
-        // inset lateral; `marginBottom` (compone el inset con el float 22) fija la
-        // separación del borde inferior. El `marginTop:22` queda inerte (no hay
-        // flow arriba). El homeIndicator dibujado NO se pinta (se usa el inset
-        // real). En preview (`bottomInset` undefined) NO aplica → sigue in-flow
-        // dentro del PreviewPhoneSection.
+        // gap catastrófico. El ancho flotante se calcula acá (no con
+        // left/right:0): `min(ventana − 36, NAV_MAX_OUTER_WIDTH)` centrado a
+        // mano — en teléfonos ≤393dp es idéntico al viejo `left/right:0 +
+        // marginHorizontal:18`, y en ventanas anchas la barra conserva la
+        // composición del mockup y el sobrante va a los márgenes.
+        // El cap corre SOLO EN ANDROID (decisión owner 2026-08-21): en un
+        // iPhone Plus/Pro Max (414-430dp) también mordería, pero la 2.0.0
+        // ya está viva en el App Store con la barra estirada QA-da — iOS
+        // conserva el render shippeado hasta que el cap se apruebe mirando
+        // un device grande. `marginHorizontal:0` neutraliza el 18 del estilo
+        // base (con `left` explícito sumaría un corrimiento). `marginBottom`
+        // (compone el inset con el float 22) fija la separación del borde
+        // inferior. El `marginTop:22` queda inerte (no hay flow arriba). El
+        // homeIndicator dibujado NO se pinta (se usa el inset real). En
+        // preview (`bottomInset` undefined) NO aplica → sigue in-flow dentro
+        // del PreviewPhoneSection.
         bottomInset != null
-          ? { position: 'absolute', left: 0, right: 0, bottom: 0, marginBottom: Math.max(bottomInset, 22) }
+          ? (() => {
+              const maxOuter =
+                Platform.OS === 'android' ? NAV_MAX_OUTER_WIDTH : Number.POSITIVE_INFINITY
+              const floatWidth = Math.min(windowWidth - 36, maxOuter)
+              return {
+                position: 'absolute' as const,
+                bottom: 0,
+                marginHorizontal: 0,
+                width: floatWidth,
+                left: (windowWidth - floatWidth) / 2,
+                marginBottom: Math.max(bottomInset, 22),
+              }
+            })()
           : null,
       ]}
     >
