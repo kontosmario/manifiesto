@@ -132,11 +132,17 @@ async function fetchExpoPushToken(): Promise<string | null> {
   try {
     const response = await Notifications.getExpoPushTokenAsync({ projectId })
     return response.data ?? null
-  } catch {
+  } catch (error) {
     // El error más común aquí es `aps-environment entitlement missing`
-    // en builds sideloaded sin Apple Dev firma. El path automático
-    // tiene que tragar el error: el toggle manual de Settings ya
-    // expone el error vía mutation a la UI.
+    // en builds sideloaded sin Apple Dev firma (iOS) o Firebase sin
+    // inicializar por falta de google-services.json (Android). El path
+    // automático tiene que tragar el error: el toggle manual de Settings
+    // ya expone el error vía mutation a la UI. En dev igual lo dejamos
+    // ver — este catch mudo era la ÚNICA señal del FCM ausente y el push
+    // moría en silencio con status 'no-token' (auditoría 2026-08-18).
+    if (__DEV__) {
+      console.warn('[push] getExpoPushTokenAsync falló; se degrada a no-token:', error)
+    }
     return null
   }
 }

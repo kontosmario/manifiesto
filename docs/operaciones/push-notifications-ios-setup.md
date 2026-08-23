@@ -114,7 +114,10 @@ const token = await Notifications.getDevicePushTokenAsync()
 
 **Desventajas**:
 - Setup ~1-2 horas (manejo .p8, JWT signing en Edge Function)
-- Para Android hay que armar FCM directo aparte (otro setup)
+- Para Android hay que armar FCM directo aparte (otro setup). OJO: esto
+  aplica SOLO a este escenario alternativo no implementado — con el
+  pipeline actual (Expo Push) el backend ya es idéntico para ambas
+  plataformas; ver `push-notifications-android-setup.md`.
 - Mantenimiento: rotación de keys cada N años, monitoreo de errors APNs
 
 ### Recomendación
@@ -168,7 +171,9 @@ Refactor pendiente:
    - Generar JWT con HS256 + secret
    - POST a `api.push.apple.com` directo
 3. En el cliente (`mobile/features/push/use-push-notifications.ts`), reemplazar `getExpoPushTokenAsync` por `getDevicePushTokenAsync`
-4. Manejar separadamente el flow Android (FCM directo)
+4. Manejar separadamente el flow Android (FCM directo — solo en este
+   escenario; bajo Expo Push el flow Android es el mismo, ver
+   `push-notifications-android-setup.md`)
 
 Estimado: 1-2 días de trabajo + testing exhaustivo.
 

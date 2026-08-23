@@ -31,6 +31,41 @@ export function isMissingApsEntitlementError(
   return error instanceof MissingApsEntitlementError
 }
 
+// Contraparte Android del sentinel de arriba: sin google-services.json
+// (FCM no configurado en el build) `getExpoPushTokenAsync` lanza el error
+// de Firebase sin inicializar. También es estructural — la salida es un
+// build con FCM cableado — así que merece copy explicativo en vez del
+// stacktrace crudo de Firebase en un toast (gap de la auditoría Android
+// 2026-08-18).
+export class MissingFcmConfigError extends Error {
+  readonly code = 'missing_fcm_config' as const
+  constructor() {
+    super(i18n.t('errors:push.missingFcmConfig'))
+    this.name = 'MissingFcmConfigError'
+  }
+}
+
+export function isMissingFcmConfigError(error: unknown): error is MissingFcmConfigError {
+  return error instanceof MissingFcmConfigError
+}
+
+function looksLikeMissingFcmConfigFailure(error: unknown): boolean {
+  if (typeof error !== 'object' || error == null) return false
+  const message = (error as { message?: unknown }).message
+  if (typeof message !== 'string') return false
+  const lower = message.toLowerCase()
+  return (
+    // Mensajes de Firebase/expo-notifications cuando el build no trae
+    // google-services.json: "Default FirebaseApp is not initialized" /
+    // "Make sure to call FirebaseApp.initializeApp" / menciones directas
+    // al archivo de config.
+    lower.includes('firebaseapp is not initialized') ||
+    lower.includes('default firebaseapp') ||
+    lower.includes('google-services') ||
+    (lower.includes('firebase') && lower.includes('initial'))
+  )
+}
+
 function looksLikeApsEntitlementFailure(error: unknown): boolean {
   if (typeof error !== 'object' || error == null) return false
   const message = (error as { message?: unknown }).message
@@ -103,6 +138,9 @@ async function getExpoPushToken(): Promise<string> {
   } catch (error) {
     if (Platform.OS === 'ios' && looksLikeApsEntitlementFailure(error)) {
       throw new MissingApsEntitlementError()
+    }
+    if (Platform.OS === 'android' && looksLikeMissingFcmConfigFailure(error)) {
+      throw new MissingFcmConfigError()
     }
     throw error
   }

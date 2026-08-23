@@ -61,6 +61,7 @@
     "tokenUnavailable": "No se pudo obtener un token push válido.",
     "noFamilyOrSession": "No hay familia o sesión activa para activar push.",
     "noSessionRegister": "No hay sesión activa para registrar push.",
-    "missingApsEntitlement": "Push en iOS requiere Apple Developer Program ($99/año) y un build firmado. Sin eso el binario no trae el entitlement aps-environment."
+    "missingApsEntitlement": "Push en iOS requiere Apple Developer Program ($99/año) y un build firmado. Sin eso el binario no trae el entitlement aps-environment.",
+    "missingFcmConfig": "Push en Android requiere un build con Firebase (FCM) configurado. Este build no incluye google-services.json."
   }
 }

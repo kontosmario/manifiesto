@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { isAppUnlocked } from '@/features/auth/app-lock-state'
 import {
@@ -82,6 +83,26 @@ export function NotificationRouterBridge() {
       const Notifications = await import('expo-notifications')
 
       Notifications.setNotificationHandler(notificationHandler)
+
+      // Canal 'default' creado al ARRANQUE, incondicional en Android. Los
+      // otros tres puntos de creación (setup post-login, toggle de Ajustes,
+      // nudges locales) corren recién con permiso concedido + familyId
+      // resuelto: un usuario que concedía el permiso sin familia resuelta
+      // quedaba SIN canal y los push del server (channelId 'default')
+      // caían al canal fallback sin heads-up. Además Android recomienda
+      // que el canal exista ANTES del prompt de permiso. Idempotente:
+      // si ya existe, actualiza la misma config (espejo de
+      // push-notifications.ts).
+      if (Platform.OS === 'android') {
+        try {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+          })
+        } catch {
+          // best-effort
+        }
+      }
 
       const response = await Notifications.getLastNotificationResponseAsync()
       if (!isMounted || !response) {

@@ -19,6 +19,8 @@ interface ExpoPushMessage {
   body: string
   data?: unknown
   sound?: string
+  priority?: 'default' | 'normal' | 'high'
+  channelId?: string
 }
 
 interface PushSubscriptionRow {
@@ -508,6 +510,13 @@ export async function handler(request: Request): Promise<Response> {
       body: sanitizeText(m.body, 240),
       data: m.data,
       sound: m.sound,
+      // Parity with the single-message path above: without these the
+      // batch path (the production path since the coalescing rollout)
+      // delivered at default APNs priority and dropped the Android
+      // notification channel entirely. Caller-supplied values win so a
+      // future low-urgency digest can downgrade its own priority.
+      priority: m.priority ?? ('high' as const),
+      channelId: m.channelId ?? 'default',
     }))
     if (messages.length === 0) {
       return jsonResponse({ ok: true, count: 0, sent: 0, failed: 0, removed: 0, statuses: [] }, 200, cors)

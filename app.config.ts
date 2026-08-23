@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import type { ExpoConfig } from 'expo/config'
 
 type PluginEntry = NonNullable<ExpoConfig['plugins']>[number]
@@ -67,7 +68,18 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
-    'expo-notifications',
+    // Android necesita un SMALL ICON monocromo (el OS solo usa el canal
+    // alfa y lo tiñe con `color`; sin asset dedicado muestra un cuadrado
+    // gris). Generado por scripts/generate-android-notification-icon.mjs
+    // desde el helecho canónico. En iOS estas opciones no aplican.
+    [
+      'expo-notifications',
+      {
+        icon: './assets/brand/android-notification-icon.png',
+        color: '#2E7C39',
+        defaultChannel: 'default',
+      },
+    ],
     'expo-sqlite',
     'expo-asset',
     'expo-secure-store',
@@ -359,6 +371,13 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.manifiesto.mobile',
+    // FCM (PRE-LAUNCH A4): la línea queda LISTA y solo se emite cuando el
+    // archivo existe (local) o viene como file secret de EAS — apuntar a
+    // un json inexistente rompería todo prebuild hasta entonces. Runbook:
+    // docs/operaciones/push-notifications-android-setup.md.
+    ...(process.env.GOOGLE_SERVICES_JSON || existsSync('./google-services.json')
+      ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json' }
+      : {}),
     // Sprint P · Audit #9 P-4 (2026-06-10): explicit deny-list to prevent
     // upstream plugins / merged manifests from silently shipping extra
     // permissions. RECORD_AUDIO would otherwise reappear if any future

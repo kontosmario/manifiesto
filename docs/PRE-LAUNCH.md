@@ -118,9 +118,10 @@ compliance Apple 3.1.2 en la paywall. Todo el backend de suscripciones está
 
 | # | Item | Estado |
 |---|---|---|
-| A1 | Android prebuild + AndroidManifest audit | 🔴 pre-Play Store |
-| A2 | SHA256 real en `assetlinks.json` (hoy placeholder) | 🔴 pre-Play Store |
+| A1 | Android prebuild + AndroidManifest audit | 🟡 auditado 2026-08-18 (paridad + quick wins integrados); ver memoria de sesión |
+| A2 | SHA256 real en `assetlinks.json` (hoy placeholder, y el package es el bundle de iOS — corregir ambos) | 🔴 pre-Play Store |
 | A3 | Google Play Console setup | 🔴 |
+| A4 | FCM + ícono monocromo de notificación + deploy del fix del batch — runbook completo en `docs/operaciones/push-notifications-android-setup.md` | 🔴 bloqueante de push |
 
 ---
 
