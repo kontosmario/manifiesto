@@ -389,7 +389,20 @@ const config: ExpoConfig = {
     // había dejado sin montar, y con la reserva se fue el único punto de
     // entrada a `apply_reserve_decision` en producción: la plata se veía de
     // solo lectura en Ajustes y no había forma de usarla.
-    buildNumber: '19',
+    // Build 20 (2026-08-23): el build de los 4 frentes del día. (1) SDK de
+    // Meta para atribución de app ads + SKAdNetwork (ATT al arrancar,
+    // NSPrivacyTracking=true, init nativo en el AppDelegate; QA en device
+    // con el evento aceptado por Meta y visible en Events Manager). (2) Fix
+    // del tab EN BLANCO al navegar entre tabs (bottom-tabs 7.15.9 derivaba
+    // el activityState de un Animated con native driver; backport 9bfc8d0f65
+    // vía patch-package, QA ~100 cambios sin blancos en build Release).
+    // (3) Alta de fijos con selector obligatorio "PRIMERA CUOTA" (fechas
+    // concretas, sin preselección) + los fijos futuros visibles en
+    // Pendientes. (4) Incidente de notifs (cuenta aye): spam del nudge
+    // "Cierra tu día" (clave de dedup inválida para SecureStore + race),
+    // push que aterrizaban en la ruta muerta /(tabs)/control, y prompt de
+    // FaceID colgado sobre un modal en descarte.
+    buildNumber: '20',
     // expo-store-review usa este campo como último fallback del link a la
     // ficha (y Play exige el par de abajo); el deep link de reseña propio
     // vive en mobile/lib/legal-urls.ts.
@@ -466,7 +479,7 @@ const config: ExpoConfig = {
     // build de iOS para tener UN número mental por release. El versionCode 1
     // que quedó en android/app/build.gradle es un artefacto local viejo:
     // /android está gitignoreado y el prebuild lo regenera desde acá.
-    versionCode: 19,
+    versionCode: 20,
     // Ficha de Play — la usa expo-store-review como fallback del In-App
     // Review (sin este campo, en Android loguea un warning y no abre nada).
     playStoreUrl: 'https://play.google.com/store/apps/details?id=com.manifiesto.mobile',
