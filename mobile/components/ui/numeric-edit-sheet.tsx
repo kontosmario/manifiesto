@@ -276,6 +276,7 @@ export function NumericEditSheet({
       transparent
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={handleDismiss}
     >
       <GestureHandlerRootView style={styles.root}>

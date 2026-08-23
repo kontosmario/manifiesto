@@ -384,6 +384,7 @@ export function OnbNumpad({
       visible={rendered}
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onDone}
     >
       <View style={styles.overlay}>

@@ -139,6 +139,7 @@ export function TourTooltip() {
         style={styles.bodyScroll}
         contentContainerStyle={styles.bodyScrollContent}
         bounces={false}
+        overScrollMode="never"
         showsVerticalScrollIndicator
       >
         <Text style={[styles.body, { color: foreground }]}>{config.text}</Text>

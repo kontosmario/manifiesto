@@ -404,6 +404,8 @@ export function BillingScreen({
           visible={showDelete}
           animationType="slide"
           presentationStyle="fullScreen"
+          statusBarTranslucent
+          navigationBarTranslucent
           onRequestClose={() => setShowDelete(false)}
         >
           <DeleteAccountScreen

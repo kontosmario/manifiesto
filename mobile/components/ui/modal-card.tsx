@@ -445,6 +445,7 @@ export function ModalCard({
   return (
     <Modal
       animationType="none"
+      navigationBarTranslucent
       onRequestClose={handleDismiss}
       statusBarTranslucent
       transparent

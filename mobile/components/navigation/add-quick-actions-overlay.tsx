@@ -284,6 +284,7 @@ export function AddQuickActionsOverlay({
       visible={mounted}
       onRequestClose={onDismiss}
       statusBarTranslucent
+      navigationBarTranslucent
       animationType="none"
     >
       <Pressable

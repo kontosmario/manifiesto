@@ -269,7 +269,14 @@ export function StreakSheet({
   )
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
       <GestureHandlerRootView style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
           <Pressable
@@ -330,6 +337,7 @@ export function StreakSheet({
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             bounces={false}
+            overScrollMode="never"
           >
             <WeekActivity weekActivity={data.weekActivity} tone={tone} />
 

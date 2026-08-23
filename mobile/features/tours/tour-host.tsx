@@ -554,6 +554,7 @@ export function TourHost() {
         shownRef.current = true
       }}
       statusBarTranslucent
+      navigationBarTranslucent
       transparent
       visible
     >

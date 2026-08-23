@@ -123,6 +123,7 @@ export function ToastHost() {
   return (
     <Modal
       animationType="none"
+      navigationBarTranslucent
       onRequestClose={dismiss}
       statusBarTranslucent
       transparent

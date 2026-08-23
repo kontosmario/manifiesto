@@ -475,7 +475,12 @@ export function CreateSavingsGoalWizardSheet({
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={handleDismiss}
+      navigationBarTranslucent
+      // Back físico de Android (2026-08-21): en un paso avanzado RETROCEDE
+      // de paso (misma semántica que el botón visible "Atrás") en vez de
+      // descartar el wizard entero con lo tipeado. Solo en el paso 1 el
+      // back cierra — paridad con el swipe-down de iOS desde el inicio.
+      onRequestClose={step > 1 ? goBack : handleDismiss}
     >
       <WizardSkinProvider mode={theme.mode}>
       <GestureHandlerRootView style={styles.root}>

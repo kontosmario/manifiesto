@@ -247,6 +247,7 @@ export function InAppNumpad({
       transparent
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onDismiss}
     >
       <GestureHandlerRootView style={styles.root}>
