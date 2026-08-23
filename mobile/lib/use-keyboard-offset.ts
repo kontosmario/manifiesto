@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { Keyboard } from 'react-native'
+import { Keyboard, Platform } from 'react-native'
 import { useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated'
 import { motionEasings } from '@/lib/motion'
+import { KEYBOARD_HIDE_EVENT, KEYBOARD_SHOW_EVENT } from '@/hooks/use-keyboard-height'
 
 /**
  * Tracks the keyboard height as a negative shared value so callers
@@ -12,7 +13,9 @@ import { motionEasings } from '@/lib/motion'
  * Behavior:
  *   • `visible` false → resets offset to 0 + dismisses any open keyboard
  *     (avoids floating keyboard when the modal closes mid-edit)
- *   • Subscribes to `keyboardWillShow`/`keyboardWillHide` while visible;
+ *   • Subscribes to the platform-correct keyboard events (shared
+ *     `KEYBOARD_SHOW_EVENT`/`KEYBOARD_HIDE_EVENT` from
+ *     `use-keyboard-height` — Android never fires the `will*` pair);
  *     unsubscribes on close.
  *   • CRITICAL: resets offset on every `visible` transition. If the
  *     listener `hide` callback unmounts before firing, the offset can
@@ -27,15 +30,19 @@ export function useKeyboardOffset(visible: boolean): SharedValue<number> {
       Keyboard.dismiss()
       return
     }
-    const showSub = Keyboard.addListener('keyboardWillShow', (e) => {
+    // Duración: en iOS `?? fallback` respeta el `duration: 0` legítimo
+    // (teclado por hardware, cambios sin animación) y snapea en sincronía
+    // con el sistema; en Android los eventos did* reportan 0 SIEMPRE, así
+    // que `|| fallback` le da una duración real a la animación.
+    const showSub = Keyboard.addListener(KEYBOARD_SHOW_EVENT, (e) => {
       keyboardOffset.value = withTiming(-(e.endCoordinates.height ?? 0), {
-        duration: e.duration ?? 250,
+        duration: Platform.OS === 'ios' ? e.duration ?? 250 : e.duration || 250,
         easing: motionEasings.decelerate,
       })
     })
-    const hideSub = Keyboard.addListener('keyboardWillHide', (e) => {
+    const hideSub = Keyboard.addListener(KEYBOARD_HIDE_EVENT, (e) => {
       keyboardOffset.value = withTiming(0, {
-        duration: e.duration ?? 200,
+        duration: Platform.OS === 'ios' ? e.duration ?? 200 : e.duration || 200,
         easing: motionEasings.decelerate,
       })
     })

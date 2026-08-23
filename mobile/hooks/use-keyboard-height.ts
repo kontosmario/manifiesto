@@ -13,17 +13,24 @@ import { Keyboard, Platform } from 'react-native'
  * bottom-padding ends up under- or over-shooting the actual keyboard
  * height. Tracking the height ourselves side-steps the issue entirely.
  */
+/**
+ * Nombres de evento de teclado por plataforma — Android nunca emite el par
+ * `will*`, así que allá se escucha `did*`. Exportados para que todos los
+ * hooks de teclado compartan la MISMA selección (ver use-keyboard-offset).
+ */
+export const KEYBOARD_SHOW_EVENT =
+  Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
+export const KEYBOARD_HIDE_EVENT =
+  Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
+
 export function useKeyboardHeight(): number {
   const [height, setHeight] = useState(0)
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow'
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide'
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
+    const showSub = Keyboard.addListener(KEYBOARD_SHOW_EVENT, (e) => {
       setHeight(e.endCoordinates?.height ?? 0)
     })
-    const hideSub = Keyboard.addListener(hideEvent, () => {
+    const hideSub = Keyboard.addListener(KEYBOARD_HIDE_EVENT, () => {
       setHeight(0)
     })
 
