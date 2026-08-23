@@ -23,7 +23,10 @@ Archivos clave:
 - **`lazy: false`** — los 5 tab screens se **pre-montan en boot**. Al tocar un tab,
   el árbol React ya está montado; solo cambia el screen activo (feel instantáneo,
   sin trabajo de mount). Costo: ~80ms extra en boot. Trade-off net positivo.
-- **`animation: 'none'`** — sin transición JS entre tabs (match UITabBarController nativo).
+- **`animation: 'fade'`** (gateado por `useReducedMotion` → `'none'`) — crossfade de
+  compositing entre escenas ya montadas. Era `'none'`; el plan de nav motion lo cambió.
+  **Ver §4b**: con el fade, bottom-tabs 7.15.9 tenía un bug de tab en blanco que se
+  backporteó con patch-package.
 - **`freezeOnBlur: false`** — dentro del navegador de tabs, los tabs inactivos NO se
   congelan (siguen vivos). Necesario también para que el swipe-to-delete (RNGH) no se
   rompa tras la primera navegación (ver `feedback_freeze_on_blur_breaks_gestures`).
@@ -145,6 +148,43 @@ Aún con el gate cerrado, el **advisor chip** hacía `if (!target) return null` 
 **Regla para screens con FlatList/SectionList:** el `ListHeaderComponent` debe tener **altura
 estable**. Cualquier elemento que pueda montar/crecer con data async tiene que **reservar su
 altura** (no `return null` → grow), o el list virtualizado re-mide y el contenido salta.
+
+---
+
+## 4b. Bug clase 3 — tab EN BLANCO al entrar (iOS producción, 2026-08-23)
+
+**Síntoma:** al navegar entre Home / Gastos / Fijos / Control, a veces (~10%, más
+seguido tocando rápido) la tab entraba en blanco: sólo la barra, nada de contenido.
+Volver a otra tab y regresar la "reanudaba". Sólo en builds de release (el timing
+del dev build con Metro lo esconde). Reporte upstream idéntico:
+[react-navigation#12755](https://github.com/react-navigation/react-navigation/issues/12755).
+
+**Causa raíz (bottom-tabs 7.15.9, `BottomTabView`):** con `animation` activa, cada
+escena tenía UN `Animated.Value` con native driver alimentando dos cosas: la
+`opacity` del fade y el **`activityState` de react-native-screens** (0 = escena
+desacoplada, 1 = en transición, 2 = arriba) vía `interpolate`. Al enfocar una escena
+desacoplada, la escena focalizada recibe `activityState = 2` como prop plana desde
+JS, pero el nodo Animated nativo todavía sostiene el `0` y gana la carrera →
+react-native-screens nunca la vuelve a acoplar → blanco. La siguiente transición
+vuelve a animar ese valor y "la revive".
+
+**Fix:** backport del commit upstream
+[`9bfc8d0f65`](https://github.com/react-navigation/react-navigation/commit/9bfc8d0f65)
+("don't derive screen detach state from animated value", bottom-tabs 7.18.8) en
+`patches/@react-navigation+bottom-tabs+7.15.9.patch`: el `activityState` sale de
+estado plano de JS (`lastUpdate.animating` + 32 ms de gracia tras el fade para que la
+escena saliente se desacople después, no durante) y el native driver queda sólo para
+la opacidad. Guardia: `tests/unit/bottom-tabs-detach-state-patch.test.ts` (falla si el
+parche no está aplicado en `lib/module`, que es lo que bundlea Metro).
+
+No se subió bottom-tabs a 7.18.x porque arrastra `@react-navigation/native` 7.2 → 7.3
+(+ core) con expo-router 6.0.23 (SDK 54) compilado contra 7.2. Cuando el proyecto pase
+a SDK 55+, bottom-tabs ≥ 7.18.8 ya trae el fix: borrar el parche y el test.
+
+Descartado a propósito: `detachInactiveScreens={false}` (el workaround popular del
+issue) — esconde el síntoma dejando las 5 escenas nativas siempre acopladas y hay
+reportes de stutter en barras custom; `animation: 'none'` también lo evita pero
+tira el crossfade que el owner pidió.
 
 ---
 

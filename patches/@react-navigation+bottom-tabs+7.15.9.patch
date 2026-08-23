@@ -1,0 +1,192 @@
+diff --git a/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabView.js b/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabView.js
+index 39d48b8..dda185a 100644
+--- a/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabView.js
++++ b/node_modules/@react-navigation/bottom-tabs/lib/module/views/BottomTabView.js
+@@ -12,7 +12,6 @@ import { useAnimatedHashMap } from "../utils/useAnimatedHashMap.js";
+ import { BottomTabBar, getTabBarHeight } from "./BottomTabBar.js";
+ import { MaybeScreen, MaybeScreenContainer } from "./ScreenFallback.js";
+ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+-const EPSILON = 1e-5;
+ const STATE_INACTIVE = 0;
+ const STATE_TRANSITIONING_OR_BELOW_TOP = 1;
+ const STATE_ON_TOP = 2;
+@@ -64,6 +63,24 @@ export function BottomTabView(props) {
+   }
+   const previousRouteKeyRef = React.useRef(focusedRouteKey);
+   const tabAnims = useAnimatedHashMap(state);
++
++  // Backport de react-navigation 9bfc8d0f65 (bottom-tabs 7.18.8, fixes #12755):
++  // el estado de acople (activityState) de cada escena sale de este estado
++  // plano de JS y no de la interpolación Animated con native driver. Con el
++  // native driver, al enfocar una escena desacoplada JS escribía 2 pero el
++  // hilo nativo seguía sosteniendo 0 y ganaba → la escena nunca se volvía a
++  // acoplar → tab en blanco hasta la próxima transición.
++  const [lastUpdate, setLastUpdate] = React.useState({
++    current: focusedRouteKey,
++    animating: false
++  });
++  if (lastUpdate.current !== focusedRouteKey) {
++    setLastUpdate({
++      current: focusedRouteKey,
++      previous: lastUpdate.current,
++      animating: true
++    });
++  }
+   React.useEffect(() => {
+     const previousRouteKey = previousRouteKeyRef.current;
+     let popToTopAction;
+@@ -76,6 +93,7 @@ export function BottomTabView(props) {
+         };
+       }
+     }
++    let timer;
+     const animateToIndex = () => {
+       if (previousRouteKey !== focusedRouteKey) {
+         navigation.emit({
+@@ -116,10 +134,25 @@ export function BottomTabView(props) {
+             target: focusedRouteKey
+           });
+         }
++        if (finished) {
++          // Delay clearing so the previous screen stays attached
++          // This will give time for any native logic to run
++          timer = setTimeout(() => {
++            setLastUpdate(update => update.animating ? {
++              ...update,
++              animating: false
++            } : update);
++          }, 32);
++        }
+       });
+     };
+     animateToIndex();
+     previousRouteKeyRef.current = focusedRouteKey;
++    return () => {
++      if (timer !== undefined) {
++        clearTimeout(timer);
++      }
++    };
+   }, [descriptors, focusedRouteKey, navigation, state.index, state.routes, tabAnims]);
+   const dimensions = SafeAreaProviderCompat.initialMetrics.frame;
+   const [tabBarHeight, setTabBarHeight] = React.useState(() => getTabBarHeight({
+@@ -204,16 +237,10 @@ export function BottomTabView(props) {
+           }
+         }) ?? {};
+         const animationEnabled = hasAnimation(descriptor.options);
++        const isAnimatingRoute = lastUpdate.animating && (lastUpdate.previous === route.key || lastUpdate.current === route.key);
+         const activityState = isFocused ? STATE_ON_TOP // the screen is on top after the transition
+-        : animationEnabled // is animation is not enabled, immediately move to inactive state
+-        ? tabAnims[route.key].interpolate({
+-          inputRange: [0, 1 - EPSILON, 1],
+-          outputRange: [STATE_TRANSITIONING_OR_BELOW_TOP,
+-          // screen visible during transition
+-          STATE_TRANSITIONING_OR_BELOW_TOP, STATE_INACTIVE // the screen is detached after transition
+-          ],
+-          extrapolate: 'extend'
+-        }) : STATE_INACTIVE;
++        : animationEnabled && isAnimatingRoute ? STATE_TRANSITIONING_OR_BELOW_TOP // screen visible during transition
++        : STATE_INACTIVE;
+         return /*#__PURE__*/_jsx(MaybeScreen, {
+           style: [StyleSheet.absoluteFill, {
+             zIndex: isFocused ? 0 : -1
+diff --git a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
+index c2b6316..137e185 100644
+--- a/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
++++ b/node_modules/@react-navigation/bottom-tabs/src/views/BottomTabView.tsx
+@@ -39,7 +39,6 @@ type Props = BottomTabNavigationConfig & {
+   descriptors: BottomTabDescriptorMap;
+ };
+ 
+-const EPSILON = 1e-5;
+ const STATE_INACTIVE = 0;
+ const STATE_TRANSITIONING_OR_BELOW_TOP = 1;
+ const STATE_ON_TOP = 2;
+@@ -99,6 +98,24 @@ export function BottomTabView(props: Props) {
+   const previousRouteKeyRef = React.useRef(focusedRouteKey);
+   const tabAnims = useAnimatedHashMap(state);
+ 
++  // Backport de react-navigation 9bfc8d0f65 (bottom-tabs 7.18.8, fixes #12755).
++  const [lastUpdate, setLastUpdate] = React.useState<{
++    current: string;
++    previous?: string;
++    animating: boolean;
++  }>({
++    current: focusedRouteKey,
++    animating: false,
++  });
++
++  if (lastUpdate.current !== focusedRouteKey) {
++    setLastUpdate({
++      current: focusedRouteKey,
++      previous: lastUpdate.current,
++      animating: true,
++    });
++  }
++
+   React.useEffect(() => {
+     const previousRouteKey = previousRouteKeyRef.current;
+ 
+@@ -120,6 +137,8 @@ export function BottomTabView(props: Props) {
+       }
+     }
+ 
++    let timer: ReturnType<typeof setTimeout> | undefined;
++
+     const animateToIndex = () => {
+       if (previousRouteKey !== focusedRouteKey) {
+         navigation.emit({
+@@ -172,12 +191,28 @@ export function BottomTabView(props: Props) {
+             target: focusedRouteKey,
+           });
+         }
++
++        if (finished) {
++          // Delay clearing so the previous screen stays attached
++          // This will give time for any native logic to run
++          timer = setTimeout(() => {
++            setLastUpdate((update) =>
++              update.animating ? { ...update, animating: false } : update
++            );
++          }, 32);
++        }
+       });
+     };
+ 
+     animateToIndex();
+ 
+     previousRouteKeyRef.current = focusedRouteKey;
++
++    return () => {
++      if (timer !== undefined) {
++        clearTimeout(timer);
++      }
++    };
+   }, [
+     descriptors,
+     focusedRouteKey,
+@@ -301,18 +336,15 @@ export function BottomTabView(props: Props) {
+             }) ?? {};
+ 
+           const animationEnabled = hasAnimation(descriptor.options);
++          const isAnimatingRoute =
++            lastUpdate.animating &&
++            (lastUpdate.previous === route.key ||
++              lastUpdate.current === route.key);
++
+           const activityState = isFocused
+             ? STATE_ON_TOP // the screen is on top after the transition
+-            : animationEnabled // is animation is not enabled, immediately move to inactive state
+-              ? tabAnims[route.key].interpolate({
+-                  inputRange: [0, 1 - EPSILON, 1],
+-                  outputRange: [
+-                    STATE_TRANSITIONING_OR_BELOW_TOP, // screen visible during transition
+-                    STATE_TRANSITIONING_OR_BELOW_TOP,
+-                    STATE_INACTIVE, // the screen is detached after transition
+-                  ],
+-                  extrapolate: 'extend',
+-                })
++            : animationEnabled && isAnimatingRoute
++              ? STATE_TRANSITIONING_OR_BELOW_TOP // screen visible during transition
+               : STATE_INACTIVE;
+ 
+           return (
