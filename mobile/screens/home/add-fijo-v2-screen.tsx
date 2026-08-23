@@ -7,7 +7,7 @@
 //
 // Todo el state machine del form vive en `useAddFijoForm`. Las pure
 // helpers (FREQ_OPTIONS, CUOTA_OPTIONS, QUICK_AMOUNTS, hexAlpha,
-// buildNextDueOn) viven en `add-fijo-helpers.ts`.
+// resolveFirstDueOn) viven en `add-fijo-helpers.ts`.
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   InteractionManager,
@@ -45,12 +45,18 @@ import {
 } from '@/features/fixed-expenses/use-fixed-expenses'
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
 import {
-  buildNextDueOn,
+  buildFirstCuotaOptions,
+  classifyFirstCuotaPlacement,
+  diffDaysFromToday,
   numpadBaseAmount,
   rebaseNextDueOn,
+  resolveFirstDueOn,
   selectDuplicateCandidates,
 } from '@/features/fixed-expenses/add-fijo-helpers'
 import { useAddFijoForm } from '@/features/fixed-expenses/use-add-fijo-form'
+import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
+import { usePayCycle } from '@/hooks/use-pay-cycle'
+import { isCycleExtended } from '@/utils/pay-cycle'
 import { usePressScale } from '@/hooks/use-press-scale'
 // Del hook de la app, NUNCA de 'react-native-reanimated': el de la
 // librería es el import-trap catalogado que suscribe un listener de
@@ -180,6 +186,40 @@ export function AddFijoV2Screen({
 
   const selectedCategory = categories.find((c) => c.id === form.categoryId)
 
+  // ── Primera cuota (spec 2026-08-23-fijos-primera-cuota-design.md) ──────
+  // freeze:false = plano OBLIGACIONES, la MISMA ventana con la que la lista
+  // de Fijos clasifica (use-fijos-controller) — si el hint dijera "este
+  // ciclo" y la lista lo clasificara distinto, el selector mentiría.
+  const accounting = useMonthlyAccounting(familyId, { freeze: false })
+  const { cycle } = usePayCycle(familyId, { freeze: false })
+  const firstCuota = useMemo(() => {
+    if (isEditing || form.day == null || form.freqChoice === null) return null
+    const frequency: FixedExpenseFrequency = form.isInstallment
+      ? 'monthly'
+      : (form.freqChoice as FixedExpenseFrequency)
+    const options = buildFirstCuotaOptions(form.day, frequency)
+    const chosen = form.firstCuotaChoice === 'current' ? options.current : options.next
+    return {
+      choice: form.firstCuotaChoice,
+      currentDate: options.current,
+      nextDate: options.next,
+      currentDelta: diffDaysFromToday(options.current),
+      // Ciclo extendido → hint suprimido: el fin nominal ya pasó y el real
+      // se corre día a día; cualquier frase de ciclo sería falsa mañana.
+      placement: isCycleExtended(cycle)
+        ? null
+        : classifyFirstCuotaPlacement(chosen, { end: accounting.end }),
+    }
+  }, [
+    isEditing,
+    form.day,
+    form.freqChoice,
+    form.isInstallment,
+    form.firstCuotaChoice,
+    cycle,
+    accounting.end,
+  ])
+
   // Al cambiar de paso el scroll vuelve arriba. Sin esto, quien llenó el paso 1
   // hasta el final entra al paso 2 con el scroll heredado y aterriza a mitad
   // del calendario, sin ver ni el resumen ni el impacto — que son justamente
@@ -249,11 +289,15 @@ export function AddFijoV2Screen({
     void triggerHaptic('success')
     // Edición: re-anclar dentro del período vigente del cursor (no
     // rebobinar al mes actual — eso resucitaba como pendiente un fijo
-    // ya pagado). Alta: ocurrencia de este mes, como siempre.
+    // ya pagado). Alta: la PRIMERA CUOTA que eligió el usuario — la
+    // ocurrencia del período en curso o la siguiente (spec 2026-08-23).
+    const submitFrequency: FixedExpenseFrequency = form.isInstallment
+      ? 'monthly'
+      : (form.freqChoice as FixedExpenseFrequency)
     const nextDueOn =
       isEditing && editingFijo?.next_due_on
         ? rebaseNextDueOn(editingFijo.next_due_on, form.day)
-        : buildNextDueOn(form.day)
+        : resolveFirstDueOn(form.firstCuotaChoice, form.day, submitFrequency)
     const basePayload = {
       amount: form.amount,
       categoryId: selectedCategory.id,
@@ -286,7 +330,16 @@ export function AddFijoV2Screen({
         // y deja el row de payment con period_month = mes actual).
         // No installment porque ahí el flujo es distinto (la primera
         // cuota se contabiliza con el contador `installments_paid`).
-        if (form.alreadyPaidCurrentCuota && created?.id && !form.isInstallment) {
+        // `firstCuotaChoice === 'current'` es parte del gate: con la primera
+        // cuota en el período siguiente no hay cuota del período en curso
+        // que registrar (el toggle ni se muestra, pero el estado podría
+        // haber quedado prendido de antes de cambiar la elección).
+        if (
+          form.alreadyPaidCurrentCuota &&
+          form.firstCuotaChoice === 'current' &&
+          created?.id &&
+          !form.isInstallment
+        ) {
           try {
             await recordPaymentMutation.mutateAsync({
               fixedExpenseId: created.id,
@@ -450,9 +503,13 @@ export function AddFijoV2Screen({
             monthlyIncome={monthlyIncome}
             notify={form.notify}
             onToggleNotify={() => form.setNotify((n) => !n)}
-            showAlreadyPaidToggle={!isEditing && !form.isInstallment}
+            showAlreadyPaidToggle={
+              !isEditing && !form.isInstallment && form.firstCuotaChoice === 'current'
+            }
             alreadyPaidCurrentCuota={form.alreadyPaidCurrentCuota}
             onToggleAlreadyPaid={() => form.setAlreadyPaidCurrentCuota((v) => !v)}
+            firstCuota={firstCuota}
+            onSelectFirstCuota={form.setFirstCuotaChoice}
           />
         )}
       </Pressable>

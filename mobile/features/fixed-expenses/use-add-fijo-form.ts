@@ -15,8 +15,10 @@ import { parsePrice, serializePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import {
+  defaultFirstCuotaChoice,
   findDuplicateFijoName,
   normalizeFijoName,
+  type FirstCuotaChoice,
   type FreqChoice,
 } from './add-fijo-helpers'
 
@@ -82,6 +84,12 @@ export interface AddFijoFormState {
   setNotify: (v: boolean | ((prev: boolean) => boolean)) => void
   alreadyPaidCurrentCuota: boolean
   setAlreadyPaidCurrentCuota: (v: boolean | ((prev: boolean) => boolean)) => void
+  /** Primera cuota del alta: la ocurrencia del período en curso o la
+   *  siguiente (spec 2026-08-23-fijos-primera-cuota-design.md). Resuelto:
+   *  el pick explícito del usuario si tocó el selector, o el default
+   *  derivado del día (pasado → 'next'). Sin día elegido cae a 'current'. */
+  firstCuotaChoice: FirstCuotaChoice
+  setFirstCuotaChoice: (v: FirstCuotaChoice) => void
   isNumpadVisible: boolean
   setIsNumpadVisible: (v: boolean) => void
   isNameFocused: boolean
@@ -140,6 +148,11 @@ export function useAddFijoForm({
   const [day, setDay] = useState<number | null>(null)
   const [notify, setNotify] = useState(true)
   const [alreadyPaidCurrentCuota, setAlreadyPaidCurrentCuota] = useState(false)
+  // Pick EXPLÍCITO del selector "Primera cuota" (null = el usuario no lo
+  // tocó y manda el default derivado del día). Sticky a propósito: si el
+  // usuario eligió la fecha vencida a conciencia y después cambia el día,
+  // su elección se respeta — el default sólo decide mientras no haya pick.
+  const [explicitFirstCuota, setExplicitFirstCuota] = useState<FirstCuotaChoice | null>(null)
   const [isNumpadVisible, setIsNumpadVisible] = useState(false)
   const [isNameFocused, setIsNameFocused] = useState(false)
   const [hydratedFromFijoId, setHydratedFromFijoId] = useState<string | null>(null)
@@ -173,6 +186,11 @@ export function useAddFijoForm({
     setHydratedFromFijoId(editingFijo.id)
   }, [editingFijo, hydratedFromFijoId])
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Resuelto por render: barato (aritmética de fechas) y así el default
+  // sigue al día elegido en el paso 2 sin efectos ni estado espejo.
+  const firstCuotaChoice: FirstCuotaChoice =
+    explicitFirstCuota ?? (day != null ? defaultFirstCuotaChoice(day) : 'current')
 
   const isInstallment = freqChoice === 'cuotas'
   const totalCuotas = isInstallment ? amount * cuotaTot : 0
@@ -275,6 +293,8 @@ export function useAddFijoForm({
     setNotify,
     alreadyPaidCurrentCuota,
     setAlreadyPaidCurrentCuota,
+    firstCuotaChoice,
+    setFirstCuotaChoice: setExplicitFirstCuota,
     isNumpadVisible,
     setIsNumpadVisible,
     isNameFocused,

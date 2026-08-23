@@ -864,3 +864,67 @@ describe('summarizeFijos — FIX4: pausado vencido cuenta como 1', () => {
     expect(s.overdueAmount).toBe(5000)
   })
 })
+
+// ─── Tabs del listado (spec 2026-08-23-fijos-primera-cuota-design.md) ──────
+
+import {
+  selectFijosTabItems,
+  selectVisibleFijosTabs,
+} from '@/features/fijos/fijos-aggregates.model'
+
+describe('tabs — los `future` viven en Pendientes (primera cuota en un ciclo posterior)', () => {
+  function makeFijoTab(over: Partial<FijoItem> = {}): FijoItem {
+    const base = makeFixed()
+    return {
+      ...base,
+      dayOfMonth: base.day_of_month,
+      computedStatus: 'pending',
+      daysUntilDue: 7,
+      isZombie: false,
+      daysSinceLastPaid: null,
+      priceHistory: [],
+      trendDeltaPct: null,
+      trendPrevAmount: null,
+      arrearsOnLastPayment: false,
+      paidPaymentId: null,
+      cuotaMonth: '2026-06-01',
+      annualCost: 60_000,
+      pctOfIncome: null,
+      paymentsLifetime: 0,
+      totalPaidLifetime: 0,
+      missedCuotas: 0,
+      ...over,
+    }
+  }
+  const pending = makeFijoTab({ id: 'p1', computedStatus: 'pending' })
+  const overdue = makeFijoTab({ id: 'o1', computedStatus: 'overdue' })
+  const paid = makeFijoTab({ id: 'g1', computedStatus: 'paid' })
+  const future = makeFijoTab({ id: 'f1', computedStatus: 'future', next_due_on: '2026-09-05' })
+  const summary = {
+    pendingItems: [pending],
+    overdueItems: [overdue],
+    paidItems: [paid],
+    futureItems: [future],
+  }
+
+  it('pendientes = pending + future, con los future DESPUÉS (vencen más lejos)', () => {
+    expect(selectFijosTabItems('pendientes', summary).map((i) => i.id)).toEqual(['p1', 'f1'])
+  })
+  it('vencidos y pagados no cambian', () => {
+    expect(selectFijosTabItems('vencidos', summary).map((i) => i.id)).toEqual(['o1'])
+    expect(selectFijosTabItems('pagados', summary).map((i) => i.id)).toEqual(['g1'])
+  })
+  it('sólo future → la tab Pendientes existe igual (el fijo recién creado no desaparece)', () => {
+    const onlyFuture = { pendingItems: [], overdueItems: [], paidItems: [], futureItems: [future] }
+    expect(selectVisibleFijosTabs(onlyFuture)).toEqual(['pendientes'])
+    expect(selectFijosTabItems('pendientes', onlyFuture).map((i) => i.id)).toEqual(['f1'])
+  })
+  it('sin nada → sin tabs (la barra entera se esconde, decisión owner 2026-08-08)', () => {
+    expect(
+      selectVisibleFijosTabs({ pendingItems: [], overdueItems: [], paidItems: [], futureItems: [] }),
+    ).toEqual([])
+  })
+  it('orden de urgencia: vencidos, pendientes, pagados', () => {
+    expect(selectVisibleFijosTabs(summary)).toEqual(['vencidos', 'pendientes', 'pagados'])
+  })
+})

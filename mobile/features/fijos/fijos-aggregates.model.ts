@@ -825,3 +825,42 @@ export function groupFijosByCategory(input: {
   )
   return groups
 }
+
+// ---------------------------------------------------------------------------
+// Tabs del listado (spec 2026-08-23-fijos-primera-cuota-design.md)
+// ---------------------------------------------------------------------------
+
+export type FijosTabKey = 'vencidos' | 'pendientes' | 'pagados'
+
+type FijosTabBuckets = Pick<
+  ReturnType<typeof summarizeFijos>,
+  'pendingItems' | 'overdueItems' | 'paidItems' | 'futureItems'
+>
+
+/**
+ * Ítems de cada tab. Los `future` (primera cuota en un ciclo posterior)
+ * viven en PENDIENTES, después de los pendientes del ciclo: desde que el
+ * alta permite elegir "la próxima" como primera cuota, un fijo recién
+ * creado puede nacer `future` — si no cayera en ninguna tab, el usuario lo
+ * crearía y "no estaría" (así era hasta 2026-08-23). Se mantienen las 3
+ * tabs (decisión owner v4); el hero, el cupo y el chip del Home siguen
+ * excluyéndolos, porque son totales DE ESTE ciclo.
+ */
+export function selectFijosTabItems(tab: FijosTabKey, summary: FijosTabBuckets): FijoItem[] {
+  if (tab === 'vencidos') return summary.overdueItems
+  if (tab === 'pagados') return summary.paidItems
+  return [...summary.pendingItems, ...summary.futureItems]
+}
+
+/** Tabs con datos, en orden de urgencia. Puede quedar vacío (la barra
+ *  entera se esconde — owner 2026-08-08). Pendientes cuenta también los
+ *  `future` (ver selectFijosTabItems). */
+export function selectVisibleFijosTabs(summary: FijosTabBuckets): FijosTabKey[] {
+  return (['vencidos', 'pendientes', 'pagados'] as const).filter((t) =>
+    t === 'vencidos'
+      ? summary.overdueItems.length > 0
+      : t === 'pendientes'
+        ? summary.pendingItems.length + summary.futureItems.length > 0
+        : summary.paidItems.length > 0,
+  )
+}

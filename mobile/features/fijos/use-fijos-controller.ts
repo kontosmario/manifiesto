@@ -15,6 +15,8 @@ import {
   type FijoCategoryGroup,
   type FijoItem,
   type FijosCycleSummary,
+  selectFijosTabItems,
+  selectVisibleFijosTabs,
 } from '@/features/fijos/fijos-aggregates.model'
 import { usePayCycle } from '@/hooks/use-pay-cycle'
 import { useMonthlyAccounting } from '@/hooks/use-monthly-accounting'
@@ -33,11 +35,12 @@ import { formatCycleLabel } from '@/utils/format-cycle-label'
  *   - v1: 'todos' (poco scannable) y 'zombis' (deprecated). Removidos.
  *   - v2: 3 buckets (Pendientes+Vencidos juntos). Separamos en v3.
  *   - v3: 4 buckets (Vencidos / Pendientes / Pagados / Próximos).
- *   - v4 (HOY): 3 buckets. "Próximos" (future) era casi siempre vacía
- *     post-cycle-coverage fix — la info de fijos programados sin pagar
- *     pasa a un BANNER contextual arriba del listado en lugar de tab
- *     dedicada. Patrón típico de apps Bills/PocketGuard. Decisión
- *     después de comparable analysis.
+ *   - v4: 3 buckets. "Próximos" (future) era casi siempre vacía
+ *     post-cycle-coverage fix — quedó fuera de todas las tabs (el banner
+ *     contextual que la reemplazaba nunca se construyó).
+ *   - v5 (HOY, 2026-08-23): los `future` se listan DENTRO de Pendientes.
+ *     El alta permite elegir la próxima ocurrencia como primera cuota, y
+ *     un fijo recién creado tiene que verse en la lista sí o sí.
  */
 export type FijosTab = 'vencidos' | 'pendientes' | 'pagados'
 
@@ -174,8 +177,8 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
 
   // `allItems` incluye los `future` para que pantallas que listan el
   // catálogo completo (ej: AsesorFijos) sigan viéndolos. En la pantalla
-  // de Fijos los `future` no caen en ningún tab (vencen en un ciclo
-  // posterior) y no se listan hasta que su ciclo llegue.
+  // de Fijos los `future` se listan en la tab Pendientes (después de los
+  // del ciclo — ver selectFijosTabItems, 2026-08-23).
   const allItems = useMemo(
     () => [
       ...summary.paidItems,
@@ -192,15 +195,12 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   )
 
   const filteredItems = useMemo(() => {
-    // 3 buckets (2026-05-31 v4):
-    //   vencidos   → overdue
-    //   pendientes → pending
-    //   pagados    → paid (incluye paid-via-coverage)
-    // Future items NO van a ningún tab (vencen en un ciclo posterior);
-    // no se listan en la pantalla de Fijos hasta que su ciclo llega.
-    if (tab === 'vencidos') return summary.overdueItems
-    if (tab === 'pagados') return summary.paidItems
-    return summary.pendingItems
+    // 3 buckets (2026-05-31 v4). Desde 2026-08-23 los `future` viven en
+    // PENDIENTES (después de los del ciclo): el alta permite elegir la
+    // próxima ocurrencia como primera cuota, y un fijo recién creado que
+    // no cayera en ninguna tab "desaparecería". Lógica pura y testeada en
+    // fijos-aggregates.model (selectFijosTabItems).
+    return selectFijosTabItems(tab, summary)
   }, [tab, summary])
 
   // Solo las tabs con datos, en orden de urgencia.
@@ -210,19 +210,10 @@ export function useFijosController(familyId: string): UseFijosControllerResult {
   // `['pendientes']` para no dejar la barra vacía, pero eso dejaba una tab
   // sola diciendo "Pendientes 0" — un filtro que no filtra nada. Con el array
   // vacío, la barra entera se esconde (owner 2026-08-08).
-  const visibleTabs = useMemo<FijosTab[]>(() => {
-    return (['vencidos', 'pendientes', 'pagados'] as FijosTab[]).filter((t) =>
-      t === 'vencidos'
-        ? summary.overdueItems.length > 0
-        : t === 'pendientes'
-          ? summary.pendingItems.length > 0
-          : summary.paidItems.length > 0,
-    )
-  }, [
-    summary.overdueItems.length,
-    summary.pendingItems.length,
-    summary.paidItems.length,
-  ])
+  const visibleTabs = useMemo<FijosTab[]>(
+    () => selectVisibleFijosTabs(summary),
+    [summary],
+  )
 
   // Mantén el tab activo SIEMPRE válido + default al más urgente visible.
   //  - Si el tab activo se quedó sin datos (ej. pagaste el último vencido), la

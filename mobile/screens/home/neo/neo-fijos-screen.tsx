@@ -345,6 +345,11 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
   const paidCount = summary.paidItems.length
   const pendingCount = summary.pendingItems.length
   const overdueCount = summary.overdueItems.length
+  /** Badge de la tab Pendientes: pending del ciclo + `future` (que desde
+   *  2026-08-23 se listan ahí — ver selectFijosTabItems). SEPARADO de
+   *  `pendingCount` a propósito: el hero, E5/E1 y `cycleActiveCount` son
+   *  semántica de ESTE ciclo y no deben contar los futuros. */
+  const pendientesTabCount = pendingCount + summary.futureItems.length
 
   /** Los fijos que tocan ESTE ciclo (excluye `future`) — el "16" del mockup. */
   const cycleActiveCount = paidCount + pendingCount + overdueCount
@@ -1050,7 +1055,7 @@ export function NeoFijosScreen({ userId, familyId, preview = false }: NeoFijosSc
           mode={mode}
           onSelectTab={handleSelectTab}
           pagadosCount={String(paidCount)}
-          pendientesCount={String(pendingCount)}
+          pendientesCount={String(pendientesTabCount)}
           vencidosCount={String(overdueCount)}
           visibleTabs={controller.visibleTabs}
         />

@@ -2,6 +2,7 @@
 // `add-fijo-v2-screen.tsx` para que la screen pueda concentrarse en
 // orquestación. Cero side effects: todo puro.
 import type { FixedExpenseFrequency } from '@/features/fixed-expenses/fixed-expense-types'
+import { advanceFixedExpenseDueDate } from '@/features/fixed-expenses/commitment-date-utils'
 import { isPersistedFixedExpenseId } from '@/features/fixed-expenses/fixed-expense-id'
 
 // `cuotas` (UI choice) mappea a `frequency='monthly' + kind='installment'`
@@ -65,16 +66,111 @@ export function hexAlpha(hex: string, alpha: number): string {
  * Esto elimina el "salto de mes" estructuralmente: el form siempre
  * apunta a la cuota más cercana (la del mes actual), y el "Registrar
  * pago" la mueve al siguiente — coincidiendo con la intención del user.
+ *
+ * 2026-08-23: esta función quedó como la rama `current` del selector
+ * "PRIMERA CUOTA" (ver buildFirstCuotaOptions más abajo) — el alta ya no
+ * la impone incondicionalmente. `now` es inyectable para tests.
  */
-export function buildNextDueOn(day: number): string {
-  const today = new Date()
-  const year = today.getUTCFullYear()
-  const month = today.getUTCMonth()
+export function buildNextDueOn(day: number, now: Date = new Date()): string {
+  const year = now.getUTCFullYear()
+  const month = now.getUTCMonth()
   // Clamp al último día válido del mes (ej: feb no tiene 31).
   const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
   const safeDay = Math.min(day, daysInMonth)
   const due = new Date(Date.UTC(year, month, safeDay))
   return due.toISOString().slice(0, 10)
+}
+
+// ─── Primera cuota (spec 2026-08-23-fijos-primera-cuota-design.md) ─────────
+//
+// El alta deja de imponer "la cuota de este período": el usuario elige la
+// PRIMERA CUOTA entre dos fechas concretas — la ocurrencia del período en
+// curso (regla histórica de arriba) o la siguiente según la frecuencia.
+// Crear un fijo el 23 con día 5 ya no nace vencido por accidente: nacer
+// vencido pasa a ser una elección explícita (elegir la fecha pasada).
+
+export type FirstCuotaChoice = 'current' | 'next'
+
+/** Las dos fechas del selector "PRIMERA CUOTA" del paso 2. `next` reutiliza
+ *  `advanceFixedExpenseDueDate` (espejo exacto del SQL): +1 mes re-anclado
+ *  al día para monthly, +7/+14 días para weekly/biweekly, +3/+6/+12 meses
+ *  para quarterly/semiannual/annual. Nada de "sumar un mes a mano". */
+export function buildFirstCuotaOptions(
+  day: number,
+  frequency: FixedExpenseFrequency,
+  now: Date = new Date(),
+): { current: string; next: string } {
+  const current = buildNextDueOn(day, now)
+  return { current, next: advanceFixedExpenseDueDate(current, frequency, day) }
+}
+
+/** Fecha calendario de `now` como ISO, en la MISMA convención UTC que
+ *  `buildNextDueOn` (getUTC*). Mantener a las dos del mismo lado del huso:
+ *  si una mirara el reloj local y la otra el UTC, entre las 21:00 y las
+ *  24:00 AR discreparían sobre qué día es "hoy". */
+function todayIso(now: Date): string {
+  const y = now.getUTCFullYear()
+  const m = String(now.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(now.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+/** Días de distancia entre una fecha ISO y "hoy": 0 = hoy, positivo = en N
+ *  días, negativo = venció hace N. Alimenta el sufijo honesto del chip. */
+export function diffDaysFromToday(dateIso: string, now: Date = new Date()): number {
+  const due = Date.parse(`${dateIso}T00:00:00Z`)
+  const today = Date.parse(`${todayIso(now)}T00:00:00Z`)
+  if (Number.isNaN(due)) return 0
+  return Math.round((due - today) / 86_400_000)
+}
+
+/**
+ * Default del selector: si la ocurrencia del período en curso todavía no
+ * pasó (incluye HOY — el clasificador compara estricto y "hoy" es pending,
+ * no vencido), se mantiene el comportamiento histórico. Si ya pasó, el
+ * default salta a la siguiente: el caso común de un alta tardía es "este
+ * fijo arranca en el próximo vencimiento", y la deuda vieja se elige a
+ * propósito tocando el chip de la fecha pasada.
+ */
+export function defaultFirstCuotaChoice(day: number, now: Date = new Date()): FirstCuotaChoice {
+  return buildNextDueOn(day, now) >= todayIso(now) ? 'current' : 'next'
+}
+
+/** El `next_due_on` que viaja en el INSERT del alta según la elección. */
+export function resolveFirstDueOn(
+  choice: FirstCuotaChoice,
+  day: number,
+  frequency: FixedExpenseFrequency,
+  now: Date = new Date(),
+): string {
+  const options = buildFirstCuotaOptions(day, frequency, now)
+  return choice === 'current' ? options.current : options.next
+}
+
+export type FirstCuotaPlacement = 'this-cycle' | 'next-cycle'
+
+/**
+ * En qué ciclo cae la primera cuota elegida — la línea bajo el selector.
+ * Ventana semi-abierta: `>= end` es el ciclo siguiente. Devuelve `null`
+ * (hint suprimido) cuando el ciclo está EXTENDIDO (`nominalEnd < end`): ahí
+ * el fin nominal ya pasó y el real se corre día a día, así que cualquier
+ * frase de ciclo sería falsa mañana. Misma convención de comparación que
+ * `computeItemStatus` (fechas calendario vía getUTC*).
+ */
+export function classifyFirstCuotaPlacement(
+  dateIso: string,
+  cycle: { end: Date; nominalEnd?: Date },
+): FirstCuotaPlacement | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return null
+  if (cycle.nominalEnd != null && cycle.nominalEnd.getTime() < cycle.end.getTime()) return null
+  const due = Date.parse(`${dateIso}T00:00:00Z`)
+  const end = Date.UTC(
+    cycle.end.getUTCFullYear(),
+    cycle.end.getUTCMonth(),
+    cycle.end.getUTCDate(),
+  )
+  if (Number.isNaN(due)) return null
+  return due >= end ? 'next-cycle' : 'this-cycle'
 }
 
 /**

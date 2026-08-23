@@ -25,12 +25,12 @@ import { nunitoFamily } from '@/theme/typography'
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
-export interface DayChoice<T extends number> {
+export interface DayChoice<T extends number | string> {
   value: T
   label: string
 }
 
-export interface DayChipsProps<T extends number> {
+export interface DayChipsProps<T extends number | string> {
   options: readonly DayChoice<T>[]
   value: T
   onSelect: (next: T) => void
@@ -40,7 +40,7 @@ export interface DayChipsProps<T extends number> {
   accessibilityLabel?: string
 }
 
-export function DayChips<T extends number>({
+export function DayChips<T extends number | string>({
   options,
   value,
   onSelect,

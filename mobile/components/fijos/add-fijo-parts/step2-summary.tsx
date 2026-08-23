@@ -24,8 +24,12 @@ import { CategoryIcon } from '@/components/category/category-icon'
 import {
   FREQ_OPTIONS,
   hexAlpha,
+  type FirstCuotaChoice,
+  type FirstCuotaPlacement,
   type FreqChoice,
 } from '@/features/fixed-expenses/add-fijo-helpers'
+import { DayChips } from '@/components/gastos/add-income-parts/day-chips'
+import { getDateTimeFormat } from '@/lib/i18n/active-locale'
 import type { Category as FixedExpenseCategory } from '@/features/categories/use-categories'
 import { formatMoney } from '@/utils/money'
 import { motionDurations, motionSprings } from '@/lib/motion'
@@ -71,6 +75,19 @@ export interface Step2SummaryProps {
   showAlreadyPaidToggle: boolean
   alreadyPaidCurrentCuota: boolean
   onToggleAlreadyPaid: () => void
+  /** Selector "PRIMERA CUOTA" (spec 2026-08-23): las dos fechas concretas
+   *  entre las que elige el alta. `null` en edición o sin día elegido —
+   *  el bloque no se rendea. `placement` null = hint de ciclo suprimido
+   *  (ciclo extendido o fecha ilegible). */
+  firstCuota: {
+    choice: FirstCuotaChoice
+    currentDate: string
+    nextDate: string
+    /** Días hasta la ocurrencia del período en curso: 0 hoy, <0 vencida. */
+    currentDelta: number
+    placement: FirstCuotaPlacement | null
+  } | null
+  onSelectFirstCuota: (choice: FirstCuotaChoice) => void
 }
 
 export function Step2Summary(props: Step2SummaryProps) {
@@ -101,6 +118,8 @@ export function Step2Summary(props: Step2SummaryProps) {
     showAlreadyPaidToggle,
     alreadyPaidCurrentCuota,
     onToggleAlreadyPaid,
+    firstCuota,
+    onSelectFirstCuota,
   } = props
 
   // Zona del handoff (30/50) — sólo la consume la piel neo, donde el medidor
@@ -464,6 +483,44 @@ export function Step2Summary(props: Step2SummaryProps) {
               category={selectedCategory}
               warning={flagDay}
             />
+            {firstCuota ? (
+              <View style={styles.firstCuotaBlock}>
+                <Text
+                  style={[
+                    styles.eyebrow,
+                    { color: theme.colors.textMuted, marginBottom: 8 },
+                    neo ? { ...neo.detail.sectionLabel, color: neo.mutedInk } : null,
+                  ]}
+                >
+                  {t('fijos:wizard.step2.firstCuotaEyebrow')}
+                </Text>
+                <DayChips
+                  options={[
+                    {
+                      value: 'current' as const,
+                      label: firstCuotaChipLabel(t, firstCuota.currentDate, firstCuota.currentDelta),
+                    },
+                    { value: 'next' as const, label: formatFirstCuotaDate(firstCuota.nextDate) },
+                  ]}
+                  value={firstCuota.choice}
+                  onSelect={onSelectFirstCuota}
+                  accessibilityLabel={t('fijos:wizard.step2.firstCuotaA11y')}
+                />
+                {firstCuota.placement ? (
+                  <Text
+                    style={[
+                      styles.firstCuotaHint,
+                      { color: theme.colors.textMuted },
+                      neo ? { color: neo.mutedInk } : null,
+                    ]}
+                  >
+                    {firstCuota.placement === 'next-cycle'
+                      ? t('fijos:wizard.step2.firstCuotaHintNextCycle')
+                      : t('fijos:wizard.step2.firstCuotaHintThisCycle')}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </RiseView>
       ) : null}
@@ -904,7 +961,39 @@ function LibreBlockNeo({
   )
 }
 
+/** "5 de septiembre" / "September 5" según el locale activo. El ISO se
+ *  parsea como medianoche LOCAL (sin la Z): con la Z, en AR (UTC-3) el 5
+ *  se mostraría como 4. */
+function formatFirstCuotaDate(dateIso: string): string {
+  const parsed = new Date(`${dateIso}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return dateIso
+  return getDateTimeFormat({ day: 'numeric', month: 'long' }).format(parsed)
+}
+
+/** Chip de la ocurrencia del período en curso, con su sufijo honesto:
+ *  "· venció hace N días" / "· hoy" / "· en N días". */
+function firstCuotaChipLabel(
+  t: (key: string, opts?: Record<string, unknown>) => string,
+  dateIso: string,
+  delta: number,
+): string {
+  const date = formatFirstCuotaDate(dateIso)
+  if (delta === 0) return t('fijos:wizard.step2.firstCuotaCurrentToday', { date })
+  if (delta > 0) return t('fijos:wizard.step2.firstCuotaCurrentInDays', { date, count: delta })
+  return t('fijos:wizard.step2.firstCuotaCurrentOverdue', { date, count: -delta })
+}
+
 const styles = StyleSheet.create({
+  firstCuotaBlock: {
+    marginTop: 14,
+  },
+  firstCuotaHint: {
+    fontSize: 12.5,
+    fontFamily: nunitoFamily('600'),
+    fontWeight: '600',
+    lineHeight: 17,
+    marginTop: 8,
+  },
   formStack: { gap: 12 },
   eyebrow: { fontSize: 10, letterSpacing: 1.6, fontWeight: '700', fontFamily: nunitoFamily('700') },
   summaryCard: {
