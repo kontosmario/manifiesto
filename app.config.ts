@@ -34,7 +34,12 @@ const config: ExpoConfig = {
   // rediseño TOTAL de la UI (neumórfico: Home, Gastos, Fijos, Control,
   // Jardín, Wrapped) + ciclo extendido + import de resumen + escala de
   // texto propia + i18n ES/EN → salto de versión mayor.
-  version: '2.0.0',
+  // 2.0.1: la 2.0.0 quedó APROBADA en ASC, y Apple rechaza cualquier binario
+  // nuevo con la misma CFBundleShortVersionString (aunque sea para TestFlight
+  // y el buildNumber sea mayor) — verificado con el rechazo del build 20 el
+  // 2026-08-23 (STATE_ERROR.VALIDATION_ERROR). Regla operativa: después de
+  // cada aprobación, el siguiente build BUMPEA la versión de marketing.
+  version: '2.0.1',
   icon: './assets/brand/ios-icon-light.png',
   orientation: 'portrait',
   scheme: 'manifiesto',
