@@ -198,7 +198,14 @@ export function AddFijoV2Screen({
       ? 'monthly'
       : (form.freqChoice as FixedExpenseFrequency)
     const options = buildFirstCuotaOptions(form.day, frequency)
-    const chosen = form.firstCuotaChoice === 'current' ? options.current : options.next
+    // Sin elección todavía no hay fecha de la cual hablar: el hint de ciclo
+    // aparece recién cuando el usuario decide (y el prompt "elige" hasta ahí).
+    const chosen =
+      form.firstCuotaChoice == null
+        ? null
+        : form.firstCuotaChoice === 'current'
+          ? options.current
+          : options.next
     return {
       choice: form.firstCuotaChoice,
       currentDate: options.current,
@@ -206,9 +213,10 @@ export function AddFijoV2Screen({
       currentDelta: diffDaysFromToday(options.current),
       // Ciclo extendido → hint suprimido: el fin nominal ya pasó y el real
       // se corre día a día; cualquier frase de ciclo sería falsa mañana.
-      placement: isCycleExtended(cycle)
-        ? null
-        : classifyFirstCuotaPlacement(chosen, { end: accounting.end }),
+      placement:
+        chosen == null || isCycleExtended(cycle)
+          ? null
+          : classifyFirstCuotaPlacement(chosen, { end: accounting.end }),
     }
   }, [
     isEditing,
@@ -286,6 +294,7 @@ export function AddFijoV2Screen({
   const handleConfirm = async () => {
     if (!form.canSubmit || !selectedCategory || form.day == null || form.freqChoice === null)
       return
+    if (!isEditing && form.firstCuotaChoice == null) return
     void triggerHaptic('success')
     // Edición: re-anclar dentro del período vigente del cursor (no
     // rebobinar al mes actual — eso resucitaba como pendiente un fijo
@@ -297,7 +306,7 @@ export function AddFijoV2Screen({
     const nextDueOn =
       isEditing && editingFijo?.next_due_on
         ? rebaseNextDueOn(editingFijo.next_due_on, form.day)
-        : resolveFirstDueOn(form.firstCuotaChoice, form.day, submitFrequency)
+        : resolveFirstDueOn(form.firstCuotaChoice ?? 'current', form.day, submitFrequency)
     const basePayload = {
       amount: form.amount,
       categoryId: selectedCategory.id,
@@ -510,6 +519,7 @@ export function AddFijoV2Screen({
             onToggleAlreadyPaid={() => form.setAlreadyPaidCurrentCuota((v) => !v)}
             firstCuota={firstCuota}
             onSelectFirstCuota={form.setFirstCuotaChoice}
+            flagFirstCuota={form.flagFirstCuota}
           />
         )}
       </Pressable>
@@ -607,7 +617,9 @@ export function AddFijoV2Screen({
             accessibilityRole="button"
             accessibilityLabel={
               !form.canSubmit
-                ? t('fijos:wizard.cta.pickDay')
+                ? form.day == null
+                  ? t('fijos:wizard.cta.pickDay')
+                  : t('fijos:wizard.cta.pickFirstCuota')
                 : isEditing
                   ? t('fijos:wizard.cta.updateFijoA11y')
                   : t('fijos:wizard.cta.confirmFijoA11y')
@@ -630,7 +642,9 @@ export function AddFijoV2Screen({
               ]}
             >
               {!form.canSubmit
-                ? t('fijos:wizard.cta.pickDay')
+                ? form.day == null
+                  ? t('fijos:wizard.cta.pickDay')
+                  : t('fijos:wizard.cta.pickFirstCuota')
                 : pending
                 ? isEditing
                   ? t('fijos:wizard.cta.updating')

@@ -15,7 +15,6 @@ import { parsePrice, serializePrice } from '@/utils/money'
 import { triggerHaptic } from '@/lib/haptics'
 import type { FixedExpense } from '@/features/fixed-expenses/fixed-expense-types'
 import {
-  defaultFirstCuotaChoice,
   findDuplicateFijoName,
   normalizeFijoName,
   type FirstCuotaChoice,
@@ -85,11 +84,15 @@ export interface AddFijoFormState {
   alreadyPaidCurrentCuota: boolean
   setAlreadyPaidCurrentCuota: (v: boolean | ((prev: boolean) => boolean)) => void
   /** Primera cuota del alta: la ocurrencia del período en curso o la
-   *  siguiente (spec 2026-08-23-fijos-primera-cuota-design.md). Resuelto:
-   *  el pick explícito del usuario si tocó el selector, o el default
-   *  derivado del día (pasado → 'next'). Sin día elegido cae a 'current'. */
-  firstCuotaChoice: FirstCuotaChoice
+   *  siguiente (spec 2026-08-23-fijos-primera-cuota-design.md). `null` =
+   *  el usuario todavía no eligió — SIN preselección y BLOQUEANTE (owner):
+   *  `canSubmit` no abre hasta que haya elección, igual que el día. Cambiar
+   *  el día o la frecuencia la resetea (las fechas cambiaron → se decide de
+   *  nuevo). En edición no aplica (el selector no se rendea). */
+  firstCuotaChoice: FirstCuotaChoice | null
   setFirstCuotaChoice: (v: FirstCuotaChoice) => void
+  /** Paso 2: falta elegir la primera cuota y el usuario ya intentó confirmar. */
+  flagFirstCuota: boolean
   isNumpadVisible: boolean
   setIsNumpadVisible: (v: boolean) => void
   isNameFocused: boolean
@@ -148,11 +151,9 @@ export function useAddFijoForm({
   const [day, setDay] = useState<number | null>(null)
   const [notify, setNotify] = useState(true)
   const [alreadyPaidCurrentCuota, setAlreadyPaidCurrentCuota] = useState(false)
-  // Pick EXPLÍCITO del selector "Primera cuota" (null = el usuario no lo
-  // tocó y manda el default derivado del día). Sticky a propósito: si el
-  // usuario eligió la fecha vencida a conciencia y después cambia el día,
-  // su elección se respeta — el default sólo decide mientras no haya pick.
-  const [explicitFirstCuota, setExplicitFirstCuota] = useState<FirstCuotaChoice | null>(null)
+  // Selección del selector "Primera cuota" (null = todavía no eligió).
+  // Sin default: la decisión es del usuario, siempre (owner 2026-08-23).
+  const [firstCuotaChoice, setFirstCuotaChoice] = useState<FirstCuotaChoice | null>(null)
   const [isNumpadVisible, setIsNumpadVisible] = useState(false)
   const [isNameFocused, setIsNameFocused] = useState(false)
   const [hydratedFromFijoId, setHydratedFromFijoId] = useState<string | null>(null)
@@ -187,10 +188,17 @@ export function useAddFijoForm({
   }, [editingFijo, hydratedFromFijoId])
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Resuelto por render: barato (aritmética de fechas) y así el default
-  // sigue al día elegido en el paso 2 sin efectos ni estado espejo.
-  const firstCuotaChoice: FirstCuotaChoice =
-    explicitFirstCuota ?? (day != null ? defaultFirstCuotaChoice(day) : 'current')
+  // Cambiar el día o la frecuencia invalida la elección de primera cuota:
+  // las DOS fechas del selector cambian con esos campos, y una decisión
+  // tomada sobre fechas que ya no existen no puede viajar al INSERT.
+  const pickDay = (n: number | null) => {
+    if (n !== day) setFirstCuotaChoice(null)
+    setDay(n)
+  }
+  const pickFreqChoice = (v: FreqChoice | null) => {
+    if (v !== freqChoice) setFirstCuotaChoice(null)
+    setFreqChoice(v)
+  }
 
   const isInstallment = freqChoice === 'cuotas'
   const totalCuotas = isInstallment ? amount * cuotaTot : 0
@@ -233,7 +241,10 @@ export function useAddFijoForm({
   // Step-2 gate: day must be picked before el user puede confirmar.
   // Step 1 no depende del day (elegido en step 2 al lado del calendar
   // preview).
-  const canSubmit = canContinue && isDayValid
+  // La primera cuota sólo se exige en CREACIÓN: en edición el selector no
+  // se rendea (rebaseNextDueOn manda — "editar no crea ni perdona deuda").
+  const isFirstCuotaValid = fixedExpenseId != null || firstCuotaChoice != null
+  const canSubmit = canContinue && isDayValid && isFirstCuotaValid
   // El aviso es POR PASO. Con un token global, alguien que tocaba el CTA
   // bloqueado en el paso 1 llegaba al paso 2 con el calendario ya marcado en
   // rojo antes de haber hecho nada ahí: el cue dejaba de significar "esto te
@@ -248,6 +259,7 @@ export function useAddFijoForm({
   // disparaba el háptico de error y no se pintaba nada, porque `flagMissing`
   // sólo alimentaba campos del paso 1. El calendario ahora también se marca.
   const flagDay = isFlagged && !isDayValid
+  const flagFirstCuota = isFlagged && !isFirstCuotaValid
 
   const flagMissing = () => {
     void triggerHaptic('warning')
@@ -284,17 +296,18 @@ export function useAddFijoForm({
     categoryId,
     setCategoryId,
     freqChoice,
-    setFreqChoice,
+    setFreqChoice: pickFreqChoice,
     cuotaTot,
     setCuotaTot,
     day,
-    setDay,
+    setDay: pickDay,
     notify,
     setNotify,
     alreadyPaidCurrentCuota,
     setAlreadyPaidCurrentCuota,
     firstCuotaChoice,
-    setFirstCuotaChoice: setExplicitFirstCuota,
+    setFirstCuotaChoice,
+    flagFirstCuota,
     isNumpadVisible,
     setIsNumpadVisible,
     isNameFocused,

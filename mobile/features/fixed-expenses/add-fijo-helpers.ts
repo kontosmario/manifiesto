@@ -86,8 +86,9 @@ export function buildNextDueOn(day: number, now: Date = new Date()): string {
 // El alta deja de imponer "la cuota de este período": el usuario elige la
 // PRIMERA CUOTA entre dos fechas concretas — la ocurrencia del período en
 // curso (regla histórica de arriba) o la siguiente según la frecuencia.
-// Crear un fijo el 23 con día 5 ya no nace vencido por accidente: nacer
-// vencido pasa a ser una elección explícita (elegir la fecha pasada).
+// SIN preselección y BLOQUEANTE (owner, tras QA en device 2026-08-23): el
+// selector arranca vacío y el CTA no avanza hasta que el usuario elige —
+// misma postura de integridad de datos que la frecuencia y el día.
 
 export type FirstCuotaChoice = 'current' | 'next'
 
@@ -122,18 +123,6 @@ export function diffDaysFromToday(dateIso: string, now: Date = new Date()): numb
   const today = Date.parse(`${todayIso(now)}T00:00:00Z`)
   if (Number.isNaN(due)) return 0
   return Math.round((due - today) / 86_400_000)
-}
-
-/**
- * Default del selector: si la ocurrencia del período en curso todavía no
- * pasó (incluye HOY — el clasificador compara estricto y "hoy" es pending,
- * no vencido), se mantiene el comportamiento histórico. Si ya pasó, el
- * default salta a la siguiente: el caso común de un alta tardía es "este
- * fijo arranca en el próximo vencimiento", y la deuda vieja se elige a
- * propósito tocando el chip de la fecha pasada.
- */
-export function defaultFirstCuotaChoice(day: number, now: Date = new Date()): FirstCuotaChoice {
-  return buildNextDueOn(day, now) >= todayIso(now) ? 'current' : 'next'
 }
 
 /** El `next_due_on` que viaja en el INSERT del alta según la elección. */

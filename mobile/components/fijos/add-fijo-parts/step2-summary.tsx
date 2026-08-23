@@ -80,7 +80,9 @@ export interface Step2SummaryProps {
    *  el bloque no se rendea. `placement` null = hint de ciclo suprimido
    *  (ciclo extendido o fecha ilegible). */
   firstCuota: {
-    choice: FirstCuotaChoice
+    /** `null` = todavía no eligió. SIN preselección: la decisión es
+     *  obligatoria y el CTA no abre sin ella (owner 2026-08-23). */
+    choice: FirstCuotaChoice | null
     currentDate: string
     nextDate: string
     /** Días hasta la ocurrencia del período en curso: 0 hoy, <0 vencida. */
@@ -88,6 +90,8 @@ export interface Step2SummaryProps {
     placement: FirstCuotaPlacement | null
   } | null
   onSelectFirstCuota: (choice: FirstCuotaChoice) => void
+  /** Falta elegir la primera cuota y el usuario ya intentó confirmar. */
+  flagFirstCuota: boolean
 }
 
 export function Step2Summary(props: Step2SummaryProps) {
@@ -120,6 +124,7 @@ export function Step2Summary(props: Step2SummaryProps) {
     onToggleAlreadyPaid,
     firstCuota,
     onSelectFirstCuota,
+    flagFirstCuota,
   } = props
 
   // Zona del handoff (30/50) — sólo la consume la piel neo, donde el medidor
@@ -490,6 +495,14 @@ export function Step2Summary(props: Step2SummaryProps) {
                     styles.eyebrow,
                     { color: theme.colors.textMuted, marginBottom: 8 },
                     neo ? { ...neo.detail.sectionLabel, color: neo.mutedInk } : null,
+                    // Mismo cue de aviso que el calendario: clay + 900.
+                    flagFirstCuota && neo
+                      ? {
+                          color: neo.add.accentClay,
+                          fontFamily: neo.font('900'),
+                          fontWeight: '900' as const,
+                        }
+                      : null,
                   ]}
                 >
                   {t('fijos:wizard.step2.firstCuotaEyebrow')}
@@ -506,7 +519,20 @@ export function Step2Summary(props: Step2SummaryProps) {
                   onSelect={onSelectFirstCuota}
                   accessibilityLabel={t('fijos:wizard.step2.firstCuotaA11y')}
                 />
-                {firstCuota.placement ? (
+                {firstCuota.choice == null ? (
+                  <Text
+                    style={[
+                      styles.firstCuotaHint,
+                      { color: theme.colors.textMuted },
+                      neo ? { color: neo.mutedInk } : null,
+                      flagFirstCuota && neo
+                        ? { color: neo.add.accentClay, fontFamily: neo.font('800'), fontWeight: '800' as const }
+                        : null,
+                    ]}
+                  >
+                    {t('fijos:wizard.step2.firstCuotaPrompt')}
+                  </Text>
+                ) : firstCuota.placement ? (
                   <Text
                     style={[
                       styles.firstCuotaHint,

@@ -26,8 +26,14 @@ PRIMERA CUOTA
   (`advanceFixedExpenseDueDate`: +1 mes re-anclado al día, +7 semanal,
   +14 quincenal, +3/+6/+12 meses).
 - Sufijo honesto en la opción 1: "venció hace N días" / "hoy" / "en N días".
-- **Default:** opción 1 si la fecha no pasó (comportamiento actual);
-  **opción 2 si ya pasó** (nacer vencido pasa a ser una elección explícita).
+- **SIN preselección y BLOQUEANTE** (iteración del owner tras el QA en
+  device, 2026-08-23 — reemplaza al default inteligente del diseño
+  original): el selector arranca vacío, el CTA del paso 2 no abre sin la
+  elección (label "Elige la primera cuota" + aviso clay en el bloque, como
+  el día y la frecuencia), y cambiar el día o la frecuencia RESETEA la
+  elección — las dos fechas cambiaron, la decisión vieja no puede viajar
+  al INSERT. Debajo del selector, un prompt "Elige cuándo cae la primera
+  cuota." hasta que decide.
 - Debajo, una línea dice en qué ciclo cae la elegida: "Impacta en este ciclo"
   o "Impacta a partir del próximo ciclo · no reserva cupo de este".
   **Ciclo extendido**: el hint se SUPRIME (el fin nominal ya pasó y el fin

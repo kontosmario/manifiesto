@@ -105,7 +105,6 @@ describe('selectDuplicateCandidates — solo fijos persistidos y visibles bloque
 import {
   buildFirstCuotaOptions,
   classifyFirstCuotaPlacement,
-  defaultFirstCuotaChoice,
   diffDaysFromToday,
   resolveFirstDueOn,
 } from '@/features/fixed-expenses/add-fijo-helpers'
@@ -157,18 +156,6 @@ describe('buildFirstCuotaOptions — las dos fechas del selector', () => {
       current: '2026-08-05',
       next: '2027-08-05',
     })
-  })
-})
-
-describe('defaultFirstCuotaChoice — nacer vencido es una elección, no un accidente', () => {
-  it('día que aún no pasó → current (comportamiento histórico)', () => {
-    expect(defaultFirstCuotaChoice(25, NOW)).toBe('current')
-  })
-  it('día de HOY → current (es "HOY", no vencido: comparación estricta del clasificador)', () => {
-    expect(defaultFirstCuotaChoice(23, NOW)).toBe('current')
-  })
-  it('día que ya pasó → next', () => {
-    expect(defaultFirstCuotaChoice(5, NOW)).toBe('next')
   })
 })
 

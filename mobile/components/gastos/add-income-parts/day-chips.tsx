@@ -32,7 +32,9 @@ export interface DayChoice<T extends number | string> {
 
 export interface DayChipsProps<T extends number | string> {
   options: readonly DayChoice<T>[]
-  value: T
+  /** `null` = ninguna opción elegida todavía (selectores sin preselección,
+   *  como la primera cuota de fijos). */
+  value: T | null
   onSelect: (next: T) => void
   /** Nombre del GRUPO para el lector de pantalla (típicamente el eyebrow del
    *  campo). Sin el `radiogroup` que lo lleva, VoiceOver anuncia tres radios
