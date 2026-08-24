@@ -407,7 +407,10 @@ const config: ExpoConfig = {
     // "Cierra tu día" (clave de dedup inválida para SecureStore + race),
     // push que aterrizaban en la ruta muerta /(tabs)/control, y prompt de
     // FaceID colgado sobre un modal en descarte.
-    buildNumber: '20',
+    // Build 21 (2026-08-23): mismo contenido que el 20 + el fix del
+    // ITMS-91064 de arriba (el 20 quedó VALID en TestFlight pero Apple
+    // invalidó su envío a review por el manifest de tracking incompleto).
+    buildNumber: '21',
     // expo-store-review usa este campo como último fallback del link a la
     // ficha (y Play exige el par de abajo); el deep link de reseña propio
     // vive en mobile/lib/legal-urls.ts.
@@ -468,6 +471,15 @@ const config: ExpoConfig = {
     // mano — ver docs/operaciones/meta-sdk-atribucion.md.
     privacyManifests: {
       NSPrivacyTracking: true,
+      // ITMS-91064 (build 20, 2026-08-23): Apple exige el PAR completo —
+      // declarar tracking=true con la lista de dominios VACÍA invalida el
+      // binario en la validación post-submit. ep1.facebook.com es el
+      // dominio de rastreo del SDK de Meta (el endpoint con ATT concedido;
+      // el propio manifest de FBSDKCoreKit declara el mismo, así que esto
+      // no cambia el comportamiento en runtime: iOS ya le aplicaba la
+      // política de bloqueo-sin-consentimiento). Verificado contra el
+      // tráfico real del device en el QA del SDK.
+      NSPrivacyTrackingDomains: ['ep1.facebook.com'],
     },
   },
   android: {
@@ -484,7 +496,7 @@ const config: ExpoConfig = {
     // build de iOS para tener UN número mental por release. El versionCode 1
     // que quedó en android/app/build.gradle es un artefacto local viejo:
     // /android está gitignoreado y el prebuild lo regenera desde acá.
-    versionCode: 20,
+    versionCode: 21,
     // Ficha de Play — la usa expo-store-review como fallback del In-App
     // Review (sin este campo, en Android loguea un warning y no abre nada).
     playStoreUrl: 'https://play.google.com/store/apps/details?id=com.manifiesto.mobile',
