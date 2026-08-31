@@ -104,6 +104,15 @@ const ENTRIES: PreviewEntry[] = [
     statusKey: 'brot',
   },
   {
+    // PoC de dirección de arte, NO una réplica de un design doc: se lista
+    // acá porque este índice es el único que el owner abre en device, y el
+    // clip sólo se puede juzgar contra tipografía y wells reales.
+    label: 'Brot nuevo — PoC (clip)',
+    detail: 'Dirección volumétrica · cierre diario con cupo agotado',
+    route: '/(app)/settings/dev/brot-poc',
+    statusKey: 'brot-poc',
+  },
+  {
     // No es una réplica del design doc sino el BANCO del edge-to-edge: se
     // lista acá porque es el único índice dev que el owner abre en device, y
     // el efecto solo se puede juzgar en un iPhone con isla (en web expo-blur
